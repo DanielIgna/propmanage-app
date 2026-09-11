@@ -1039,6 +1039,15 @@ async def seo_gsc_disconnect(user: dict = Depends(require_role("admin"))):
 import secrets as _secrets
 import jwt as _jwt
 
+# Google returns a SUPERSET of the requested scope when this same OAuth client was
+# previously granted login scopes (openid/email/profile) by the consenting account.
+# oauthlib then flags scope_changed and raises Warning("Scope has changed …") inside
+# fetch_token — making the callback fail silently ("Not connected"). Relaxing token-scope
+# validation is Google's recommended setting for this case and does NOT weaken security:
+# we still REQUEST only webmasters.readonly; the superset is a Google artifact of the
+# account's prior grants on the shared client.
+_os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
+
 
 @router.get("/admin/seo/gsc/oauth/start")
 async def seo_gsc_oauth_start(property: str = "sc-domain:propmanage.ro",
@@ -1059,8 +1068,10 @@ async def seo_gsc_oauth_start(property: str = "sc-domain:propmanage.ro",
     )
     flow = Flow.from_client_config(client_config, scopes=GSC_SCOPES, state=state)
     flow.redirect_uri = _gsc_redirect_uri()
+    # No include_granted_scopes: GSC is a standalone read grant, not incremental auth —
+    # this avoids Google merging the account's login scopes into the GSC grant.
     auth_url, _ = flow.authorization_url(
-        access_type="offline", include_granted_scopes="true", prompt="consent", state=state,
+        access_type="offline", prompt="consent", state=state,
     )
     return {"ok": True, "authorization_url": auth_url, "redirect_uri": _gsc_redirect_uri()}
 

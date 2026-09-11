@@ -61,6 +61,37 @@ def test_gsc_admin_only():
         assert r.status_code in (401, 403), f"{path} should require admin, got {r.status_code}"
 
 
+def test_oauth_start_omits_include_granted_scopes(admin):
+    """include_granted_scopes must NOT be requested — it causes Google to merge the
+    account's login scopes into the GSC grant (root cause of the silent callback fail)."""
+    d = admin.get(f"{API}/admin/seo/gsc/oauth/start", timeout=20).json()
+    assert d["ok"] is True
+    assert "include_granted_scopes" not in d["authorization_url"]
+
+
+def test_module_relaxes_token_scope_for_google_superset():
+    """Regression guard for the 'Not connected after successful consent' bug:
+    importing routes.admin_seo must set OAUTHLIB_RELAX_TOKEN_SCOPE=1 so oauthlib tolerates
+    Google returning a SUPERSET scope (webmasters.readonly + previously-granted login
+    scopes) instead of raising 'Scope has changed …' inside flow.fetch_token()."""
+    import importlib
+    os.environ.pop("OAUTHLIB_RELAX_TOKEN_SCOPE", None)
+    import routes.admin_seo as m
+    importlib.reload(m)  # re-run module top-level → must set the flag
+    assert os.environ.get("OAUTHLIB_RELAX_TOKEN_SCOPE") == "1"
+
+    from oauthlib.oauth2 import OAuth2Token
+    from oauthlib.oauth2.rfc6749 import parameters
+    tok = OAuth2Token(
+        {"access_token": "x", "token_type": "Bearer", "expires_in": 3599, "refresh_token": "1//rt",
+         "scope": "https://www.googleapis.com/auth/webmasters.readonly openid "
+                  "https://www.googleapis.com/auth/userinfo.email"},
+        old_scope="https://www.googleapis.com/auth/webmasters.readonly",
+    )
+    assert tok.scope_changed is True
+    parameters.validate_token_parameters(tok)  # must NOT raise now (fix active)
+
+
 def test_lead_schema_accepts_attribution_fields(admin):
     # The existing lead endpoint must ACCEPT the optional attribution fields
     # (schema validation only — asserted via non-422). Uses a marked test email.

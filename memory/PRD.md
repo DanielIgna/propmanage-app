@@ -1,3 +1,20 @@
+## 🐞 FIX GSC OAuth — „Not connected după consimțământ reușit" (Iun 2026)
+
+**Simptom (producție)**: consimțământul Google reușea, redirect înapoi la `/admin` fără eroare OAuth vizibilă, dar SEO Control Center → GSC rămânea „Not connected".
+
+**Cauza reală (confirmată deterministic din sursa oauthlib 3.3.1, `parameters.py:463-473`)**: URL-ul de autorizare folosea `include_granted_scopes=true`. Fiindcă ACELAȘI client OAuth e folosit și pentru login, contul `danieligna1@gmail.com` avea deja scope-urile de login (openid/email/profile). Google returna la schimbul de token un scope **superset** (webmasters.readonly + login scopes) → `params.scope_changed=True` → cum `OAUTHLIB_RELAX_TOKEN_SCOPE` nu era setat, oauthlib arunca `Warning("Scope has changed …")` chiar în `flow.fetch_token()`. Callback-ul prindea excepția → redirect `gsc=error&reason=token_exchange`, iar consola admin curăța query-ul → utilizatorul vedea doar `/admin`, fără eroare, iar tokenul NU se persista niciodată. NU era mismatch persistență↔status (ambele citesc corect `key=gsc, auth_type=oauth, refresh_token, property`) — callback-ul pur și simplu nu ajungea la persistare.
+
+**Fix (minim, production-safe)** în `routes/admin_seo.py`:
+1. `_os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"` la import — oauthlib tolerează scope-ul superset returnat de Google (cerem tot doar webmasters.readonly; nu slăbește securitatea).
+2. Scos `include_granted_scopes="true"` din `authorization_url` (GSC = grant standalone, nu incremental auth).
+
+**Verificat**: import admin_seo setează flag-ul; `validate_token_parameters` NU mai aruncă la scope superset; callback simulat (doc oauth în `db.seo_config`) → `/admin/seo/gsc` = **connected**, auth_type=oauth, sc-domain:propmanage.ro; report cu token invalid → `error`, overview None (zero date fabricate). live oauth/start: scope/offline/consent corecte, fără include_granted_scopes. Teste: `test_gsc_oauth_iter220` = 7 PASS (2 guard-uri noi) + iter218/219/preturi = 33 PASS. Gate/canonical/noindex/sitemap NEATINSE.
+
+**⚠️ Necesită REDEPLOY backend pe producție** ca fix-ul să fie activ pe propmanage.ro; apoi Fondatorul reapasă „Conectează cu Google" → callback reușește → „Connected" + date reale.
+
+---
+
+
 ## 🔌📈 SEO CONVERSION + GSC API — BATCH 2.1 (Iun 2026)
 
 Trei părți (GSC live prin OAuth existent · CTA Design Interior → lead · tracking) peste fundația Batch 2, FĂRĂ SSR, FĂRĂ modificarea Indexability Gate / canonical / robots / sitemap. Verificat E2E (44 pytest PASS + Playwright funnel complet + curl PART D).
