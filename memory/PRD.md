@@ -1,3 +1,20 @@
+## 🔎 SEO INVESTIGATION — „Homepage flash" pe /design-interior (Iun 2026) · NICIO MODIFICARE DE COD NECESARĂ
+
+Investigație (read-only, fără SSR/prerender, fără refactor SPA, fără atingerea fundației SEO).
+
+**Cauza reală a „flash-ului homepage"**: artefact BENIGN de inițializare SPA. Shell-ul static `index.html` poartă title/meta/canonical/JSON-LD ale HOMEPAGE-ului („Cartea Digitală a Casei Tale"). La navigare directă pe un URL DI, browserul afișează acest shell (body gol + tab title homepage) ~100–600ms cât timp: (a) se descarcă bundle-ul JS, (b) React montează, (c) pe `/design-interior` exact chunk-ul lazy `InteriorDesignLanding` se descarcă (spinner Suspense) + fetch conținut („Se încarcă…"). Apoi `useSEO`/`useDynamicSEO` înlocuiesc title/canonical corecte și body-ul DI se randează. **NU e body de homepage, NU e redirect HTTP, URL-ul nu devine niciodată „/".**
+
+**Dovezi**: (1) `curl /design-interior*` → HTTP 200, `redirects=0`, `#root` gol, fără markeri de body homepage („Harta Casei" absent). (2) Timeline Playwright pe preview ȘI producție: `homeHero=false` + `homeJourney=false` pe tot montajul; secvența = gol → spinner → conținut DI (fără homepage). (3) După render, canonical corect self pe paginile indexabile; `/design-interior/cluj-napoca` → `noindex,nofollow` + canonical părinte (gate <3 designeri).
+
+**Impact SEO: NONE→LOW.** Googlebot (WRS) execută JS și vede DOM-ul final: title/H1/canonical(self)/robots/JSON-LD/breadcrumb corecte pe toate cele 5 URL testate. Canonical-ul static homepage din shell e suprascris client-side înainte de snapshot. Reziduu LOW (pre-existent, comun TUTUROR rutelor SPA): JSON-LD-ul homepage din index.html rămâne în head alături de cel al paginii — nefixabil fără SSR/prerender (interzis).
+
+**26 vs 24 (Admin Clusters vs sitemap-design.xml)**: NU e bug. `sitemap-design.xml` = **24** = 14 pagini + 9 stiluri + orașe care trec gate-ul (doar `bucuresti`, 6 designeri; `cluj-napoca` 0 → exclus). Clusterul „Design Interior" din Admin = **26** = grupare LOGICĂ ce numără și hub-ul `/design-interior` (emis în `sitemap-static.xml`) + ghidul editorial `/ghiduri/cum-alegi-designer-interior` (emis în `sitemap-content.xml`). Toate 26 sunt `in_sitemap` (fiecare într-un copil), deci „26/26" e corect. 24 + hub + ghid = 26.
+
+**Cod necesar: NU.** Comportamentul e corect. Adăugat DOAR test de regresie (fără modificare de produs): `tests/test_design_interior_routing_iter219.py` (4 teste PASS) — garantează 200 fără redirect, gate index vs noindex, sitemap-design corect gate-filtrat, și relația 26=24+hub+ghid (prinde viitoare eliminări de rută care ar face catch-all-ul `Navigate to="/"` să redirecteze real spre homepage).
+
+---
+
+
 ## 🧭 SEO EXPANSION — BATCH 2: Design Interior + GSC real + Auto-sitemap + Export CSV/PDF (Iun 2026)
 
 Extindere a footprint-ului SEO programatic peste fundația Batch 1, FĂRĂ SSR, FĂRĂ rescrierea Indexability Gate-ului. Verificat E2E (35 pytest SEO/pages PASS + 5 QA runners SEO PASS + curl admin exports/GSC + screenshot Design Interior).
