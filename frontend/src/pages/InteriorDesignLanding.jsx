@@ -172,8 +172,8 @@ export default function InteriorDesignLanding() {
   const [content, setContent] = useState(null);
   const [detailKind, setDetailKind] = useState(null);
   useDynamicSEO("interior_design", {
-    title: content?.seo?.title || "Interior Intelligence by PropManage — Design Interior & Arhitectură | România",
-    description: content?.seo?.description,
+    title: content?.seo?.title || "Design Interior & Arhitectură de Interior | Amenajări Interioare la Cheie — Interior Intelligence by PropManage",
+    description: content?.seo?.description || "Design interior, arhitectură de interior, design interior și implementare, amenajări interioare la cheie și randări 3D fotorealiste cu specialiști verificați.",
   });
 
   useEffect(() => {

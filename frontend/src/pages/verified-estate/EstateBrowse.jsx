@@ -171,7 +171,10 @@ const ListingCard = ({ item }) => (
 );
 
 export const EstateBrowse = () => {
-  useDynamicSEO("estate", { title: "Imobile Verificate · PropManage" });
+  useDynamicSEO("estate", {
+    title: "Imobile Verificate — Case și Apartamente Verificate cu Audit Tehnic | PropManage",
+    description: "Imobile verificate cu audit tehnic complet și Digital Twin: case de vânzare verificate și apartamente verificate, anunțuri imobiliare cu audit tehnic și proprietăți verificate digital twin. Cumperi cu încredere, vinzi cu credibilitate.",
+  });
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -219,10 +222,10 @@ export const EstateBrowse = () => {
             Zero surprize.
           </h1>
           <p className="text-lg text-stone-400 max-w-2xl mb-6">
-            Fiecare imobil listat aici a trecut prin <strong className="text-white">audit tehnic complet</strong>,
+            <strong className="text-white">Case de vânzare verificate</strong> și <strong className="text-white">apartamente verificate</strong>: fiecare imobil listat aici a trecut prin <strong className="text-white">audit tehnic complet</strong>,
             are <strong className="text-white">Digital Twin</strong> propriu și a obținut minimum
             <strong className="text-white"> 90% recomandări acceptate</strong> de proprietar.
-            Cumperi cu încredere. Vinzi cu credibilitate.
+            Anunțuri imobiliare cu audit tehnic și proprietăți verificate digital twin — cumperi cu încredere, vinzi cu credibilitate.
           </p>
           <div className="flex flex-wrap gap-2 mb-8 text-xs">
             <button onClick={() => setDetailKind("audit")} className="px-3.5 py-1.5 rounded-full border border-white/15 text-stone-300 hover:border-[#d4ff3a]/60 hover:text-white font-bold transition-colors" data-testid="estate-audit-details">

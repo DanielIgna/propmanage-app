@@ -13,19 +13,19 @@ IMG = {
 }
 
 DEFAULT_CONTENT: dict[str, Any] = {
-    "content_version": 8,
+    "content_version": 9,
     "active": True,
     "show_on_homepage": True,
     "menu_order": 1,
     "seo": {
-        "title": "Design Interior & Arhitectură de Interior — Interior Intelligence by PropManage | România",
-        "description": "Interior Intelligence by PropManage: design interior, arhitectură de interior, audit locuință, scanare 3D și Digital Twin, planșe tehnice, randări 3D și management de implementare cu specialiști verificați. Proiecte în Cluj-Napoca, Transilvania și în toată România.",
+        "title": "Design Interior & Arhitectură de Interior | Amenajări Interioare la Cheie — Interior Intelligence by PropManage",
+        "description": "Design interior, arhitectură de interior, design interior și implementare cu specialiști verificați. Amenajări interioare la cheie, randări 3D fotorealiste, audit locuință, scanare 3D și Digital Twin. Proiecte în Cluj-Napoca, Transilvania și în toată România.",
         "canonical": "/design-interior",
-        "keywords": ["design interior", "designer interior", "arhitectură de interior", "amenajări interioare",
-                     "proiect design interior", "planșe tehnice", "scanare 3D locuință", "Digital Twin",
-                     "audit locuință", "management proiect renovare", "designer interior Cluj",
-                     "designer interior România", "amenajări apartament", "amenajări casă",
-                     "randări 3D", "consultanță design interior"],
+        "keywords": ["design interior", "arhitectură de interior", "design interior și implementare",
+                     "amenajări interioare la cheie", "randări 3D fotorealiste", "designer interior",
+                     "amenajări interioare", "proiect design interior", "planșe tehnice", "scanare 3D locuință",
+                     "Digital Twin", "audit locuință", "management proiect renovare", "designer interior Cluj",
+                     "designer interior România", "amenajări apartament", "amenajări casă", "consultanță design interior"],
     },
     "brand": {
         "name": "Interior Intelligence",
@@ -33,8 +33,8 @@ DEFAULT_CONTENT: dict[str, Any] = {
         "tagline": "Transformarea completă a locuinței",
     },
     "hero": {
-        "h1": "Design, Arhitectură de Interior & Implementare",
-        "subtitle": "Nu îți vindem doar un proiect de design. Construim întregul proces — audit tehnic, Digital Twin, proiectare, implementare cu specialiști verificați și întreținere pe termen lung. Un singur partener, de la prima măsurătoare la ultima garanție.",
+        "h1": "Design Interior, Arhitectură de Interior & Implementare la Cheie",
+        "subtitle": "Nu îți vindem doar un proiect de design interior. Acoperim design interior și implementare într-un singur proces — audit tehnic, Digital Twin, arhitectură de interior, randări 3D fotorealiste și amenajări interioare la cheie cu specialiști verificați și întreținere pe termen lung. Un singur partener, de la prima măsurătoare la ultima garanție.",
         "image": IMG["hero"],
         "image_alt": "Living premium cu lemn natur și tonuri calde — Interior Intelligence by PropManage, design interior România",
         "cta_primary": "Programează consultanța",
@@ -188,8 +188,8 @@ DEFAULT_CONTENT: dict[str, Any] = {
         "outro": "Auditul oferă o imagine tehnică completă asupra proprietății și creează baza de informații pentru proiectare, Digital Twin și deciziile de investiție.",
     },
     "implementation": {
-        "title": "Nu doar proiectul. Și implementarea.",
-        "intro": "PropManage poate coordona execuția de la prima cerere de ofertă la recepția finală — cu specialiști verificați și plăți protejate prin escrow.",
+        "title": "Amenajări interioare la cheie — nu doar proiectul, ci și implementarea",
+        "intro": "PropManage poate coordona amenajări interioare la cheie, de la prima cerere de ofertă la recepția finală — design interior și implementare cu specialiști verificați și plăți protejate prin escrow.",
         "points": ["Selecția specialiștilor verificați", "Cereri de ofertă", "Compararea transparentă a ofertelor",
                    "Verificarea specialiștilor (identitate, portofoliu, recenzii)", "Managementul proiectului",
                    "Urmărirea etapelor în platformă", "Verificarea calității", "Comunicare centralizată",

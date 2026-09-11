@@ -1,3 +1,19 @@
+## 🔎 SEO ON-PAGE — /design-interior & /imobile-verificate (Iun 2026)
+
+Doar SEO on-page + meta, fără modificări de design/structură. Cuvinte cheie introduse natural în Title, H1/H2, meta-descriere și primele paragrafe.
+
+**/design-interior** (conținut server-driven via `/api/interior-design/content`, `service_content_design.DEFAULT_CONTENT` bumpat la `content_version: 9`):
+- Title/desc + H1 „Design Interior, Arhitectură de Interior & Implementare la Cheie" + subtitle + H2 implementare rescrise cu: design interior, arhitectură de interior, design interior și implementare, amenajări interioare la cheie, randări 3D fotorealiste. JSON-LD + canonical păstrate.
+
+**/imobile-verificate** (`EstateBrowse.jsx` static): meta title/desc optimizate + primul paragraf rescris cu: imobile verificate, case de vânzare verificate, apartamente verificate, anunțuri imobiliare cu audit tehnic, proprietăți verificate digital twin. H1 „Imobile Verificate." păstrat.
+
+**Sursa meta Title/Description** = Pages Registry (`db.pages.live.seo_title/seo_description/og_*`). Actualizat în DB pentru ambele chei (`interior_design`, `estate`) + fallback-uri în cod (`useDynamicSEO`). Verificat live: title/meta/h1/primul paragraf conțin toate expresiile țintă; design neschimbat.
+
+⚠️ Producție: textele on-page + JSON-LD sunt la nivel de cod (se aplică la redeploy). Meta Title/Description ale celor 2 pagini sunt în Pages Registry (DB) — dacă producția folosește altă bază de date, valorile trebuie aplicate acolo prin Admin → Pages (sau vor fi preluate dacă DB e comună).
+
+---
+
+
 ## 🎯 CLIENT BETA — TASK #3: CTA-uri „Adaugă primul document" duc direct în Cartea casei (Iun 2026)
 
 Problemă: bannerul „Adaugă primul document" (HeroDoc) și Copilotul → „Fă pasul acum" (acțiunea `docs_for_benefit`) duceau în pagina generală Proprietăți (secțiunea `rezumat`), deși „Adaugă document" e în Cartea casei.
