@@ -165,17 +165,30 @@ async def http_public_sitemap_valid() -> dict:
 
 
 async def http_marketplace_landing_returns_seo_data() -> dict:
-    """P-02: SEO landing pentru oraș-categorie e listată în sitemap + există slug map."""
+    """P-02: Indexability Gate SSOT — /api/public/seo/gate decide index/noindex, iar sitemap-ul
+    listează DOAR landing-uri marketplace care trec gate-ul (fără conținut subțire)."""
+    import re as _re
     async with await _client() as c:
+        # Gate pe un slug necunoscut → noindex + canonical la părinte (determinist, independent de date).
+        gb = await c.get("/api/public/seo/gate?path=/marketplace/slug-inexistent-xyz")
+        if gb.status_code != 200:
+            return _ko(f"gate endpoint status {gb.status_code}")
+        bad = gb.json()
+        if bad.get("index") is not False or not bad.get("canonical"):
+            return _ko(f"gate pentru slug invalid ar trebui noindex+canonical: {bad}")
+        # Sitemap-ul flat trebuie să conțină DOAR landing-uri care trec gate-ul.
         r = await c.get("/api/public/sitemap.xml")
         if r.status_code != 200:
             return _ko(f"sitemap status {r.status_code}")
-        body = r.text
-        # Expect at least the city-category landing patterns
-        sample = "/marketplace/electrician-bucuresti"
-        if sample in body:
-            return _ok(f"OK — sitemap include landing {sample}")
-        return _ko(f"sitemap missing {sample!r}")
+        m = _re.search(r"/marketplace/([a-z0-9\-]+)</loc>", r.text)
+        if not m:
+            return _ok("OK — gate funcțional (slug invalid→noindex); niciun landing marketplace nu trece încă pragul (marketplace tânăr)")
+        slug = m.group(1)
+        g = await c.get(f"/api/public/seo/gate?path=/marketplace/{slug}")
+        gd = g.json()
+        if gd.get("index") is True:
+            return _ok(f"OK — gate SSOT: '{slug}' din sitemap trece gate-ul (index=true); slug invalid→noindex+canonical {bad.get('canonical')}")
+        return _ko(f"'{slug}' e în sitemap dar gate-ul spune index={gd.get('index')}")
 
 
 async def http_health_status_alive() -> dict:
@@ -2065,17 +2078,21 @@ async def seo_sitemap_xml_well_formed() -> dict:
 
 @_safe_e2e
 async def seo_sitemap_landing_diverse_cities() -> dict:
-    """SEO-LANDING-CITIES: Sitemap include landings pt min 3 orașe diferite."""
+    """SEO-GATE-CONSISTENCY: fiecare landing marketplace din sitemap trece Indexability Gate-ul."""
+    import re as _re
     async with await _client() as c:
         r = await c.get("/api/public/sitemap.xml")
         if r.status_code != 200:
             return _ko(f"sitemap {r.status_code}")
-        body = r.text.lower()
-        cities = ["bucuresti", "cluj", "timisoara", "iasi", "constanta", "brasov"]
-        found = [c for c in cities if f"-{c}" in body]
-        if len(found) >= 3:
-            return _ok(f"OK — sitemap include landings pentru: {', '.join(found)}")
-        return _ko(f"doar {len(found)} orașe în sitemap: {found}")
+        landings = _re.findall(r"/marketplace/([a-z0-9\-]+)</loc>", r.text)
+        bad = []
+        for slug in landings[:8]:
+            g = await c.get(f"/api/public/seo/gate?path=/marketplace/{slug}")
+            if g.status_code != 200 or g.json().get("index") is not True:
+                bad.append(slug)
+        if not bad:
+            return _ok(f"OK — {len(landings)} landing-uri în sitemap, {min(len(landings), 8)} verificate, toate trec gate-ul")
+        return _ko(f"landing-uri în sitemap care NU trec gate-ul: {bad}")
 
 
 @_safe_e2e
@@ -3289,7 +3306,7 @@ AUTOMATED_TESTS: dict[str, dict] = {
         "runner": seo_sitemap_xml_well_formed,
     },
     "SEO-LANDING-CITIES": {
-        "code": "SEO-LANDING-CITIES", "title": "Sitemap include landings pentru min 3 orașe",
+        "code": "SEO-LANDING-CITIES", "title": "Landing-urile marketplace din sitemap trec Indexability Gate-ul",
         "kind": "http", "category": "SEO", "priority": "P2",
         "runner": seo_sitemap_landing_diverse_cities,
     },

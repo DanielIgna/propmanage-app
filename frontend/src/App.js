@@ -32,6 +32,8 @@ import { PublicMarketplace } from "./pages/Marketplace";
 import { MarketplaceLanding } from "./pages/MarketplaceLanding";
 import { GhiduriIndex } from "./pages/GhiduriIndex";
 import { GhidPage } from "./pages/GhidPage";
+import { ProblemeIndex } from "./pages/ProblemeIndex";
+import { ProblemaPage } from "./pages/ProblemaPage";
 import { HelpPage } from "./pages/HelpPage";
 import { ProjectWorkspace } from "./pages/ProjectWorkspace";
 import { PaymentSuccess } from "./pages/PaymentSuccess";
@@ -1526,6 +1528,8 @@ const Footer = () => {
             <Link to="/privacy" className="hover:text-white transition-colors" data-testid="footer-privacy">Confidențialitate</Link>
             <Link to="/cookies" className="hover:text-white transition-colors" data-testid="footer-cookies">Cookies</Link>
             <Link to="/trust" className="hover:text-white transition-colors" data-testid="footer-trust">Trust Center</Link>
+            <Link to="/ghiduri" className="hover:text-white transition-colors" data-testid="footer-ghiduri">Ghiduri</Link>
+            <Link to="/probleme-casa" className="hover:text-white transition-colors" data-testid="footer-probleme">Probleme casă</Link>
             <Link to="/devino-francizat" className="hover:text-[#d4ff3a] transition-colors" data-testid="footer-franchise">Devino francizat</Link>
             <Link to="/devino-specialist" className="hover:text-[#d4ff3a] transition-colors" data-testid="footer-specialist-apply">Devino specialist</Link>
             <Link to="/status" className="hover:text-white transition-colors inline-flex items-center gap-1" data-testid="footer-status">
@@ -1798,6 +1802,8 @@ function App() {
               <Route path="/preturi" element={<PreturiIndex />} />
               <Route path="/preturi/:slug" element={<PreturiPage />} />
               <Route path="/ghiduri/:slug" element={<GhidPage />} />
+              <Route path="/probleme-casa" element={<ProblemeIndex />} />
+              <Route path="/probleme-casa/:slug" element={<ProblemaPage />} />
               <Route path="/help/:token" element={<HelpPage />} />
               <Route path="/specialists/:id" element={<SpecialistProfile />} />
               <Route path="/client" element={<ClientDashboardV2 />} />

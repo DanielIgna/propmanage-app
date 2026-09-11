@@ -1,3 +1,25 @@
+## 🧭 SEO EXPANSION — BATCH 1: Indexability Gate + Sitemap-Index + Cluster „Probleme casă" (Iun 2026)
+
+Fundația tehnică pentru SEO programatic, FĂRĂ a schimba arhitectura SPA client-rendered. Aprobat de Fondator (2a + 2b + BreadcrumbList peste tot). Verificat E2E (curl + screenshots admin + 6 QA runners SEO + 4 pytest sitemap PASS).
+
+**1 · Indexability Gate (SSOT server-side)** — `backend/seo_gate.py` (praguri: `MIN_SPECIALISTS_SERVICE_CITY=3`). Nou endpoint `GET /api/public/seo/gate?path=…` (`routes/public.py::compute_marketplace_gate`) → decide `{index, canonical, reason}` pe baza numărului REAL de specialiști VERIFICAȚI (service national + service×city). Editorial (probleme/ghiduri) = mereu index. `specialist_is_indexable` extins să accepte `service_categories`.
+- **Frontend**: `MarketplaceLanding.jsx` apelează gate-ul → pagini subțiri (`<3` specialiști) primesc `robots=noindex,nofollow` + `canonical`→pagina-părinte; paginile populate rămân `index` + canonical self. Verificat: electrician-bucuresti (1)→noindex+canonical /marketplace/electrician; design-interior (6)/hvac-bucuresti (3)→index+self.
+
+**2 · Sitemap-index** — root `https://propmanage.ro/sitemap.xml` a devenit **sitemap-index** cu 4 copii gate-filtrate: `sitemap-static.xml` (17 pagini + huburi), `sitemap-content.xml` (ghiduri + probleme + prețuri), `sitemap-marketplace.xml` (DOAR service/service×city care trec gate-ul), `sitemap-specialists.xml` (DOAR profile care trec `specialist_is_indexable`). `/api/public/sitemap.xml` păstrat ca urlset plat (compat QA/teste). Regenerat la startup + zilnic (03:30) via `write_sitemap_file()`. Registre SSOT: `seo_guides.py`, `seo_problems.py`.
+- Impact preview real: 68 URL-uri (vs ~229 înainte) — conținut subțire eliminat (gradinar/tamplar/zugrav/etc. + majoritatea city pages cu <3 verificați). robots.txt → index.
+
+**3 · Cluster „Probleme casă"** — hub `/probleme-casa` (`ProblemeIndex.jsx`) + detaliu `/probleme-casa/:slug` (`ProblemaPage.jsx`) cu 5 articole editoriale (`data/problemeCasa.js`: infiltrații-acoperiș, mucegai-igrasie, fisuri-pereți, umezeală-pereți, probleme-acoperiș). Rutare în `App.js`. Link intern din footer (Ghiduri + Probleme casă) + cross-link bidirecțional Ghiduri↔Probleme. FIX: bug de sintaxă preexistent în `problemeCasa.js` (ghilimele drepte `"` în string) care bloca compilarea la wiring.
+
+**4 · BreadcrumbList schema** — top-level `@graph` pe MarketplaceLanding, GhiduriIndex (hub), ProblemeIndex (hub); ProblemaPage + GhidPage îl aveau deja.
+
+**QA/teste actualizate (gate-aware, environment-robust)**: `qa_automation.py` P-02 (`http_marketplace_landing_returns_seo_data`) + `SEO-LANDING-CITIES` (`seo_sitemap_landing_diverse_cities`) rescrise să valideze gate-ul SSOT (nu prezența unor city pages fragile). Toate 6 QA SEO + 4 pytest sitemap PASS.
+
+**NU în acest batch** (per plan aprobat): sub-pagini programatice masive estate/design. **Necesită redeploy Fondator pentru producție**; pe prod sitemap-ul reflectă numărul real de specialiști verificați de acolo.
+
+**Notă preview**: serviciul `specialisti` e dezactivat în preview → `ServiceGate` redirecționează anon la `/` pe rutele /marketplace (config preexistentă, nu afectează logica gate-ului, verificată ca admin). Pe prod serviciul e activ.
+
+---
+
 ## 🔎 SEO ON-PAGE — /design-interior & /imobile-verificate (Iun 2026)
 
 Doar SEO on-page + meta, fără modificări de design/structură. Cuvinte cheie introduse natural în Title, H1/H2, meta-descriere și primele paragrafe.

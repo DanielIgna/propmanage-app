@@ -452,128 +452,183 @@ async def delete_demo_lead(lead_id: str, user: dict = Depends(require_role("admi
 
 
 # ============================================================================
-# SEO — Dynamic sitemap.xml
+# SEO — Sitemap-index + Indexability Gate
 # ============================================================================
-# Listed in robots.txt as the canonical sitemap. Includes:
-#  - Static public pages (landing, marketplace, login, register, privacy, terms, status)
-#  - Public profile of every VERIFIED specialist (non-deleted)
-# Google/Bing re-fetch it weekly; freshness is guaranteed because we hit Mongo
-# on every request (response is small — < 50KB even at 1000 specialists).
+# Two layers:
+#  - Root https://propmanage.ro/sitemap.xml → SITEMAP-INDEX referencing 4 child
+#    sitemaps (static, content, marketplace, specialists). Listed in robots.txt.
+#  - /api/public/sitemap.xml → full flat urlset (all gate-passing URLs in one).
+# Only gate-passing URLs are emitted (thin service×city / thin profiles excluded).
+# The same gate powers GET /api/public/seo/gate, which the client-rendered SPA
+# calls to set server-truth robots (index/noindex) + canonical on public templates.
 
 from fastapi.responses import Response as FastResponse  # noqa: E402
+from pathlib import Path as _Path  # noqa: E402
+
+from seo_slugs import (  # noqa: E402
+    SEO_CATEGORY_MAP as _CAT_MAP,
+    CITY_DB_TO_SLUG as _CITY_DB_TO_SLUG,
+    parse_landing_slug as _parse_landing_slug,
+)
+from seo_gate import (  # noqa: E402
+    gate_service_city,
+    specialist_is_indexable,
+    decision as _gate_decision,
+)
+from seo_guides import GUIDE_SLUGS  # noqa: E402
+from seo_problems import PROBLEM_SLUGS  # noqa: E402
 
 _SITE_URL = os.environ.get("APP_PUBLIC_URL", "https://propmanage.ro").rstrip("/")
+_SITEMAP_DIR = _Path(__file__).resolve().parents[2] / "frontend" / "public"
+_CHILD_SITEMAPS = [
+    "sitemap-static.xml",
+    "sitemap-content.xml",
+    "sitemap-marketplace.xml",
+    "sitemap-specialists.xml",
+]
 
 
-@router.get("/public/sitemap.xml")
-async def public_sitemap():
-    """Dynamic XML sitemap — served at /api/public/sitemap.xml AND mirrored to
-    the clean root /sitemap.xml (static file in frontend/public via write_sitemap_file)."""
-    body = await build_sitemap_xml()
-    return FastResponse(content=body, media_type="application/xml")
-
-
-async def build_sitemap_xml() -> str:
-    """Construiește XML-ul sitemap (folosit de endpoint + generatorul fișierului static root)."""
-    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-
-    static_pages = [
-        ("/",                "1.0", "weekly"),
-        ("/design-interior", "0.95", "weekly"),
-        ("/devino-francizat", "0.9", "weekly"),
-        ("/marketplace",     "0.9", "daily"),
-        ("/ghiduri",         "0.85", "weekly"),
-        ("/scorul-casei",    "0.9",  "weekly"),
-        ("/checklist-cumparare", "0.9", "weekly"),
-        ("/imobile-verificate", "0.9", "daily"),
-        ("/digital-twin",    "0.7", "monthly"),
-        ("/login",           "0.4", "monthly"),
-        ("/register",        "0.5", "monthly"),
-        ("/privacy",         "0.3", "yearly"),
-        ("/privacy/notices", "0.3", "yearly"),
-        ("/terms",           "0.3", "yearly"),
-        ("/status",          "0.3", "weekly"),
-    ]
-
-    # Guide articles (mirror of frontend/src/data/ghiduri.js — keep in sync)
-    guide_slugs = [
-        ("cost-renovare-apartament-2-camere", "2026-02-29"),
-        ("cum-alegi-designer-interior",        "2026-02-29"),
-        ("cum-verifici-instalator",            "2026-02-29"),
-        ("cost-instalatie-electrica-apartament", "2026-02-29"),
-        ("cum-functioneaza-escrow-lucrari",    "2026-02-29"),
-        ("cum-alegi-zugrav-bun",               "2026-02-29"),
-        ("audit-tehnic-apartament-pret",       "2026-07-26"),
-        ("verificare-apartament-inainte-de-cumparare", "2026-07-26"),
-        ("ce-este-digital-twin-locuinta",      "2026-07-26"),
-        ("imobile-verificate-cum-functioneaza", "2026-07-26"),
-    ]
-
-    urls_xml = []
-    for path, prio, freq in static_pages:
-        urls_xml.append(
-            f"  <url>\n"
-            f"    <loc>{_SITE_URL}{path}</loc>\n"
-            f"    <lastmod>{now_iso}</lastmod>\n"
-            f"    <changefreq>{freq}</changefreq>\n"
-            f"    <priority>{prio}</priority>\n"
-            f"  </url>"
-        )
-
-    # Guide articles — Article + FAQPage schema, high SEO value
-    for gslug, gmod in guide_slugs:
-        urls_xml.append(
-            f"  <url>\n"
-            f"    <loc>{_SITE_URL}/ghiduri/{gslug}</loc>\n"
-            f"    <lastmod>{gmod}</lastmod>\n"
-            f"    <changefreq>monthly</changefreq>\n"
-            f"    <priority>0.75</priority>\n"
-            f"  </url>"
-        )
-
-    # Pagini publice de prețuri („Cât costă X în 2026") — trafic organic long-tail
-    from construction.price_seo import PRICE_SEO
-    urls_xml.append(
+def _url_xml(path: str, lastmod: str, changefreq: str, priority: str) -> str:
+    return (
         f"  <url>\n"
-        f"    <loc>{_SITE_URL}/preturi</loc>\n"
-        f"    <lastmod>{now_iso}</lastmod>\n"
-        f"    <changefreq>weekly</changefreq>\n"
-        f"    <priority>0.85</priority>\n"
+        f"    <loc>{_SITE_URL}{path}</loc>\n"
+        f"    <lastmod>{lastmod}</lastmod>\n"
+        f"    <changefreq>{changefreq}</changefreq>\n"
+        f"    <priority>{priority}</priority>\n"
         f"  </url>"
     )
+
+
+def _wrap_urlset(entries: list) -> str:
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + "\n".join(entries)
+        + "\n</urlset>\n"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Indexability Gate — server-side single source of truth
+# ---------------------------------------------------------------------------
+async def _count_verified_specialists(category_db: str, city_db=None, zones_cache=None) -> int:
+    """Count VERIFIED, non-deleted specialists matching a service (optionally a city)."""
+    q = {
+        "role": "specialist", "verified": True, "deleted": {"$ne": True},
+        "$or": [{"specialty": category_db}, {"service_categories": category_db}],
+    }
+    if city_db:
+        if zones_cache is not None:
+            zones = zones_cache.get(city_db) or []
+        else:
+            zones = await db.regions.distinct("zone", {"city": city_db})
+        if not zones:
+            return 0
+        q["coverage_zones"] = {"$in": zones}
+    return await db.users.count_documents(q)
+
+
+async def compute_marketplace_gate(slug: str) -> dict:
+    """Indexability decision for a /marketplace/{slug} page (parent or service×city)."""
+    parsed = _parse_landing_slug(slug)
+    if not parsed:
+        return _gate_decision(False, canonical=f"{_SITE_URL}/marketplace", reason="slug necunoscut")
+    cat_slug = parsed["category_slug"]
+    cat_db = parsed["category_db"]
+    if parsed["city_db"]:
+        count = await _count_verified_specialists(cat_db, parsed["city_db"])
+        return gate_service_city(count, canonical_parent=f"{_SITE_URL}/marketplace/{cat_slug}")
+    count = await _count_verified_specialists(cat_db)
+    return gate_service_city(count, canonical_parent=f"{_SITE_URL}/marketplace")
+
+
+@router.get("/public/seo/gate")
+async def public_seo_gate(path: str = ""):
+    """Server-truth indexability for a public path — the SPA calls this to set
+    robots (index/noindex) + canonical on client-rendered templates.
+    Returns {index, canonical, reason}. Non-marketplace paths index by default."""
+    p = (path or "").strip()
+    m = re.match(r"^/?marketplace/([a-z0-9\-]+)/?$", p)
+    if m:
+        d = await compute_marketplace_gate(m.group(1))
+        return {"path": p, **d}
+    return {"path": p, "index": True, "canonical": None, "reason": "editorial/necontrolat"}
+
+
+# ---------------------------------------------------------------------------
+# Sitemap builders (each returns a list of <url> entries; gate-filtered)
+# ---------------------------------------------------------------------------
+_STATIC_PAGES = [
+    ("/",                    "1.0",  "weekly"),
+    ("/design-interior",     "0.95", "weekly"),
+    ("/devino-francizat",    "0.9",  "weekly"),
+    ("/marketplace",         "0.9",  "daily"),
+    ("/ghiduri",             "0.85", "weekly"),
+    ("/probleme-casa",       "0.85", "weekly"),
+    ("/preturi",             "0.85", "weekly"),
+    ("/scorul-casei",        "0.9",  "weekly"),
+    ("/checklist-cumparare", "0.9",  "weekly"),
+    ("/imobile-verificate",  "0.9",  "daily"),
+    ("/digital-twin",        "0.7",  "monthly"),
+    ("/login",               "0.4",  "monthly"),
+    ("/register",            "0.5",  "monthly"),
+    ("/privacy",             "0.3",  "yearly"),
+    ("/privacy/notices",     "0.3",  "yearly"),
+    ("/terms",               "0.3",  "yearly"),
+    ("/status",              "0.3",  "weekly"),
+]
+
+
+def _static_entries(now_iso: str) -> list:
+    return [_url_xml(path, now_iso, freq, prio) for path, prio, freq in _STATIC_PAGES]
+
+
+def _content_entries(now_iso: str) -> list:
+    """Editorial detail pages (always indexable): guides, problem cluster, prices."""
+    entries = []
+    for gslug, gmod in GUIDE_SLUGS:
+        entries.append(_url_xml(f"/ghiduri/{gslug}", gmod, "monthly", "0.75"))
+    for pslug, pmod in PROBLEM_SLUGS:
+        entries.append(_url_xml(f"/probleme-casa/{pslug}", pmod, "monthly", "0.75"))
+    from construction.price_seo import PRICE_SEO
     for pslug in PRICE_SEO:
-        urls_xml.append(
-            f"  <url>\n"
-            f"    <loc>{_SITE_URL}/preturi/{pslug}</loc>\n"
-            f"    <lastmod>{now_iso}</lastmod>\n"
-            f"    <changefreq>weekly</changefreq>\n"
-            f"    <priority>0.8</priority>\n"
-            f"  </url>"
-        )
+        entries.append(_url_xml(f"/preturi/{pslug}", now_iso, "weekly", "0.8"))
+    return entries
 
-    # SEO category-landing pages (e.g. /marketplace/electrician,
-    # /marketplace/electrician-bucuresti) — drives long-tail local search traffic.
-    from seo_slugs import all_landing_slugs
-    for slug in all_landing_slugs():
-        # Slugs without a city are higher priority (parent pages)
-        is_with_city = "-" in slug and not slug.startswith("design-interior") or slug.count("-") >= (2 if slug.startswith("design-interior") else 1)
-        # Simpler: split into parts and check if more than 1
-        is_with_city = slug not in ("electrician", "instalator", "hvac", "design-interior", "tamplar", "zugrav", "firma-curatenie", "service-electrocasnice", "gradinar")
-        urls_xml.append(
-            f"  <url>\n"
-            f"    <loc>{_SITE_URL}/marketplace/{slug}</loc>\n"
-            f"    <lastmod>{now_iso}</lastmod>\n"
-            f"    <changefreq>weekly</changefreq>\n"
-            f"    <priority>{'0.7' if is_with_city else '0.85'}</priority>\n"
-            f"  </url>"
-        )
 
-    # Public specialist profiles — only verified & non-deleted ones
+async def _marketplace_entries(now_iso: str) -> list:
+    """Only service (national) + service×city pages that PASS the Indexability Gate."""
+    entries = []
+    zones_by_city = {}
+    async for r in db.regions.find({}, {"city": 1, "zone": 1}):
+        city = r.get("city")
+        zone = r.get("zone")
+        if city and zone:
+            zones_by_city.setdefault(city, []).append(zone)
+    for cat_slug, (cat_db, _label, _plural) in _CAT_MAP.items():
+        nat = await _count_verified_specialists(cat_db)
+        if not gate_service_city(nat)["index"]:
+            continue  # thin national category → excluded from sitemap
+        entries.append(_url_xml(f"/marketplace/{cat_slug}", now_iso, "weekly", "0.85"))
+        for city_db, city_slug in _CITY_DB_TO_SLUG.items():
+            cnt = await _count_verified_specialists(cat_db, city_db, zones_cache=zones_by_city)
+            if gate_service_city(cnt)["index"]:
+                entries.append(_url_xml(f"/marketplace/{cat_slug}-{city_slug}", now_iso, "weekly", "0.7"))
+    return entries
+
+
+async def _specialist_entries(now_iso: str) -> list:
+    """Only verified, non-deleted profiles that pass the profile gate (specialty + trust signal)."""
+    entries = []
     cursor = db.users.find(
         {"role": "specialist", "verified": True, "deleted": {"$ne": True}},
-        {"_id": 1, "updated_at": 1, "created_at": 1},
+        {"_id": 1, "updated_at": 1, "created_at": 1, "specialty": 1, "specialties": 1,
+         "services": 1, "service_categories": 1, "reviews_count": 1, "review_count": 1,
+         "rating": 1, "bio": 1, "about": 1, "portfolio": 1, "verified": 1, "deleted": 1},
     ).limit(5000)
     async for u in cursor:
+        if not specialist_is_indexable(u):
+            continue
         spec_id = str(u["_id"])
         lastmod = u.get("updated_at") or u.get("created_at")
         if isinstance(lastmod, datetime):
@@ -582,39 +637,93 @@ async def build_sitemap_xml() -> str:
             lastmod_str = lastmod[:10]
         else:
             lastmod_str = now_iso
-        urls_xml.append(
-            f"  <url>\n"
-            f"    <loc>{_SITE_URL}/specialists/{spec_id}</loc>\n"
-            f"    <lastmod>{lastmod_str}</lastmod>\n"
-            f"    <changefreq>weekly</changefreq>\n"
-            f"    <priority>0.7</priority>\n"
-            f"  </url>"
-        )
+        entries.append(_url_xml(f"/specialists/{spec_id}", lastmod_str, "weekly", "0.7"))
+    return entries
 
-    body = (
+
+async def build_sitemap_xml() -> str:
+    """Flat urlset with ALL gate-passing URLs (served at /api/public/sitemap.xml)."""
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    entries = []
+    entries += _static_entries(now_iso)
+    entries += _content_entries(now_iso)
+    entries += await _marketplace_entries(now_iso)
+    entries += await _specialist_entries(now_iso)
+    return _wrap_urlset(entries)
+
+
+def build_sitemap_index_xml() -> str:
+    """Sitemap-index served at the clean root https://propmanage.ro/sitemap.xml."""
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    items = [
+        f"  <sitemap>\n    <loc>{_SITE_URL}/{name}</loc>\n    <lastmod>{now_iso}</lastmod>\n  </sitemap>"
+        for name in _CHILD_SITEMAPS
+    ]
+    return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + "\n".join(urls_xml)
-        + "\n</urlset>\n"
+        '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + "\n".join(items)
+        + "\n</sitemapindex>\n"
     )
-    return body
 
 
-# Fișierul static la rădăcina domeniului: https://propmanage.ro/sitemap.xml
-# (ingress-ul rutează /sitemap.xml către frontend, deci sitemap-ul trebuie să existe
-#  ca fișier în frontend/public). Regenerat la startup + zilnic prin scheduler.
-from pathlib import Path as _Path  # noqa: E402
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+@router.get("/public/sitemap.xml")
+async def public_sitemap():
+    """Flat urlset with all gate-passing URLs. Root /sitemap.xml is the sitemap-index."""
+    return FastResponse(content=await build_sitemap_xml(), media_type="application/xml")
 
-_SITEMAP_FILE = _Path(__file__).resolve().parents[2] / "frontend" / "public" / "sitemap.xml"
+
+@router.get("/public/sitemap-index.xml")
+async def public_sitemap_index():
+    return FastResponse(content=build_sitemap_index_xml(), media_type="application/xml")
 
 
+@router.get("/public/sitemap-static.xml")
+async def public_sitemap_static():
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return FastResponse(content=_wrap_urlset(_static_entries(now_iso)), media_type="application/xml")
+
+
+@router.get("/public/sitemap-content.xml")
+async def public_sitemap_content():
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return FastResponse(content=_wrap_urlset(_content_entries(now_iso)), media_type="application/xml")
+
+
+@router.get("/public/sitemap-marketplace.xml")
+async def public_sitemap_marketplace():
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return FastResponse(content=_wrap_urlset(await _marketplace_entries(now_iso)), media_type="application/xml")
+
+
+@router.get("/public/sitemap-specialists.xml")
+async def public_sitemap_specialists():
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return FastResponse(content=_wrap_urlset(await _specialist_entries(now_iso)), media_type="application/xml")
+
+
+# ---------------------------------------------------------------------------
+# Static files at the domain root (ingress routes non-/api paths to frontend).
+# Root /sitemap.xml = index; children = urlsets. Regenerated at startup + daily.
+# ---------------------------------------------------------------------------
 async def write_sitemap_file() -> str:
-    """Generează sitemap-ul și îl scrie ca fișier static în frontend/public/sitemap.xml."""
-    xml = await build_sitemap_xml()
+    """Write the sitemap-index + all child sitemaps into frontend/public/."""
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    files = {
+        "sitemap.xml": build_sitemap_index_xml(),
+        "sitemap-static.xml": _wrap_urlset(_static_entries(now_iso)),
+        "sitemap-content.xml": _wrap_urlset(_content_entries(now_iso)),
+        "sitemap-marketplace.xml": _wrap_urlset(await _marketplace_entries(now_iso)),
+        "sitemap-specialists.xml": _wrap_urlset(await _specialist_entries(now_iso)),
+    }
     try:
-        _SITEMAP_FILE.parent.mkdir(parents=True, exist_ok=True)
-        _SITEMAP_FILE.write_text(xml, encoding="utf-8")
-        logger.info(f"sitemap.xml scris ({len(xml)} bytes) → {_SITEMAP_FILE}")
-    except Exception as e:
-        logger.warning(f"Nu am putut scrie sitemap.xml static: {e}")
-    return xml
+        _SITEMAP_DIR.mkdir(parents=True, exist_ok=True)
+        for name, xml in files.items():
+            (_SITEMAP_DIR / name).write_text(xml, encoding="utf-8")
+        logger.info(f"sitemap-index + {len(files) - 1} child sitemaps scrise → {_SITEMAP_DIR}")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Nu am putut scrie fișierele sitemap: {e}")
+    return files["sitemap.xml"]
