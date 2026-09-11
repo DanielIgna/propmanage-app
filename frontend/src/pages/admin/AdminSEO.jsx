@@ -6,7 +6,7 @@ import axios from "axios";
 import {
   Search, Globe, FileText, ListChecks, Layers, AlertTriangle, BarChart3,
   RefreshCw, CheckCircle2, XCircle, ExternalLink, Loader2, Eye, ShieldCheck,
-  MapPin, Building2, Gauge,
+  MapPin, Building2, Gauge, Download, Link2, Plug,
 } from "lucide-react";
 import { AdminCard, AdminBtn } from "./AdminLayoutMetronic";
 import { API } from "../DashShared";
@@ -81,7 +81,7 @@ export const AdminSEO = () => {
   }, [cache]);
 
   React.useEffect(() => {
-    if (tab === "inspector") return; // inspector is on-demand
+    if (tab === "inspector" || tab === "gsc") return; // on-demand tabs
     if (!cache[tab]) load(tab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
@@ -128,6 +128,11 @@ export const AdminSEO = () => {
       {/* ---------------- OVERVIEW ---------------- */}
       {tab === "overview" && data && (
         <div className="space-y-5" data-testid="seo-overview">
+          <div className="flex flex-wrap gap-2" data-testid="seo-export-bar">
+            <a href={`${API}/admin/seo/export/indexability.csv`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-500" data-testid="seo-export-indexability-csv"><Download className="w-3.5 h-3.5" /> Matrice indexabilitate (CSV)</a>
+            <a href={`${API}/admin/seo/export/alerts.csv`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-500" data-testid="seo-export-alerts-csv"><Download className="w-3.5 h-3.5" /> Alerte (CSV)</a>
+            <a href={`${API}/admin/seo/export/report.pdf`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-600 text-white hover:bg-slate-500" data-testid="seo-export-pdf"><Download className="w-3.5 h-3.5" /> Raport SEO (PDF)</a>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Stat testid="seo-stat-total" label="URL-uri publice cunoscute" value={data.indexability.total_public_urls} tone="muted" />
             <Stat testid="seo-stat-indexable" label="URL-uri INDEXABILE (în sitemap)" value={data.indexability.indexable_urls} tone="good" />
@@ -242,29 +247,7 @@ export const AdminSEO = () => {
       )}
 
       {/* ---------------- GSC ---------------- */}
-      {tab === "gsc" && data && (
-        <AdminCard title="Google Search Console" testid="seo-gsc">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-500/15 text-slate-400 text-sm font-medium" data-testid="seo-gsc-status">
-              <XCircle className="w-4 h-4" /> Not connected
-            </span>
-          </div>
-          <p className={`text-sm ${txt} max-w-2xl`}>{data.message}</p>
-          <div className={`mt-4 grid grid-cols-2 md:grid-cols-3 gap-3 opacity-50 pointer-events-none`}>
-            {["Impressions", "Clicks", "CTR", "Poziție medie", "Queries", "Landing pages"].map((m) => (
-              <div key={m} className={`rounded-lg border border-dashed p-3 ${border}`}>
-                <div className={`text-xs ${muted}`}>{m}</div>
-                <div className={`text-lg font-bold ${muted}`}>—</div>
-              </div>
-            ))}
-          </div>
-          <div className={`text-xs mt-4 ${muted}`}>
-            Meta de verificare site: {data.site_verification_meta_present ? <span className="text-emerald-500">prezentă ✓</span> : <span className="text-red-500">lipsă</span>}
-            {data.site_verification_token && <span className="font-mono opacity-60"> ({data.site_verification_token.slice(0, 12)}…)</span>}
-            <br />Modelul de date este pregătit pentru conectare ulterioară — fără metrici fabricate.
-          </div>
-        </AdminCard>
-      )}
+      {tab === "gsc" && <GSCView isDark={isDark} txt={txt} muted={muted} border={border} rowBorder={rowBorder} />}
     </div>
   );
 };
@@ -446,6 +429,14 @@ const SitemapView = ({ data, isDark, txt, muted, border, rowBorder }) => {
           <a href={data.root.url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline inline-flex items-center gap-1">{data.root.url} <ExternalLink className="w-3 h-3" /></a>
           <span className={`text-xs ${muted}`}>index · {data.root.child_count} copii · {data.total_urls} URL-uri · {data.excluded_count} excluse</span>
         </div>
+        <div className={`flex flex-wrap gap-4 mb-4 text-xs ${muted}`} data-testid="seo-sitemap-regen">
+          {data.last_generated && <span>Generat: <span className={txt}>{new Date(data.last_generated).toLocaleString("ro-RO")}</span></span>}
+          {data.last_regeneration && (
+            <span>Ultima regenerare auto: {data.last_regeneration.ok
+              ? <span className="text-emerald-500">OK ({data.last_regeneration.url_count} URL) · {data.last_regeneration.reason}</span>
+              : <span className="text-red-500">EȘUAT · {data.last_regeneration.error}</span>}</span>
+          )}
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {data.children.map((c) => (
             <a key={c.name} href={c.url} target="_blank" rel="noreferrer" className={`rounded-lg border p-3 hover:border-blue-500 transition-colors ${border}`} data-testid={`seo-sitemap-child-${c.name}`}>
@@ -555,5 +546,146 @@ const PagesView = ({ data, isDark, txt, muted, border, rowBorder }) => {
     </div>
   );
 };
+
+// ── GSC (Google Search Console) — connect + real report ──────────────────────
+const GSCView = ({ isDark, txt, muted, border, rowBorder }) => {
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [prop, setProp] = useState("sc-domain:propmanage.ro");
+  const [json, setJson] = useState("");
+  const [connecting, setConnecting] = useState(false);
+  const [connectMsg, setConnectMsg] = useState(null);
+  const [range, setRange] = useState("28d");
+  const [report, setReport] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
+
+  const loadStatus = async () => {
+    setLoading(true);
+    try { const r = await axios.get(`${API}/admin/seo/gsc`); setStatus(r.data); }
+    catch (e) { setStatus({ connected: false, message: e.message }); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { loadStatus(); }, []);
+
+  const connect = async () => {
+    setConnecting(true); setConnectMsg(null);
+    try {
+      const r = await axios.post(`${API}/admin/seo/gsc/connect`, { property: prop, service_account_json: json });
+      if (r.data.ok) { setConnectMsg({ ok: true, text: `Salvat. Adaugă ${r.data.service_account_email} ca user în property-ul GSC.` }); setJson(""); await loadStatus(); }
+      else setConnectMsg({ ok: false, text: r.data.error });
+    } catch (e) { setConnectMsg({ ok: false, text: e?.response?.data?.detail || e.message }); }
+    finally { setConnecting(false); }
+  };
+
+  const disconnect = async () => { await axios.post(`${API}/admin/seo/gsc/disconnect`); setReport(null); await loadStatus(); };
+
+  const loadReport = async () => {
+    setReportLoading(true);
+    try { const r = await axios.get(`${API}/admin/seo/gsc/report`, { params: { range } }); setReport(r.data); }
+    catch (e) { setReport({ status: "error", error: e.message }); }
+    finally { setReportLoading(false); }
+  };
+  useEffect(() => { if (status?.connected) loadReport(); /* eslint-disable-next-line */ }, [status?.connected, range]);
+
+  if (loading) return <div className={`flex items-center gap-2 text-sm ${muted}`}><Loader2 className="w-4 h-4 animate-spin" /> Se verifică GSC…</div>;
+
+  if (!status?.connected) {
+    return (
+      <AdminCard title="Google Search Console" testid="seo-gsc">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-500/15 text-slate-400 text-sm font-medium" data-testid="seo-gsc-status">
+            <XCircle className="w-4 h-4" /> Not connected
+          </span>
+        </div>
+        <p className={`text-sm ${txt} max-w-2xl mb-3`}>{status?.message}</p>
+        {status?.how_to && (
+          <ol className={`text-xs ${muted} space-y-1 mb-5 list-decimal ml-4`}>
+            {status.how_to.map((s, i) => <li key={i}>{s.replace(/^\d+\.\s*/, "")}</li>)}
+          </ol>
+        )}
+        <div className="space-y-3 max-w-2xl" data-testid="seo-gsc-connect">
+          <div>
+            <label className={`text-xs ${muted}`}>Property GSC</label>
+            <input value={prop} onChange={(e) => setProp(e.target.value)} data-testid="seo-gsc-property"
+              className={`w-full mt-1 rounded-lg border px-3 py-2 text-sm ${border} ${isDark ? "bg-slate-900 text-slate-200" : "bg-white text-slate-700"}`}
+              placeholder="sc-domain:propmanage.ro" />
+          </div>
+          <div>
+            <label className={`text-xs ${muted}`}>Service Account JSON (nu este expus niciodată)</label>
+            <textarea value={json} onChange={(e) => setJson(e.target.value)} rows={6} data-testid="seo-gsc-json"
+              className={`w-full mt-1 rounded-lg border px-3 py-2 text-xs font-mono ${border} ${isDark ? "bg-slate-900 text-slate-200" : "bg-white text-slate-700"}`}
+              placeholder='{"type":"service_account", ...}' />
+          </div>
+          <AdminBtn onClick={connect} disabled={connecting} data-testid="seo-gsc-connect-btn">
+            {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plug className="w-4 h-4 mr-1 inline" /> Conectează GSC</>}
+          </AdminBtn>
+          {connectMsg && <div className={`text-sm ${connectMsg.ok ? "text-emerald-500" : "text-red-500"}`} data-testid="seo-gsc-connect-msg">{connectMsg.text}</div>}
+        </div>
+        <div className={`text-xs mt-4 ${muted}`}>Meta de verificare site: {status?.site_verification_meta_present ? <span className="text-emerald-500">prezentă ✓</span> : <span className="text-red-500">lipsă</span>} · fără metrici fabricate.</div>
+      </AdminCard>
+    );
+  }
+
+  return (
+    <div className="space-y-4" data-testid="seo-gsc">
+      <AdminCard>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-500 text-sm font-medium" data-testid="seo-gsc-status"><CheckCircle2 className="w-4 h-4" /> Connected</span>
+          <span className={`text-sm ${txt}`}>{status.property}</span>
+          <span className={`text-xs ${muted}`}>{status.service_account_email}</span>
+          <div className="ml-auto flex items-center gap-2">
+            {["7d", "28d", "3m"].map((r) => (
+              <button key={r} onClick={() => setRange(r)} data-testid={`seo-gsc-range-${r}`}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium ${range === r ? "bg-blue-600 text-white" : isDark ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-600"}`}>{r}</button>
+            ))}
+            <AdminBtn variant="ghost" onClick={disconnect} data-testid="seo-gsc-disconnect">Deconectează</AdminBtn>
+          </div>
+        </div>
+      </AdminCard>
+
+      {reportLoading && <div className={`flex items-center gap-2 text-sm ${muted}`}><Loader2 className="w-4 h-4 animate-spin" /> Se încarcă din Search Console…</div>}
+      {report?.status === "error" && <div className="rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 text-sm px-4 py-3" data-testid="seo-gsc-error">{report.error}</div>}
+      {report?.status === "connected" && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="seo-gsc-overview">
+            <Stat label="Clicks" value={report.overview.clicks} tone="good" />
+            <Stat label="Impressions" value={report.overview.impressions} tone="default" />
+            <Stat label="CTR" value={`${(report.overview.ctr * 100).toFixed(2)}%`} tone="default" />
+            <Stat label="Poziție medie" value={report.overview.position.toFixed(1)} tone="default" />
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <GscTable title="Top queries" rows={report.queries} txt={txt} muted={muted} border={border} rowBorder={rowBorder} />
+            <GscTable title="Top landing pages" rows={report.pages} txt={txt} muted={muted} border={border} rowBorder={rowBorder} />
+          </div>
+          <GscTable title="Devices" rows={report.devices} txt={txt} muted={muted} border={border} rowBorder={rowBorder} />
+        </>
+      )}
+    </div>
+  );
+};
+
+const GscTable = ({ title, rows, txt, muted, border, rowBorder }) => (
+  <AdminCard title={title}>
+    {(!rows || rows.length === 0) ? <div className={`text-sm ${muted}`}>Fără date în perioada selectată.</div> : (
+      <div className="overflow-x-auto max-h-80 overflow-y-auto">
+        <table className="w-full text-sm">
+          <thead><tr className={`text-left ${muted} border-b ${rowBorder}`}>
+            <th className="px-2 py-1.5 font-medium">Valoare</th><th className="px-2 py-1.5 font-medium">Clicks</th>
+            <th className="px-2 py-1.5 font-medium">Impr.</th><th className="px-2 py-1.5 font-medium">CTR</th><th className="px-2 py-1.5 font-medium">Poz.</th>
+          </tr></thead>
+          <tbody>{rows.map((r, i) => (
+            <tr key={i} className={`border-b ${rowBorder}`}>
+              <td className={`px-2 py-1.5 max-w-xs truncate ${txt}`}>{r.key}</td>
+              <td className={`px-2 py-1.5 ${txt}`}>{r.clicks}</td>
+              <td className={`px-2 py-1.5 ${muted}`}>{r.impressions}</td>
+              <td className={`px-2 py-1.5 ${muted}`}>{(r.ctr * 100).toFixed(1)}%</td>
+              <td className={`px-2 py-1.5 ${muted}`}>{r.position.toFixed(1)}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    )}
+  </AdminCard>
+);
 
 export default AdminSEO;

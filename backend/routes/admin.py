@@ -375,6 +375,13 @@ async def verify_specialist(spec_id: str, user: dict = Depends(require_role("adm
         await emit_signal("category_visibility_refresh", {"trigger": f"specialist_verified:{spec_id}"})
     except Exception:  # noqa: BLE001
         pass
+    # SEO: verification may push a service×city over the gate threshold → refresh sitemap.
+    try:
+        import asyncio
+        from seo_regen import on_specialist_verification_changed
+        asyncio.create_task(on_specialist_verification_changed(spec_id, source="admin_verify"))
+    except Exception:  # noqa: BLE001
+        pass
     return {"ok": True}
 
 

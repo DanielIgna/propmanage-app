@@ -34,6 +34,7 @@ import { GhiduriIndex } from "./pages/GhiduriIndex";
 import { GhidPage } from "./pages/GhidPage";
 import { ProblemeIndex } from "./pages/ProblemeIndex";
 import { ProblemaPage } from "./pages/ProblemaPage";
+import { DesignInteriorPage } from "./pages/DesignInteriorPage";
 import { HelpPage } from "./pages/HelpPage";
 import { ProjectWorkspace } from "./pages/ProjectWorkspace";
 import { PaymentSuccess } from "./pages/PaymentSuccess";
@@ -1670,6 +1671,8 @@ function App() {
               <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/design-interior" element={<InteriorDesignLanding />} />
+              <Route path="/design-interior/stil/:slug" element={<DesignInteriorPage kind="style" />} />
+              <Route path="/design-interior/:slug" element={<DesignInteriorPage kind="page" />} />
               <Route path="/design-exterior" element={<ServiceHubLanding slug="design-exterior" />} />
               <Route path="/arhitectura" element={<ServiceHubLanding slug="arhitectura" />} />
               <Route path="/franciza" element={<FranchiseDashboard />} />

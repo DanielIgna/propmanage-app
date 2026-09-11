@@ -9,6 +9,10 @@ from __future__ import annotations
 
 # (slug, lastmod ISO date)
 GUIDE_SLUGS: list[tuple[str, str]] = [
+    ("ce-este-designul-interior", "2026-06-11"),
+    ("design-interior-sau-arhitect", "2026-06-11"),
+    ("ce-include-un-proiect-de-design-interior", "2026-06-11"),
+    ("de-ce-conteaza-masuratorile-inainte-de-design", "2026-06-11"),
     ("cost-renovare-apartament-2-camere", "2026-02-29"),
     ("cum-alegi-designer-interior", "2026-02-29"),
     ("cum-verifici-instalator", "2026-02-29"),

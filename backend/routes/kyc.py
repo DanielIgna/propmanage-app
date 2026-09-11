@@ -524,6 +524,12 @@ async def kyc_approve(
                 await check_tier_milestones(doc["user_id"])
             except Exception:  # noqa: BLE001
                 pass
+            try:
+                import asyncio
+                from seo_regen import on_specialist_verification_changed
+                asyncio.create_task(on_specialist_verification_changed(str(doc["user_id"]), source="kyc_approve"))
+            except Exception:  # noqa: BLE001
+                pass
     except Exception as e:  # noqa: BLE001
         logger.warning(f"[kyc] failed to promote user after approve: {e}")
     return {"ok": True, "status": "approved", "id": kyc_id}

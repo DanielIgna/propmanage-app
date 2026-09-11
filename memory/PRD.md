@@ -1,3 +1,28 @@
+## 🧭 SEO EXPANSION — BATCH 2: Design Interior + GSC real + Auto-sitemap + Export CSV/PDF (Iun 2026)
+
+Extindere a footprint-ului SEO programatic peste fundația Batch 1, FĂRĂ SSR, FĂRĂ rescrierea Indexability Gate-ului. Verificat E2E (35 pytest SEO/pages PASS + 5 QA runners SEO PASS + curl admin exports/GSC + screenshot Design Interior).
+
+**1 · Cluster Design Interior** — `backend/seo_design.py` (SSOT logic) + `frontend/src/data/designInterior.js` (registru pagini) + `frontend/src/pages/DesignInteriorPage.jsx` (template dinamic). Rute noi în `App.js`: `/design-interior/:slug` (kind=page) + `/design-interior/stil/:slug` (kind=style). Pagini comerciale/editoriale (apartament, apartament-2/3-camere, apartament-mic/vechi, casă, preț, renovare, 3D/randări, implementare la cheie, camere, stiluri, local city). Toate = INDEX (editorial/comercial), NU trec prin pragul de specialiști (nu sunt thin marketplace).
+
+**2 · sitemap-design.xml (al 5-lea copil)** — `routes/public.py::_design_entries` + `_CHILD_SITEMAPS` extins la 5. Root sitemap-index are acum **5 copii**: static / content / marketplace / specialists / **design** (24 URL). Sitemap plat (`/api/public/sitemap.xml`) = 96 URL (vs 68 în Batch 1). Regenerat la startup + zilnic 03:30.
+
+**3 · Auto-regenerare sitemap la verificare specialist** — `backend/seo_regen.py::on_specialist_verification_changed` (refolosește `routes.public.write_sitemap_file` SSOT). Hook în `routes/admin.py` (verify specialist, linia ~381) + `routes/kyc.py` (aprobare KYC, ~529) + `emit_signal("category_visibility_refresh")`. Când un specialist devine `verified=True` și o combinație service×city trece pragul (≥3), sitemap-ul se regenerează automat (pagina devine INDEX).
+
+**4 · Google Search Console REAL (server-side)** — `routes/admin_seo.py` endpoints `/admin/seo/gsc`, `/gsc/connect`, `/gsc/disconnect`, `/gsc/report` via `google-api-python-client` + Service Account. FĂRĂ date fabricate: dacă env-urile Google lipsesc → `connected:false`, `status:"not_connected"` + instrucțiuni onest afișate. Se conectează doar cu un Service Account real cu Search Console API activat.
+
+**5 · Export CSV/PDF matrice SEO** — `routes/admin_seo.py`: `/admin/seo/export/indexability.csv` (208 rânduri: matrice service×city cu index/noindex/canonical/reason), `/admin/seo/export/alerts.csv`, `/admin/seo/export/report.pdf` (via `reportlab`, PDF valid). Butoane în `pages/admin/AdminSEO.jsx`.
+
+**6 · Ghiduri evergreen noi design interior** — 4 articole editoriale adăugate în registrul de ghiduri (mereu INDEX).
+
+**Fix aplicat la preluare (fork)**: testul `tests/test_seo_admin_iter218.py` era învechit (aștepta 4 copii sitemap) → actualizat la 5 (sitemap-design.xml). Funcția `admin_seo.py::sitemap/validate` NU includea sitemap-design.xml în cross-check → adăugat (acum validează toate 96 URL, 6/6 checks green).
+
+**Cifre reale (preview)**: 96 URL indexabile (static + content + marketplace 7 + specialists 15 + **design 24**); 208 rânduri în matricea de indexabilitate; prag gate = 3; 0 alerte critice; child_count=5; gate_ok=True. GSC = not_connected (fără date fabricate).
+
+**Teste**: 35 pytest (test_seo_admin_iter218 + test_preturi_seo + test_pages_registry_iter188) PASS + 5 QA runners SEO (AUTO-SEO-01/02, AUTO-PUB-01, PLATFORM-03, SEO-LANDING-CITIES) PASS. Fundația Batch 1 (gate/canonical/noindex thin content) intactă. **Necesită redeploy Fondator pentru producție** (pe prod GSC devine activ doar cu Service Account real; sitemap-ul reflectă specialiștii verificați de acolo).
+
+---
+
+
 ## 🧭 SEO ADMIN CONTROL CENTER + FOUNDATION AUDIT (Iun 2026)
 
 **Faza 1 — Audit fundație SEO (read-only): FUNDAȚIE SĂNĂTOASĂ, fără rescriere.** Verificat E2E gate/canonical/sitemap/structured-data/internal-linking/thin-content. Un singur bug real (P0 crawlability) + observații (SPA client-rendered = acceptabil; GSC neconectat).

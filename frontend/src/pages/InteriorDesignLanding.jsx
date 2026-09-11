@@ -521,12 +521,37 @@ export default function InteriorDesignLanding() {
               <p className="text-sm text-stone-600 leading-relaxed">{s.body}</p>
             </div>
           ))}
-          <h3 className="text-base font-black text-stone-900 mb-2">Design interior în orașul tău</h3>
-          <p className="text-sm text-stone-600">
-            {content.local_cities.map((c, i) => (
-              <span key={c}>design interior {c}{i < content.local_cities.length - 1 ? " · " : ""}</span>
+          <h3 className="text-base font-black text-stone-900 mb-3">Explorează design interior</h3>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 not-prose mb-6" data-testid="id-topic-graph">
+            {[
+              ["/design-interior/apartament", "Design apartament"],
+              ["/design-interior/casa", "Design casă"],
+              ["/design-interior/pret", "Preț design interior"],
+              ["/design-interior/renovare", "Design pentru renovare"],
+              ["/design-interior/3d", "Randări 3D & Digital Twin"],
+              ["/design-interior/implementare", "Design cu implementare"],
+              ["/design-interior/living", "Design living"],
+              ["/design-interior/bucatarie", "Design bucătărie"],
+              ["/design-interior/dormitor", "Design dormitor"],
+              ["/design-interior/baie", "Design baie"],
+              ["/design-interior/apartament-2-camere", "Apartament 2 camere"],
+              ["/design-interior/apartament-mic", "Apartament mic"],
+            ].map(([to, label]) => (
+              <Link key={to} to={to} className="px-3.5 py-2.5 rounded-xl border border-stone-100 text-sm font-semibold text-stone-700 hover:border-emerald-300 hover:text-emerald-800 transition-colors" data-testid={`id-topic-${to}`}>{label}</Link>
             ))}
-          </p>
+          </div>
+          <h3 className="text-base font-black text-stone-900 mb-3">Stiluri de design interior</h3>
+          <div className="flex flex-wrap gap-2 not-prose mb-6" data-testid="id-style-links">
+            {[["modern","Modern"],["scandinavian","Scandinav"],["minimalist","Minimalist"],["japandi","Japandi"],["industrial","Industrial"],["mediterranean","Mediteranean"],["classic","Clasic"],["rustic","Rustic"],["boho","Boho"]].map(([s, l]) => (
+              <Link key={s} to={`/design-interior/stil/${s}`} className="px-3 py-1.5 rounded-full bg-stone-50 border border-stone-200 text-xs font-bold text-stone-600 hover:border-emerald-300 hover:text-emerald-800 transition-colors" data-testid={`id-stil-${s}`}>{l}</Link>
+            ))}
+          </div>
+          <h3 className="text-base font-black text-stone-900 mb-2">Design interior în orașul tău</h3>
+          <div className="flex flex-wrap gap-2 not-prose" data-testid="id-city-links">
+            {[["bucuresti","București"],["cluj-napoca","Cluj-Napoca"],["brasov","Brașov"],["timisoara","Timișoara"],["iasi","Iași"],["oradea","Oradea"],["sibiu","Sibiu"]].map(([s, l]) => (
+              <Link key={s} to={`/design-interior/${s}`} className="px-3 py-1.5 rounded-full bg-stone-50 border border-stone-200 text-xs font-bold text-stone-600 hover:border-emerald-300 hover:text-emerald-800 transition-colors" data-testid={`id-city-${s}`}>{l}</Link>
+            ))}
+          </div>
         </article>
       </Section>
 

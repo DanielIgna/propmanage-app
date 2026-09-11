@@ -13,10 +13,12 @@ No second source of truth. No manual "Force Index". No fake data.
 import logging
 import re
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse, Response
+from pydantic import BaseModel
 
 from db import db
 from deps import require_role
@@ -25,6 +27,9 @@ import seo_gate
 from seo_slugs import SEO_CATEGORY_MAP, CITY_DB_TO_SLUG, parse_landing_slug
 from seo_guides import GUIDE_SLUGS
 from seo_problems import PROBLEM_SLUGS
+from seo_design import (
+    DESIGN_PAGES, DESIGN_STYLES, DESIGN_LOCAL_CITIES, DESIGN_PAGE_SLUGS, DESIGN_STYLE_SLUGS,
+)
 from construction.price_seo import PRICE_SEO
 
 from routes.public import (
@@ -34,10 +39,12 @@ from routes.public import (
     _CHILD_SITEMAPS,
     _count_verified_specialists,
     compute_marketplace_gate,
+    compute_design_gate,
     _static_entries,
     _content_entries,
     _marketplace_entries,
     _specialist_entries,
+    _design_entries,
     build_sitemap_index_xml,
 )
 
@@ -84,6 +91,13 @@ def _classify(path: str):
     if p == "/":
         return "commercial", "other", True
     if p == "/design-interior":
+        return "commercial", "design_interior", True
+    if p.startswith("/design-interior/stil/"):
+        return "style", "design_interior", True
+    if p.startswith("/design-interior/"):
+        seg = p.split("/design-interior/", 1)[1]
+        if seg in DESIGN_LOCAL_CITIES:
+            return "local", "design_interior", True
         return "commercial", "design_interior", True
     if p == "/imobile-verificate":
         return "commercial", "imobile_verificate", True
@@ -179,6 +193,7 @@ async def _snapshot(force: bool = False):
     content_e = _content_entries(today)
     market_e = await _marketplace_entries(today)
     spec_e = await _specialist_entries(today)
+    design_e = await _design_entries(today)
 
     national, combos = await _indexability_rows()
 
@@ -191,6 +206,7 @@ async def _snapshot(force: bool = False):
         "sitemap-content.xml": _locs(content_e),
         "sitemap-marketplace.xml": _locs(market_e),
         "sitemap-specialists.xml": _locs(spec_e),
+        "sitemap-design.xml": _locs(design_e),
     }
     all_indexable_urls = [u for urls in sitemap_children.values() for u in urls]
     total_indexable = len(all_indexable_urls)
@@ -363,6 +379,8 @@ async def _page_meta_from_registry(path):
 def _expected_structured_data(page_type, path):
     if path.rstrip("/") in ("", "/"):
         return ["Organization", "WebSite", "Service", "WebPage"]
+    if path.startswith("/design-interior/stil/") or path.startswith("/design-interior/"):
+        return ["Service", "BreadcrumbList", "FAQPage"]
     if page_type == "local" or path.startswith("/marketplace/"):
         return ["Service", "BreadcrumbList"]
     if page_type == "marketplace":
@@ -401,6 +419,12 @@ async def seo_inspect(path: str = "", user: dict = Depends(require_role("admin")
         index = gate["index"]
         canonical = gate["canonical"] if not index else f"{_SITE_URL}{norm}"
         canonical_reason = gate["reason"] if not index else "self-canonical (trece gate-ul)"
+    elif norm.startswith("/design-interior/") and not norm.startswith("/design-interior/stil/") and norm != "/design-interior" \
+            and norm.split("/design-interior/", 1)[1] in DESIGN_LOCAL_CITIES:
+        gate = await compute_design_gate(norm.split("/design-interior/", 1)[1])
+        index = gate["index"]
+        canonical = gate["canonical"] if not index else f"{_SITE_URL}{norm}"
+        canonical_reason = gate["reason"] if not index else "self-canonical (trece gate-ul local)"
     else:
         index = True
         canonical = f"{_SITE_URL}/" if norm == "/" else f"{_SITE_URL}{norm}"
@@ -477,6 +501,11 @@ def _is_recognized_route(norm):
         return norm.split("/preturi/", 1)[1] in set(PRICE_SEO.keys())
     if norm.startswith("/marketplace/"):
         return parse_landing_slug(norm.split("/marketplace/", 1)[1]) is not None
+    if norm.startswith("/design-interior/stil/"):
+        return norm.split("/design-interior/stil/", 1)[1] in DESIGN_STYLE_SLUGS
+    if norm.startswith("/design-interior/"):
+        seg = norm.split("/design-interior/", 1)[1]
+        return seg in DESIGN_PAGE_SLUGS or seg in DESIGN_LOCAL_CITIES
     if norm.startswith("/specialists/"):
         return True
     return False
@@ -498,6 +527,20 @@ async def seo_sitemap(user: dict = Depends(require_role("admin"))):
         {"name": n, "url": f"{_SITE_URL}/{n}", "url_count": len(snap["sitemap_children"].get(n, []))}
         for n in _CHILD_SITEMAPS
     ]
+    last_generated = None
+    try:
+        f = _SITEMAP_DIR / "sitemap.xml"
+        if f.exists():
+            last_generated = datetime.fromtimestamp(f.stat().st_mtime, tz=timezone.utc).isoformat()
+    except Exception:
+        pass
+    last_regen = await db.seo_events.find_one({"type": "sitemap_regen"}, sort=[("started_at", -1)])
+    regen = None
+    if last_regen:
+        regen = {"reason": last_regen.get("reason"), "source": last_regen.get("source"),
+                 "ok": last_regen.get("ok"), "url_count": last_regen.get("url_count"),
+                 "at": last_regen.get("finished_at") or last_regen.get("started_at"),
+                 "error": last_regen.get("error")}
     return {
         "generated_at": snap["generated_at"],
         "root": {"url": f"{_SITE_URL}/sitemap.xml", "is_index": True, "child_count": len(children)},
@@ -505,6 +548,8 @@ async def seo_sitemap(user: dict = Depends(require_role("admin"))):
         "total_urls": snap["total_indexable"],
         "excluded_count": len(excluded),
         "excluded_sample": excluded[:200],
+        "last_generated": last_generated,
+        "last_regeneration": regen,
     }
 
 
@@ -532,6 +577,7 @@ async def seo_sitemap_validate(user: dict = Depends(require_role("admin"))):
         "sitemap-content.xml": _wrap_urlset(_content_entries(today)),
         "sitemap-marketplace.xml": _wrap_urlset(await _marketplace_entries(today)),
         "sitemap-specialists.xml": _wrap_urlset(await _specialist_entries(today)),
+        "sitemap-design.xml": _wrap_urlset(await _design_entries(today)),
     }
     all_urls = []
     child_ok = True
@@ -596,6 +642,12 @@ async def _pages_inventory(snap):
             gate = await compute_marketplace_gate(path.split("/marketplace/", 1)[1])
             index = gate["index"]
             canonical = abs_url if index else gate["canonical"]
+        elif path.startswith("/design-interior/") and not path.startswith("/design-interior/stil/") and path != "/design-interior":
+            seg = path.split("/design-interior/", 1)[1]
+            if seg in DESIGN_LOCAL_CITIES:
+                gate = await compute_design_gate(seg)
+                index = gate["index"]
+                canonical = abs_url if index else gate["canonical"]
         in_sitemap = abs_url in snap["all_indexable_urls"]
         meta = await _page_meta_from_registry(path)
         warns = []
@@ -635,6 +687,17 @@ async def _pages_inventory(snap):
         rows.append(await _row(f"/probleme-casa/{slug}"))
     for slug in PRICE_SEO.keys():
         rows.append(await _row(f"/preturi/{slug}"))
+    # design interior: content + style pages
+    for slug, _mod in DESIGN_PAGES:
+        rows.append(await _row(f"/design-interior/{slug}"))
+    for slug, _mod in DESIGN_STYLES:
+        rows.append(await _row(f"/design-interior/stil/{slug}"))
+    # gated local design pages (only those that pass the gate are in the design sitemap)
+    for u in snap["sitemap_children"].get("sitemap-design.xml", []):
+        p = u.replace(_SITE_URL, "")
+        seg = p.split("/design-interior/", 1)[1] if "/design-interior/" in p else ""
+        if seg in DESIGN_LOCAL_CITIES:
+            rows.append(await _row(p))
     # marketplace pages that pass the gate (indexable ones)
     for u in snap["sitemap_children"].get("sitemap-marketplace.xml", []):
         rows.append(await _row(u.replace(_SITE_URL, "")))
@@ -760,6 +823,26 @@ async def _compute_alerts(snap, robots):
         add("warning", "THIN_EXCLUDED", "Conținut subțire exclus (corect)",
             f"{noindex_market} pagini service×city sub pragul de {snap['threshold']} specialiști — corect NEindexate.")
 
+    # Sitemap auto-regeneration failure (from db.seo_events)
+    try:
+        last_regen = await db.seo_events.find_one({"type": "sitemap_regen"}, sort=[("started_at", -1)])
+        if last_regen and last_regen.get("ok") is False:
+            add("critical", "SITEMAP_REGEN_FAILED", "Regenerare sitemap eșuată",
+                f"Ultima regenerare ({last_regen.get('reason')}) a eșuat: {str(last_regen.get('error'))[:120]}")
+    except Exception:  # noqa: BLE001
+        pass
+
+    # GSC query error (from db.seo_events), if GSC is configured
+    try:
+        cfg = await _gsc_config()
+        if cfg:
+            gerr = await db.seo_events.find_one({"type": "gsc_error"}, sort=[("at", -1)])
+            if gerr:
+                add("warning", "GSC_ERROR", "Eroare la interogarea GSC",
+                    f"Ultima interogare Search Console a eșuat: {str(gerr.get('error'))[:120]}")
+    except Exception:  # noqa: BLE001
+        pass
+
     return alerts
 
 
@@ -778,24 +861,265 @@ async def seo_alerts(user: dict = Depends(require_role("admin"))):
 
 
 # ---------------------------------------------------------------------------
-# 8) GSC (Google Search Console) — Not connected (no fake data)
+# 8) GSC (Google Search Console) — REAL integration via service account
+#    Credentials from db.seo_config ("gsc") or env; degrades to Not connected.
+#    The service-account JSON is NEVER returned to the client.
 # ---------------------------------------------------------------------------
-@router.get("/admin/seo/gsc")
-async def seo_gsc(user: dict = Depends(require_role("admin"))):
-    verification = None
+import os as _os
+import json as _json
+
+GSC_SCOPES = ["https://www.googleapis.com/auth/webmasters.readonly"]
+_RANGE_DAYS = {"7d": 7, "28d": 28, "3m": 90}
+
+
+async def _gsc_config():
+    doc = await db.seo_config.find_one({"key": "gsc"})
+    if doc and doc.get("service_account_json") and doc.get("property"):
+        return {"property": doc["property"], "json": doc["service_account_json"], "source": "admin"}
+    if _os.environ.get("GSC_SERVICE_ACCOUNT_JSON") and _os.environ.get("GSC_PROPERTY"):
+        return {"property": _os.environ["GSC_PROPERTY"], "json": _os.environ["GSC_SERVICE_ACCOUNT_JSON"], "source": "env"}
+    return None
+
+
+def _gsc_client_email(json_str):
+    try:
+        return _json.loads(json_str).get("client_email")
+    except Exception:
+        return None
+
+
+def _site_verification_token():
     try:
         idx = (Path(__file__).resolve().parents[2] / "frontend" / "public" / "index.html").read_text(encoding="utf-8")
         m = re.search(r'name="google-site-verification"\s+content="([^"]+)"', idx)
-        if m:
-            verification = m.group(1)
+        return m.group(1) if m else None
     except Exception:
-        pass
+        return None
+
+
+def _gsc_run_query(json_str, prop, start, end, dimensions, row_limit=25):
+    """Blocking Google API call — run via asyncio.to_thread."""
+    from google.oauth2 import service_account
+    from googleapiclient.discovery import build
+    info = _json.loads(json_str)
+    creds = service_account.Credentials.from_service_account_info(info, scopes=GSC_SCOPES)
+    service = build("searchconsole", "v1", credentials=creds, cache_discovery=False)
+    body = {"startDate": start, "endDate": end, "dimensions": dimensions, "type": "web", "rowLimit": row_limit}
+    resp = service.searchanalytics().query(siteUrl=prop, body=body).execute()
+    return resp.get("rows", [])
+
+
+@router.get("/admin/seo/gsc")
+async def seo_gsc(user: dict = Depends(require_role("admin"))):
+    cfg = await _gsc_config()
+    token = _site_verification_token()
+    if not cfg:
+        return {
+            "connected": False,
+            "status": "not_connected",
+            "message": "Google Search Console nu este conectat. Conectează un Service Account cu "
+                       "Search Console API activat, adăugat ca user în property-ul GSC.",
+            "how_to": [
+                "1. Google Cloud → activează Search Console API + creează un Service Account.",
+                "2. Service Account → Keys → creează cheie JSON.",
+                "3. Search Console → Settings → Users and permissions → adaugă email-ul service account-ului (Full/Restricted).",
+                "4. Lipește property-ul (ex: sc-domain:propmanage.ro sau https://propmanage.ro/) + JSON-ul aici.",
+            ],
+            "property_expected": "sc-domain:propmanage.ro sau https://propmanage.ro/",
+            "site_verification_meta_present": token is not None,
+            "site_verification_token": token,
+            "metrics": None,
+        }
     return {
-        "connected": False,
-        "status": "not_connected",
-        "message": "Google Search Console nu este conectat. Modelul de date este pregătit pentru "
-                   "conectare ulterioară (impressions, clicks, CTR, poziție medie, queries, landing pages).",
-        "site_verification_meta_present": verification is not None,
-        "site_verification_token": verification,
-        "metrics": None,
+        "connected": True,
+        "status": "connected",
+        "property": cfg["property"],
+        "source": cfg["source"],
+        "service_account_email": _gsc_client_email(cfg["json"]),
+        "site_verification_meta_present": token is not None,
+        "message": "Conectat. Folosește tab-ul GSC → Load pentru date reale.",
     }
+
+
+class GSCConnectIn(BaseModel):
+    property: str
+    service_account_json: str
+
+
+@router.post("/admin/seo/gsc/connect")
+async def seo_gsc_connect(payload: GSCConnectIn, user: dict = Depends(require_role("admin"))):
+    prop = (payload.property or "").strip()
+    raw = (payload.service_account_json or "").strip()
+    if not prop:
+        return {"ok": False, "error": "Property lipsă (ex: sc-domain:propmanage.ro)"}
+    try:
+        info = _json.loads(raw)
+    except Exception:
+        return {"ok": False, "error": "JSON invalid — lipește exact conținutul cheii Service Account."}
+    if info.get("type") != "service_account" or not info.get("client_email"):
+        return {"ok": False, "error": "JSON-ul nu pare a fi o cheie de Service Account validă."}
+    await db.seo_config.update_one(
+        {"key": "gsc"},
+        {"$set": {"key": "gsc", "property": prop, "service_account_json": raw,
+                  "connected_by": user.get("email"), "connected_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    return {"ok": True, "property": prop, "service_account_email": info.get("client_email"),
+            "note": "Asigură-te că acest email este adăugat ca user în property-ul GSC."}
+
+
+@router.post("/admin/seo/gsc/disconnect")
+async def seo_gsc_disconnect(user: dict = Depends(require_role("admin"))):
+    await db.seo_config.delete_one({"key": "gsc"})
+    return {"ok": True}
+
+
+@router.get("/admin/seo/gsc/report")
+async def seo_gsc_report(range: str = "28d", user: dict = Depends(require_role("admin"))):
+    cfg = await _gsc_config()
+    if not cfg:
+        return {"status": "not_connected", "overview": None, "queries": [], "pages": [], "devices": [], "trend": []}
+    days = _RANGE_DAYS.get(range, 28)
+    end = (datetime.now(timezone.utc).date() - timedelta(days=2))  # GSC lags ~2 days
+    start = end - timedelta(days=days)
+    import asyncio
+
+    def _norm(rows, key=True):
+        out = []
+        for r in rows:
+            out.append({
+                "key": (r.get("keys") or [None])[0] if key else None,
+                "clicks": r.get("clicks", 0), "impressions": r.get("impressions", 0),
+                "ctr": r.get("ctr", 0.0), "position": r.get("position", 0.0),
+            })
+        return out
+
+    try:
+        s, e = start.isoformat(), end.isoformat()
+        queries = await asyncio.to_thread(_gsc_run_query, cfg["json"], cfg["property"], s, e, ["query"], 25)
+        pages = await asyncio.to_thread(_gsc_run_query, cfg["json"], cfg["property"], s, e, ["page"], 25)
+        devices = await asyncio.to_thread(_gsc_run_query, cfg["json"], cfg["property"], s, e, ["device"], 10)
+        trend = await asyncio.to_thread(_gsc_run_query, cfg["json"], cfg["property"], s, e, ["date"], 100)
+        tot_clicks = sum(r.get("clicks", 0) for r in queries)
+        tot_impr = sum(r.get("impressions", 0) for r in queries)
+        overview = {
+            "clicks": tot_clicks, "impressions": tot_impr,
+            "ctr": (tot_clicks / tot_impr) if tot_impr else 0.0,
+            "position": (sum(r.get("position", 0) * r.get("impressions", 0) for r in queries) / tot_impr) if tot_impr else 0.0,
+            "range": range, "start": s, "end": e,
+        }
+        return {"status": "connected", "overview": overview, "queries": _norm(queries),
+                "pages": _norm(pages), "devices": _norm(devices),
+                "trend": [{"date": (r.get("keys") or [None])[0], "clicks": r.get("clicks", 0),
+                           "impressions": r.get("impressions", 0)} for r in trend]}
+    except Exception as exc:  # noqa: BLE001
+        status = getattr(getattr(exc, "resp", None), "status", None)
+        msg = {
+            401: "Autentificare Google eșuată — verifică JSON-ul Service Account.",
+            403: "Service account-ul nu are acces la acest property GSC (adaugă-l ca user).",
+            404: "Property negăsit — verifică formatul GSC_PROPERTY.",
+            429: "Cota Google API depășită — încearcă mai târziu.",
+        }.get(status, f"Interogarea GSC a eșuat: {str(exc)[:160]}")
+        logger.warning(f"[gsc] report error: {exc}")
+        try:
+            await db.seo_events.insert_one({"type": "gsc_error", "error": str(exc)[:300],
+                                            "at": datetime.now(timezone.utc).isoformat()})
+        except Exception:
+            pass
+        return {"status": "error", "error": msg, "overview": None, "queries": [], "pages": [], "devices": [], "trend": []}
+
+
+# ---------------------------------------------------------------------------
+# 9) EXPORT — CSV (mandatory) + PDF (reportlab)
+# ---------------------------------------------------------------------------
+def _csv_stream(header, rows):
+    import csv
+    import io
+
+    def gen():
+        buf = io.StringIO()
+        w = csv.writer(buf)
+        w.writerow(header)
+        yield buf.getvalue(); buf.seek(0); buf.truncate(0)
+        for r in rows:
+            w.writerow(r)
+            yield buf.getvalue(); buf.seek(0); buf.truncate(0)
+    return gen()
+
+
+@router.get("/admin/seo/export/indexability.csv")
+async def export_indexability_csv(user: dict = Depends(require_role("admin"))):
+    snap = await _snapshot()
+    ts = snap["generated_at"]
+    header = ["service", "city", "verified_specialists", "threshold", "indexability", "canonical", "reason", "in_sitemap", "checked_at"]
+    rows = []
+    for r in snap["national"] + snap["combos"]:
+        abs_url = f"{_SITE_URL}{r['path']}"
+        rows.append([
+            r["service_label"], r["city_label"] or "— national —", r["verified"], r["threshold"],
+            "INDEX" if r["index"] else "NOINDEX", (r["canonical"] or "self"), r["reason"],
+            "yes" if abs_url in snap["all_indexable_urls"] else "no", ts,
+        ])
+    return StreamingResponse(_csv_stream(header, rows), media_type="text/csv",
+                             headers={"Content-Disposition": "attachment; filename=seo-indexability.csv"})
+
+
+@router.get("/admin/seo/export/alerts.csv")
+async def export_alerts_csv(user: dict = Depends(require_role("admin"))):
+    snap = await _snapshot()
+    robots = _robots_disallows()
+    alerts = await _compute_alerts(snap, robots)
+    header = ["severity", "code", "title", "detail", "detected_at"]
+    rows = [[a["severity"], a["code"], a["title"], a["detail"], snap["generated_at"]] for a in alerts]
+    return StreamingResponse(_csv_stream(header, rows), media_type="text/csv",
+                             headers={"Content-Disposition": "attachment; filename=seo-alerts.csv"})
+
+
+@router.get("/admin/seo/export/report.pdf")
+async def export_report_pdf(user: dict = Depends(require_role("admin"))):
+    snap = await _snapshot()
+    robots = _robots_disallows()
+    alerts = await _compute_alerts(snap, robots)
+    noindex_market = len(snap["noindex_combos"]) + len(snap["noindex_national"])
+    try:
+        import io
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import mm
+        from reportlab.pdfgen import canvas as _canvas
+
+        buf = io.BytesIO()
+        c = _canvas.Canvas(buf, pagesize=A4)
+        w, h = A4
+        y = h - 25 * mm
+        c.setFont("Helvetica-Bold", 18); c.drawString(20 * mm, y, "PropManage — SEO Health Report"); y -= 9 * mm
+        c.setFont("Helvetica", 9); c.drawString(20 * mm, y, f"Generat: {snap['generated_at']}"); y -= 12 * mm
+        c.setFont("Helvetica-Bold", 12); c.drawString(20 * mm, y, "Indexability"); y -= 7 * mm
+        c.setFont("Helvetica", 10)
+        for line in [
+            f"URL-uri indexabile (in sitemap): {snap['total_indexable']}",
+            f"URL-uri noindex (thin, excluse): {noindex_market}",
+            f"Prag gate: >= {snap['threshold']} specialisti verificati",
+            f"Sitemap: index + {len(_CHILD_SITEMAPS)} copii",
+        ]:
+            c.drawString(24 * mm, y, line); y -= 6 * mm
+        y -= 4 * mm
+        c.setFont("Helvetica-Bold", 12); c.drawString(20 * mm, y, "Sitemap children"); y -= 7 * mm
+        c.setFont("Helvetica", 10)
+        for name in _CHILD_SITEMAPS:
+            c.drawString(24 * mm, y, f"{name}: {len(snap['sitemap_children'].get(name, []))} URL"); y -= 6 * mm
+        y -= 4 * mm
+        crit = [a for a in alerts if a["severity"] == "critical"]
+        warn = [a for a in alerts if a["severity"] == "warning"]
+        c.setFont("Helvetica-Bold", 12); c.drawString(20 * mm, y, f"Alerts: {len(crit)} critice, {len(warn)} avertismente"); y -= 7 * mm
+        c.setFont("Helvetica", 9)
+        for a in (crit + warn)[:20]:
+            if y < 20 * mm:
+                c.showPage(); y = h - 25 * mm; c.setFont("Helvetica", 9)
+            c.drawString(24 * mm, y, f"[{a['severity'][:4].upper()}] {a['code']}: {a['detail'][:90]}"); y -= 5.5 * mm
+        c.showPage(); c.save()
+        buf.seek(0)
+        return Response(content=buf.read(), media_type="application/pdf",
+                        headers={"Content-Disposition": "attachment; filename=seo-health-report.pdf"})
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[seo] PDF export failed: {e}")
+        return {"ok": False, "error": "PDF indisponibil; folosește exportul CSV.", "detail": str(e)[:200]}

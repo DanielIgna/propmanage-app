@@ -84,7 +84,7 @@ def test_admin_seo_overview(admin):
     d = r.json()
     assert d["indexability"]["indexable_urls"] > 0
     assert d["sitemap"]["is_index"] is True
-    assert d["sitemap"]["child_count"] == 4
+    assert d["sitemap"]["child_count"] == 5  # Batch 2 added sitemap-design.xml
     assert d["health"]["gate_ok"] is True
 
 
@@ -130,7 +130,7 @@ def test_admin_seo_sitemap_and_validate(admin):
     assert r.status_code == 200
     d = r.json()
     assert d["root"]["is_index"] is True
-    assert len(d["children"]) == 4
+    assert len(d["children"]) == 5  # Batch 2 added sitemap-design.xml
     assert d["excluded_count"] > 0  # thin content excluded with reasons
     v = admin.post(f"{API}/admin/seo/sitemap/validate", timeout=40)
     assert v.status_code == 200

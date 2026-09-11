@@ -13,6 +13,201 @@
 
 export const GHIDURI = [
   {
+    slug: "ce-este-designul-interior",
+    title: "Ce este designul interior? Rol, etape și beneficii · Ghid 2026",
+    h1: "Ce este designul interior și de ce contează",
+    description: "Ce înseamnă designul interior, ce face concret un designer, care sunt etapele unui proiect și când merită să apelezi la unul. Explicat clar, fără jargon.",
+    tag: "Bazele designului",
+    icon: "BookOpen",
+    publishedAt: "2026-06-11",
+    updatedAt: "2026-06-11",
+    readMins: 6,
+    sections: [
+      {
+        heading: "Definiție simplă",
+        body: [
+          "Designul interior este procesul prin care un spațiu locuibil este planificat astfel încât să fie **funcțional, confortabil și coerent estetic**. Nu înseamnă doar „să arate frumos” — înseamnă decizii despre circulație, lumină, depozitare, materiale și buget, transformate într-un plan care poate fi executat.",
+          { type: "callout", title: "Pe scurt", body: "Un designer bun rezolvă mai întâi problemele de funcționalitate (cum folosești spațiul), apoi pe cele estetice (cum arată)." },
+        ],
+      },
+      {
+        heading: "Ce face concret un designer de interior",
+        body: [
+          "Rolul depășește alegerea culorilor. Un proiect complet include:",
+          { type: "list", items: [
+            "Releveu și analiza spațiului (cote reale, lumină, instalații)",
+            "Plan de mobilare optimizat pe circulație și depozitare",
+            "Concept vizual și randări 3D",
+            "Planuri tehnice pentru echipele de execuție",
+            "Listă de materiale și obiecte pentru bugetare corectă",
+          ] },
+        ],
+      },
+      {
+        heading: "Când merită să apelezi la un designer",
+        body: [
+          "Designul aduce cea mai mare valoare la renovări și la spații mici sau atipice, unde greșelile costă mult. Chiar și un simplu concept poate preveni cumpărături greșite de mii de lei.",
+          "La PropManage, procesul leagă designul de execuția reală: Design → Audit → Digital Twin → Proiectare → Implementare, cu specialiști verificați și plăți protejate prin escrow.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Designul interior este scump?", a: "Depinde de ce incluzi. Un concept costă puțin; un proiect tehnic complet costă mai mult, dar economisește bani pe șantier prin evitarea greșelilor. Vezi pagina de preț pentru factorii reali." },
+      { q: "Care e diferența dintre design interior și decorare?", a: "Decorarea se ocupă doar de aspect (textile, obiecte, culori). Designul interior include și partea funcțională și tehnică a spațiului." },
+    ],
+    relatedCategories: ["interior_design"],
+    internalLinks: [
+      { label: "Design interior — pagina principală", to: "/design-interior" },
+      { label: "Cât costă designul interior", to: "/design-interior/pret" },
+      { label: "Ce include un proiect de design", to: "/ghiduri/ce-include-un-proiect-de-design-interior" },
+      { label: "Cum alegi un designer interior", to: "/ghiduri/cum-alegi-designer-interior" },
+    ],
+  },
+  {
+    slug: "design-interior-sau-arhitect",
+    title: "Design interior sau arhitect? Ce alegi și când · Ghid 2026",
+    h1: "Design interior sau arhitect: de care ai nevoie?",
+    description: "Când ai nevoie de un designer de interior și când de un arhitect? Diferențele de rol, ce poate face fiecare și cum lucrează împreună la o renovare.",
+    tag: "Comparație",
+    icon: "Users",
+    publishedAt: "2026-06-11",
+    updatedAt: "2026-06-11",
+    readMins: 6,
+    sections: [
+      {
+        heading: "Diferența de rol",
+        body: [
+          "Cei doi profesioniști se completează, dar au responsabilități diferite:",
+          { type: "list", items: [
+            "**Arhitectul** se ocupă de structură, autorizații, modificări de anvelopă și conformitate legală. Este obligatoriu pentru intervenții structurale.",
+            "**Designerul de interior** se ocupă de organizarea și amenajarea spațiului interior: funcțiune, mobilare, finisaje, lumină, atmosferă.",
+          ] },
+        ],
+      },
+      {
+        heading: "Când ai nevoie de arhitect",
+        body: [
+          "Ai nevoie de arhitect (și, adesea, de expert tehnic) când intervii asupra structurii: demolezi pereți portanți, modifici fațada, extinzi sau schimbi funcțiunea. Aceste lucrări cer proiect și autorizație.",
+          { type: "callout", title: "Atenție", body: "Demolarea unui perete structural fără expertiză este periculoasă și ilegală. Un audit sau un Digital Twin cu releveu clarifică ce se poate demola în siguranță." },
+        ],
+      },
+      {
+        heading: "Când e suficient un designer",
+        body: [
+          "Pentru majoritatea amenajărilor de apartament fără modificări structurale, un designer de interior acoperă tot ce ai nevoie: reorganizare, mobilare, finisaje, iluminat și coordonarea execuției.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Pot lucra amândoi la același proiect?", a: "Da, și adesea este ideal: arhitectul rezolvă structura și autorizațiile, designerul se ocupă de interior. La PropManage găsești ambele tipuri de specialiști verificați." },
+      { q: "Cine decide dacă un perete e structural?", a: "Un inginer/expert tehnic, pe baza proiectului clădirii. Un audit tehnic sau Digital Twin te ajută să identifici din timp aceste aspecte." },
+    ],
+    relatedCategories: ["interior_design"],
+    internalLinks: [
+      { label: "Design pentru renovare", to: "/design-interior/renovare" },
+      { label: "Scorul casei (audit tehnic)", to: "/scorul-casei" },
+      { label: "Ce este un Digital Twin", to: "/ghiduri/ce-este-digital-twin-locuinta" },
+      { label: "Design interior — pagina principală", to: "/design-interior" },
+    ],
+  },
+  {
+    slug: "ce-include-un-proiect-de-design-interior",
+    title: "Ce include un proiect de design interior? Livrabile · Ghid 2026",
+    h1: "Ce include un proiect de design interior",
+    description: "Ce primești concret dintr-un proiect de design interior: de la moodboard și plan de mobilare, la randări 3D, planuri tehnice și listă de materiale. Ce să ceri și ce să verifici.",
+    tag: "Livrabile",
+    icon: "FileText",
+    publishedAt: "2026-06-11",
+    updatedAt: "2026-06-11",
+    readMins: 7,
+    sections: [
+      {
+        heading: "Livrabilele unui proiect complet",
+        body: [
+          "Un proiect serios de design interior nu este o singură imagine, ci un set de documente pe care echipa de execuție le poate urma:",
+          { type: "list", items: [
+            "**Concept și moodboard** — direcția de stil și paleta",
+            "**Plan de mobilare** la scară, cu cote",
+            "**Randări 3D** foto-realiste pe fiecare cameră",
+            "**Planuri tehnice** — electrice, sanitare, tavane, pardoseli, finisaje",
+            "**Listă de materiale și obiecte** cu cantități și specificații",
+          ] },
+        ],
+      },
+      {
+        heading: "Concept vs. proiect tehnic complet",
+        body: [
+          "Un „concept” (moodboard + plan de mobilare) este suficient dacă vrei doar direcția. Pentru o renovare reală ai nevoie de proiectul tehnic complet, altfel echipele improvizează pe șantier — de acolo vin întârzierile și costurile suplimentare.",
+        ],
+      },
+      {
+        heading: "Ce să verifici înainte să accepți o ofertă",
+        body: [
+          "Cere lista exactă a livrabilelor, numărul de revizii incluse și dacă proiectul acoperă și partea de instalații. Vezi și cum se structurează prețul.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Câte revizii ar trebui incluse?", a: "De obicei 1-2 revizii pe concept sunt normale. Clarifică din start câte sunt incluse și cât costă cele suplimentare." },
+      { q: "Proiectul include și lista de cumpărături?", a: "Un proiect complet include o listă de materiale și obiecte cu cantități, care îți permite să bugetezi corect." },
+    ],
+    relatedCategories: ["interior_design"],
+    internalLinks: [
+      { label: "Preț design interior", to: "/design-interior/pret" },
+      { label: "Design cu implementare la cheie", to: "/design-interior/implementare" },
+      { label: "Randări 3D & Digital Twin", to: "/design-interior/3d" },
+      { label: "Design interior — pagina principală", to: "/design-interior" },
+    ],
+  },
+  {
+    slug: "de-ce-conteaza-masuratorile-inainte-de-design",
+    title: "De ce contează măsurătorile înainte de design interior · Ghid 2026",
+    h1: "De ce contează măsurătorile înainte de designul interior",
+    description: "Un releveu precis face diferența dintre un proiect care se execută fidel și unul plin de surprize. Ce se măsoară, de ce și cum ajută un Digital Twin.",
+    tag: "Releveu & măsurători",
+    icon: "Ruler",
+    publishedAt: "2026-06-11",
+    updatedAt: "2026-06-11",
+    readMins: 6,
+    sections: [
+      {
+        heading: "Cea mai frecventă greșeală de pe șantier",
+        body: [
+          "Mobilierul sau finisajele comandate care „nu încap” sunt cel mai des rezultatul unor măsurători aproximative. Pereții nu sunt niciodată perfect drepți, iar câțiva centimetri decid dacă o piesă se montează sau nu.",
+          { type: "callout", title: "Regula de aur", body: "Măsoară de două ori, comandă o dată. Un releveu profesionist elimină aproape complet acest risc." },
+        ],
+      },
+      {
+        heading: "Ce se măsoară într-un releveu",
+        body: [
+          { type: "list", items: [
+            "Dimensiunile exacte ale fiecărei camere (inclusiv abateri)",
+            "Înălțimi, praguri, poziția ușilor și ferestrelor",
+            "Poziția instalațiilor (prize, țevi, calorifere, coloane)",
+            "Elemente fixe (stâlpi, grinzi, nișe)",
+          ] },
+        ],
+      },
+      {
+        heading: "Cum ajută un Digital Twin",
+        body: [
+          "Un Digital Twin este o replică digitală a locuinței, cu cote reale, pe care testezi modificările înainte să le execuți fizic. Astfel verifici încadrarea mobilierului și circulația luminii fără să riști bani pe comenzi greșite.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Nu pot măsura singur?", a: "Poți face o estimare, dar pentru comenzi de mobilier pe comandă și pentru proiectul tehnic ai nevoie de un releveu precis, ideal profesionist." },
+      { q: "Digital Twin-ul înlocuiește releveul?", a: "Nu, îl include: un Digital Twin bun se construiește pe baza unui releveu precis al locuinței tale." },
+    ],
+    relatedCategories: ["interior_design"],
+    internalLinks: [
+      { label: "Randări 3D & Digital Twin", to: "/design-interior/3d" },
+      { label: "Ce este un Digital Twin", to: "/ghiduri/ce-este-digital-twin-locuinta" },
+      { label: "Design pentru renovare", to: "/design-interior/renovare" },
+      { label: "Digital Twin locuință", to: "/digital-twin" },
+    ],
+  },
+  {
     slug: "cost-renovare-apartament-2-camere",
     title: "Cât costă o renovare apartament 2 camere în România · Ghid 2026",
     h1: "Cât costă o renovare apartament 2 camere în 2026",
