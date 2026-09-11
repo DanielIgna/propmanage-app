@@ -16,8 +16,8 @@ import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-from fastapi import APIRouter, Depends
-from fastapi.responses import StreamingResponse, Response
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import StreamingResponse, Response, RedirectResponse
 from pydantic import BaseModel
 
 from db import db
@@ -870,15 +870,64 @@ import json as _json
 
 GSC_SCOPES = ["https://www.googleapis.com/auth/webmasters.readonly"]
 _RANGE_DAYS = {"7d": 7, "28d": 28, "3m": 90}
+_JWT_SECRET = _os.environ.get("JWT_SECRET", "")
+
+
+def _gsc_redirect_uri():
+    """Exact redirect URI that MUST be registered in the Google OAuth client."""
+    return (_os.environ.get("GSC_OAUTH_REDIRECT_URI")
+            or "https://propmanage.ro/api/admin/seo/gsc/oauth/callback")
+
+
+def _gsc_oauth_client_config():
+    """Reuse the EXISTING Google OAuth login client (GOOGLE_CLIENT_ID/SECRET) for GSC."""
+    cid = _os.environ.get("GOOGLE_CLIENT_ID")
+    csec = _os.environ.get("GOOGLE_CLIENT_SECRET")
+    if not cid or not csec:
+        return None
+    return {"web": {
+        "client_id": cid, "client_secret": csec,
+        "auth_uri": "https://accounts.google.com/o/oauth2/v2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "redirect_uris": [_gsc_redirect_uri()],
+    }}
 
 
 async def _gsc_config():
+    """Resolve GSC access. Prefers reusing the existing Google OAuth login client
+    (auth_type=oauth, one-time admin consent → refresh token). Service Account is a
+    fallback. The secret material is NEVER returned to the client."""
     doc = await db.seo_config.find_one({"key": "gsc"})
-    if doc and doc.get("service_account_json") and doc.get("property"):
-        return {"property": doc["property"], "json": doc["service_account_json"], "source": "admin"}
+    if doc and doc.get("property"):
+        if doc.get("auth_type") == "oauth" and doc.get("refresh_token"):
+            return {"auth_type": "oauth", "property": doc["property"],
+                    "refresh_token": doc["refresh_token"], "source": "admin",
+                    "account_email": doc.get("account_email"),
+                    "connected_at": doc.get("connected_at")}
+        if doc.get("service_account_json"):
+            return {"auth_type": "service_account", "property": doc["property"],
+                    "json": doc["service_account_json"], "source": "admin",
+                    "connected_at": doc.get("connected_at")}
     if _os.environ.get("GSC_SERVICE_ACCOUNT_JSON") and _os.environ.get("GSC_PROPERTY"):
-        return {"property": _os.environ["GSC_PROPERTY"], "json": _os.environ["GSC_SERVICE_ACCOUNT_JSON"], "source": "env"}
+        return {"auth_type": "service_account", "property": _os.environ["GSC_PROPERTY"],
+                "json": _os.environ["GSC_SERVICE_ACCOUNT_JSON"], "source": "env"}
     return None
+
+
+def _gsc_build_credentials(cfg):
+    """Build a google credentials object for either OAuth (refresh token) or Service Account."""
+    if cfg.get("auth_type") == "oauth":
+        from google.oauth2.credentials import Credentials
+        return Credentials(
+            token=None, refresh_token=cfg["refresh_token"],
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=_os.environ.get("GOOGLE_CLIENT_ID"),
+            client_secret=_os.environ.get("GOOGLE_CLIENT_SECRET"),
+            scopes=GSC_SCOPES,
+        )
+    from google.oauth2 import service_account
+    info = _json.loads(cfg["json"])
+    return service_account.Credentials.from_service_account_info(info, scopes=GSC_SCOPES)
 
 
 def _gsc_client_email(json_str):
@@ -897,12 +946,12 @@ def _site_verification_token():
         return None
 
 
-def _gsc_run_query(json_str, prop, start, end, dimensions, row_limit=25):
-    """Blocking Google API call — run via asyncio.to_thread."""
-    from google.oauth2 import service_account
+def _gsc_run_query(cfg, prop, start, end, dimensions, row_limit=25):
+    """Blocking Google API call — run via asyncio.to_thread. Builds fresh creds per
+    call (thread-safe: each worker refreshes its own access token). Works for both
+    OAuth (refresh token) and Service Account configs."""
     from googleapiclient.discovery import build
-    info = _json.loads(json_str)
-    creds = service_account.Credentials.from_service_account_info(info, scopes=GSC_SCOPES)
+    creds = _gsc_build_credentials(cfg)
     service = build("searchconsole", "v1", credentials=creds, cache_discovery=False)
     body = {"startDate": start, "endDate": end, "dimensions": dimensions, "type": "web", "rowLimit": row_limit}
     resp = service.searchanalytics().query(siteUrl=prop, body=body).execute()
@@ -913,17 +962,25 @@ def _gsc_run_query(json_str, prop, start, end, dimensions, row_limit=25):
 async def seo_gsc(user: dict = Depends(require_role("admin"))):
     cfg = await _gsc_config()
     token = _site_verification_token()
+    oauth_available = _gsc_oauth_client_config() is not None
+    redirect_uri = _gsc_redirect_uri()
     if not cfg:
         return {
             "connected": False,
             "status": "not_connected",
-            "message": "Google Search Console nu este conectat. Conectează un Service Account cu "
-                       "Search Console API activat, adăugat ca user în property-ul GSC.",
+            "oauth_available": oauth_available,
+            "redirect_uri": redirect_uri,
+            "message": "Google Search Console nu este conectat. Recomandat: conectează prin "
+                       "contul Google existent (OAuth), fără Service Account.",
+            "how_to_oauth": [
+                "1. Google Cloud (același proiect ca login-ul) → activează „Google Search Console API”.",
+                f"2. OAuth Client (Web) → adaugă redirect URI: {redirect_uri}",
+                "3. Apasă „Conectează cu Google” mai jos și dă consimțământ cu un cont Google care are acces la property-ul GSC.",
+            ],
             "how_to": [
-                "1. Google Cloud → activează Search Console API + creează un Service Account.",
-                "2. Service Account → Keys → creează cheie JSON.",
-                "3. Search Console → Settings → Users and permissions → adaugă email-ul service account-ului (Full/Restricted).",
-                "4. Lipește property-ul (ex: sc-domain:propmanage.ro sau https://propmanage.ro/) + JSON-ul aici.",
+                "Alternativ (Service Account): Google Cloud → activează Search Console API + creează Service Account + cheie JSON.",
+                "Search Console → Settings → Users and permissions → adaugă email-ul service account-ului.",
+                "Lipește property-ul (sc-domain:propmanage.ro sau https://propmanage.ro/) + JSON-ul aici.",
             ],
             "property_expected": "sc-domain:propmanage.ro sau https://propmanage.ro/",
             "site_verification_meta_present": token is not None,
@@ -934,10 +991,14 @@ async def seo_gsc(user: dict = Depends(require_role("admin"))):
         "connected": True,
         "status": "connected",
         "property": cfg["property"],
+        "auth_type": cfg["auth_type"],
         "source": cfg["source"],
-        "service_account_email": _gsc_client_email(cfg["json"]),
+        "oauth_available": oauth_available,
+        "redirect_uri": redirect_uri,
+        "connected_at": cfg.get("connected_at"),
+        "service_account_email": (_gsc_client_email(cfg["json"]) if cfg["auth_type"] == "service_account" else cfg.get("account_email")),
         "site_verification_meta_present": token is not None,
-        "message": "Conectat. Folosește tab-ul GSC → Load pentru date reale.",
+        "message": "Conectat. Tab-ul GSC → Load aduce date reale din Search Console.",
     }
 
 
@@ -974,6 +1035,86 @@ async def seo_gsc_disconnect(user: dict = Depends(require_role("admin"))):
     return {"ok": True}
 
 
+# ── OAuth flow (reuse existing Google login client) ─────────────────────────
+import secrets as _secrets
+import jwt as _jwt
+
+
+@router.get("/admin/seo/gsc/oauth/start")
+async def seo_gsc_oauth_start(property: str = "sc-domain:propmanage.ro",
+                              user: dict = Depends(require_role("admin"))):
+    """Return the Google consent URL (scope webmasters.readonly, offline access).
+    Reuses the existing GOOGLE_CLIENT_ID/SECRET — no Service Account needed."""
+    client_config = _gsc_oauth_client_config()
+    if not client_config:
+        return {"ok": False, "error": "GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET nu sunt configurate în backend."}
+    if not _JWT_SECRET:
+        return {"ok": False, "error": "JWT_SECRET indisponibil pentru semnarea state-ului OAuth."}
+    from google_auth_oauthlib.flow import Flow
+    state = _jwt.encode(
+        {"p": property, "n": _secrets.token_urlsafe(8), "typ": "gsc_oauth",
+         "by": user.get("email"),
+         "exp": datetime.now(timezone.utc) + timedelta(minutes=15)},
+        _JWT_SECRET, algorithm="HS256",
+    )
+    flow = Flow.from_client_config(client_config, scopes=GSC_SCOPES, state=state)
+    flow.redirect_uri = _gsc_redirect_uri()
+    auth_url, _ = flow.authorization_url(
+        access_type="offline", include_granted_scopes="true", prompt="consent", state=state,
+    )
+    return {"ok": True, "authorization_url": auth_url, "redirect_uri": _gsc_redirect_uri()}
+
+
+@router.get("/admin/seo/gsc/oauth/callback")
+async def seo_gsc_oauth_callback(request: Request):
+    """Google redirects here after consent. Validates the signed state, exchanges the
+    code for a refresh token and stores it. No admin dependency (top-level browser
+    redirect); trust is established via the signed state (issued by an admin).
+    Uses a RELATIVE redirect so it lands on the same host that served the callback."""
+
+    def _back(qs):
+        return RedirectResponse(f"/admin?tab=seo&{qs}")
+
+    err = request.query_params.get("error")
+    if err:
+        return _back(f"gsc=error&reason={err}")
+    state = request.query_params.get("state")
+    code = request.query_params.get("code")
+    if not state or not code:
+        return _back("gsc=error&reason=missing_code")
+    try:
+        data = _jwt.decode(state, _JWT_SECRET, algorithms=["HS256"])
+        assert data.get("typ") == "gsc_oauth"
+    except Exception:
+        return _back("gsc=error&reason=bad_state")
+    client_config = _gsc_oauth_client_config()
+    if not client_config:
+        return _back("gsc=error&reason=no_client")
+    from google_auth_oauthlib.flow import Flow
+    flow = Flow.from_client_config(client_config, scopes=GSC_SCOPES, state=state)
+    flow.redirect_uri = _gsc_redirect_uri()
+    try:
+        flow.fetch_token(code=code)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"[gsc] oauth token exchange failed: {exc}")
+        return _back("gsc=error&reason=token_exchange")
+    creds = flow.credentials
+    if not getattr(creds, "refresh_token", None):
+        return _back("gsc=error&reason=no_refresh_token")
+    prop = data.get("p") or "sc-domain:propmanage.ro"
+    await db.seo_config.update_one(
+        {"key": "gsc"},
+        {"$set": {"key": "gsc", "auth_type": "oauth", "property": prop,
+                  "refresh_token": creds.refresh_token,
+                  "account_email": data.get("by"),
+                  "connected_by": data.get("by"),
+                  "connected_at": datetime.now(timezone.utc).isoformat()},
+         "$unset": {"service_account_json": ""}},
+        upsert=True,
+    )
+    return _back("gsc=connected")
+
+
 @router.get("/admin/seo/gsc/report")
 async def seo_gsc_report(range: str = "28d", user: dict = Depends(require_role("admin"))):
     cfg = await _gsc_config()
@@ -996,10 +1137,10 @@ async def seo_gsc_report(range: str = "28d", user: dict = Depends(require_role("
 
     try:
         s, e = start.isoformat(), end.isoformat()
-        queries = await asyncio.to_thread(_gsc_run_query, cfg["json"], cfg["property"], s, e, ["query"], 25)
-        pages = await asyncio.to_thread(_gsc_run_query, cfg["json"], cfg["property"], s, e, ["page"], 25)
-        devices = await asyncio.to_thread(_gsc_run_query, cfg["json"], cfg["property"], s, e, ["device"], 10)
-        trend = await asyncio.to_thread(_gsc_run_query, cfg["json"], cfg["property"], s, e, ["date"], 100)
+        queries = await asyncio.to_thread(_gsc_run_query, cfg, cfg["property"], s, e, ["query"], 25)
+        pages = await asyncio.to_thread(_gsc_run_query, cfg, cfg["property"], s, e, ["page"], 25)
+        devices = await asyncio.to_thread(_gsc_run_query, cfg, cfg["property"], s, e, ["device"], 10)
+        trend = await asyncio.to_thread(_gsc_run_query, cfg, cfg["property"], s, e, ["date"], 100)
         tot_clicks = sum(r.get("clicks", 0) for r in queries)
         tot_impr = sum(r.get("impressions", 0) for r in queries)
         overview = {
@@ -1007,8 +1148,11 @@ async def seo_gsc_report(range: str = "28d", user: dict = Depends(require_role("
             "ctr": (tot_clicks / tot_impr) if tot_impr else 0.0,
             "position": (sum(r.get("position", 0) * r.get("impressions", 0) for r in queries) / tot_impr) if tot_impr else 0.0,
             "range": range, "start": s, "end": e,
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "data_through": e,
         }
-        return {"status": "connected", "overview": overview, "queries": _norm(queries),
+        return {"status": "connected", "property": cfg["property"], "auth_type": cfg["auth_type"],
+                "overview": overview, "queries": _norm(queries),
                 "pages": _norm(pages), "devices": _norm(devices),
                 "trend": [{"date": (r.get("keys") or [None])[0], "clicks": r.get("clicks", 0),
                            "impressions": r.get("impressions", 0)} for r in trend]}

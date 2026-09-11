@@ -76,6 +76,37 @@ const getAttribution = () => {
   return { c: "", utm_source: "", utm_medium: "", utm_campaign: "", gclid: "", gbraid: "", wbraid: "", via_qr: false };
 };
 
+// Attribution snapshot for lead forms — resolves source/medium/campaign from stored
+// first-touch UTM/gclid, falling back to the document referrer. Powers the funnel
+// "Google organic → SEO page → CTA → lead" without a second tracking system.
+export const getLeadAttribution = () => {
+  const a = getAttribution();
+  let source = a.utm_source || "";
+  let medium = a.utm_medium || "";
+  const ref = (typeof document !== "undefined" && document.referrer) || "";
+  if (!source && ref) {
+    try {
+      const host = new URL(ref).hostname.replace(/^www\./, "");
+      const self = typeof window !== "undefined" ? window.location.hostname : "";
+      if (host && host !== self) {
+        source = host.includes("google") ? "google"
+          : host.includes("bing") ? "bing"
+          : host.includes("facebook") || host.includes("fb.") ? "facebook"
+          : host.includes("duckduckgo") ? "duckduckgo"
+          : host;
+      }
+    } catch { /* noop */ }
+  }
+  if (!medium) {
+    if (a.gclid || a.gbraid || a.wbraid) medium = "cpc";
+    else if (source === "google" || source === "bing" || source === "duckduckgo") medium = "organic";
+    else if (source) medium = "referral";
+    else medium = "direct";
+  }
+  if (!source) source = "direct";
+  return { source, medium, campaign: a.utm_campaign || a.c || "", referrer: ref, gclid: a.gclid || "" };
+};
+
 const push = (ev) => {
   const attr = getAttribution();
   queue.push({

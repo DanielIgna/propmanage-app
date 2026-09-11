@@ -8,6 +8,8 @@ import {
   Building2, ArrowRight, ChevronDown, CheckCircle2, MapPin, Sparkles, Star,
 } from "lucide-react";
 import { useSEO } from "../hooks/useSEO";
+import { trackIntent } from "../lib/analytics";
+import { DesignLeadModal } from "../components/DesignLeadModal";
 import { DI_PAGES, DI_STYLES, DI_LOCAL_CITIES } from "../data/designInterior";
 
 const SITE_URL = "https://propmanage.ro";
@@ -104,16 +106,44 @@ const Related = ({ related }) => (
   ) : null
 );
 
-const CTA = () => (
+const LeadCTAButton = ({ onLead, label = "Cere ofertă pentru design interior", testid = "di-cta-btn", className = "" }) => (
+  <button onClick={onLead} data-testid={testid}
+    className={`inline-flex items-center gap-2 bg-[#d4ff3a] text-black px-7 py-3 rounded-full text-sm font-semibold hover:bg-[#bfe632] transition ${className}`}>
+    {label} <ArrowRight className="w-4 h-4" />
+  </button>
+);
+
+const HeroCTA = ({ onLead }) => (
+  <div className="mt-7" data-testid="di-cta-hero">
+    <LeadCTAButton onLead={onLead} testid="di-cta-hero-btn" />
+    <p className="text-xs text-stone-500 mt-2.5">Oferte de la designeri verificați · fără obligații · plată protejată prin escrow</p>
+  </div>
+);
+
+const MidCTA = ({ onLead }) => (
+  <div className="mt-12 glass-strong rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between" data-testid="di-cta-mid">
+    <div>
+      <div className="font-serif text-lg text-white">Vrei o ofertă pentru proiectul tău?</div>
+      <div className="text-sm text-stone-400 mt-0.5">Spune-ne câteva detalii și primești oferte de la designeri verificați în 24-48h.</div>
+    </div>
+    <LeadCTAButton onLead={onLead} testid="di-cta-mid-btn" className="shrink-0" />
+  </div>
+);
+
+const FinalCTA = ({ onLead }) => (
   <div className="mt-14 glass-strong rounded-3xl p-8 text-center" data-testid="di-cta">
     <h2 className="font-serif text-2xl mb-2 text-white">Gata să începi proiectul?</h2>
     <p className="text-stone-400 mb-5 max-w-lg mx-auto text-sm">Postează cererea și primești oferte de la designeri verificați, cu portofolii și recenzii reale. Plată protejată prin escrow.</p>
-    <Link to="/register" className="inline-block bg-[#d4ff3a] text-black px-8 py-3 rounded-full text-sm font-semibold hover:bg-[#bfe632] transition" data-testid="di-cta-btn">Începe gratuit</Link>
+    <LeadCTAButton onLead={onLead} testid="di-cta-btn" />
   </div>
 );
 
 // ── Content / style page ─────────────────────────────────────────────────────
 const StaticDesignPage = ({ page, canonicalPath, trail, breadcrumbNames }) => {
+  const [leadOpen, setLeadOpen] = useState(false);
+  const diSlug = canonicalPath.split("/").filter(Boolean).pop();
+  const isStyle = canonicalPath.includes("/stil/");
+  const openLead = () => { trackIntent("design_seo_cta_click"); setLeadOpen(true); };
   useSEO({
     title: page.title,
     description: page.description,
@@ -139,10 +169,14 @@ const StaticDesignPage = ({ page, canonicalPath, trail, breadcrumbNames }) => {
       </div>
       <h1 className="font-serif text-4xl sm:text-5xl tracking-tight mb-5" data-testid="di-h1">{page.h1}</h1>
       <p className="text-stone-300 text-lg leading-relaxed">{bold(page.intro)}</p>
+      <HeroCTA onLead={openLead} />
       <Sections sections={page.sections} />
+      <MidCTA onLead={openLead} />
       <FAQ faq={page.faq} />
       <Related related={page.related} />
-      <CTA />
+      <FinalCTA onLead={openLead} />
+      <DesignLeadModal open={leadOpen} onClose={() => setLeadOpen(false)}
+        context={{ di_slug: diSlug, seo_cluster: "design_interior", style: isStyle ? diSlug : "", lead_type: "oferta" }} />
     </Shell>
   );
 };
@@ -151,7 +185,9 @@ const StaticDesignPage = ({ page, canonicalPath, trail, breadcrumbNames }) => {
 const LocalDesignPage = ({ citySlug, cityName }) => {
   const [gate, setGate] = useState(null);
   const [specialists, setSpecialists] = useState(null);
+  const [leadOpen, setLeadOpen] = useState(false);
   const path = `/design-interior/${citySlug}`;
+  const openLead = () => { trackIntent("design_seo_cta_click"); setLeadOpen(true); };
 
   useEffect(() => {
     axios.get(`${API}/public/seo/gate?path=${encodeURIComponent(path)}`).then(r => setGate(r.data)).catch(() => setGate(null));
@@ -192,6 +228,8 @@ const LocalDesignPage = ({ citySlug, cityName }) => {
         Cauți un designer de interior în {cityName}? Pe PropManage lucrezi doar cu specialiști verificați, cu portofolii și recenzii reale. Poți lua doar proiectul de design sau poți merge până la implementare la cheie, cu plată protejată prin escrow.
       </p>
 
+      <HeroCTA onLead={openLead} />
+
       <div className="mt-8 glass-strong rounded-2xl p-6" data-testid="di-local-availability">
         {count === null ? (
           <p className="text-stone-400 text-sm">Se verifică disponibilitatea în {cityName}…</p>
@@ -218,13 +256,17 @@ const LocalDesignPage = ({ citySlug, cityName }) => {
         <p>Indiferent de oraș, procesul PropManage este același: <strong className="text-stone-100">Design → Audit → Digital Twin → Proiectare → Implementare</strong>. Astfel, ceea ce vezi în randare corespunde cu ceea ce se poate executa, iar plățile sunt protejate.</p>
       </div>
 
+      <MidCTA onLead={openLead} />
+
       <Related related={[
         { to: "/design-interior/apartament", label: "Design interior apartament" },
         { to: "/design-interior/pret", label: "Cât costă designul interior" },
         { to: "/design-interior/renovare", label: "Design pentru renovare" },
         { to: "/marketplace/design-interior", label: "Toți designerii din marketplace" },
       ]} />
-      <CTA />
+      <FinalCTA onLead={openLead} />
+      <DesignLeadModal open={leadOpen} onClose={() => setLeadOpen(false)}
+        context={{ di_slug: citySlug, seo_cluster: "design_interior_local", city: cityName, lead_type: "oferta" }} />
     </Shell>
   );
 };

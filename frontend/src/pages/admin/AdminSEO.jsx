@@ -1,7 +1,7 @@
 // Admin → SEO Control Center — READ-ONLY observability over the existing SEO SSOT.
 // Reuses the backend /api/admin/seo/* endpoints (which themselves reuse the gate,
 // sitemap builders and db.pages). No SEO logic is duplicated here.
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import axios from "axios";
 import {
   Search, Globe, FileText, ListChecks, Layers, AlertTriangle, BarChart3,
@@ -55,7 +55,15 @@ const Stat = ({ label, value, tone = "default", testid }) => {
 
 export const AdminSEO = () => {
   const { isDark } = useGlobalTheme();
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("gsc")) return "gsc";  // arriving back from the GSC OAuth callback
+      const t = p.get("subtab");
+      if (t && SUB_TABS.some((s) => s.id === t)) return t;
+    } catch { /* noop */ }
+    return "overview";
+  });
   const [cache, setCache] = useState({});
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
@@ -554,7 +562,22 @@ const GSCView = ({ isDark, txt, muted, border, rowBorder }) => {
   const [prop, setProp] = useState("sc-domain:propmanage.ro");
   const [json, setJson] = useState("");
   const [connecting, setConnecting] = useState(false);
+  const [oauthBusy, setOauthBusy] = useState(false);
   const [connectMsg, setConnectMsg] = useState(null);
+  const [flash] = useState(() => {
+    // Read the OAuth callback result synchronously (the admin console strips the
+    // query string in a mount effect, so we must capture it during first render).
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const g = p.get("gsc");
+      if (g) {
+        return g === "connected"
+          ? { ok: true, text: "Conectat cu Google Search Console ✓" }
+          : { ok: false, text: `Conectare GSC eșuată: ${p.get("reason") || g}` };
+      }
+    } catch { /* noop */ }
+    return null;
+  });
   const [range, setRange] = useState("28d");
   const [report, setReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
@@ -566,6 +589,16 @@ const GSCView = ({ isDark, txt, muted, border, rowBorder }) => {
     finally { setLoading(false); }
   };
   useEffect(() => { loadStatus(); }, []);
+
+  const oauthConnect = async () => {
+    setOauthBusy(true); setConnectMsg(null);
+    try {
+      const r = await axios.get(`${API}/admin/seo/gsc/oauth/start`, { params: { property: prop } });
+      if (r.data.ok && r.data.authorization_url) window.location.assign(r.data.authorization_url);
+      else setConnectMsg({ ok: false, text: r.data.error || "Nu s-a putut porni OAuth." });
+    } catch (e) { setConnectMsg({ ok: false, text: e?.response?.data?.detail || e.message }); }
+    finally { setOauthBusy(false); }
+  };
 
   const connect = async () => {
     setConnecting(true); setConnectMsg(null);
@@ -589,38 +622,65 @@ const GSCView = ({ isDark, txt, muted, border, rowBorder }) => {
 
   if (loading) return <div className={`flex items-center gap-2 text-sm ${muted}`}><Loader2 className="w-4 h-4 animate-spin" /> Se verifică GSC…</div>;
 
+  const FlashBanner = () => flash ? (
+    <div className={`rounded-lg text-sm px-4 py-2.5 mb-3 ${flash.ok ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-500" : "bg-red-500/10 border border-red-500/30 text-red-500"}`} data-testid="seo-gsc-flash">{flash.text}</div>
+  ) : null;
+
   if (!status?.connected) {
     return (
       <AdminCard title="Google Search Console" testid="seo-gsc">
+        <FlashBanner />
         <div className="flex items-center gap-2 mb-4">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-500/15 text-slate-400 text-sm font-medium" data-testid="seo-gsc-status">
             <XCircle className="w-4 h-4" /> Not connected
           </span>
         </div>
-        <p className={`text-sm ${txt} max-w-2xl mb-3`}>{status?.message}</p>
-        {status?.how_to && (
-          <ol className={`text-xs ${muted} space-y-1 mb-5 list-decimal ml-4`}>
-            {status.how_to.map((s, i) => <li key={i}>{s.replace(/^\d+\.\s*/, "")}</li>)}
-          </ol>
+        <p className={`text-sm ${txt} max-w-2xl mb-4`}>{status?.message}</p>
+
+        {status?.oauth_available && (
+          <div className="mb-6 rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 max-w-2xl" data-testid="seo-gsc-oauth">
+            <div className={`text-sm font-semibold mb-2 ${txt}`}>Recomandat — conectează prin contul Google (OAuth)</div>
+            <ol className={`text-xs ${muted} space-y-1 mb-3 list-decimal ml-4`}>
+              {(status.how_to_oauth || []).map((s, i) => <li key={i}>{s.replace(/^\d+\.\s*/, "")}</li>)}
+            </ol>
+            <div className="flex flex-wrap items-center gap-2">
+              <input value={prop} onChange={(e) => setProp(e.target.value)} data-testid="seo-gsc-oauth-property"
+                className={`flex-1 min-w-[220px] rounded-lg border px-3 py-2 text-sm ${border} ${isDark ? "bg-slate-900 text-slate-200" : "bg-white text-slate-700"}`}
+                placeholder="sc-domain:propmanage.ro" />
+              <AdminBtn onClick={oauthConnect} disabled={oauthBusy} data-testid="seo-gsc-oauth-btn">
+                {oauthBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plug className="w-4 h-4 mr-1 inline" /> Conectează cu Google</>}
+              </AdminBtn>
+            </div>
+            <div className={`text-[11px] mt-2 ${muted}`}>Redirect URI de înregistrat în Google Cloud OAuth Client: <code className="text-blue-400 break-all">{status.redirect_uri}</code></div>
+          </div>
         )}
-        <div className="space-y-3 max-w-2xl" data-testid="seo-gsc-connect">
-          <div>
-            <label className={`text-xs ${muted}`}>Property GSC</label>
-            <input value={prop} onChange={(e) => setProp(e.target.value)} data-testid="seo-gsc-property"
-              className={`w-full mt-1 rounded-lg border px-3 py-2 text-sm ${border} ${isDark ? "bg-slate-900 text-slate-200" : "bg-white text-slate-700"}`}
-              placeholder="sc-domain:propmanage.ro" />
+
+        <details className="max-w-2xl" data-testid="seo-gsc-sa-details">
+          <summary className={`text-sm cursor-pointer ${muted} mb-3`}>Alternativă: Service Account (cheie JSON)</summary>
+          {status?.how_to && (
+            <ol className={`text-xs ${muted} space-y-1 mb-4 list-decimal ml-4`}>
+              {status.how_to.map((s, i) => <li key={i}>{s.replace(/^\d+\.\s*/, "")}</li>)}
+            </ol>
+          )}
+          <div className="space-y-3" data-testid="seo-gsc-connect">
+            <div>
+              <label className={`text-xs ${muted}`}>Property GSC</label>
+              <input value={prop} onChange={(e) => setProp(e.target.value)} data-testid="seo-gsc-property"
+                className={`w-full mt-1 rounded-lg border px-3 py-2 text-sm ${border} ${isDark ? "bg-slate-900 text-slate-200" : "bg-white text-slate-700"}`}
+                placeholder="sc-domain:propmanage.ro" />
+            </div>
+            <div>
+              <label className={`text-xs ${muted}`}>Service Account JSON (nu este expus niciodată)</label>
+              <textarea value={json} onChange={(e) => setJson(e.target.value)} rows={6} data-testid="seo-gsc-json"
+                className={`w-full mt-1 rounded-lg border px-3 py-2 text-xs font-mono ${border} ${isDark ? "bg-slate-900 text-slate-200" : "bg-white text-slate-700"}`}
+                placeholder='{"type":"service_account", ...}' />
+            </div>
+            <AdminBtn onClick={connect} disabled={connecting} data-testid="seo-gsc-connect-btn">
+              {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plug className="w-4 h-4 mr-1 inline" /> Conectează cu Service Account</>}
+            </AdminBtn>
           </div>
-          <div>
-            <label className={`text-xs ${muted}`}>Service Account JSON (nu este expus niciodată)</label>
-            <textarea value={json} onChange={(e) => setJson(e.target.value)} rows={6} data-testid="seo-gsc-json"
-              className={`w-full mt-1 rounded-lg border px-3 py-2 text-xs font-mono ${border} ${isDark ? "bg-slate-900 text-slate-200" : "bg-white text-slate-700"}`}
-              placeholder='{"type":"service_account", ...}' />
-          </div>
-          <AdminBtn onClick={connect} disabled={connecting} data-testid="seo-gsc-connect-btn">
-            {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plug className="w-4 h-4 mr-1 inline" /> Conectează GSC</>}
-          </AdminBtn>
-          {connectMsg && <div className={`text-sm ${connectMsg.ok ? "text-emerald-500" : "text-red-500"}`} data-testid="seo-gsc-connect-msg">{connectMsg.text}</div>}
-        </div>
+        </details>
+        {connectMsg && <div className={`text-sm mt-3 ${connectMsg.ok ? "text-emerald-500" : "text-red-500"}`} data-testid="seo-gsc-connect-msg">{connectMsg.text}</div>}
         <div className={`text-xs mt-4 ${muted}`}>Meta de verificare site: {status?.site_verification_meta_present ? <span className="text-emerald-500">prezentă ✓</span> : <span className="text-red-500">lipsă</span>} · fără metrici fabricate.</div>
       </AdminCard>
     );
@@ -628,11 +688,13 @@ const GSCView = ({ isDark, txt, muted, border, rowBorder }) => {
 
   return (
     <div className="space-y-4" data-testid="seo-gsc">
+      <FlashBanner />
       <AdminCard>
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-500 text-sm font-medium" data-testid="seo-gsc-status"><CheckCircle2 className="w-4 h-4" /> Connected</span>
-          <span className={`text-sm ${txt}`}>{status.property}</span>
-          <span className={`text-xs ${muted}`}>{status.service_account_email}</span>
+          <span className={`text-sm ${txt}`} data-testid="seo-gsc-property-label">{status.property}</span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 text-[11px] font-medium" data-testid="seo-gsc-authtype">{status.auth_type === "oauth" ? "OAuth (cont Google)" : "Service Account"}</span>
+          {status.service_account_email && <span className={`text-xs ${muted}`}>{status.service_account_email}</span>}
           <div className="ml-auto flex items-center gap-2">
             {["7d", "28d", "3m"].map((r) => (
               <button key={r} onClick={() => setRange(r)} data-testid={`seo-gsc-range-${r}`}
@@ -652,6 +714,9 @@ const GSCView = ({ isDark, txt, muted, border, rowBorder }) => {
             <Stat label="Impressions" value={report.overview.impressions} tone="default" />
             <Stat label="CTR" value={`${(report.overview.ctr * 100).toFixed(2)}%`} tone="default" />
             <Stat label="Poziție medie" value={report.overview.position.toFixed(1)} tone="default" />
+          </div>
+          <div className={`text-xs ${muted}`} data-testid="seo-gsc-range-info">
+            Interval: {report.overview.start} → {report.overview.end} · date până la {report.overview.data_through} · actualizat {report.overview.fetched_at ? new Date(report.overview.fetched_at).toLocaleString("ro-RO") : "—"}
           </div>
           <div className="grid md:grid-cols-2 gap-4">
             <GscTable title="Top queries" rows={report.queries} txt={txt} muted={muted} border={border} rowBorder={rowBorder} />

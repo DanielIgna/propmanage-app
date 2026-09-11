@@ -1,3 +1,23 @@
+## 🔌📈 SEO CONVERSION + GSC API — BATCH 2.1 (Iun 2026)
+
+Trei părți (GSC live prin OAuth existent · CTA Design Interior → lead · tracking) peste fundația Batch 2, FĂRĂ SSR, FĂRĂ modificarea Indexability Gate / canonical / robots / sitemap. Verificat E2E (44 pytest PASS + Playwright funnel complet + curl PART D).
+
+**A · GSC LIVE (OAuth, refolosind clientul de login existent)** — `routes/admin_seo.py`:
+- Descoperit: `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` existente = client OAuth de LOGIN, NU au acces la Search Console. Îl REFOLOSIM pentru GSC printr-un consimțământ OAuth o singură dată (scope `webmasters.readonly`), fără Service Account/chei JSON.
+- Nou: `GET /admin/seo/gsc/oauth/start` (construiește URL-ul de consimțământ Google: scope webmasters.readonly, `access_type=offline`, `prompt=consent`) + `GET /admin/seo/gsc/oauth/callback` (validează state semnat JWT, schimbă code→refresh_token, salvează în `db.seo_config` auth_type=oauth). `_gsc_config`/`_gsc_build_credentials` suportă acum OAuth SAU Service Account. `/gsc` status expune `oauth_available`+`redirect_uri`. `/gsc/report` merge cu ambele. Zero date mock: dacă neconectat → `not_connected` + overview None.
+- Redirect URI de înregistrat în Google Cloud: `https://propmanage.ro/api/admin/seo/gsc/oauth/callback`.
+- **Acțiune Fondator (3 pași, o singură dată)**: 1) Google Cloud (același proiect ca login-ul) → activează „Google Search Console API"; 2) OAuth Client (Web) → adaugă redirect URI de mai sus; 3) Admin → SEO → GSC → „Conectează cu Google" + consimțământ cu contul care are proprietatea `https://propmanage.ro/`. Abia atunci apar date REALE (clicks/impressions/CTR/poziție/top queries/top pages/interval/last update). Service Account rămâne alternativă; starea „neconectat" e fallback valid.
+- FE `pages/admin/AdminSEO.jsx`: buton „Conectează cu Google" (OAuth) + pașii + redirect URI + Service Account colapsat; landing după callback (`/admin?tab=seo&gsc=connected`) deschide sub-tab-ul GSC + flash. FIX latent: `useEffect` lipsea din importul AdminSEO (tab-ul GSC crăpa) — adăugat.
+
+**B · CTA Design Interior → lead (fluxul EXISTENT)** — nou `components/DesignLeadModal.jsx` (modal dark, trimite în EXISTENTUL `POST /api/interior-design/leads` — fără sistem/formular nou). Montat în `pages/DesignInteriorPage.jsx` pe TOATE paginile cluster (content 14 + stiluri 9 + orașe): CTA „Cere ofertă pentru design interior" în 3 locuri (hero / după conținut / final). Paginile de oraș sub prag rămân `noindex` (CTA prezent, index NEFORȚAT). Hub-ul `/design-interior` avea deja CTA+formular (neatins).
+
+**C · Tracking (reutilizare)** — `lib/analytics.js`: nou `getLeadAttribution()` (source/medium/campaign din UTM/gclid + fallback referrer). Evenimente: `design_seo_cta_click` (la click CTA), `lead_started` (deschidere modal), `lead_submitted` + `trackLeadFormConversion()` (Google Ads, doar pe succes). Atribuire salvată pe lead (câmpuri OPȚIONALE noi în `LeadIn`: landing_page, di_slug, seo_cluster, source, medium, campaign, referrer) → măsoară „Google organic → pagină SEO DI → CTA → lead".
+
+**Teste**: `tests/test_gsc_oauth_iter220.py` (5, OAuth start/status/report-disconnected/admin-only/lead-attribution) + iter218 + iter219 + preturi + pages = **44 PASS**. Playwright: funnel complet `design_seo_cta_click→lead_started→conv:lead_form→lead_submitted` cu atribuire pe lead. PART D: sitemap-index 5 copii / 96 / design 24 UNCHANGED; gate/canonical/noindex UNCHANGED (cluj-napoca rămâne noindex+canonical părinte). **Necesită redeploy + cei 3 pași Fondator pentru GSC real.**
+
+---
+
+
 ## 🔎 SEO INVESTIGATION — „Homepage flash" pe /design-interior (Iun 2026) · NICIO MODIFICARE DE COD NECESARĂ
 
 Investigație (read-only, fără SSR/prerender, fără refactor SPA, fără atingerea fundației SEO).

@@ -73,6 +73,14 @@ class LeadIn(BaseModel):
     consult_date: str | None = None
     photo_urls: list[str] = []
     lead_type: str = "proiect"  # proiect | oferta | consultanta
+    # Attribution (optional, filled by SEO CTA modal — measures organic→SEO page→CTA→lead)
+    landing_page: str | None = None
+    di_slug: str | None = None
+    seo_cluster: str | None = None
+    source: str | None = None
+    medium: str | None = None
+    campaign: str | None = None
+    referrer: str | None = None
 
 
 def _triage_lead(p: "LeadIn") -> tuple[int, str]:
