@@ -1,3 +1,23 @@
+## 🧭 SEO ADMIN CONTROL CENTER + FOUNDATION AUDIT (Iun 2026)
+
+**Faza 1 — Audit fundație SEO (read-only): FUNDAȚIE SĂNĂTOASĂ, fără rescriere.** Verificat E2E gate/canonical/sitemap/structured-data/internal-linking/thin-content. Un singur bug real (P0 crawlability) + observații (SPA client-rendered = acceptabil; GSC neconectat).
+
+**Faza 2 — Fix P0 + Admin → SEO Control Center (observability, ZERO duplicare SSOT):**
+
+**A · Fix P0 robots.txt** — `frontend/public/robots.txt`: `Disallow: /specialist` (prefix-match) bloca și profilurile publice `/specialists/:id` (15 în sitemap). Restrâns la `Disallow: /specialist$` + `Disallow: /specialist/` (dashboard blocat, profile publice crawlable). Regression: `tests/test_seo_admin_iter218.py`.
+
+**B · Backend observability** — `routes/admin_seo.py` (nou, `/api/admin/seo/*`, `require_role("admin")`). REFOLOSEȘTE `compute_marketplace_gate`, `_count_verified_specialists`, builderele de sitemap din `public.py`, `seo_gate`, `db.pages` (seo_title/seo_description/h1). Snapshot cache 60s. Endpoints: overview, indexability (matrice service×city), inspect (URL Inspector), sitemap + POST sitemap/validate (read-only, nu ocolește gate-ul), pages, clusters, alerts, gsc (Not connected, fără date fabricate). Înregistrat în `routes/register.py`.
+
+**C · Frontend** — `pages/admin/AdminSEO.jsx` (nou, 8 sub-tab-uri: Overview / Indexability / URL Inspector / Sitemap / Pages / Clusters / Alerts / GSC). Buton first-class „SEO Control Center" (NEW) în navigația Admin (secțiunea Conținut) — `AdminLayoutMetronic.jsx` + `AdminConsole.jsx`. Read-only, fără „Force Index".
+
+**Cifre reale (preview)**: 68 URL indexabile (static 17 / content 29 / marketplace 7 / specialists 15); 200 NOINDEX (thin service×city, corect excluse); prag gate = 3 verificați. 0 alerte critice, 1 avertisment (thin excluded — informativ). Clusterul Design Interior reprezentat + marcat „pregătit pentru Batch 2" (NU s-au generat paginile Batch 2).
+
+**Teste**: 11 pytest (3 regresii sitemap + 8 admin SEO/robots/gate) + 6 QA runners SEO — toate PASS. UI verificat E2E ca admin (toate 8 sub-tab-uri + Validate Sitemap = 6/6 checks green).
+
+**NICIO rescriere a fundației SEO.** SPA păstrat (fără SSR/prerender). Fără a doua sursă de adevăr.
+
+---
+
 ## 🧭 SEO EXPANSION — BATCH 1: Indexability Gate + Sitemap-Index + Cluster „Probleme casă" (Iun 2026)
 
 Fundația tehnică pentru SEO programatic, FĂRĂ a schimba arhitectura SPA client-rendered. Aprobat de Fondator (2a + 2b + BreadcrumbList peste tot). Verificat E2E (curl + screenshots admin + 6 QA runners SEO + 4 pytest sitemap PASS).

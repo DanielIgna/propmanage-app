@@ -5,7 +5,8 @@ Disallow: /admin/
 Disallow: /api/admin
 Disallow: /api/admin/
 Disallow: /client
-Disallow: /specialist
+Disallow: /specialist$
+Disallow: /specialist/
 Disallow: /operator
 Disallow: /dashboard
 Disallow: /auth/callback

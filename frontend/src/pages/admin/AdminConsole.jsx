@@ -24,6 +24,7 @@ import { AdminQAPlaybook } from "./AdminQAPlaybook";
 import { AdminSubAdmins } from "./AdminSubAdmins";
 import { AdminApprovals } from "./AdminApprovals";
 import { AdminKYCQueue } from "./AdminKYCQueue";
+import { AdminSEO } from "./AdminSEO";
 
 const TITLES = {
   overview: { title: "Dashboard", subtitle: "Privire de ansamblu asupra platformei" },
@@ -52,6 +53,7 @@ const TITLES = {
   sub_admins: { title: "Sub-Admini & RBAC", subtitle: "Gestionare conturi admin cu scope · senior/junior · audit log" },
   approvals: { title: "Aprobări Admin", subtitle: "Queue de cereri pendinte · senior aprobă acțiuni junior · istoric decizii" },
   kyc: { title: "KYC · Verificări Identitate", subtitle: "Review documente buletin + selfie · aprobă & marchează VERIFIED" },
+  seo: { title: "SEO Control Center", subtitle: "Observability read-only peste fundația SEO · Indexability Gate · Sitemap · URL Inspector · Clusters" },
 };
 
 export const AdminDashboard = () => {
@@ -118,6 +120,7 @@ export const AdminDashboard = () => {
       {active === "sub_admins" && <AdminSubAdmins />}
       {active === "approvals" && <AdminApprovals />}
       {active === "kyc" && <AdminKYCQueue />}
+      {active === "seo" && <AdminSEO />}
     </AdminLayoutMetronic>
   );
 };

@@ -195,6 +195,7 @@ const NAV_SECTIONS = [
     icon: FileText,
     zone: "business",
     items: [
+      { id: "seo", label: "SEO Control Center", icon: Search, badge: "NEW" },
       { id: "cms", label: "Texte (CMS)", icon: FileText },
       { id: "emails", label: "Template-uri Email", icon: Mail },
       { id: "zones", label: "Zone Acoperire", icon: MapPin },

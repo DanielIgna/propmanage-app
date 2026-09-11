@@ -34,6 +34,7 @@ from routes.admin_ai import router as admin_ai_router
 from routes.security_guard import router as security_guard_router
 from routes.concierge import router as concierge_router, admin_router as concierge_admin_router
 from routes.public import router as public_router, admin_router as public_admin_router
+from routes.admin_seo import router as admin_seo_router
 from routes.demo_time_machine import router as demo_time_machine_router
 from routes.gdpr import router as gdpr_router, admin_router as gdpr_admin_router
 from routes.digital_twin import router as digital_twin_router, admin_router as digital_twin_admin_router, operator_router as digital_twin_operator_router
@@ -195,6 +196,7 @@ ALL_ROUTERS = (
     security_guard_router, concierge_router, concierge_admin_router,
     public_router,
     public_admin_router,
+    admin_seo_router,
     demo_time_machine_router,
     gdpr_router, gdpr_admin_router,
     digital_twin_router, digital_twin_admin_router, digital_twin_operator_router,
