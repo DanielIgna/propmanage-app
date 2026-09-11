@@ -1,3 +1,23 @@
+## 🐞 FIX GSC OAuth #2 — token_exchange pică pe producție (Iun 2026)
+
+**Simptom (prod)**: după consimțământ Google reușit, callback-ul redirecta cu `reason=token_exchange` (confirmat din header-ul `Location` de Fondator), documentul GSC NU se scria → „Not connected".
+
+**Diagnostic (dovezi reale pe producție)**:
+- Fix-ul #1 RULA pe prod (authorization_url fără `include_granted_scopes`, scope/offline/consent corecte, redirect corect).
+- Callback = cod nou (redirecturi corecte error/missing_code/bad_state).
+- Ramura exactă = **token_exchange** → `flow.fetch_token(code=code)` (google-auth-oauthlib) arunca excepție ÎNAINTE de persistare (NU e mismatch persistență↔status — ambele folosesc `db.seo_config {key:"gsc"}`).
+- Probă client la Google (cod fals): `invalid_grant`, NU `invalid_client` → client_id+secret+redirect_uri VALIDE pe acest client; egress OK.
+- **Cauza reală**: stratul `google-auth-oauthlib`/oauthlib din schimbul de token. Fluxul de LOGIN Google EXISTENT (`auth.py::google_direct_callback`) folosește un POST DIRECT `httpx` la `https://oauth2.googleapis.com/token` și FUNCȚIONEAZĂ pe prod — pe când fluxul GSC folosea oauthlib și pica.
+
+**Fix (minim, root-cause)** în `routes/admin_seo.py::seo_gsc_oauth_callback`: înlocuit `flow.fetch_token()` cu ACELAȘI POST direct `httpx` ca la login (client_id/secret/redirect_uri/grant_type). Elimină complet stratul oauthlib. Adăugat surfacing de eroare SIGUR (fără secrete): `reason=token_exchange&detail=<cod Google>` (invalid_grant/invalid_client/network/...) + persistare `gsc_diag.last_error`, afișat în tab-ul GSC + în flash. Verifică `scope` conține `webmasters.readonly` + `refresh_token` prezent; șterge `gsc_diag` la succes. Nu s-a atins login-ul, demo-reset, gate/canonical/robots/sitemap.
+
+**Verificat E2E pe PREVIEW**: state valid + cod fals → POST direct ajunge la Google → `invalid_grant` → `detail=invalid_grant` + `last_error` în status (fără secrete). Cu un cod REAL, Google returnează 200 + refresh_token → persistare → `connected`. Teste: `test_gsc_oauth_iter220` (8, inclusiv guard direct-exchange) + iter218/219/preturi = **34 PASS**.
+
+**⚠️ Necesită REDEPLOY pe producție** (prod rulează încă vechiul cod oauthlib). După redeploy → Admin → SEO → GSC → „Conectează cu Google" → va reuși (același mecanism ca login-ul care merge deja pe prod).
+
+---
+
+
 ## 🐞 FIX GSC OAuth — „Not connected după consimțământ reușit" (Iun 2026)
 
 **Simptom (producție)**: consimțământul Google reușea, redirect înapoi la `/admin` fără eroare OAuth vizibilă, dar SEO Control Center → GSC rămânea „Not connected".

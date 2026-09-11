@@ -965,11 +965,14 @@ async def seo_gsc(user: dict = Depends(require_role("admin"))):
     oauth_available = _gsc_oauth_client_config() is not None
     redirect_uri = _gsc_redirect_uri()
     if not cfg:
+        diag = await db.seo_config.find_one({"key": "gsc_diag"})
         return {
             "connected": False,
             "status": "not_connected",
             "oauth_available": oauth_available,
             "redirect_uri": redirect_uri,
+            "last_error": (diag or {}).get("last_error"),
+            "last_error_at": (diag or {}).get("last_error_at"),
             "message": "Google Search Console nu este conectat. Recomandat: conectează prin "
                        "contul Google existent (OAuth), fără Service Account.",
             "how_to_oauth": [
@@ -1048,6 +1051,22 @@ import jwt as _jwt
 # account's prior grants on the shared client.
 _os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 
+_GSC_TOKEN_URL = "https://oauth2.googleapis.com/token"
+
+
+async def _gsc_store_last_error(code: str):
+    """Persist a SECRET-FREE diagnostic code so the Admin GSC tab can show why the
+    last connection attempt failed (never stores tokens/secrets/auth codes)."""
+    try:
+        await db.seo_config.update_one(
+            {"key": "gsc_diag"},
+            {"$set": {"key": "gsc_diag", "last_error": code,
+                      "last_error_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
 
 @router.get("/admin/seo/gsc/oauth/start")
 async def seo_gsc_oauth_start(property: str = "sc-domain:propmanage.ro",
@@ -1101,28 +1120,62 @@ async def seo_gsc_oauth_callback(request: Request):
     client_config = _gsc_oauth_client_config()
     if not client_config:
         return _back("gsc=error&reason=no_client")
-    from google_auth_oauthlib.flow import Flow
-    flow = Flow.from_client_config(client_config, scopes=GSC_SCOPES, state=state)
-    flow.redirect_uri = _gsc_redirect_uri()
+    cid = _os.environ.get("GOOGLE_CLIENT_ID")
+    csec = _os.environ.get("GOOGLE_CLIENT_SECRET")
+
+    # Exchange code → tokens via a DIRECT POST to Google — the SAME proven pattern the
+    # working Google login flow uses (routes/auth.py::google_direct_callback). This avoids
+    # google-auth-oauthlib's oauthlib scope-strict path, which raised on the superset scope
+    # returned for this shared login/GSC client and silently failed the callback.
+    import httpx
     try:
-        flow.fetch_token(code=code)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(f"[gsc] oauth token exchange failed: {exc}")
-        return _back("gsc=error&reason=token_exchange")
-    creds = flow.credentials
-    if not getattr(creds, "refresh_token", None):
+        async with httpx.AsyncClient(timeout=15) as http:
+            token_r = await http.post(_GSC_TOKEN_URL, data={
+                "code": code,
+                "client_id": cid,
+                "client_secret": csec,
+                "redirect_uri": _gsc_redirect_uri(),
+                "grant_type": "authorization_code",
+            })
+    except Exception as exc:  # noqa: BLE001  — network/SSL/timeout reaching Google
+        logger.warning(f"[gsc] oauth token exchange network error: {type(exc).__name__}")
+        await _gsc_store_last_error("network")
+        return _back("gsc=error&reason=token_exchange&detail=network")
+
+    if token_r.status_code != 200:
+        # Google returns a safe 'error' code (invalid_grant / invalid_client / ...).
+        try:
+            gerr = (token_r.json() or {}).get("error") or f"http_{token_r.status_code}"
+        except Exception:  # noqa: BLE001
+            gerr = f"http_{token_r.status_code}"
+        gerr = re.sub(r"[^a-z0-9_]+", "", str(gerr).lower())[:40] or "unknown"
+        logger.warning(f"[gsc] oauth token exchange refused status={token_r.status_code} error={gerr}")
+        await _gsc_store_last_error(gerr)
+        return _back(f"gsc=error&reason=token_exchange&detail={gerr}")
+
+    tokens = token_r.json()
+    refresh_token = tokens.get("refresh_token")
+    granted_scope = tokens.get("scope", "") or ""
+    if not refresh_token:
+        await _gsc_store_last_error("no_refresh_token")
         return _back("gsc=error&reason=no_refresh_token")
+    if "webmasters.readonly" not in granted_scope:
+        await _gsc_store_last_error("missing_scope")
+        return _back("gsc=error&reason=missing_scope")
+
     prop = data.get("p") or "sc-domain:propmanage.ro"
     await db.seo_config.update_one(
         {"key": "gsc"},
         {"$set": {"key": "gsc", "auth_type": "oauth", "property": prop,
-                  "refresh_token": creds.refresh_token,
+                  "refresh_token": refresh_token,
                   "account_email": data.get("by"),
                   "connected_by": data.get("by"),
+                  "granted_scope": granted_scope,
                   "connected_at": datetime.now(timezone.utc).isoformat()},
          "$unset": {"service_account_json": ""}},
         upsert=True,
     )
+    await db.seo_config.delete_one({"key": "gsc_diag"})  # clear last error on success
     return _back("gsc=connected")
 
 

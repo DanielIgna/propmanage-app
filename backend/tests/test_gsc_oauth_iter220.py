@@ -54,6 +54,40 @@ def test_gsc_report_disconnected_returns_empty_not_fake(admin):
         assert d["queries"] == [] and d["pages"] == []
 
 
+def test_callback_direct_exchange_reaches_google_and_surfaces_error(admin):
+    """End-to-end guard for the fix: the callback now exchanges the code via a DIRECT
+    POST to Google (same pattern as the working login flow), NOT google-auth-oauthlib.
+    A valid signed state + a bogus code must reach Google, get 'invalid_grant', and be
+    surfaced SAFELY as detail=invalid_grant + persisted last_error (no secrets)."""
+    import urllib.parse as up
+    # 1) obtain a valid signed state from the real start endpoint
+    d = admin.get(f"{API}/admin/seo/gsc/oauth/start", timeout=20).json()
+    state = dict(up.parse_qsl(up.urlparse(d["authorization_url"]).query))["state"]
+
+    # 2) hit the callback with the valid state + a bogus code (no real secret involved)
+    r = admin.get(f"{API}/admin/seo/gsc/oauth/callback",
+                  params={"code": "BOGUS_DIAGNOSTIC_CODE", "state": state},
+                  timeout=20, allow_redirects=False)
+    assert r.status_code in (302, 307)
+    loc = r.headers.get("location", "")
+    # proves: state ok → direct exchange executed → Google reachable → invalid_grant surfaced
+    assert "gsc=error" in loc and "reason=token_exchange" in loc
+    assert "detail=invalid_grant" in loc, f"expected invalid_grant, got: {loc}"
+
+    # 3) status endpoint exposes the safe diagnostic (never a token/secret)
+    s = admin.get(f"{API}/admin/seo/gsc", timeout=20).json()
+    assert s["connected"] is False
+    assert s.get("last_error") == "invalid_grant"
+
+    # 4) cleanup the diagnostic doc so preview admin stays clean
+    try:
+        import asyncio
+        from db import db
+        asyncio.run(db.seo_config.delete_many({"key": {"$in": ["gsc_diag", "gsc"]}}))
+    except Exception:
+        pass
+
+
 def test_gsc_admin_only():
     anon = requests.Session()
     for path in ("/admin/seo/gsc", "/admin/seo/gsc/oauth/start"):

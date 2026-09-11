@@ -571,9 +571,10 @@ const GSCView = ({ isDark, txt, muted, border, rowBorder }) => {
       const p = new URLSearchParams(window.location.search);
       const g = p.get("gsc");
       if (g) {
-        return g === "connected"
-          ? { ok: true, text: "Conectat cu Google Search Console ✓" }
-          : { ok: false, text: `Conectare GSC eșuată: ${p.get("reason") || g}` };
+        if (g === "connected") return { ok: true, text: "Conectat cu Google Search Console ✓" };
+        const reason = p.get("reason") || g;
+        const detail = p.get("detail");
+        return { ok: false, text: `Conectare GSC eșuată: ${reason}${detail ? ` (${detail})` : ""}` };
       }
     } catch { /* noop */ }
     return null;
@@ -636,6 +637,11 @@ const GSCView = ({ isDark, txt, muted, border, rowBorder }) => {
           </span>
         </div>
         <p className={`text-sm ${txt} max-w-2xl mb-4`}>{status?.message}</p>
+        {status?.last_error && (
+          <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-500 text-xs px-3 py-2 max-w-2xl" data-testid="seo-gsc-last-error">
+            Ultima încercare de conectare a eșuat: <code>{status.last_error}</code>{status.last_error_at ? ` · ${new Date(status.last_error_at).toLocaleString("ro-RO")}` : ""}
+          </div>
+        )}
 
         {status?.oauth_available && (
           <div className="mb-6 rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 max-w-2xl" data-testid="seo-gsc-oauth">
