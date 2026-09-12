@@ -208,7 +208,7 @@ async def seed():
             })
 
     # Write test credentials
-    creds_path = Path("/app/memory/test_credentials.md")
+    creds_path = Path(__file__).resolve().parent.parent / "memory" / "test_credentials.md"
     creds_path.parent.mkdir(exist_ok=True)
     creds_path.write_text("""# PropManage Test Credentials
 

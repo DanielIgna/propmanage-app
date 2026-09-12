@@ -45,7 +45,7 @@ logger = logging.getLogger("propmanage.house_health")
 router = APIRouter(prefix="/api/house-health", tags=["house-health"])
 admin_router = APIRouter(prefix="/api/admin/house-health", tags=["house-health-admin"])
 
-UPLOAD_DIR = Path("/app/backend/uploads/house_health")
+UPLOAD_DIR = Path(os.environ.get("HH_UPLOAD_DIR") or str(Path(__file__).resolve().parent.parent / "uploads" / "house_health"))
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_DOC_CATEGORIES = [
