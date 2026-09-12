@@ -1,0 +1,60 @@
+{
+  "summary": "BUGFIX-001 (PropManage Cartea Casei / DocumentVault upload sheet) — frontend end-to-end validated on Mobile (390x844, has_touch=True, is_mobile=True, iPhone UA — pointer:coarse=true) and Desktop (1920x800, has_touch=False — pointer:fine=true). The .cv2-fade animation-fill-mode='backwards' fix in index.css is confirmed (line 768). All 8 acceptance criteria from the review request PASS.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "index.css:768 — .cv2-fade uses 'backwards' as required. If regressed to 'both', the residual transform matrix on v2-property-view would once again render position:fixed descendant Sheets off-screen (previously at y=2754).",
+    "DocumentVault card on desktop is wrapped in a `lg:hidden` ancestor inside the Property view — accessible only after clicking hub-subnav-carte (subnav tab). This is intentional (desktop uses subnav routing) but worth noting: vault-add-btn is initially display:none on desktop until user selects 'Cartea casei' subnav.",
+    "Sheet component (ui.jsx) uses fixed inset-0 as backdrop covering full viewport on both viewports — inner card is centered on desktop via items-end/items-center flex. Bounding-box 0/0/1920/800 reflects the backdrop, not the visible card."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (per instructions)", "frontend": "100%"},
+  "test_credentials": "Client: client@propmanage.io / Client123!",
+  "seed_data_creation": "Uploaded 2 small PNG test documents (test_doc.png mobile + test_desktop.png desktop) into the existing demo client's vault to exercise the end-to-end persistence path.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "BUGFIX-001 fully validated. Do NOT regress .cv2-fade animation-fill-mode from 'backwards' to 'both'. On desktop, DocumentVault is behind hub-subnav-carte (click required). Mobile bottom-sheet appears at y within [0..vh]. vault-source-sheet ONLY renders when window.matchMedia('(pointer: coarse)').matches — i.e., requires playwright new_context(has_touch=True). The memory-celebration modal (z-90) appears after first document upload of the session and blocks subsequent taps until dismissed — testing agents should either dismiss it or continue in a fresh flow.",
+  "detailed_verification": {
+    "mobile_390x844_touch": {
+      "pointer_coarse": true,
+      "vault_add_btn_box": {"x": 37, "y": 497, "width": 316, "height": 44, "in_viewport": true},
+      "vault_upload_sheet": "visible, y=0, height=844 (full-viewport backdrop, content bottom-sheet centered) — NOT off-screen",
+      "vault_source_sheet_on_pick": "PRESENT (correct on mobile)",
+      "vault_source_camera": "present",
+      "vault_source_gallery": "present",
+      "vault_source_cancel": "present, closes source-sheet on tap",
+      "input_attrs": {"vault-camera-input": {"accept": "image/*", "capture": "environment"}, "vault-file-input": {"accept": ".pdf,.jpg,.jpeg,.png,.webp,.gif,.heic,.mp4,.mov"}},
+      "e2e_upload": "set_input_files → vault-file-name='test_doc.png' → 12 chips → submit not disabled → sheet closed after upload",
+      "z_index_pick_center": "topmost element = vault-file-name (inside sheet content). AI Mentor NOT intercepting.",
+      "elementFromPoint_over_upload_submit_center": "= vault-upload-submit itself (clickable, not covered by mentor)"
+    },
+    "mobile_floating_stack": {
+      "explain_page_btn": {"x": 16, "y": 733.5, "width": 105, "height": 34.5},
+      "v2_bottom_nav": {"x": 0, "y": 778, "width": 390, "height": 66},
+      "mentor_bottom_vs_nav_top": "768 <= 778 — mentor above nav with 10px gap ✓",
+      "cookie_banner_reopen": {"x": 16, "y": 680, "width": 36, "height": 36},
+      "reopen_vs_mentor_overlap": false,
+      "with_upload_sheet_open_mentor_center_elementFromPoint": "vault-more-toggle (sheet content) — mentor is below sheet backdrop (z-50 > mentor z-40) ✓"
+    },
+    "desktop_1920x800_no_touch": {
+      "pointer_fine": true,
+      "pointer_coarse": false,
+      "regression_nav_tabs": "v2-desktop-nav-home / -jobs / -property / -settings all present and clickable",
+      "hub_subnav_carte": "required to reveal DocumentVault on desktop",
+      "vault_add_btn_after_subnav": {"x": 621, "y": 583.5, "width": 479, "height": 51.2, "visible": true},
+      "vault_upload_sheet_desktop": "opens; backdrop covers viewport, content card visible",
+      "file_chooser_via_pick": "TRIGGERED (native file dialog) ✓",
+      "vault_source_sheet_on_desktop": "NOT PRESENT ✓ (correct behavior — pointer:fine)",
+      "e2e_upload": "set_input_files → vault-file-name='test_desktop.png' → chips → submit → sheet closed",
+      "vault_open_all": "visible and clickable"
+    }
+  },
+  "rca of the issue": "Original bug: .cv2-fade{animation-fill-mode:both} in index.css kept a transform matrix() on the .cv2-fade element (v2-property-view container) permanently after the fadeUp animation completed. Because CSS `transform` establishes a containing block for position:fixed descendants, the vault-upload-sheet (fixed inset-0) was positioned relative to the transformed parent and ended up at y≈2754 (off-screen). Fix: change fill-mode to 'backwards' (index.css:768) so the transform is only applied before the animation starts, not retained after. Regression test: on mobile, opening vault-upload-sheet now yields bounding box y=0, h=844 — inside viewport."
+}

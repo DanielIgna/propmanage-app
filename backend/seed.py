@@ -1,6 +1,7 @@
 """Idempotent seed for demo accounts, properties, requests, twins, regions, portfolio."""
 import uuid
 import logging
+import os
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
@@ -19,9 +20,14 @@ async def seed():
         {"email": "specialist@propmanage.io", "password": "Spec123!", "name": "Mihai Ionescu", "role": "specialist", "specialty": "hvac", "phone": "+40 723 456 789"},
         {"email": "specialist2@propmanage.io", "password": "Spec123!", "name": "Elena Dumitru", "role": "specialist", "specialty": "plumbing", "phone": "+40 734 567 890"},
         {"email": "pending@propmanage.io", "password": "Spec123!", "name": "Vasile Constantinescu", "role": "specialist", "specialty": "electric", "phone": "+40 745 678 901", "_pending": True},
-        {"email": "admin@propmanage.io", "password": "1!nasov01ADMIN", "name": "Administrator", "role": "admin", "phone": ""},
+        {"email": "admin@propmanage.io", "password": os.environ.get("SEED_ADMIN_PASSWORD", "Admin123!"), "name": "Administrator", "role": "admin", "phone": ""},
         {"email": "operator@propmanage.io", "password": "Op123!", "name": "Lucian Stan", "role": "operator", "phone": ""},
     ]
+
+    # EO-026: fără date demo în producție — doar contul admin (SEED_DEMO_DATA != true)
+    seed_demo = (os.environ.get("SEED_DEMO_DATA") or "").strip().lower() == "true"
+    if not seed_demo:
+        demo_users = [u for u in demo_users if u["email"] == "admin@propmanage.io"]
 
     user_ids = {}
     for u in demo_users:
@@ -35,6 +41,9 @@ async def seed():
                 update_fields["coverage_zones"] = ["Bucuresti-Sector1", "Bucuresti-Sector2"]
                 update_fields["service_categories"] = [u.get("specialty"), "interior_design"] if u.get("specialty") else ["interior_design"]
                 update_fields["availability_status"] = existing.get("availability_status") or "available"
+                if not u.get("_pending"):
+                    # Verified demo specialists can switch to the client view (phase 11)
+                    update_fields["dual_role_enabled"] = True
                 if u.get("_pending") and existing.get("verified"):
                     update_fields["verified"] = False
                     update_fields["tier"] = None
@@ -71,6 +80,7 @@ async def seed():
             "coverage_zones": ["Bucuresti-Sector1", "Bucuresti-Sector2"] if u["role"] == "specialist" else [],
             "service_categories": [u.get("specialty"), "interior_design"] if u["role"] == "specialist" and u.get("specialty") else [],
             "availability_status": "available" if u["role"] == "specialist" else None,
+            "dual_role_enabled": u["role"] == "specialist" and not u.get("_pending"),
             "documents": [
                 {"id": str(uuid.uuid4()), "type": "id_card", "name": "CI Vasile Constantinescu.pdf", "url": "data:application/pdf;base64,placeholder", "status": "pending", "uploaded_at": datetime.now(timezone.utc).isoformat()},
                 {"id": str(uuid.uuid4()), "type": "certification", "name": "Atestat ANRE electrician.pdf", "url": "data:application/pdf;base64,placeholder", "status": "pending", "uploaded_at": datetime.now(timezone.utc).isoformat()},
@@ -143,7 +153,6 @@ async def seed():
     if client_id:
         prop_for_twin = await db.properties.find_one({"owner_id": client_id})
         if prop_for_twin:
-            from bson import ObjectId  # local import to avoid top-level coupling
             prop_id_str = str(prop_for_twin["_id"])
             existing_twin = await db.twins.find_one({"property_id": prop_id_str})
             now_iso = datetime.now(timezone.utc).isoformat()
@@ -177,7 +186,7 @@ async def seed():
                 await db.twins.insert_one(twin_doc)
 
     # Seed portfolio (idempotent)
-    if await db.portfolio.count_documents({}) == 0:
+    if seed_demo and await db.portfolio.count_documents({}) == 0:
         spec1 = await db.users.find_one({"email": "specialist@propmanage.io"})
         spec2 = await db.users.find_one({"email": "specialist2@propmanage.io"})
         if spec1 and spec2:
@@ -207,10 +216,11 @@ async def seed():
                 "created_at": datetime.now(timezone.utc).isoformat(),
             })
 
-    # Write test credentials
-    creds_path = Path("/app/memory/test_credentials.md")
+    # Write test credentials (parola admin REALĂ din env — sursa driftului recurent)
+    admin_pw = os.environ.get("SEED_ADMIN_PASSWORD", "Admin123!")
+    creds_path = Path(__file__).resolve().parent.parent / "memory" / "test_credentials.md"
     creds_path.parent.mkdir(exist_ok=True)
-    creds_path.write_text("""# PropManage Test Credentials
+    creds_path.write_text(f"""# PropManage Test Credentials
 
 ## Demo Accounts (Pre-seeded, idempotent)
 
@@ -219,12 +229,17 @@ async def seed():
 | Client | client@propmanage.io | Client123! |
 | Specialist (HVAC, verified) | specialist@propmanage.io | Spec123! |
 | Specialist (Plumbing, verified) | specialist2@propmanage.io | Spec123! |
-| Admin | admin@propmanage.io | Admin123! |
+| Admin | admin@propmanage.io | {admin_pw} |
+| Founder / Owner (PREVIEW ONLY — prod folosește Google) | danieligna1@gmail.com | Founder2026!kc |
 | Operator | operator@propmanage.io | Op123! |
+| Franchise Admin (tenant: cluj) | franciza.cluj@propmanage.io | Franciza123! |
+
+Notă Founder: Enterprise Knowledge Center (`/admin/knowledge-center`, API `/api/founder/knowledge/*`)
+este vizibil DOAR pentru OWNER_EMAIL (danieligna1@gmail.com). Ceilalți admini primesc 403.
 
 ## Auth Endpoints
-- POST /api/auth/login - Body: {email, password}
-- POST /api/auth/register - Body: {email, password, name, role}
+- POST /api/auth/login - Body: {{email, password}}
+- POST /api/auth/register - Body: {{email, password, name, role}}
 - POST /api/auth/logout
 - GET /api/auth/me
 

@@ -1,22 +1,14 @@
 """PropManage router: ai."""
 import os
-import asyncio
-import json
 import logging
-from typing import Optional, List, Literal, Dict
-from datetime import datetime, timezone, timedelta
-from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, Field
+from typing import Optional
+from datetime import datetime, timezone
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from db import db
-from core_utils import serialize_doc, effective_role
-from deps import get_current_user, require_role
-from services import send_email, notify, send_web_push, log_event
-from email_service import (
-    send_template, tpl_welcome, tpl_dispute_opened, tpl_dispute_resolved,
-    tpl_design_phase_quote, tpl_specialist_verified, tpl_escrow_funded,
-)
+from core_utils import serialize_doc
+from deps import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["ai"])
@@ -73,13 +65,24 @@ async def ai_chat(data: AiChatIn, user: dict = Depends(get_current_user)):
     role = user.get("role", "client")
     
     try:
+        # Rebuild conversation history from DB — a fresh LlmChat instance per
+        # request has no memory, so previous turns must be replayed explicitly.
+        prev = await db.ai_messages.find(
+            {"session_id": session_id, "user_id": user["id"]}
+        ).sort("created_at", 1).to_list(40)
+        initial_messages = [{"role": "system", "content": _build_system_prompt(role)}]
+        for m in prev[-20:]:  # cap replayed context at last 20 messages
+            if m.get("role") in ("user", "assistant") and m.get("text"):
+                initial_messages.append({"role": m["role"], "content": m["text"]})
+
         chat = LlmChat(
             api_key=EMERGENT_LLM_KEY,
             session_id=session_id,
             system_message=_build_system_prompt(role),
+            initial_messages=initial_messages,
         ).with_model("anthropic", "claude-haiku-4-5-20251001")
         
-        # Send to LLM (multi-turn history maintained by library)
+        # Send to LLM (history replayed via initial_messages above)
         response_text = await chat.send_message(UserMessage(text=data.message))
         
         # Persist both messages only on success (no orphans)

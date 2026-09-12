@@ -1,0 +1,36 @@
+{
+  "summary": "Iter86 — Autonomy Orchestrator Sprint 1 (backend + frontend) + BUG #004 fix (Marketplace Partners Restore) + regression smoke. 19/19 backend pytest PASS on /api/admin/orchestrator/* (overview shape with 3 playbooks, simulate/smoke_fail auto_resolved+dedupe append, simulate/autonomy_score_drop test-mode SIMULARE marker, simulate/webhook_fail retry_scheduled + retry_pending increment, retry-tick contract, toggle disable→skipped_disabled ledger+simulate returns handled=false reason=playbook_disabled→re-enable, ledger GET, 401/403 for non-admin on all endpoints). Frontend E2E on /admin/orchestrator: page loads with data-testid=orchestrator-page, 5 KPI cards (orch-stat-ac-iuni-azi + minute-salvate-azi + auto-rezolvate-azi + escalad-ri-azi + minute-salvate-total), 3 playbook cards with functional toggle+simulate, orch-message shows '✅ Auto-rezolvat' after simulate autonomy_reflex, ledger grew 10→11, orch-retry-tick returned '2 procesate, 0 trimise, 2 reprogramate, 0 eșuate definitiv' (expected in this env — Resend DNS unverified per BUG #003), toggle disable makes simulate button disabled, re-enable restores; cross-nav orch-to-autonomy → /admin/autonomy → autonomy-to-orchestrator → back. BUG #004 verified: existing terminated partner had restore button, confirm()→PATCH→archive button (partner became Activ). Client regression: login as client@propmanage.io + /client loads client-dashboard-v2 with real data (49 unread, 103 active jobs, TEST_V2_iter85 as active work). Autonomy score endpoint still returns full scores+tier+breakdown (reflex snapshot did not break engine).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_orchestrator_iter86.py",
+    "/app/test_reports/pytest/iter86_orchestrator.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "orchestrator/engine.py L23: `_cap_collection` uses .skip(keep) then delete — correct but could be a single find_one on ObjectId sorted asc for cleaner logic. Not a blocker.",
+    "orchestrator/engine.py notify_admins L44: '_get_super_admins()' filters admin_scope general OR null — good. But `send_web_push` import inside loop; small perf hit, not critical.",
+    "orchestrator/engine.py L189: `orchestrator_retry_tick` picks items with `next_retry_at <= now` and `.limit(20)` — no ordering, so on high load could starve older items. Consider `.sort('next_retry_at', 1)` before .limit(20).",
+    "orchestrator/engine.py L247: `backoff_min = 5 * (2 ** attempts)` — 5, 10, 20, 40 min. On the 3rd attempt fail path (attempts==3 >= max_attempts==3) we hit the failed_permanent branch, so backoff for a 3rd is never used — correct. Good.",
+    "orchestrator/playbooks.py handle_smoke_fail L49: dedupe query uses auto_source+status=active+created_at>=today_start — solid. Only issue: it doesn't re-check if the 'active' session was manually closed by a QA operator today; a new smoke_fail after close would not re-open a session, it would create a new one only if the previous is not active. This is correct behavior actually. OK.",
+    "routes/orchestrator.py: no rate-limiting on /simulate/* — an admin could spam and pollute ledger. Given admin-only access, acceptable but consider a soft rate limit for future.",
+    "AutonomyOrchestratorPage.jsx L30: `orch-stat-${label.toLowerCase().replace(/[^a-z0-9]+/g, \"-\")}` — Romanian diacritics ț/ă collapse to '-' producing IDs like 'orch-stat-ac-iuni-azi'. Works but is fragile (label change breaks testid). Consider a stable key per StatCard (e.g., accept `testId` prop).",
+    "AutonomyOrchestratorPage.jsx L53: className mixes `w-10 h-5.5 h-6` — `h-5.5` is not a Tailwind default class (looks like a leftover typo); the following `h-6` wins so the toggle displays fine, but the h-5.5 is dead. Minor cleanup.",
+    "AutonomyOrchestratorPage.jsx: no live polling — after ledger updates via other cron ticks, admin must manually refresh page. For Sprint 2 consider adding a 30s poll or SSE.",
+    "MarketplacePartnersPage.jsx L299 restore(): `alert(e.response?.data?.detail || e.message)` — same UX flaw as archive; consider a toast."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_orchestrator_iter86.py (created)"
+  ],
+  "success_rate": {"backend": "19/19 (100%)", "frontend": "all orchestrator E2E + BUG #004 restore + client regression PASS (100%)"},
+  "test_credentials": "Admin: admin@propmanage.io / 1!nasov01ADMIN (from SEED_ADMIN_PASSWORD env, NOT Admin123! as in test_credentials.md — file is stale). Client: client@propmanage.io / Client123! (works).",
+  "seed_data_creation": "Backend tests added ~7 new ledger entries (smoke_fail dedupe, autonomy_score_drop SIMULARE, webhook_fail retry_scheduled, skipped_disabled during toggle test). All test=true so easy to identify. No user/property data touched. Frontend simulate added 1 more autonomy_reflex ledger entry. Marketplace: restored one previously-terminated partner (id 6a3cff446315068e7e159209) back to active — this is the test artifact.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Autonomy Orchestrator Sprint 1 is FULLY functional end-to-end. /app/backend/tests/test_orchestrator_iter86.py is the regression suite (19 tests, ~5s runtime). Sample flows to reproduce: (1) login admin, GET /api/admin/orchestrator/overview → should show today.actions>0, 3 playbooks, retry_pending>0 (there are still pending retry queue items from Resend failures — expected). (2) POST /simulate/smoke_fail returns ledger.outcome=auto_resolved (creates QA session on first call today, appends finding on subsequent calls). (3) POST /playbooks/smoke_fail_to_qa/toggle {enabled:false} — subsequent simulate returns handled:false reason:playbook_disabled. ALWAYS re-enable at the end. Retry queue accumulates items (retry_pending was 3 during test) — these will keep rescheduling because Resend DNS is broken in this env; that's expected. Admin credential correct = 1!nasov01ADMIN (NOT Admin123! — test_credentials.md is out of date, please update it). Marketplace terminated partner id used for BUG #004 test: 6a3cff446315068e7e159209 (now Activ).",
+  "rca_of_the_issue": "No new bugs found. All 3 review-request features verified working."
+}

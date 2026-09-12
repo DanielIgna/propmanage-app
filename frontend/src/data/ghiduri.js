@@ -13,6 +13,201 @@
 
 export const GHIDURI = [
   {
+    slug: "ce-este-designul-interior",
+    title: "Ce este designul interior? Rol, etape și beneficii · Ghid 2026",
+    h1: "Ce este designul interior și de ce contează",
+    description: "Ce înseamnă designul interior, ce face concret un designer, care sunt etapele unui proiect și când merită să apelezi la unul. Explicat clar, fără jargon.",
+    tag: "Bazele designului",
+    icon: "BookOpen",
+    publishedAt: "2026-06-11",
+    updatedAt: "2026-06-11",
+    readMins: 6,
+    sections: [
+      {
+        heading: "Definiție simplă",
+        body: [
+          "Designul interior este procesul prin care un spațiu locuibil este planificat astfel încât să fie **funcțional, confortabil și coerent estetic**. Nu înseamnă doar „să arate frumos” — înseamnă decizii despre circulație, lumină, depozitare, materiale și buget, transformate într-un plan care poate fi executat.",
+          { type: "callout", title: "Pe scurt", body: "Un designer bun rezolvă mai întâi problemele de funcționalitate (cum folosești spațiul), apoi pe cele estetice (cum arată)." },
+        ],
+      },
+      {
+        heading: "Ce face concret un designer de interior",
+        body: [
+          "Rolul depășește alegerea culorilor. Un proiect complet include:",
+          { type: "list", items: [
+            "Releveu și analiza spațiului (cote reale, lumină, instalații)",
+            "Plan de mobilare optimizat pe circulație și depozitare",
+            "Concept vizual și randări 3D",
+            "Planuri tehnice pentru echipele de execuție",
+            "Listă de materiale și obiecte pentru bugetare corectă",
+          ] },
+        ],
+      },
+      {
+        heading: "Când merită să apelezi la un designer",
+        body: [
+          "Designul aduce cea mai mare valoare la renovări și la spații mici sau atipice, unde greșelile costă mult. Chiar și un simplu concept poate preveni cumpărături greșite de mii de lei.",
+          "La PropManage, procesul leagă designul de execuția reală: Design → Audit → Digital Twin → Proiectare → Implementare, cu specialiști verificați și plăți protejate prin escrow.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Designul interior este scump?", a: "Depinde de ce incluzi. Un concept costă puțin; un proiect tehnic complet costă mai mult, dar economisește bani pe șantier prin evitarea greșelilor. Vezi pagina de preț pentru factorii reali." },
+      { q: "Care e diferența dintre design interior și decorare?", a: "Decorarea se ocupă doar de aspect (textile, obiecte, culori). Designul interior include și partea funcțională și tehnică a spațiului." },
+    ],
+    relatedCategories: ["interior_design"],
+    internalLinks: [
+      { label: "Design interior — pagina principală", to: "/design-interior" },
+      { label: "Cât costă designul interior", to: "/design-interior/pret" },
+      { label: "Ce include un proiect de design", to: "/ghiduri/ce-include-un-proiect-de-design-interior" },
+      { label: "Cum alegi un designer interior", to: "/ghiduri/cum-alegi-designer-interior" },
+    ],
+  },
+  {
+    slug: "design-interior-sau-arhitect",
+    title: "Design interior sau arhitect? Ce alegi și când · Ghid 2026",
+    h1: "Design interior sau arhitect: de care ai nevoie?",
+    description: "Când ai nevoie de un designer de interior și când de un arhitect? Diferențele de rol, ce poate face fiecare și cum lucrează împreună la o renovare.",
+    tag: "Comparație",
+    icon: "Users",
+    publishedAt: "2026-06-11",
+    updatedAt: "2026-06-11",
+    readMins: 6,
+    sections: [
+      {
+        heading: "Diferența de rol",
+        body: [
+          "Cei doi profesioniști se completează, dar au responsabilități diferite:",
+          { type: "list", items: [
+            "**Arhitectul** se ocupă de structură, autorizații, modificări de anvelopă și conformitate legală. Este obligatoriu pentru intervenții structurale.",
+            "**Designerul de interior** se ocupă de organizarea și amenajarea spațiului interior: funcțiune, mobilare, finisaje, lumină, atmosferă.",
+          ] },
+        ],
+      },
+      {
+        heading: "Când ai nevoie de arhitect",
+        body: [
+          "Ai nevoie de arhitect (și, adesea, de expert tehnic) când intervii asupra structurii: demolezi pereți portanți, modifici fațada, extinzi sau schimbi funcțiunea. Aceste lucrări cer proiect și autorizație.",
+          { type: "callout", title: "Atenție", body: "Demolarea unui perete structural fără expertiză este periculoasă și ilegală. Un audit sau un Digital Twin cu releveu clarifică ce se poate demola în siguranță." },
+        ],
+      },
+      {
+        heading: "Când e suficient un designer",
+        body: [
+          "Pentru majoritatea amenajărilor de apartament fără modificări structurale, un designer de interior acoperă tot ce ai nevoie: reorganizare, mobilare, finisaje, iluminat și coordonarea execuției.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Pot lucra amândoi la același proiect?", a: "Da, și adesea este ideal: arhitectul rezolvă structura și autorizațiile, designerul se ocupă de interior. La PropManage găsești ambele tipuri de specialiști verificați." },
+      { q: "Cine decide dacă un perete e structural?", a: "Un inginer/expert tehnic, pe baza proiectului clădirii. Un audit tehnic sau Digital Twin te ajută să identifici din timp aceste aspecte." },
+    ],
+    relatedCategories: ["interior_design"],
+    internalLinks: [
+      { label: "Design pentru renovare", to: "/design-interior/renovare" },
+      { label: "Scorul casei (audit tehnic)", to: "/scorul-casei" },
+      { label: "Ce este un Digital Twin", to: "/ghiduri/ce-este-digital-twin-locuinta" },
+      { label: "Design interior — pagina principală", to: "/design-interior" },
+    ],
+  },
+  {
+    slug: "ce-include-un-proiect-de-design-interior",
+    title: "Ce include un proiect de design interior? Livrabile · Ghid 2026",
+    h1: "Ce include un proiect de design interior",
+    description: "Ce primești concret dintr-un proiect de design interior: de la moodboard și plan de mobilare, la randări 3D, planuri tehnice și listă de materiale. Ce să ceri și ce să verifici.",
+    tag: "Livrabile",
+    icon: "FileText",
+    publishedAt: "2026-06-11",
+    updatedAt: "2026-06-11",
+    readMins: 7,
+    sections: [
+      {
+        heading: "Livrabilele unui proiect complet",
+        body: [
+          "Un proiect serios de design interior nu este o singură imagine, ci un set de documente pe care echipa de execuție le poate urma:",
+          { type: "list", items: [
+            "**Concept și moodboard** — direcția de stil și paleta",
+            "**Plan de mobilare** la scară, cu cote",
+            "**Randări 3D** foto-realiste pe fiecare cameră",
+            "**Planuri tehnice** — electrice, sanitare, tavane, pardoseli, finisaje",
+            "**Listă de materiale și obiecte** cu cantități și specificații",
+          ] },
+        ],
+      },
+      {
+        heading: "Concept vs. proiect tehnic complet",
+        body: [
+          "Un „concept” (moodboard + plan de mobilare) este suficient dacă vrei doar direcția. Pentru o renovare reală ai nevoie de proiectul tehnic complet, altfel echipele improvizează pe șantier — de acolo vin întârzierile și costurile suplimentare.",
+        ],
+      },
+      {
+        heading: "Ce să verifici înainte să accepți o ofertă",
+        body: [
+          "Cere lista exactă a livrabilelor, numărul de revizii incluse și dacă proiectul acoperă și partea de instalații. Vezi și cum se structurează prețul.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Câte revizii ar trebui incluse?", a: "De obicei 1-2 revizii pe concept sunt normale. Clarifică din start câte sunt incluse și cât costă cele suplimentare." },
+      { q: "Proiectul include și lista de cumpărături?", a: "Un proiect complet include o listă de materiale și obiecte cu cantități, care îți permite să bugetezi corect." },
+    ],
+    relatedCategories: ["interior_design"],
+    internalLinks: [
+      { label: "Preț design interior", to: "/design-interior/pret" },
+      { label: "Design cu implementare la cheie", to: "/design-interior/implementare" },
+      { label: "Randări 3D & Digital Twin", to: "/design-interior/3d" },
+      { label: "Design interior — pagina principală", to: "/design-interior" },
+    ],
+  },
+  {
+    slug: "de-ce-conteaza-masuratorile-inainte-de-design",
+    title: "De ce contează măsurătorile înainte de design interior · Ghid 2026",
+    h1: "De ce contează măsurătorile înainte de designul interior",
+    description: "Un releveu precis face diferența dintre un proiect care se execută fidel și unul plin de surprize. Ce se măsoară, de ce și cum ajută un Digital Twin.",
+    tag: "Releveu & măsurători",
+    icon: "Ruler",
+    publishedAt: "2026-06-11",
+    updatedAt: "2026-06-11",
+    readMins: 6,
+    sections: [
+      {
+        heading: "Cea mai frecventă greșeală de pe șantier",
+        body: [
+          "Mobilierul sau finisajele comandate care „nu încap” sunt cel mai des rezultatul unor măsurători aproximative. Pereții nu sunt niciodată perfect drepți, iar câțiva centimetri decid dacă o piesă se montează sau nu.",
+          { type: "callout", title: "Regula de aur", body: "Măsoară de două ori, comandă o dată. Un releveu profesionist elimină aproape complet acest risc." },
+        ],
+      },
+      {
+        heading: "Ce se măsoară într-un releveu",
+        body: [
+          { type: "list", items: [
+            "Dimensiunile exacte ale fiecărei camere (inclusiv abateri)",
+            "Înălțimi, praguri, poziția ușilor și ferestrelor",
+            "Poziția instalațiilor (prize, țevi, calorifere, coloane)",
+            "Elemente fixe (stâlpi, grinzi, nișe)",
+          ] },
+        ],
+      },
+      {
+        heading: "Cum ajută un Digital Twin",
+        body: [
+          "Un Digital Twin este o replică digitală a locuinței, cu cote reale, pe care testezi modificările înainte să le execuți fizic. Astfel verifici încadrarea mobilierului și circulația luminii fără să riști bani pe comenzi greșite.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Nu pot măsura singur?", a: "Poți face o estimare, dar pentru comenzi de mobilier pe comandă și pentru proiectul tehnic ai nevoie de un releveu precis, ideal profesionist." },
+      { q: "Digital Twin-ul înlocuiește releveul?", a: "Nu, îl include: un Digital Twin bun se construiește pe baza unui releveu precis al locuinței tale." },
+    ],
+    relatedCategories: ["interior_design"],
+    internalLinks: [
+      { label: "Randări 3D & Digital Twin", to: "/design-interior/3d" },
+      { label: "Ce este un Digital Twin", to: "/ghiduri/ce-este-digital-twin-locuinta" },
+      { label: "Design pentru renovare", to: "/design-interior/renovare" },
+      { label: "Digital Twin locuință", to: "/digital-twin" },
+    ],
+  },
+  {
     slug: "cost-renovare-apartament-2-camere",
     title: "Cât costă o renovare apartament 2 camere în România · Ghid 2026",
     h1: "Cât costă o renovare apartament 2 camere în 2026",
@@ -585,6 +780,361 @@ export const GHIDURI = [
     ],
     relatedCity: null,
     relatedCategories: ["zugrav", "tamplar", "design-interior"]
+  },
+
+  {
+    slug: "audit-tehnic-apartament-pret",
+    title: "Cât costă un audit tehnic de apartament · Preț și ce include · 2026",
+    h1: "Cât costă un audit tehnic de apartament în 2026",
+    description: "Prețul unui audit tehnic de apartament în România: 350 RON. Ce verifică specialistul (electric, sanitar, umiditate, structură), cât durează și când merită să-l comanzi.",
+    tag: "Audit Tehnic",
+    icon: "ShieldCheck",
+    publishedAt: "2026-07-26",
+    updatedAt: "2026-07-26",
+    readMins: 7,
+    sections: [
+      {
+        heading: "Răspuns scurt: cât costă",
+        body: [
+          "Un audit tehnic complet de apartament costă pe PropManage **350 RON** — preț fix, indiferent de oraș. Auditul durează 60-90 de minute la fața locului și se încheie cu un raport scris cu toate problemele identificate, prioritizate după risc și cost de remediere.",
+          {
+            type: "callout",
+            title: "De ce merită",
+            body: "Un singur defect ascuns descoperit la timp (instalație electrică veche, țevi de plumb, igrasie mascată) poate economisi între 5.000 și 40.000 RON. Auditul de 350 RON este cea mai ieftină asigurare pe care o poți cumpăra pentru locuința ta."
+          }
+        ]
+      },
+      {
+        heading: "Ce verifică specialistul, punct cu punct",
+        body: [
+          {
+            type: "list",
+            items: [
+              "**Instalația electrică**: vârsta tabloului, siguranțe automate, împământare, prize suprasolicitate, circuite subdimensionate",
+              "**Instalația sanitară**: materialul țevilor (plumb/oțel vs PEX), presiune, semne de scurgeri, sifoane și racorduri",
+              "**Umiditate și igrasie**: măsurători cu umidometru în colțuri, spatele mobilei, băi, pereți exteriori",
+              "**Termoviziune** (unde e cazul): punți termice, pierderi de căldură, infiltrații ascunse sub finisaje",
+              "**Structură**: fisuri active vs fisuri de finisaj, tasări, starea planșeelor",
+              "**Tâmplărie și izolație**: etanșeitate ferestre, condens, izolație pereți",
+              "**Centrala termică și gaz**: vârstă, revizii, tiraj, detectoare",
+              "**Documentație**: carte tehnică, certificat energetic, autorizații pentru modificări"
+            ]
+          }
+        ]
+      },
+      {
+        heading: "Când merită să comanzi un audit",
+        body: [
+          "**1. Înainte să cumperi un apartament.** Cel mai frecvent caz — auditul se face la vizionare, înainte de antecontract. Funcționează și pentru apartamente găsite pe Storia sau Imobiliare.ro: comanzi auditul, specialistul merge la vizionare cu tine sau în locul tău.",
+          "**2. Înainte să vinzi.** Un apartament cu audit tehnic + raport public se vinde mai repede și la un preț mai bun, pentru că elimină frica cumpărătorului. Pe PropManage, apartamentele auditate primesc statutul de **Imobil Verificat**.",
+          "**3. Înainte de o renovare majoră.** Auditul îți spune exact ce trebuie refăcut obligatoriu (instalații) și ce e doar cosmetic — ca să nu îngropi finisaje noi peste probleme vechi.",
+          "**4. La probleme recurente.** Igrasie care revine, siguranțe care sar, facturi anormal de mari — auditul găsește cauza, nu simptomul."
+        ]
+      },
+      {
+        heading: "Cum se desfășoară pe PropManage",
+        body: [
+          {
+            type: "list",
+            items: [
+              "**Pasul 1**: Comanzi online auditul (350 RON, plată securizată prin Stripe)",
+              "**Pasul 2**: Ești contactat în maxim 24h pentru programare",
+              "**Pasul 3**: Specialistul verificat vine la adresă (60-90 min)",
+              "**Pasul 4**: Primești raportul scris cu probleme + priorități + costuri estimate de remediere",
+              "**Pasul 5** (opțional): Poți adăuga Digital Twin (950 RON) — harta digitală completă a locuinței"
+            ]
+          },
+          "Vrei întâi o estimare gratuită? Folosește calculatorul **Scorul Casei Tale** — 12 întrebări, 2 minute, scor instant."
+        ]
+      }
+    ],
+    faq: [
+      {
+        q: "Cât durează un audit tehnic de apartament?",
+        a: "60-90 de minute la fața locului pentru un apartament de 2-3 camere. Raportul scris este livrat în maxim 48h de la vizită."
+      },
+      {
+        q: "Pot comanda audit pentru un apartament pe care vreau să-l cumpăr, dar nu e al meu?",
+        a: "Da — este cel mai frecvent scenariu. Ai nevoie doar de acordul proprietarului/agenției pentru accesul specialistului la vizionare. Auditul funcționează pentru orice anunț de pe Storia, Imobiliare.ro sau OLX."
+      },
+      {
+        q: "Ce primesc concret la finalul auditului?",
+        a: "Un raport scris cu: lista completă a problemelor identificate, fotografii, prioritizarea lor după risc (critic/important/cosmetic), costuri estimative de remediere și recomandări de specialiști verificați pentru fiecare categorie de lucrări."
+      },
+      {
+        q: "Auditul include verificarea actelor apartamentului?",
+        a: "Auditul verifică documentația tehnică (carte tehnică, certificat energetic, autorizații pentru modificări structurale). Pentru verificarea juridică (extras CF, sarcini, litigii) recomandăm un avocat sau notarul care se ocupă de tranzacție."
+      },
+      {
+        q: "Care e diferența dintre audit și Digital Twin?",
+        a: "Auditul (350 RON) = evaluarea stării tehnice cu raport scris. Digital Twin (950 RON) = harta digitală permanentă a locuinței: planuri, instalații mapate, documente, istoric intervenții. Împreună formează pachetul complet pentru un Imobil Verificat."
+      }
+    ],
+    relatedCity: null,
+    relatedCategories: ["electrician", "instalator"]
+  },
+
+  {
+    slug: "verificare-apartament-inainte-de-cumparare",
+    title: "Cum verifici un apartament înainte să-l cumperi · Ghid complet 2026",
+    h1: "Cum verifici un apartament înainte de cumpărare",
+    description: "Ghid complet 2026: cele mai importante verificări înainte să cumperi un apartament — acte, structură, instalații, umiditate, costuri ascunse. Plus checklist gratuit cu 25 de puncte.",
+    tag: "Cumpărare",
+    icon: "Search",
+    publishedAt: "2026-07-26",
+    updatedAt: "2026-07-26",
+    readMins: 9,
+    sections: [
+      {
+        heading: "Greșeala de 30.000 RON pe care o fac majoritatea cumpărătorilor",
+        body: [
+          "Majoritatea cumpărătorilor verifică un apartament în 20 de minute, la lumina zilei, cu mobila proprietarului acoperind pereții. Apoi descoperă după mutare: igrasie în spatele dulapului, instalație electrică din 1985, țevi de plumb, vecini zgomotoși. Costul mediu al problemelor descoperite **după** cumpărare, raportat de clienții noștri: **15.000-40.000 RON**.",
+          {
+            type: "callout",
+            title: "Regula de aur",
+            body: "Niciun apartament nu se cumpără după o singură vizionare. Minim 2 vizite (una seara), plus o verificare tehnică profesionistă înainte de antecontract."
+          }
+        ]
+      },
+      {
+        heading: "Verificările pe care le poți face singur",
+        body: [
+          {
+            type: "list",
+            items: [
+              "**Umiditate**: uită-te în colțurile camerelor, în spatele mobilierului, sub chiuvete. Miros de mucegai = semnal roșu",
+              "**Presiunea apei**: deschide toate robinetele simultan. Lasă apa să curgă 2 minute — culoarea ruginie indică țevi vechi de oțel",
+              "**Tabloul electric**: siguranțe automate moderne sau siguranțe vechi cu filet? Câte circuite are?",
+              "**Ferestre**: închide-le și ascultă zgomotul străzii. Verifică condens între geamuri",
+              "**Pereți**: fisuri diagonale la colțurile ușilor/ferestrelor pot indica tasări",
+              "**Facturile de iarnă**: cere facturile de întreținere din decembrie-februarie — diferența față de vară îți spune tot despre izolație",
+              "**Vecinii**: vizitează la 20:00 într-o zi de lucru. Ascultă"
+            ]
+          }
+        ]
+      },
+      {
+        heading: "Verificările care cer un specialist",
+        body: [
+          "Ce NU poți verifica singur, oricât de atent ai fi:",
+          {
+            type: "list",
+            items: [
+              "**Instalația electrică din pereți** — vârsta reală a cablurilor, împământarea, dimensionarea circuitelor",
+              "**Umiditatea ascunsă** — umidometrul detectează igrasia mascată cu vopsea proaspătă (truc frecvent la vânzare!)",
+              "**Punțile termice** — camera de termoviziune arată pierderile de căldură invizibile",
+              "**Fisurile structurale vs cosmetice** — diferența dintre o reparație de 200 RON și una de 20.000 RON",
+              "**Modificările neautorizate** — ziduri demolate fără autorizație = probleme la revânzare și risc structural"
+            ]
+          },
+          "Un **audit tehnic profesionist costă 350 RON** și se face la vizionare, înainte de antecontract. Funcționează pentru orice apartament, inclusiv anunțuri de pe Storia sau Imobiliare.ro."
+        ]
+      },
+      {
+        heading: "Actele: ce verifici înainte de avans",
+        body: [
+          {
+            type: "list",
+            items: [
+              "**Extras de Carte Funciară** actualizat (max 30 zile) — proprietar real, sarcini, ipoteci, interdicții",
+              "**Certificat energetic** — obligatoriu la vânzare; clasa energetică afectează facturile",
+              "**Adeverință de la asociație** — fără datorii la întreținere; întreabă și de restanțe la fondul de reparații",
+              "**Risc seismic** — verifică dacă clădirea e în lista clădirilor cu risc (bulina roșie = NU se poate ipoteca)",
+              "**Autorizații pentru modificări** — orice zid demolat trebuie să aibă autorizație + proiect"
+            ]
+          },
+          "Descarcă checklist-ul complet cu toate cele **25 de verificări** — interactiv, gratuit, cu explicații pentru fiecare punct."
+        ]
+      }
+    ],
+    faq: [
+      {
+        q: "Cât costă să verific un apartament înainte de cumpărare?",
+        a: "Verificările pe care le faci singur sunt gratuite (checklist-ul nostru cu 25 de puncte te ghidează). Un audit tehnic profesionist cu specialist, umidometru și termoviziune costă 350 RON pe PropManage — și se amortizează din prima problemă descoperită."
+      },
+      {
+        q: "Pot cere audit tehnic pentru un apartament găsit pe Storia sau Imobiliare.ro?",
+        a: "Da. Comanzi auditul online, iar specialistul merge la vizionare (cu tine sau programat cu agentul/proprietarul). Primești raportul înainte să semnezi antecontractul."
+      },
+      {
+        q: "Ce înseamnă bulina roșie la un bloc?",
+        a: "Clădire încadrată în clasa I de risc seismic. Băncile NU acordă credit ipotecar pentru aceste apartamente, iar asigurarea e problematică. Verifică lista publicată de primărie înainte de orice discuție de preț."
+      },
+      {
+        q: "Vânzătorul a zugrăvit recent — e semn bun sau rău?",
+        a: "Ambele. Poate fi pregătire normală de vânzare, dar vopseaua proaspătă e și cel mai folosit mod de a masca igrasia și fisurile. Exact aici ajută umidometrul specialistului — detectează umiditatea din perete indiferent de vopsea."
+      },
+      {
+        q: "Când e cel mai bun moment pentru a doua vizionare?",
+        a: "Seara (19:00-21:00) într-o zi lucrătoare: auzi vecinii reali, vezi traficul, iluminatul public, locurile de parcare rămase. Iarna e ideal — simți instant cât de rece e apartamentul."
+      }
+    ],
+    relatedCity: null,
+    relatedCategories: ["electrician", "instalator"]
+  },
+
+  {
+    slug: "ce-este-digital-twin-locuinta",
+    title: "Ce este un Digital Twin al locuinței · Ghid pentru proprietari · 2026",
+    h1: "Ce este un Digital Twin al locuinței tale",
+    description: "Digital Twin = copia digitală completă a locuinței: planuri, instalații mapate, documente, istoric intervenții. Ce include, cât costă (950 RON) și de ce crește valoarea proprietății.",
+    tag: "Digital Twin",
+    icon: "Box",
+    publishedAt: "2026-07-26",
+    updatedAt: "2026-07-26",
+    readMins: 6,
+    sections: [
+      {
+        heading: "Pe scurt: copia digitală a casei tale",
+        body: [
+          "Un **Digital Twin** (geamăn digital) este copia digitală completă a locuinței tale: planurile, instalațiile mapate (unde trec cablurile și țevile prin pereți), toate documentele tehnice, istoricul intervențiilor și starea fiecărui sistem — totul într-un singur loc, accesibil de pe telefon.",
+          {
+            type: "callout",
+            title: "De ce contează",
+            body: "Când ai o urgență (țeavă spartă, scurtcircuit), specialistul care vine știe EXACT unde să caute — fără să spargă trei pereți ca să găsească traseul. Când vinzi, cumpărătorul vede negru pe alb ce cumpără."
+          }
+        ]
+      },
+      {
+        heading: "Ce include Digital Twin-ul pe PropManage",
+        body: [
+          {
+            type: "list",
+            items: [
+              "**Planurile locuinței** — digitalizate, cu dimensiuni reale per cameră",
+              "**Instalațiile mapate** — traseele electrice, sanitare și de încălzire marcate pe plan",
+              "**Arhiva de documente** — carte tehnică, certificat energetic, garanții, facturi lucrări, manuale centrale/electrocasnice",
+              "**Istoricul intervențiilor** — fiecare reparație și renovare, cu dată, specialist și cost",
+              "**Starea sistemelor** — vârsta și starea fiecărei instalații, cu alerte când se apropie de finalul duratei de viață",
+              "**Acces controlat** — poți da acces temporar unui specialist sau permanent unui cumpărător"
+            ]
+          }
+        ]
+      },
+      {
+        heading: "Cât costă și cum se face",
+        body: [
+          "Crearea Digital Twin-ului costă **950 RON** pe PropManage și include vizita unui specialist care măsoară, fotografiază și mapează locuința. Durează 2-3 ore pentru un apartament standard. În pachet cu auditul tehnic (**bundle 1.300 RON**) primești și evaluarea completă a stării tehnice.",
+          "**Bonus la vânzare**: dacă vinzi apartamentul prin programul Imobile Verificate, costul Digital Twin-ului se **scade din comisionul de vânzare** — practic îl primești înapoi."
+        ]
+      },
+      {
+        heading: "Digital Twin vs. dosarul cu acte de la sertar",
+        body: [
+          {
+            type: "list",
+            items: [
+              "**Dosarul clasic**: se pierde, se udă, nu e la tine când ai nevoie, nu-l poți trimite specialistului la 22:00 când curge apa",
+              "**Digital Twin**: permanent pe telefon, partajabil într-un click, se actualizează la fiecare intervenție, urmează PROPRIETATEA (nu proprietarul) la vânzare",
+              "**La vânzare**: apartament cu twin + audit = Imobil Verificat cu Trust Score public — se vinde mai repede și mai scump, pentru că elimină frica cumpărătorului",
+              "**La moștenire/închiriere**: toată cunoașterea despre locuință se transferă, nu se pierde"
+            ]
+          }
+        ]
+      }
+    ],
+    faq: [
+      {
+        q: "Cât durează crearea unui Digital Twin?",
+        a: "Vizita de mapare durează 2-3 ore pentru un apartament de 2-3 camere. Twin-ul digital complet este gata în 3-5 zile lucrătoare de la vizită."
+      },
+      {
+        q: "Am nevoie de planurile originale ale apartamentului?",
+        a: "Nu e obligatoriu — specialistul măsoară și reconstruiește planul la fața locului. Dacă ai planurile originale (carte tehnică), le digitalizăm și le includem în twin."
+      },
+      {
+        q: "Cine are acces la Digital Twin-ul locuinței mele?",
+        a: "Doar tu. Poți acorda acces temporar (ex: unui instalator pentru o intervenție) sau permanent (ex: cumpărătorului la vânzare). Datele sunt găzduite securizat și nu sunt partajate cu terți."
+      },
+      {
+        q: "Ce se întâmplă cu twin-ul când vând apartamentul?",
+        a: "Se transferă noului proprietar împreună cu toată istoria locuinței — exact ca o carte de service la mașină. Este unul dintre argumentele care cresc valoarea percepută la vânzare."
+      }
+    ],
+    relatedCity: null,
+    relatedCategories: []
+  },
+
+  {
+    slug: "imobile-verificate-cum-functioneaza",
+    title: "Imobile Verificate — cum funcționează · Vânzare fără surprize · 2026",
+    h1: "Imobile Verificate: cum funcționează programul",
+    description: "Programul Imobile Verificate PropManage: audit tehnic + Digital Twin + Trust Score public. Cum îți vinzi apartamentul mai repede și cum cumperi fără surprize. Comision 2,5%.",
+    tag: "Imobile Verificate",
+    icon: "ShieldCheck",
+    publishedAt: "2026-07-26",
+    updatedAt: "2026-07-26",
+    readMins: 7,
+    sections: [
+      {
+        heading: "Problema pieței imobiliare din România",
+        body: [
+          "Pe Storia și Imobiliare.ro, toate anunțurile arată la fel: poze frumoase, „apartament îngrijit\", zero informații verificabile despre starea reală. Cumpărătorul află despre instalația din 1980 și igrasia din baie **după** ce a semnat. Vânzătorul serios n-are cum să demonstreze că apartamentul lui chiar e în stare bună.",
+          {
+            type: "callout",
+            title: "Soluția",
+            body: "Imobile Verificate = singurul program din România unde fiecare apartament listat a trecut printr-un audit tehnic profesionist și are Digital Twin. Starea reală, publică, verificabilă."
+          }
+        ]
+      },
+      {
+        heading: "Cum funcționează pentru vânzători",
+        body: [
+          {
+            type: "list",
+            items: [
+              "**Pasul 1 — Auditul (350 RON)**: specialist verificat evaluează apartamentul: instalații, umiditate, structură, documente",
+              "**Pasul 2 — Digital Twin (950 RON)**: locuința e mapată digital — planuri, instalații, arhivă documente",
+              "**Pasul 3 — Remedieri**: primești lista problemelor; minim 90% din recomandările critice trebuie rezolvate",
+              "**Pasul 4 — Publicare**: apartamentul primește **Trust Score** (A+/A/B) și apare în lista Imobilelor Verificate",
+              "**Pasul 5 — Vânzare**: comision de doar **2,5%** la vânzare, din care se SCADE costul Digital Twin-ului"
+            ]
+          },
+          "Pachetul complet (audit + twin) costă **1.300 RON** — și se recuperează prin vânzare mai rapidă, preț mai bun și deducerea twin-ului din comision."
+        ]
+      },
+      {
+        heading: "Cum funcționează pentru cumpărători",
+        body: [
+          "Fiecare Imobil Verificat afișează public: **Trust Score-ul** (A+/A/B), raportul de audit, procentul de recomandări rezolvate și accesul la Digital Twin. Vezi exact ce cumperi, înainte de vizionare.",
+          "**Ai găsit un apartament pe Storia care NU e verificat?** Poți comanda auditul nostru pentru orice apartament de pe piață (350 RON) — specialistul merge la vizionare și îți spune adevărul despre starea lui, înainte să semnezi."
+        ]
+      },
+      {
+        heading: "De ce e diferit de o agenție imobiliară",
+        body: [
+          {
+            type: "list",
+            items: [
+              "**Agenția clasică**: comision 2-4%, zero verificare tehnică, interesul e să se vândă repede — nu să afli problemele",
+              "**Imobile Verificate**: comision 2,5%, verificare tehnică obligatorie ÎNAINTE de listare, problemele se rezolvă înainte de vânzare",
+              "**Transparență**: raportul de audit e public — cumpărătorul nu mai negociază pe frică, ci pe fapte",
+              "**După vânzare**: cumpărătorul primește Digital Twin-ul cu toată istoria locuinței — onboarding complet în ecosistemul PropManage"
+            ]
+          }
+        ]
+      }
+    ],
+    faq: [
+      {
+        q: "Cât costă să-mi listez apartamentul ca Imobil Verificat?",
+        a: "Pachetul complet costă 1.300 RON (audit tehnic 350 + Digital Twin 950). La vânzare se aplică un comision de 2,5%, din care se scade costul Digital Twin-ului — deci twin-ul îl primești practic gratuit."
+      },
+      {
+        q: "Ce este Trust Score-ul?",
+        a: "Nota publică a apartamentului (A+, A sau B), calculată din raportul de audit și procentul de recomandări critice rezolvate. A+ înseamnă apartament cu toate sistemele verificate și problemele remediate."
+      },
+      {
+        q: "Ce se întâmplă dacă auditul găsește probleme la apartamentul meu?",
+        a: "Primești lista completă cu priorități și costuri estimate. Pentru publicare ca Imobil Verificat trebuie rezolvate minim 90% din recomandările critice — te conectăm cu specialiști verificați pentru remedieri. Alternativ, poți vinde nelistat, dar fără Trust Score."
+      },
+      {
+        q: "Pot cumpăra un apartament care nu e în programul Imobile Verificate?",
+        a: "Da — și îți recomandăm să comanzi auditul independent (350 RON) pentru orice apartament de pe Storia, Imobiliare.ro sau OLX, înainte de antecontract. Specialistul nostru merge la vizionare și îți livrează raportul în 48h."
+      }
+    ],
+    relatedCity: null,
+    relatedCategories: []
   }
 ];
 

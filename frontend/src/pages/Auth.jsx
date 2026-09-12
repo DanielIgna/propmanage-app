@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Building2, ArrowRight, Sparkles, Languages } from "lucide-react";
 import { useAuth, formatApiError } from "../auth";
 import { useI18n } from "../i18n";
+import { sendPassportConversion } from "../lib/passportTracker";
 
 const Backdrop = () => (
   <div className="fixed inset-0 -z-10">
@@ -48,14 +49,20 @@ export const LoginPage = () => {
   const _isSafeNext = (p) => typeof p === "string" && p.startsWith("/") && !p.startsWith("//");
   const safeNext = _isSafeNext(nextPath) ? nextPath : null;
 
-  if (user && user !== false) return <Navigate to={safeNext || `/${user.role}`} replace />;
+  const roleHome = (role) => ({
+    city_partner: "/partner/dashboard",
+    marketplace_partner: "/partner/marketplace",
+    marketing_manager: "/admin/marketing",
+  }[role] || `/${role}`);
+
+  if (user && user !== false) return <Navigate to={safeNext || roleHome(user.role)} replace />;
 
   const submit = async (e) => {
     e.preventDefault();
     setError(""); setLoading(true);
     try {
       const u = await login(email, password, totpCode || undefined);
-      navigate(safeNext || `/${u.role}`);
+      navigate(safeNext || roleHome(u.role));
     } catch (err) {
       const status = err?.response?.status;
       const detail = err?.response?.data?.detail;
@@ -71,22 +78,7 @@ export const LoginPage = () => {
     }
   };
   
-  const demoLogin = async (role) => {
-    const creds = {
-      client: { email: "client@propmanage.io", password: "Client123!" },
-      specialist: { email: "specialist@propmanage.io", password: "Spec123!" },
-      admin: { email: "admin@propmanage.io", password: "Admin123!" },
-      operator: { email: "operator@propmanage.io", password: "Op123!" },
-    }[role];
-    setEmail(creds.email); setPassword(creds.password);
-    setError(""); setLoading(true);
-    try {
-      const u = await login(creds.email, creds.password);
-      navigate(`/${u.role}`);
-    } catch (err) {
-      setError(formatApiError(err));
-    } finally { setLoading(false); }
-  };
+  // demoLogin eliminat (cod mort cu parolă admin greșită — semnalat de code review iter123)
   
   return (
     <div className="min-h-screen relative flex items-center justify-center p-6">
@@ -96,7 +88,17 @@ export const LoginPage = () => {
       <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
         <div className="glass-strong rounded-3xl p-10">
           <h1 className="font-serif text-4xl mb-2" data-testid="login-title">{t("login.title")}</h1>
-          <p className="text-sm text-stone-400 mb-8">{t("login.subtitle")}</p>
+          <p className="text-sm text-stone-400 mb-4">{t("login.subtitle")}</p>
+
+          {/* Quick-win conversie (Growth Intelligence: /login = pagina #1 de abandon, 35.8%) */}
+          <Link to="/register" data-testid="login-new-account-cta"
+            className="flex items-center justify-between gap-3 mb-6 p-3.5 rounded-2xl border border-[#d4ff3a]/30 bg-[#d4ff3a]/10 hover:bg-[#d4ff3a]/20 transition group">
+            <div>
+              <div className="text-sm font-bold text-[#d4ff3a]">Nou pe PropManage?</div>
+              <div className="text-xs text-stone-300">Creează cont gratuit într-un minut — Cartea Casei, specialiști verificați, plăți protejate.</div>
+            </div>
+            <ArrowRight className="w-4 h-4 text-[#d4ff3a] shrink-0 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
           
           <form onSubmit={submit} className="space-y-4">
             <div>
@@ -147,8 +149,23 @@ export const LoginPage = () => {
           <button
             type="button"
             onClick={() => {
-              const redirectUrl = window.location.origin + "/auth/callback";
-              window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+              const redirectUri = window.location.origin + "/auth/callback";
+              const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+              if (googleClientId) {
+                // Direct Google OAuth (own Cloud project) — brands "PropManage" on Google consent screen
+                const params = new URLSearchParams({
+                  client_id: googleClientId,
+                  redirect_uri: redirectUri,
+                  response_type: "code",
+                  scope: "openid email profile",
+                  access_type: "online",
+                  prompt: "select_account",
+                });
+                window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+              } else {
+                // Fallback: Emergent-managed OAuth (legacy — used if own credentials missing)
+                window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUri)}`;
+              }
             }}
             className="w-full flex items-center justify-center gap-3 bg-white text-black py-3 rounded-xl text-sm font-medium hover:bg-stone-100 transition"
             data-testid="google-login-btn"
@@ -175,11 +192,21 @@ export const RegisterPage = () => {
   const { user, register } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
-  const referrerId = new URLSearchParams(window.location.search).get("ref");
+  const _params = new URLSearchParams(window.location.search);
+  const referrerId = _params.get("ref");
+  // GBOS P0.1 — invitație personală: codul se revendică după primul login (claimPendingInvite)
+  const _inviteCode = _params.get("invite");
+  if (_inviteCode) localStorage.setItem("pm_invite_code", _inviteCode);
+  // PM-PILOT-001 — invitație de bloc: /register?binvite=<buildingId>, revendicată în BuildingHub
+  const _bInvite = _params.get("binvite");
+  if (_bInvite) localStorage.setItem("pm_building_invite", _bInvite);
+  // Recruitment funnel (CIP-A): /register?role=specialist&category=<legacy>
+  const _inviteCategory = _params.get("category");
+  const _inviteRole = _params.get("role");
   const [form, setForm] = useState({
-    email: "", password: "", name: "", role: "client", phone: "",
-    specialty: "hvac",
-    service_categories: ["hvac"],
+    email: "", password: "", name: "", role: _inviteRole === "specialist" ? "specialist" : "client", phone: "",
+    specialty: _inviteCategory || "hvac",
+    service_categories: [_inviteCategory || "hvac"],
     coverage_zones: ["Bucuresti-Sector1"],
     zone: "Bucuresti-Sector1",
     referrer_id: referrerId || undefined,
@@ -197,11 +224,16 @@ export const RegisterPage = () => {
     { value: "electric", label: "Electric", icon: "⚡" },
     { value: "plumbing", label: "Sanitar / Instalații apă", icon: "💧" },
     { value: "interior_design", label: "Design Interior", icon: "🏠" },
-    { value: "carpentry", label: "Tâmplărie / Mobilă", icon: "🪚" },
-    { value: "painting", label: "Zugrăveli / Vopsitor", icon: "🎨" },
-    { value: "cleaning", label: "Curățenie", icon: "🧽" },
-    { value: "appliance_repair", label: "Reparații electrocasnice", icon: "🔧" },
-    { value: "gardening", label: "Grădinărit", icon: "🌱" },
+    { value: "zugravit", label: "Zugrăveli / Finisaje", icon: "🎨" },
+    { value: "parchet", label: "Pardoseli / Parchet", icon: "🪵" },
+    { value: "faianta", label: "Faianță & Gresie", icon: "🧱" },
+    { value: "gips_carton", label: "Gips-carton", icon: "📐" },
+    { value: "handyman", label: "Handyman / Reparații", icon: "🔧" },
+    { value: "constructii", label: "Construcții / Zidărie", icon: "🏗" },
+    { value: "acoperisuri", label: "Acoperișuri", icon: "🏚" },
+    { value: "fatade_termoizolatii", label: "Fațade & Termoizolații", icon: "🧊" },
+    { value: "tamplarie", label: "Tâmplărie & Ferestre", icon: "🚪" },
+    { value: "amenajari_exterioare", label: "Amenajări exterioare", icon: "🌱" },
     { value: "other", label: "Alte servicii", icon: "🛠" },
   ];
 
@@ -235,11 +267,15 @@ export const RegisterPage = () => {
         throw new Error("Selectează cel puțin o zonă de acoperire");
       }
       const phoneDigits = (form.phone || "").replace(/[^\d+]/g, "");
-      if (!phoneDigits) throw new Error("Numărul de telefon este obligatoriu");
-      if (!/^\+?\d{8,15}$/.test(phoneDigits)) throw new Error("Format telefon invalid. Folosește +40 7XX XXX XXX sau 07XX XXX XXX");
+      if (form.role === "specialist" && !phoneDigits) throw new Error("Numărul de telefon este obligatoriu pentru specialiști");
+      if (phoneDigits && !/^\+?\d{8,15}$/.test(phoneDigits)) throw new Error("Format telefon invalid. Folosește +40 7XX XXX XXX sau 07XX XXX XXX");
       if (!form.terms_accepted) throw new Error("Trebuie să accepți Termenii și Condițiile");
-      if (!form.privacy_policy_accepted) throw new Error("Trebuie să accepți Politica de Confidențialitate");
-      const u = await register({ ...form, phone: phoneDigits });
+      if (!form.privacy_policy_accepted) throw new Error("Trebuie să accepți Politica de Confidențialitate");      const u = await register({ ...form, phone: phoneDigits });
+      sendPassportConversion();
+      import("../lib/analytics").then(({ trackConversion, identify }) => {
+        identify(u.id || u._id || "", u.role || "");
+        trackConversion("sign_up");
+      }).catch(() => {});
       navigate(`/${u.role}`);
     } catch (err) {
       setError(err.message || formatApiError(err));
@@ -283,13 +319,13 @@ export const RegisterPage = () => {
                 data-testid="register-password" />
             </div>
             <div>
-              <label className="text-xs uppercase tracking-wider text-stone-400 mb-1.5 block">Telefon <span className="text-red-400">*</span></label>
+              <label className="text-xs uppercase tracking-wider text-stone-400 mb-1.5 block">Telefon {form.role === "specialist" ? <span className="text-red-400">*</span> : <span className="text-stone-500 lowercase">(opțional)</span>}</label>
               <input type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
                 placeholder="+40 7XX XXX XXX sau 07XX XXX XXX"
-                required
+                required={form.role === "specialist"}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#d4ff3a]/50"
                 data-testid="register-phone" />
-              <div className="text-[10px] text-stone-500 mt-1">Necesar pentru contactare directă (consultanță DigiTwin, suport, confirmare servicii)</div>
+              <div className="text-[10px] text-stone-500 mt-1">{form.role === "specialist" ? "Necesar pentru activare — te sunăm în 24h" : "Îl poți adăuga oricând mai târziu"}</div>
             </div>
             <div>
               <label className="text-xs uppercase tracking-wider text-stone-400 mb-1.5 block">{t("register.role")}</label>
@@ -396,7 +432,7 @@ export const RegisterPage = () => {
               </label>
             </div>
 
-            <button type="submit" disabled={loading || !form.terms_accepted || !form.privacy_policy_accepted || !form.phone || !form.name || !form.email} className="btn-accent w-full py-3 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed" data-testid="register-submit">
+            <button type="submit" disabled={loading || !form.terms_accepted || !form.privacy_policy_accepted || (form.role === "specialist" && !form.phone) || !form.name || !form.email} className="btn-accent w-full py-3 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed" data-testid="register-submit">
               {loading ? t("common.loading") : t("register.submit")}
             </button>
           </form>

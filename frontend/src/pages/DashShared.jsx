@@ -10,35 +10,15 @@ import { VoucherExpiryAlert } from "../lib/VoucherExpiryAlert";
 import { EmailVerificationBanner } from "../components/EmailVerificationBanner";
 import { PendingReviewsWidget } from "../components/MultiDimReviews";
 import { GettingStartedWidget } from "../components/GettingStartedWidget";
+import { HelpButton } from "../components/HelpButton";
+import { ThemeSwitcher } from "../components/ThemeSwitcher";
 
 export const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // ============= THEME TOGGLE (light/dark) =============
 export const ThemeToggle = () => {
-  const [theme, setTheme] = useState(() => {
-    if (typeof window === "undefined") return "dark";
-    return localStorage.getItem("pm_theme") || "dark";
-  });
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("pm_theme", theme);
-  }, [theme]);
-  const toggle = () => setTheme(t => t === "dark" ? "light" : "dark");
-  return (
-    <button
-      onClick={toggle}
-      className="p-2 hover:bg-white/5 rounded-full transition-colors flex items-center justify-center"
-      data-testid="theme-toggle"
-      title={theme === "dark" ? "Comută la mod luminos" : "Comută la mod întunecat"}
-      aria-label="Toggle theme"
-    >
-      {theme === "dark" ? (
-        <Sun className="w-4 h-4 text-amber-300" />
-      ) : (
-        <Moon className="w-4 h-4 text-indigo-400" />
-      )}
-    </button>
-  );
+  // Bridge: wraps the new multi-theme switcher so existing call sites stay working.
+  return <ThemeSwitcher compact />;
 };
 
 // ============= NAVIGATE BUTTONS (Google Maps / Waze deep-links) =============
@@ -106,7 +86,7 @@ export const NotificationsBell = () => {
 
   return (
     <div className="relative" data-tour="notifications-bell">
-      <button onClick={() => setOpen(!open)} className="relative p-2 hover:bg-white/5 rounded-lg" data-testid="notif-bell">
+      <button onClick={() => setOpen(!open)} aria-label="Notificări" className="relative p-2 hover:bg-white/5 rounded-lg" data-testid="notif-bell">
         <Bell className="w-4 h-4 text-stone-400" />
         {unread > 0 && (
           <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#d4ff3a] text-black text-[9px] font-bold rounded-full flex items-center justify-center">
@@ -196,7 +176,7 @@ export const DashLayout = ({ children, role, title, bottomNav }) => {
   const avatarSrc = user.avatar || user.picture || null;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-stone-100">
+    <div className="pm-shell min-h-screen bg-[#0a0a0b] text-stone-100">
       <EmailVerificationBanner />
       <header className="border-b border-white/5 sticky top-0 z-40 bg-[#0a0a0b]/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
@@ -229,6 +209,7 @@ export const DashLayout = ({ children, role, title, bottomNav }) => {
                 <span className="hidden md:inline">Schimbă la </span>{switchTargetLabel}
               </button>
             )}
+            <HelpButton />
             <ThemeToggle />
             <NotificationsBell />
             {(role === "client" || role === "specialist") && <VoucherExpiryAlert />}
@@ -239,7 +220,7 @@ export const DashLayout = ({ children, role, title, bottomNav }) => {
               <div className="text-sm font-medium truncate max-w-[160px]">{user.name}</div>
               <div className="text-[10px] text-stone-500 truncate max-w-[160px] flex items-center gap-1 justify-end">
                 <span className="truncate">{user.email}</span>
-                {(role === "client" || role === "specialist") && <TierBadgeMini tier={user.experience_tier || "junior"} />}
+                {role === "client" && <TierBadgeMini tier={user.experience_tier || "junior"} />}
               </div>
             </div>
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-stone-600 to-stone-800 flex items-center justify-center font-medium text-sm overflow-hidden" data-testid="dash-avatar">
@@ -253,15 +234,15 @@ export const DashLayout = ({ children, role, title, bottomNav }) => {
                 />
               ) : (user.name?.[0] || "U").toUpperCase()}
             </div>
-            <button onClick={handleLogout} className="hidden sm:block p-2 hover:bg-white/5 rounded-lg" data-testid="dash-logout">
+            <button onClick={handleLogout} aria-label="Deconectare" className="hidden sm:block p-2 hover:bg-white/5 rounded-lg" data-testid="dash-logout">
               <LogOut className="w-4 h-4 text-stone-400" />
             </button>
           </div>
         </div>
       </header>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-24">
-        {title && <h1 className="font-serif text-3xl sm:text-4xl mb-6 sm:mb-8" data-testid="dash-title">{title}</h1>}
-        {(role === "client" || role === "specialist") && <GettingStartedWidget role={role} />}
+        {title && <h1 className="xos-display font-light lg:font-bold tracking-tight text-4xl sm:text-5xl lg:text-[40px] mb-6 sm:mb-8" data-testid="dash-title">{title}</h1>}
+        {role === "client" && <GettingStartedWidget role={role} />}
         {(role === "client" || role === "specialist") && (
           <div className="mb-6"><PendingReviewsWidget /></div>
         )}

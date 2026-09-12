@@ -1,0 +1,33 @@
+{
+  "summary": "E2E frontend testing of Digital Twin — Next Stage features (A: Comparison, B: Offer from verified concept, C: Validation notifications, D: Real materials + indicative prices). Verified as CLIENT + OPERATOR. Features A, C, D and B(success flow) work end-to-end. One minor UX gap in Feature B (unverified state): the 'offer-locked' Romanian message is NOT rendered inside the DesignConceptStudio ConceptResult panel — it only renders inside the ConceptComparison column. Regression on existing DT flow OK.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "DesignConceptStudio · ConceptResult",
+        "issue": "For an inferred/unverified concept the 'offer-locked' text ('Oferta se poate cere doar dintr-un concept validat profesional') is NOT rendered in the concept result panel. The RequestOfferButton is only mounted when status === 'verified' (line 107-109 of DesignConceptStudio.jsx: `{(status === 'verified' || c.confidence === 'verified') && <RequestOfferButton .../>}`). Because RequestOfferButton is the component that renders the `offer-locked` node when unverified, gating it behind `verified` means unverified concepts never show the lock message. The spec explicitly requires: 'On a freshly generated (inferred, unverified) concept, the offer area must show offer-locked text, NOT the request-offer-btn.' Fix: always mount `<RequestOfferButton concept={c} />` (it already internally decides to render either offer-locked or the button). The ConceptComparison column already does this correctly and offer-locked is visible there.",
+        "selector": "[data-testid=\"offer-locked\"] (missing inside [data-testid=\"design-concept-result\"] when concept.status === 'inferred'|'in_review'|'rejected')",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Fix DesignConceptStudio.jsx: remove the `status === 'verified'` gate around <RequestOfferButton> so the offer-locked message is shown for unverified concepts as required by spec (Feature B). RequestOfferButton already handles both states."
+  ],
+  "critical_code_review_comments": [
+    "DesignConceptStudio ConceptResult conditional at lines 107-109 hides the offer-locked message for unverified concepts; should always mount RequestOfferButton.",
+    "OperatorDashboard: op-tab-dt_pro in BottomNav can be temporarily obstructed by a first-run tooltip ('Ghidul e aici oricând'); consider dismissing tour tooltips or raising the tab z-index (worked around with JS click in test).",
+    "Client notif-bell (data-testid=notif-bell) is not present on /client route — only visible in DashLayout-wrapped pages. Notifications (Model validat profesional / Model respins la validare) are correctly delivered via /api/notifications, but visibility from the primary /client dashboard requires that page to expose the bell component."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "n/a (skipped per request)", "frontend": "95% (24/25 checks passed)" },
+  "test_credentials": "client@propmanage.io / Client123! ; operator@propmanage.io / Op123! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Generated 2 new AI concepts inside project b786fc0845f14aaa9ea6dee529637fe7 (Scandinav + Modern minimalist). Requested review on one; operator confirmed model ef299e36... (→ verified) and rejected model bbe4a6d2... (→ rejected). Requested an offer from the verified Scandinav concept (real marketplace request created).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Client project used: b786fc0845f14aaa9ea6dee529637fe7 ('PREMIUM iter200 project'). Verified concept id: 8b85e8301eb2410da052a7ebc44dc1c9 (already has offer_request_id). Rejected concept id: 718fb3dff8244a39a6208a46fd3c1581. To open Design Studio the sidebar button dt-open-design is below the fold in a scroll container — use JS click (`document.querySelector('[data-testid=\"dt-open-design\"]').click()`) or scroll the sidebar. Same JS-click workaround needed for op-tab-dt_pro when the first-run tour tooltip is showing. Materials pricing uses market fallback (city partner catalog empty by default) — this is expected. Feature A responsive: at 390px the CONTENT grid (max-w-4xl grid-cols-1 md:grid-cols-2) stacks correctly; the header selector grid is intentionally always grid-cols-2 (2 tiny dropdowns).",
+  "rca of the issue": "Feature B unverified-lock: In DesignConceptStudio.jsx (ConceptResult), the developer wrapped <RequestOfferButton> in a conditional that only renders when the concept is verified. However, RequestOfferButton itself is designed to render either the offer-locked notice (unverified) OR the button (verified) OR the offer-requested chip. By adding the outer verified-only gate, the unverified branch of RequestOfferButton is never reached from the studio result view. Reproduction: as client, open dt-open-design → generate a concept → observe result panel — there is no offer-locked chip. Mitigation: replace lines 107-109 with `{c.id && <RequestOfferButton concept={c} />}` (unconditional). The comparison overlay column (ConceptColumn) already does this and correctly shows offer-locked."
+}

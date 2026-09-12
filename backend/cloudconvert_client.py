@@ -85,7 +85,7 @@ async def upload_file_for_import_task(job: dict[str, Any], file_path: str, filen
     form = import_task["result"]["form"]
     url = form["url"]
     parameters: dict[str, str] = form.get("parameters", {}) or {}
-    async with httpx.AsyncClient(timeout=None) as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         with open(file_path, "rb") as f:
             data = {k: (None, str(v)) for k, v in parameters.items()}
             files = {"file": (filename, f, "application/octet-stream")}
@@ -136,7 +136,7 @@ async def download_file(url: str, dest_path: str, chunk_size: int = 1024 * 1024)
     """
     os.makedirs(os.path.dirname(dest_path), exist_ok=True)
     total = 0
-    async with httpx.AsyncClient(timeout=None, follow_redirects=True) as client:
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
         async with client.stream("GET", url) as r:
             r.raise_for_status()
             with open(dest_path, "wb") as out:

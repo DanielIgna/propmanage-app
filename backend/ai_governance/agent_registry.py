@@ -49,6 +49,67 @@ AI_AGENTS = [
         "permission_level": "suggest",
     },
 
+    {
+        "slug": "revenue_hunter",
+        "name": "Revenue Hunter Engine",
+        "category": "revenue",
+        "lifecycle": "active",
+        "maturity": "experimental",
+        "provider": "mixed",  # v1 rule-based — zero cost LLM (ierarhia de cost, Prompt 003)
+        "purpose": "Transformă starea Property DNA în oportunități comerciale pentru serviciile monetizabile (Digital Twin, Audit Tehnic, Design Interior, Design Tematic). Board Review 001. Nu contactează clientul — aprobare prin click in-app.",
+        "data_sources": ["revenue_opportunities", "revenue_hunter_scans"],
+        "owner": "Intelligence Engine",
+        "permission_level": "suggest",
+    },
+    {
+        "slug": "growth_intelligence",
+        "name": "Growth Intelligence Agent",
+        "category": "intelligence",
+        "lifecycle": "active",
+        "maturity": "experimental",
+        "provider": "mixed",  # v1 rule-based — zero cost LLM (ierarhia de cost, Prompt 003)
+        "purpose": "Analizează comportamentul real (sesiuni, bounce, funnel, trasee, ore/zile, surse) și produce probleme UX, pagini de abandon, Behavioral Intelligence și recomandări cu nivel de validare (Board 006).",
+        "data_sources": ["growth_insights", "growth_insights_history"],
+        "owner": "Intelligence Engine",
+        "permission_level": "suggest",
+    },
+    {
+        "slug": "lead_intelligence",
+        "name": "Intent & Lead Intelligence Engine",
+        "category": "intelligence",
+        "lifecycle": "active",
+        "maturity": "experimental",
+        "provider": "mixed",  # v1 rule-based — zero cost LLM; calibrare Learning Engine în GI-4
+        "purpose": "Intent Score 0-100 per vizitator din semnale reale (twin/audit vizualizat, cereri începute/abandonate, WhatsApp, reveniri, campanii) → clasificare visitor/prospect/qualified/hot/client. Prioritizează automat Revenue Hunter și alimentează Command Center.",
+        "data_sources": ["lead_scores", "visitor_identities"],
+        "owner": "Intelligence Engine",
+        "permission_level": "suggest",
+    },
+    {
+        "slug": "marketing_intelligence",
+        "name": "Marketing Intelligence+ Engine",
+        "category": "intelligence",
+        "lifecycle": "active",
+        "maturity": "experimental",
+        "provider": "mixed",  # scan rule-based; Contact Playbook folosește Claude la cerere
+        "purpose": "Recomandări executive de marketing din date reale (ferestre optime WhatsApp/postări cu uplift vs medie, canal/mesaj câștigător, serviciu de promovat, pagina care pierde utilizatori) + Opportunity Queue + AI Contact Playbook cu aprobare umană (Board 007). Deciziile intră în ai_decision_ledger.",
+        "data_sources": ["marketing_insights", "contact_playbooks", "ai_decision_ledger"],
+        "owner": "Intelligence Engine",
+        "permission_level": "suggest",
+    },
+    {
+        "slug": "learning_engine",
+        "name": "Learning Engine (GI-4a Outcome Tracker)",
+        "category": "intelligence",
+        "lifecycle": "active",
+        "maturity": "experimental",
+        "provider": "mixed",  # rule-based, zero LLM
+        "purpose": "Leagă fiecare decizie AI de rezultatul real (engagement → conversie → cerere → venit RON) prin ferestre de atribuire last-touch. Ledger-ul = SSoT pentru deciziile AI (arhitectura GI-4 frozen).",
+        "data_sources": ["ai_decision_ledger", "ai_outcomes"],
+        "owner": "Intelligence Engine",
+        "permission_level": "suggest",
+    },
+
     # --- Multi-agent dev team (read-only architecture) ---
     {
         "slug": "ai_dev_team_frontend",

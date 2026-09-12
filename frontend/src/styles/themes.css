@@ -1,0 +1,162 @@
+/* ============================================================================
+ * Theme: Warm Linen (2026) — light theme overrides.
+ * Triggered when <html data-theme="warm-linen">.
+ *
+ * Aesthetic: soft cream backgrounds, warm taupe text, emerald accents kept.
+ * Inspired by Pantone 2025-2026 trend palette ("Mocha Mousse" + earth tones).
+ *
+ * We override the most common Tailwind stone-* classes via attribute selectors
+ * with !important — this lets us flip the entire app without refactoring every
+ * component. Dark theme remains the default (no data-theme attribute).
+ * ============================================================================ */
+
+:root[data-theme="warm-linen"] body,
+[data-theme="warm-linen"] body {
+  background: #f7f3ec !important;
+  color: #2a2723 !important;
+}
+
+/* === BACKGROUNDS === */
+[data-theme="warm-linen"] .bg-stone-950 { background-color: #f7f3ec !important; }
+[data-theme="warm-linen"] .bg-stone-900 { background-color: #efe9df !important; }
+[data-theme="warm-linen"] .bg-stone-900\/40 { background-color: rgba(239, 233, 223, 0.7) !important; }
+[data-theme="warm-linen"] .bg-stone-900\/60 { background-color: rgba(239, 233, 223, 0.85) !important; }
+[data-theme="warm-linen"] .bg-stone-800 { background-color: #ffffff !important; }
+[data-theme="warm-linen"] .bg-stone-800\/40 { background-color: rgba(255, 255, 255, 0.7) !important; }
+[data-theme="warm-linen"] .bg-stone-800\/30 { background-color: rgba(255, 255, 255, 0.5) !important; }
+[data-theme="warm-linen"] .bg-stone-700 { background-color: #d9d2c6 !important; }
+[data-theme="warm-linen"] .bg-\[\#0a0a0b\] { background-color: #f7f3ec !important; }
+[data-theme="warm-linen"] .bg-\[\#0a0a0b\]\/80 { background-color: rgba(247, 243, 236, 0.85) !important; }
+
+/* === TEXT COLORS === */
+[data-theme="warm-linen"] .text-stone-100 { color: #1c1917 !important; }
+[data-theme="warm-linen"] .text-stone-200 { color: #292524 !important; }
+[data-theme="warm-linen"] .text-stone-300 { color: #44403c !important; }
+[data-theme="warm-linen"] .text-stone-400 { color: #57534e !important; }
+[data-theme="warm-linen"] .text-stone-500 { color: #78716c !important; }
+[data-theme="warm-linen"] .text-white { color: #1c1917 !important; }
+
+/* === BORDERS === */
+[data-theme="warm-linen"] .border-stone-800 { border-color: #d9d2c6 !important; }
+[data-theme="warm-linen"] .border-stone-700 { border-color: #c4b9a8 !important; }
+[data-theme="warm-linen"] .border-stone-700\/40 { border-color: rgba(196, 185, 168, 0.5) !important; }
+[data-theme="warm-linen"] .border-white\/5 { border-color: rgba(28, 25, 23, 0.08) !important; }
+[data-theme="warm-linen"] .border-white\/10 { border-color: rgba(28, 25, 23, 0.12) !important; }
+
+/* === HOVER STATES === */
+[data-theme="warm-linen"] .hover\:bg-stone-800:hover { background-color: #ede5d6 !important; }
+[data-theme="warm-linen"] .hover\:bg-stone-700:hover { background-color: #d9d2c6 !important; }
+[data-theme="warm-linen"] .hover\:bg-stone-800\/40:hover { background-color: rgba(237, 229, 214, 0.6) !important; }
+
+/* === ACCENTS — preserve emerald/cyan/rose but soften brightness === */
+[data-theme="warm-linen"] .bg-emerald-500\/15 { background-color: rgba(16, 185, 129, 0.12) !important; }
+[data-theme="warm-linen"] .text-emerald-300 { color: #047857 !important; }
+[data-theme="warm-linen"] .text-emerald-400 { color: #059669 !important; }
+[data-theme="warm-linen"] .border-emerald-500\/40 { border-color: rgba(5, 150, 105, 0.5) !important; }
+[data-theme="warm-linen"] .bg-cyan-500\/15 { background-color: rgba(6, 182, 212, 0.12) !important; }
+[data-theme="warm-linen"] .text-cyan-300 { color: #0e7490 !important; }
+[data-theme="warm-linen"] .text-cyan-400 { color: #0891b2 !important; }
+[data-theme="warm-linen"] .text-rose-400 { color: #be123c !important; }
+[data-theme="warm-linen"] .text-amber-300 { color: #b45309 !important; }
+[data-theme="warm-linen"] .text-amber-400 { color: #d97706 !important; }
+[data-theme="warm-linen"] .text-violet-300 { color: #6d28d9 !important; }
+[data-theme="warm-linen"] .text-violet-400 { color: #7c3aed !important; }
+
+/* === INPUTS === */
+[data-theme="warm-linen"] input,
+[data-theme="warm-linen"] textarea,
+[data-theme="warm-linen"] select {
+  color: #1c1917 !important;
+}
+[data-theme="warm-linen"] input::placeholder,
+[data-theme="warm-linen"] textarea::placeholder { color: #a8a29e !important; }
+
+/* === SHADOW depth tweaks for light theme === */
+[data-theme="warm-linen"] .shadow-2xl { box-shadow: 0 10px 30px rgba(74, 56, 39, 0.08) !important; }
+[data-theme="warm-linen"] .shadow-lg  { box-shadow: 0 6px 18px rgba(74, 56, 39, 0.06) !important; }
+
+/* === ROUNDED accent on cards for the 2026 "soft" look === */
+[data-theme="warm-linen"] .rounded-2xl { border-radius: 1.25rem; }
+[data-theme="warm-linen"] .rounded-xl { border-radius: 1rem; }
+
+/* === Cookie banner — softer in light mode === */
+[data-theme="warm-linen"] [data-testid="cookie-banner"],
+[data-theme="warm-linen"] [class*="cookie"] {
+  background-color: #ffffff !important;
+  color: #2a2723 !important;
+  border: 1px solid #e0d8c8 !important;
+}
+
+/* Smooth transitions when switching themes */
+html, body { transition: background-color 200ms ease, color 200ms ease; }
+[data-theme="warm-linen"] *,
+[data-theme="warm-linen"] *::before,
+[data-theme="warm-linen"] *::after {
+  transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease;
+}
+
+/* ============================================================================
+ * Theme: Tech Build 2026 — industrial premium (smart building / BIM / HVAC).
+ * Palette: alb, gri deschis, albastru tehnic (#0c5d8e/#1d8ec8), verde energetic
+ * (#0a8a5f/#16b97e), accente discrete amber pentru status.
+ * Inspirat din interfețe BIM / Digital Twin / panouri smart-building 2026.
+ * ============================================================================ */
+
+:root[data-theme="tech-build"] body,
+[data-theme="tech-build"] body {
+  background: #f4f6f8 !important;
+  color: #0f1c2e !important;
+}
+
+[data-theme="tech-build"] .bg-stone-950 { background-color: #f4f6f8 !important; }
+[data-theme="tech-build"] .bg-stone-900 { background-color: #e8eef3 !important; }
+[data-theme="tech-build"] .bg-stone-900\/40 { background-color: rgba(255,255,255,0.72) !important; }
+[data-theme="tech-build"] .bg-stone-900\/60 { background-color: rgba(255,255,255,0.92) !important; }
+[data-theme="tech-build"] .bg-stone-800 { background-color: #ffffff !important; }
+[data-theme="tech-build"] .bg-stone-800\/40 { background-color: rgba(255,255,255,0.7) !important; }
+[data-theme="tech-build"] .bg-stone-800\/30 { background-color: rgba(255,255,255,0.5) !important; }
+[data-theme="tech-build"] .bg-stone-700 { background-color: #cad6e0 !important; }
+[data-theme="tech-build"] .bg-\[\#0a0a0b\] { background-color: #f4f6f8 !important; }
+[data-theme="tech-build"] .bg-\[\#0a0a0b\]\/80 { background-color: rgba(244,246,248,0.88) !important; }
+
+[data-theme="tech-build"] .text-stone-100 { color: #0f1c2e !important; }
+[data-theme="tech-build"] .text-stone-200 { color: #1c2a3d !important; }
+[data-theme="tech-build"] .text-stone-300 { color: #2e4055 !important; }
+[data-theme="tech-build"] .text-stone-400 { color: #4a5f78 !important; }
+[data-theme="tech-build"] .text-stone-500 { color: #6b7e95 !important; }
+[data-theme="tech-build"] .text-white { color: #0f1c2e !important; }
+
+[data-theme="tech-build"] .border-stone-800 { border-color: #c3d2e0 !important; }
+[data-theme="tech-build"] .border-stone-700 { border-color: #94a8be !important; }
+[data-theme="tech-build"] .border-stone-700\/40 { border-color: rgba(148, 168, 190, 0.5) !important; }
+[data-theme="tech-build"] .border-white\/5 { border-color: rgba(15, 28, 46, 0.08) !important; }
+[data-theme="tech-build"] .border-white\/10 { border-color: rgba(15, 28, 46, 0.12) !important; }
+
+[data-theme="tech-build"] .hover\:bg-stone-800:hover { background-color: #dde7ef !important; }
+[data-theme="tech-build"] .hover\:bg-stone-700:hover { background-color: #cad6e0 !important; }
+[data-theme="tech-build"] .hover\:bg-stone-800\/40:hover { background-color: rgba(221, 231, 239, 0.7) !important; }
+
+/* Map emerald → "verde energetic" + cyan/sky → "albastru tehnic" */
+[data-theme="tech-build"] .bg-emerald-500\/15 { background-color: rgba(10, 138, 95, 0.12) !important; }
+[data-theme="tech-build"] .text-emerald-300 { color: #0a8a5f !important; }
+[data-theme="tech-build"] .text-emerald-400 { color: #16b97e !important; }
+[data-theme="tech-build"] .border-emerald-500\/40 { border-color: rgba(10, 138, 95, 0.5) !important; }
+[data-theme="tech-build"] .bg-cyan-500\/15 { background-color: rgba(29, 142, 200, 0.12) !important; }
+[data-theme="tech-build"] .text-cyan-300 { color: #0c5d8e !important; }
+[data-theme="tech-build"] .text-cyan-400 { color: #1d8ec8 !important; }
+[data-theme="tech-build"] .text-rose-400 { color: #c53030 !important; }
+[data-theme="tech-build"] .text-amber-300 { color: #a16207 !important; }
+[data-theme="tech-build"] .text-amber-400 { color: #d97706 !important; }
+[data-theme="tech-build"] .text-violet-300 { color: #5b21b6 !important; }
+
+[data-theme="tech-build"] input, [data-theme="tech-build"] textarea, [data-theme="tech-build"] select { color: #0f1c2e !important; }
+[data-theme="tech-build"] input::placeholder, [data-theme="tech-build"] textarea::placeholder { color: #94a8be !important; }
+
+[data-theme="tech-build"] .shadow-2xl { box-shadow: 0 10px 30px rgba(12, 93, 142, 0.08) !important; }
+[data-theme="tech-build"] .shadow-lg  { box-shadow: 0 6px 18px rgba(12, 93, 142, 0.06) !important; }
+
+[data-theme="tech-build"] *,
+[data-theme="tech-build"] *::before,
+[data-theme="tech-build"] *::after {
+  transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease;
+}

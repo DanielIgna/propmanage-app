@@ -1,7 +1,7 @@
 """Trust Score + Coverage scope (response radius) router."""
 import logging
 from typing import Optional, List, Literal
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field

@@ -1,0 +1,53 @@
+{
+  "summary": "PB-002 PropBenefits Everywhere — full-stack testing. Backend: 20 passed / 1 skipped in new pytest suite covering /pulse, /community-deals + support (idempotent, 404), /specialist-summary, /marketplace-flags, /context-banner/{house_health,digital_twin,invalid}, /building-summary (skipped — 0 buildings in demo DB, endpoint 404 path verified), admin /north-star (label '3.000...', 4 dimensions, target 3000), admin /community-deals CRUD (create, PATCH valid/invalid status, cleanup), security (401 unauth, 403 client-on-admin), PB-001 regression (/opportunities, /wallet, /success-manager, /admin/prop-benefits/overview). Client Pulse next_action IS house-centric ('cas' present). Community Deals: 12 seed titles verified. Frontend client: pb-pulse + all 5 sub-testids visible, deals-preview click routes to benefits; pb-community-deals section shows 12 deal cards, Susțin → Susținut ✓ transition works. Frontend admin: /admin/prop-benefits shows pbadmin-page + pbadmin-north-star + pbadmin-ns-value + slogan + 4 dimensions + Community Deals tab with all 12 seed deals, add + status select all persist. House Health banner (pb-banner-house_health) renders when route uses /house-health/:twinId. Digital Twin banner (pb-banner-digital_twin) renders on the LockedScreen (client sees it above lock — expected). Cleaned up TEST_pb002_ui_deal (archived).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "SpecialistBenefitsCard (pb_benefits widget in SpecialistDashboard rail)",
+        "issue": "pb-specialist-card is NEVER rendered in DOM for existing specialists even though /api/benefits/specialist-summary returns 200 with 3 messages. Rail only shows spec-today-summary + spec-progress-card. Root cause: `SpecialistDashboard.jsx:192` uses `xosLayout || DEFAULT`. Specialists that already have a saved xosLayout in the DB do not have `pb_benefits` in their layout list, so the widget is filtered out. The DEFAULT includes pb_benefits, but only new users hit that path. Fix: (a) always inject `pb_benefits` if missing from stored layout, or (b) migrate existing xosLayout docs to include pb_benefits.",
+        "selector": "[data-testid='pb-specialist-card']",
+        "priority": "HIGH"
+      },
+      {
+        "component": "MarketplaceBenefitStrip on /marketplace",
+        "issue": "Logged-in client visiting /marketplace is redirected by ServiceGate (serviceId='specialisti') to the marketing landing page — PublicMarketplace is never mounted for this client in the demo env, so pb-mkt-strip cannot be verified via UI. Backend endpoint /api/benefits/marketplace-flags returns 4 flags correctly (verified). This is a pre-existing ServiceGate behavior, NOT a PB-002 defect; noted for main agent.",
+        "selector": "[data-testid='pb-mkt-strip']",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_pb002_prop_benefits_everywhere.py",
+    "/app/test_reports/pytest/pb002_results.xml"
+  ],
+  "action_items": [
+    "Ensure existing specialists get pb_benefits widget: on SpecialistDashboard render (or in a migration), merge 'pb_benefits' into the stored xosLayout if absent, so pb-specialist-card renders for all specialists (not just new ones falling through to DEFAULT).",
+    "Optional (out of scope for PB-002): investigate why ServiceGate('specialisti') redirects logged-in client away from /marketplace — this prevents pb-mkt-strip from being exercised in UI (backend works fine).",
+    "Pre-existing (iteration_167): mentor pb_ prefix drift — 1 pre-existing failure in test_pb001_prop_benefits.py::test_mentor_returns_pb_action still fails (23/24). Unrelated to PB-002."
+  ],
+  "critical_code_review_comments": [
+    "SpecialistDashboard.jsx:192 — using stored xosLayout without ensuring newly added widgets are included is fragile. Every time a new widget is added to the rail (pb_benefits here), existing users won't see it. Recommend: `const order = mergeWidgetLists(xosLayout, DEFAULT)` that guarantees any DEFAULT widget missing from stored layout is appended.",
+    "propbenefits/summaries.py::client_pulse computes saved_value by summing wallet.used[].value_estimate + waived*45 — assumes lead_fee_waived=True flag is set on requests (undocumented). Verified working for demo client.",
+    "propbenefits/community_deals.py::support_deal — uses $addToSet (idempotent). Good. But no rate limiting — a user could theoretically POST support to all 12 deals in a burst. Non-issue for MVP.",
+    "routes/prop_benefits.py::my_context_banner returns 400 for unknown surface — correctly rejected in test."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_pb002_prop_benefits_everywhere.py (new — 21 tests, 20 passed 1 skipped)"
+  ],
+  "success_rate": {
+    "backend": "100% (20/20 executed, 1 skipped due to empty buildings collection)",
+    "frontend": "~85% — pb-pulse + community-deals + admin north-star + admin CRUD + banners all pass; specialist card missing (existing-user layout drift); marketplace strip blocked by ServiceGate (env-specific)"
+  },
+  "test_credentials": "client@propmanage.io / Client123! · specialist@propmanage.io / Spec123! · admin@propmanage.io / 1!nasov01ADMIN",
+  "seed_data_creation": "Test suite created and archived one deal (TEST_pb002_deal) via admin CRUD test; UI test created TEST_pb002_ui_deal — both were archived (status=arhivat, active=false). Community Deal 'Mobilier din Suedia' now has client@propmanage.io in its supporter_ids (idempotent — additional runs won't double-count).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend PB-002 regression file: /app/backend/tests/test_pb002_prop_benefits_everywhere.py — run with `pytest backend/tests/test_pb002_prop_benefits_everywhere.py -v`. All 20 pass. PB-001 suite: 23/24 pass (mentor pb_ prefix regression pre-existing from iter167). If main agent fixes the specialist xosLayout issue, re-run the frontend specialist portion: login as specialist@propmanage.io, visit /specialist, verify [data-testid='pb-specialist-card'] and [data-testid^='pb-sp-'] appear in the right rail (should be 3 messages: sp_profile, sp_campaign, sp_partner_grow for this demo specialist).",
+  "rca of the issue": "Specialist card missing: SpecialistDashboard.jsx computes `const order = xosLayout || DEFAULT;`. For existing specialists whose xosLayout doc was saved BEFORE pb_benefits was added to DEFAULT, `xosLayout` truthy → DEFAULT is skipped → pb_benefits ID never enters the render list → SpecialistBenefitsCard never mounted. Even though the API endpoint /api/benefits/specialist-summary works and returns 3 messages, the component is not in the tree. Fix: merge missing keys from DEFAULT into xosLayout on load, or run a one-time migration adding pb_benefits to all existing specialist xosLayout docs."
+}

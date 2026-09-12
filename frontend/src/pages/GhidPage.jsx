@@ -8,6 +8,7 @@ import { Building2, Clock, Calendar, ArrowRight, ArrowLeft, ChevronDown, BookOpe
 import { useSEO } from "../hooks/useSEO";
 import { GHIDURI, getGhidBySlug } from "../data/ghiduri";
 import { SEO_CATEGORY_MAP } from "../utils/seoSlugs";
+import { LeadMagnetCTA } from "../components/LeadMagnetCTA";
 
 const SITE_URL = "https://propmanage.ro";
 
@@ -241,6 +242,9 @@ export const GhidPage = () => {
             </section>
           )}
 
+          {/* Lead magnets — Growth OS G1 */}
+          <LeadMagnetCTA />
+
           {/* Bottom CTA */}
           <div className="mt-12 glass-strong rounded-3xl p-8 text-center" data-testid="ghid-cta">
             <h2 className="font-serif text-2xl mb-2">Vrei să începi lucrarea?</h2>
@@ -276,7 +280,7 @@ export const GhidPage = () => {
       </main>
 
       <footer className="border-t border-white/5 mt-16 py-8 px-6 text-center text-xs text-stone-500">
-        © {new Date().getFullYear()} PropManage · <Link to="/terms" className="hover:text-stone-300">Termeni</Link> · <Link to="/privacy" className="hover:text-stone-300">Confidențialitate</Link>
+        © {new Date().getFullYear()} PropManage · operat de Vintage Furniture S.R.L. (CUI 35250247) · <Link to="/terms" className="hover:text-stone-300">Termeni</Link> · <Link to="/privacy" className="hover:text-stone-300">Confidențialitate</Link>
       </footer>
     </div>
   );

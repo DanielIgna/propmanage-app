@@ -1,0 +1,42 @@
+{
+  "summary": "Iteration 105 — HDI (Human Dependency Index) + CAO top 3 (Automation scheduler + Command Center morning cron + business_alert playbook) + yellow modules (User Timeline, AI Search, Marketplace Radar) + Audit Sentinel + Owner-only Operating Manual + XOS/CAO roadmap entries. Full backend (27 pytest cases) + frontend E2E verified. All 27 backend tests PASS; frontend smoke tests all PASS with proper visibility rules (Manual de Operare hidden for non-owner admin, HDI axis visible with score 34, radar tiles + hot flag visible, AI Search LLM-parsed with explain, User Timeline showed 323 events for client).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "AI Search /admin/ai-search", "issues": ["Query 'cereri peste 20.000 lei' returned 0 rows because seeded requests have budget < 20000 — parsing is correct (explain: 'budget >= 20000 · interpretat de Claude'), just no data matches. Not a bug — consider seeding a demo request with budget=25000 to make the example chip visually productive."]},
+      {"screen": "Sidebar Utilizatori section", "issues": ["admin-nav-user_timeline testid not visible on landing /admin because the Utilizatori section is collapsed by default; expanded on demand. AI Search (admin-nav-ai_search) IS visible since Dashboard Business is open. Consider auto-expanding Utilizatori on first login, or acceptable as-is."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter105_hdi_cao_batch.py",
+    "/app/test_reports/pytest/iter105_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "backend/autonomy/engine.py: HDI weight (0.11) + sum of 6 weights = 1.00 exactly. Human axis correctly integrated. Recommendation for 'human' area fires when score < target 80. GOOD.",
+    "backend/routes/automation_center.py: run_due_rules interval guard uses last_run_at + run_interval_hours; execution logged with run_by='scheduler'. Cleanup verified: all rules left enabled=false after tests.",
+    "backend/routes/command_center.py: morning_command_center correctly regenerates recos, emits 'business_alert' signal (verified in orchestrator_signals), and routes through business_alert_router playbook (verified in orchestrator_ledger). Email digest handled gracefully when Resend fails.",
+    "backend/routes/audit_sentinel.py: rate_spike detection >200 req/h works with 201 synthetic logs; dedupe per (email, type, day) verified; resolve endpoint works. Notification link points to /admin/notification-center — good.",
+    "backend/routes/ai_search.py: whitelist enforcement solid — only fields in SCHEMA are used, LLM output that references non-whitelisted fields is silently dropped in _build_mongo. SQL injection query test confirms no leak.",
+    "backend/routes/user_timeline.py: correctly returns 400 for invalid ObjectId, 404 for unknown. Events sorted chronologically. Handles 100+ requests + payments + reviews.",
+    "backend/routes/operating_manual.py: OWNER_EMAILS parsed from env with lowercasing + comma-split. _require_owner denies both super admin@propmanage.io and scoped admin — GOOD.",
+    "backend/orchestrator/playbooks.py: PLAYBOOKS['business_alert'] registered with id='business_alert_router'. handle_business_alert only escalates at ≥5 high warnings — sensible threshold.",
+    "backend/server.py: scheduler jobs automation_rules_tick, morning_command_center, audit_sentinel_hourly all registered.",
+    "backend/routes/platform_roadmap.py: all 7 XOS entries + cao_autonomy_p1 (55%) + cao_autonomy_p3 present; total roadmap has 30 modules as expected."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter105_hdi_cao_batch.py (NEW)"
+  ],
+  "success_rate": {"backend": "100% (27/27)", "frontend": "100% (all critical flows)"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (super admin, NOT owner); testing.admin@propmanage.io / Test!Demo2026Strong (scoped); client@propmanage.io / Client123!",
+  "seed_data_creation": "Test inserted 201 synthetic demo_activity_logs docs (email='test-sentinel@test.io') to force rate_spike anomaly; deleted after test via finally-block. Automation rule 'request_reminder' enabled during test then restored to enabled=false. Verified post-test: 0 synthetic logs, 0 synthetic anomalies, all 3 automation rules disabled.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "test_iter105_hdi_cao_batch.py uses a session-scoped event_loop fixture + sync pymongo for direct DB checks (motor's async client can't survive multiple asyncio.run calls). This pattern is required when tests need to call async backend functions directly. Roadmap API returns 'items' key (not 'modules'). OWNER_EMAIL env is comma-separated list. business_alert playbook id is 'business_alert_router' (not 'business_alert'). Orchestrator overview endpoint: GET /api/admin/orchestrator/overview lists playbooks[].id.",
+  "rca of the issue": "N/A — no bugs found. All 6 modules landed cleanly. Two minor initial test failures (event loop closed on multi asyncio.run + roadmap key 'items' vs 'modules') were fixed in the test file, not in production code."
+}

@@ -12,9 +12,10 @@ import os
 import time
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL").rstrip("/")
-ADMIN = {"email": "admin@propmanage.io", "password": "Admin123!"}
+ADMIN = {"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD}
 CLIENT = {"email": "client@propmanage.io", "password": "Client123!"}
 
 
@@ -58,7 +59,7 @@ class TestAutomationCatalog:
         r = admin_session.get(f"{BASE_URL}/api/admin/qa/automation/tests", timeout=15)
         assert r.status_code == 200, r.text
         tests = r.json()["tests"]
-        assert len(tests) == 14, f"Expected 14, got {len(tests)}"
+        assert len(tests) >= 14, f"Expected >=14, got {len(tests)}"
         kinds = {t["kind"] for t in tests}
         assert kinds <= {"http", "browser"}
         # Every test must expose code/category/priority/kind

@@ -1,0 +1,36 @@
+{
+  "summary": "Iter89 — Phase 1 «Stabilizare Tehnică» regression suite. Focus: verify TD-01 lazy-loading (55 lazy imports + single <Suspense> at App.js L1612) did NOT break any route, plus quick backend regression + TD-03/TD-07/TD-08 sanity. RESULT: 10/10 backend pytest PASS (/app/backend/tests/test_phase1_regression_iter89.py). All logins OK (admin/client/specialist/operator return 200 with user object; /api/auth/me works). GET /api/construction/taxonomy/public → count=79. GET /api/admin/orchestrator/overview → exactly 7 playbooks. GET /api/construction/prices/public → 132 rows (>100). TD-03 confirmed: 0 users with legacy vocab (painting/carpentry/gardening/cleaning/appliance_repair) in specialty or service_categories; migration_backups collection present with backup docs. TD-07: >22 non-_id indexes across collections. FRONTEND REGRESSION (5 role scopes, 16 distinct routes visited): (a) Public — /, /marketplace, /register, /login, /xyz all render without chunk/type errors; /xyz falls through to Landing (catch-all — not a regression). (b) Admin — /admin, /admin/orchestrator, /admin/construction, /admin/autonomy, /admin/analytics-growth, /admin/house-health, /admin/city-partners, /admin/ai-governance, /admin/legal-audit, /admin/manual-tester, /admin/experience-tiers, /admin/twin all load with full content, Suspense spinner disappears (~2-4s each). (c) Client /client → dashboard V2 renders (Bună seara, Andrei · Skyline Loft A4 · 49 lucrare activă); Tour ghidat can be dismissed via «Sari peste»; data-testid=«v2-nav-request» click opens v2-wizard step 1 «Ce serviciu ai nevoie?» with new taxonomy categories (Zugrăvit, Parchet, Faianță/Gresie, Handyman, Gips-carton, HVAC/Climatizare, Electric, Sanitar, Design Interior) — TD-03 vocab visible in wizard confirmed. Nav tabs present: v2-nav-home, v2-nav-jobs, v2-nav-request, v2-nav-property, v2-nav-settings. (d) Specialist /specialist → dashboard loads with Junior tier, Mihai Ionescu, 3 funcții deblocate visible. (e) Operator /operator → dashboard loads with «Validare Digital Twin», 37 Twins activi, 29 în validare. ZERO ChunkLoadError, ZERO «Element type is invalid», ZERO «Cannot read properties», ZERO uncaught pageerror across all navigations. Only console noise = expected 401 on /api/auth/me for unauth pages. Lazy-loading migration is CLEAN.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin routing", "issues": ["/admin/users, /admin/analytics, /admin/kyc, /admin/disputes URLs are NOT declared as routes in App.js (only /admin/analytics-growth, /admin/orchestrator, /admin/construction etc. exist). They fall through to Landing which is confusing if a user (or dev) types them. Consider either adding aliases (/admin/users → /admin?tab=users) or a proper 404 admin fallback. This is UX-level, NOT a Phase 1 regression — pre-existing routing model."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase1_regression_iter89.py",
+    "/app/test_reports/pytest/iter89_phase1.xml"
+  ],
+  "action_items": [
+    "OPTIONAL — Add explicit /admin/users, /admin/analytics, /admin/kyc, /admin/disputes route aliases OR replace fallback catch-all with a 404 page (currently unknown /admin/* silently renders Landing, which looks like an auth glitch on first sight). Not blocking Phase 1 sign-off.",
+    "OPTIONAL — Iter88 open bug still stands: Auth.jsx SPECIALTIES list needs update (see iter88 action_items[0]). NOT tested in this run since scope was regression-only."
+  ],
+  "critical_code_review_comments": [
+    "App.js L1612 <Suspense> uses a plain inline spinner div; consider extracting to a named <RouteFallback /> component so all lazy fallbacks are visually consistent and easier to tweak (e.g., add skeleton for known heavy pages).",
+    "App.js has 55 `const X = lazy(...)` (grep confirms). No preloading strategy — first navigation to a route always incurs a chunk fetch. Consider adding hover-based prefetch on nav links (Link.onMouseEnter → import()) OR route-based prefetch for the 4 dashboards (/admin, /client, /specialist, /operator) on the login success handler to hide the first-paint delay after login.",
+    "No <ErrorBoundary /> wrapping <Suspense>; if any lazy chunk fails to load (network hiccup, deploy race), user sees a blank div with only the spinner. Wrap Suspense in an ErrorBoundary that offers a «Reîncarcă pagina» button on ChunkLoadError.",
+    "Public / catch-all: unknown paths like /xyz render Landing. Better UX would be a dedicated NotFound route (`<Route path=\"*\" element={<NotFound />} />`) so users know they mistyped.",
+    "test_credentials.md still lists Admin password as `Admin123!` but real password is `1!nasov01ADMIN` (from SEED_ADMIN_PASSWORD env). File was flagged in iter88 too — please sync."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase1_regression_iter89.py (new — 10 tests, ~8s runtime, idempotent)"
+  ],
+  "success_rate": {"backend": "10/10 (100%)", "frontend": "16/16 routes verified (100%) — no lazy-loading regressions"},
+  "test_credentials": "Admin: admin@propmanage.io / 1!nasov01ADMIN | Client: client@propmanage.io / Client123! | Specialist: specialist@propmanage.io / Spec123! | Operator: operator@propmanage.io / Op123! (test_credentials.md still stale)",
+  "seed_data_creation": "None — regression-only run; no data mutations.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 1 (TD-01 lazy + TD-03 vocab migration + TD-05 lib/api.js + TD-07 22 indexes + TD-08 telemetry retention) is GREEN. Lazy-loading covers all 55 route components with a single <Suspense> at App.js L1612. Backend regression file /app/backend/tests/test_phase1_regression_iter89.py is idempotent + fast (~8s) — safe to re-run. Note: several admin URLs referenced in the review request (/admin/users, /admin/analytics, /admin/kyc, /admin/disputes) DO NOT exist as direct routes in App.js — they are internal tabs of AdminDashboard (path=\"/admin\") — those URLs fall through to Landing. This is pre-existing behavior, not a Phase 1 regression. Correct route paths to hit those areas: use /admin then click sidebar, OR use the actual paths (/admin/analytics-growth, /admin/city-partners, etc.).",
+  "rca_of_the_issue": "No issue to RCA — Phase 1 stabilization is functioning correctly. Lazy-loading regression confirmed clean; TD-03 migration confirmed complete (0 legacy vocab users, backups intact); orchestrator/prices/taxonomy endpoints return expected shape and volume."
+}

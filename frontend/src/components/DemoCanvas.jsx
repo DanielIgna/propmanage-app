@@ -13,6 +13,8 @@ const DemoCanvas = ({ faceStyle, hiddenLayers, resetKey }) => {
       key={resetKey}
       camera={{ position: [12, 9, 14], fov: 50, near: 0.1, far: 2000 }}
       gl={{ antialias: true, localClippingEnabled: true }}
+      dpr={[1, 2]}
+      style={{ width: "100%", height: "100%", touchAction: "none" }}
       onCreated={({ gl }) => { gl.localClippingEnabled = true; }}
     >
       <color attach="background" args={["#0a0a0a"]} />

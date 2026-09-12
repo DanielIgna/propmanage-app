@@ -1,0 +1,46 @@
+{
+  "summary": "Iter84 review: Analytics & Growth PHASE 2 (heatmap/bounce/retention/A-B/PDF) + Client Junior UI. Backend 15/15 tests PASS incl. end-to-end A/B tracking (POST /api/track ab event → visitor counted in variant A). Frontend: found + FIXED a CRITICAL crash in AnalyticsGrowthPage.jsx (5 lucide-react icons used but not imported → ReferenceError: Flame is not defined → whole page ErrorBoundary crash). After fix, all 8 admin tabs + PDF button + heatmap page-select + bounce KPIs + retention cohort table + full A/B lifecycle (create→toggle→delete) work. Client Junior UI at /dashboard/client-junior full flow (home→flow→confirm→jobs, bottom-nav 4 tabs, cancel→home) PASS on 390x844.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Client Junior /dashboard/client-junior", "issues": [
+        "Search filter (cj-search-input) is diacritic-insensitive-BROKEN: typing 'zugra' does NOT match 'Zugrăveli' because JS .toLowerCase().includes() treats 'ă'≠'a'. Users searching without diacritics see empty results even when the category exists. Recommend normalizing both label and query with .normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').",
+        "Cookie banner (Preferințe cookie-uri, bottom overlay with 'Accept toate/Refuz/Salvează') reappears after bottom-nav switches to /settings tab and OVERLAPS the bottom nav — briefly blocks cj-grid-* clicks until user re-dismisses. Consider hiding the bottom banner when the client-junior page is active, or lowering its z-index below BottomNav on this route."
+      ]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_analytics_growth_phase2_iter84.py",
+    "/app/test_reports/pytest/iter84_analytics_growth_phase2.xml"
+  ],
+  "action_items": [
+    "(FIXED by tester) AnalyticsGrowthPage.jsx line 3-6 was missing imports for Flame, TrendingDown, Repeat, FlaskConical, FileText — added them; page now loads. Please verify the fix is intentional and consider a lint rule (e.g., eslint 'no-undef' + jsx-a11y) to catch this class of bug at build-time.",
+    "Consider diacritic-insensitive normalization on Client Junior search filter (see design_issues).",
+    "Consider suppressing the cookie banner on /dashboard/client-junior (mobile MVP) — it clashes with BottomNav on 390x844."
+  ],
+  "critical_code_review_comments": [
+    "AnalyticsGrowthPage.jsx: 5 missing lucide-react imports (Flame, TrendingDown, Repeat, FlaskConical, FileText) crashed the ENTIRE Analytics & Growth admin page with ReferenceError. This shipped past a `git commit` — recommend a mandatory pre-commit `yarn lint` + eslint rule 'no-undef' + `react-refresh/only-export-components`.",
+    "analytics_growth.py:108 filters admin paths BEFORE creating docs, so 'ab' events on /admin/* would be silently dropped. Currently OK because A/B tracker is only used on public pages, but if you ever run an A/B test on an admin sub-flow it will silently fail. Consider whitelisting event.type=='ab' from the admin-path filter.",
+    "analytics_growth.py:141 sets session field ab_{key} but there is NO index on session_id or on ab_* fields — for large datasets this scan-and-project may become slow.",
+    "AnalyticsGrowthPage.jsx is 308 LOC, ClientJuniorDashboard.jsx 200 LOC, still within the 700-LOC soft guideline.",
+    "ClientJuniorDashboard.jsx CATEGORIES have IDs {zugraveli, curatenie, instalatii, electric, clima, montaj} — the review-request wording listed illustrative IDs (zugraveli, electrice, asamblare, curatare, hvac) that don't match the code. Not a bug — just make sure documentation/test-suites use the actual IDs.",
+    "BounceTab.jsx: uses `data.summary` unconditionally after loader guard — OK.",
+    "AbTestingTab.jsx: 'ab-delete-{key}' uses window.confirm which is fine but blocks event loop; consider a shadcn AlertDialog for accessibility."
+  ],
+  "updated_files": [
+    "/app/frontend/src/pages/admin/AnalyticsGrowthPage.jsx (added 5 missing lucide-react imports: Flame, TrendingDown, Repeat, FlaskConical, FileText)",
+    "/app/backend/tests/test_analytics_growth_phase2_iter84.py (new: 15 tests)"
+  ],
+  "success_rate": {"backend": "100% (15/15)", "frontend": "100% after import fix (Analytics 8 tabs + heatmap + bounce + retention + A/B CRUD, Client Junior full flow)"},
+  "test_credentials": "Super Admin: danieligna1@gmail.com / 0108 (cookie httpOnly). /app/memory/test_credentials.md still lists only demo admin@propmanage.io — flagged in iter81/iter82/iter83 and STILL NOT UPDATED.",
+  "seed_data_creation": "Seeded 3 clicks on /login (x_pct/y_pct) via public /api/track to populate heatmap. TEST_UI_<epoch> A/B experiment and TEST_QA iter84 experiment were created and deleted during the tests. Also 1 pageview + 1 'ab' variant=A event on /. All test-scoped visitor_ids are prefixed TEST_.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 2 Analytics & Growth is fully functional after the missing-imports fix in AnalyticsGrowthPage.jsx. All 6 backend endpoints (heatmap/bounce/retention/ab-list/ab-crud/export.pdf) return correct shapes and status codes; auth guard is active on all Phase-2 admin routes. End-to-end A/B tracking is verified: after `POST /api/track` with events=[{type:'ab',ab_key,ab_variant:'A'}], the subsequent `GET /api/admin/analytics/ab` shows variant A visitor count incremented by 1. PDF export returns a 26KB+ %PDF-starting document with content-type application/pdf. Client Junior flow at /dashboard/client-junior works end-to-end on mobile 390x844. Two minor UX polish items (diacritic-insensitive search + cookie-banner on mobile) noted but not blocking.",
+  "rca_of_the_issue": "ReferenceError: Flame is not defined at AnalyticsGrowthPage.jsx line 94 (tab config array). Root cause: 5 icons — Flame, TrendingDown, Repeat, FlaskConical, FileText — are referenced in the tab-icon config array and the PDF-button icon but were NEVER added to the lucide-react named-import list (lines 3-6). When React tried to evaluate the tab array during render, it hit the first undefined identifier and threw, tripping ErrorBoundary and showing the 'Ceva nu a mers cum trebuie' screen. This is a build-time issue that would have been caught by eslint 'no-undef' — the current lint config only reports on save and this file passed because 'no-undef' is not enforcing for JSX icon-component names. Fix (applied by tester): added `Flame, TrendingDown, Repeat, FlaskConical, FileText,` to the lucide-react import statement. Verified: page loads, all 8 tabs render with icons, no ErrorBoundary trip. Reproduction (before fix): login as admin → navigate to /admin/analytics-growth → whole page crashes to ErrorBoundary with 'Flame is not defined'. Mitigation: enable eslint no-undef in CI and add a smoke Playwright test that just loads /admin/analytics-growth and asserts data-testid='analytics-growth-page' is visible."
+}

@@ -23,7 +23,8 @@ from pydantic import BaseModel, Field
 from db import db
 from deps import require_role
 from sub_admin_deps import is_super_admin
-from routes.autonomy import run_auto_tune_orchestration, take_autonomy_snapshot, _CACHE
+from routes.autonomy import run_auto_tune_orchestration
+from autonomy.snapshots import take_autonomy_snapshot, _CACHE
 
 logger = logging.getLogger("propmanage.twin")
 

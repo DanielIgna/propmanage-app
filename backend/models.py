@@ -99,7 +99,10 @@ class RequestIn(BaseModel):
     description: str
     priority: Literal["low", "normal", "medium", "high", "urgent"] = "normal"
     budget_estimate: Optional[float] = None
+    county: Optional[str] = None
     photos: Optional[List[str]] = None
+    taxonomy_node_id: Optional[str] = None
+    subcategory: Optional[str] = None
 
     @field_validator("priority", mode="before")
     @classmethod
@@ -125,6 +128,9 @@ class ReviewIn(BaseModel):
     job_id: Optional[str] = None
     rating: int = Field(ge=1, le=5)
     comment: Optional[str] = None
+    # GBOS P0.3 — Trust Marketplace (Rebook > stele)
+    would_hire_again: Optional[Literal["yes", "no", "not_sure"]] = None
+    would_recommend: Optional[bool] = None
 
 
 class DocumentIn(BaseModel):
@@ -170,6 +176,9 @@ class TwinAsset(BaseModel):
     type: Literal["hvac", "boiler", "electric_panel", "water_meter", "gas_meter", "appliance", "lighting", "plumbing", "other"]
     name: str
     room_id: Optional[str] = None
+    # P1 — identitate canonică unică: leagă poziționarea 2D de activul din `property_assets` (SSOT).
+    # Optional & non-destructiv: ONE ASSET IDENTITY + MULTIPLE CONTEXTS.
+    asset_ref: Optional[str] = None
     x: float = 0
     y: float = 0
     condition: Literal["good", "fair", "needs_service", "critical"] = "good"
@@ -220,3 +229,15 @@ class PortfolioItemIn(BaseModel):
     completion_date: Optional[str] = None
     location: Optional[str] = None
     surface: Optional[float] = None
+    project_type: Optional[str] = Field(default=None, max_length=60)
+    services: Optional[List[str]] = Field(default=None, max_length=20)
+    role: Optional[str] = Field(default=None, max_length=60)
+    budget_range: Optional[str] = Field(default=None, max_length=40)
+    tags: Optional[List[str]] = Field(default=None, max_length=25)
+    before_image: Optional[str] = None
+    after_image: Optional[str] = None
+    video_url: Optional[str] = Field(default=None, max_length=300)
+    tour_url: Optional[str] = Field(default=None, max_length=300)
+    awards: Optional[str] = Field(default=None, max_length=200)
+    client_review: Optional[str] = Field(default=None, max_length=1000)
+    is_public: bool = True

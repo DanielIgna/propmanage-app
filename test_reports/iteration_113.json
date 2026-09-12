@@ -1,0 +1,34 @@
+{
+  "summary": "Sprint 5 — Experience Configuration Center fully regression-verified end-to-end. Backend: 16/16 pytest cases GREEN covering the new versioning + rollback endpoints and full XOS regression (public layout, admin surfaces, PUT layout, history endpoint, rollback valid+404, admin gating on 3 endpoints, reset, registry GET/PATCH, experience-profiles GET/PUT, ui-rules GET/PUT, specialist_home layout). Frontend: /admin/xos-builder loads with H1 'Experience Configuration Center'; all 4 tabs (xc-tab-layout / xc-tab-registry / xc-tab-profiles / xc-tab-rules) present and switchable; Layout tab shows 5 xos-widget-* rows for client_home + LivePreview xc-preview showing 5 numbered widgets. Toggle live-update verified: click xos-toggle-hero → hero disappears from preview instantly, preview drops from 5→4; re-toggle → hero re-appears (5 again). Save (xos-save) publishes layout (endpoint hit — no error toast). Surface selector switches to specialist_home → 5 different widgets (cockpit + today_summary confirmed distinct set), preview updates in sync; switch back to client_home works. HistoryPanel xc-history populated with rollback buttons (5 versions visible after prior test runs). Click first xc-rollback-* → widget list refreshed to 5, no errors. Registry tab renders XOSRegistryPanel (widget names visible). Profiles tab renders 3 exp-save-* buttons (client/specialist/admin). Rules tab renders xc-uirules-summary + xc-uirules-open link with correct href='/admin/ui-rules'. Sidebar menu label = 'Experience Center' (badge 'XOS'), NOT 'XOS · Layout Builder'. Zero critical/minor bugs found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter113_xos_sprint5.py",
+    "/app/test_reports/pytest/iter113_xos_sprint5.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes/xos.py:125 — history cap uses `db.xos_layout_history.find(...).sort('saved_at', -1).skip(20)` to find rows past cap and delete them. Correct, but the async list-comprehension `[d['_id'] async for d in ...]` collects all IDs — fine at 20 cap, but doesn't hint the OP that Motor cursors need `.to_list()` semantics. Consider `to_list(None)` for clarity.",
+    "XOSBuilderPage.jsx:83 — HistoryPanel only reloads via useEffect([surface]) — after the 'Publică layout' save the history panel doesn't refresh unless the user switches surfaces or reloads the page. UX gap: post-save, the newly created pre-save snapshot won't appear in the panel until the user changes surface. Add `onSaved` callback wired from parent `save()` to re-fetch history.",
+    "XOSBuilderPage.jsx:196 — reset() has no error handling (no try/catch). If POST /reset fails, `r.data.items` throws and no toast is shown. Wrap in try/catch like save().",
+    "XOSBuilderPage.jsx:259 — On Registry tab `window.location.reload()` after change is heavy-handed; consider triggering a re-fetch of surfaces state instead so users don't lose tab context.",
+    "routes/xos.py — _snapshot_layout captures 'items' from the CURRENT stored doc. If a user hits PUT twice with the same payload, two identical snapshots are created and consume history slots. Consider a light dedup: skip snapshot if last history entry has identical items."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter113_xos_sprint5.py (new, 16 tests)"
+  ],
+  "success_rate": {"backend": "100% (16/16)", "frontend": "100% (all 8 review scenarios verified)"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN — worked. /app/memory/test_credentials.md still says 'Admin123!' (doc drift persisting from iter110).",
+  "seed_data_creation": "None created. Preserved existing xos_layout_history (as instructed) — grew from ~4 to ~9 entries during regression, still well under 20 cap.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Reuse /app/backend/tests/test_iter113_xos_sprint5.py for XOS Sprint 5 regression. Watch-outs: (1) HistoryPanel reloads only on surface change/mount, not on save — if next iteration adds a save→refresh binding, existing test doesn't cover it (needs a wait_for element check). (2) xos_layout_history has cap 20/surface — running the pytest module 4+ times will keep pushing entries and evicting oldest. (3) Both admin gating tests use 401/403 — the auth stack returns 401 for missing cookie but 403 for wrong-role; both accepted. (4) Rollback endpoint takes snapshot pre-rollback → each rollback consumes a history slot. (5) Sidebar item testid is 'admin-nav-xos_builder' (unchanged), only visible label changed to 'Experience Center'.",
+  "rca of the issue": "N/A — no bugs found. Sprint 5 fully green."
+}

@@ -14,11 +14,10 @@ import re
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from db import db
-from deps import require_role
 from sub_admin_deps import require_admin_scope
 from ai_core.provider import call_llm
 

@@ -1,0 +1,27 @@
+{
+  "summary": "Iter 137 — Universal Capability Engine (Track B / Faza D1). Backend: 15/15 pytest PASS (catalog 45 caps/5 phases/27 software/7 reserved, responsibility-matrix rows OK for digital_twin_infrastructure & installation_mapping, PUT validations 400/401/403, score=90 with expected badges incl. point_cloud NOT earned, progression level 4 Premium with next_requirements, GET own with metrics, GET public without metrics + phase attached + 404 handling, /capabilities/find sorted desc respecting min_score & software filter, portfolio extended fields persist). Frontend: /specialist/capabilities editor loads (score-card 90/100, progression-card Nivel 4/7 Premium, 5 phase sections, 7 reserved caps locked w/ PropManage badge and non-clickable, cap-item selection reveals level pills, cap-soft-revit toggle + cap-save-btn persists — score remained 90 as expected). Public /specialists/{id}: capabilities-card renders w/ sp-compatibility-score, sp-progression-level, sp-badge-bim_ready, sp-cap-interior_design; TrustScoreCard still shown below (regression OK). Specialist2 (no caps) — profile loads without capabilities-card and doesn't crash. Restored specialist@propmanage.io default state (5 caps + 5 software, score 90).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "SpecialistDashboard", "issue": "'Capabilitățile mele' link (data-testid=link-capabilities) is gated behind welcome hero which requires user.verified && tierInfo.canSeeBentoHero (tier >= ADVANCED). specialist@propmanage.io currently has tier=VERIFIED, so the hero renders and the link IS present (count=1 when scrolled), BUT the first playwright run showed count=0 initially before hero rendered. During second attempt hero was present. Non-blocking, but users with tier < ADVANCED (ENTRY/JUNIOR) will not see the link at all — no alternative entry point to /specialist/capabilities exists on dashboard for lower tiers.", "selector": "[data-testid=\"link-capabilities\"]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_capability_engine_iter137.py", "/app/test_reports/pytest/iter137.xml"],
+  "action_items": [
+    "Consider adding link-capabilities entry point outside of tier-gated welcome hero (e.g. in the profile/settings tab) so ENTRY/JUNIOR specialists can also access the editor from the dashboard."
+  ],
+  "critical_code_review_comments": [
+    "capability_engine.py is a single ~350 LOC file — clean, no _id leakage (uses str(_id) in find results), async/await proper, Pydantic-less body validated inline with clear HTTPException messages. Good.",
+    "compute_compatibility caps at 100 (min) — matches spec.",
+    "SpecialistDashboard.jsx: link-capabilities entry point only rendered inside `canSeeBentoHero` hero card (tier>=ADVANCED gate). Lower-tier specialists cannot navigate to /specialist/capabilities from the UI. Add secondary link or ensure route is discoverable."
+  ],
+  "updated_files": ["/app/backend/tests/test_capability_engine_iter137.py"],
+  "success_rate": {"backend": "100% (15/15)", "frontend": "100% (all data-testids present, editor + public card work as spec)"},
+  "test_credentials": "specialist@propmanage.io / Spec123! (restored to 5 caps + 5 software → score 90, level 4 Premium)",
+  "seed_data_creation": "None persistent — test portfolio item deleted after test; specialist default caps restored at end.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Track B / Faza D1 fully functional. Endpoints: GET /api/capabilities/catalog, GET /api/capabilities/responsibility-matrix, PUT & GET /api/professional/capabilities, GET /api/specialists/{id}/capabilities, GET /api/capabilities/find. Frontend routes: /specialist/capabilities (editor) & /specialists/{id} (public card). Only cosmetic concern: link-capabilities is tier-gated in the dashboard hero."
+}

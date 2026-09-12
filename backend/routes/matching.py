@@ -1,23 +1,10 @@
 """PropManage router: matching."""
-import os
-import asyncio
-import json
 import logging
-from typing import Optional, List, Literal, Dict
-from datetime import datetime, timezone, timedelta
-from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, Field
+from typing import Optional
+from fastapi import APIRouter, Depends
 
 from db import db
-from core_utils import serialize_doc, effective_role
-from deps import get_current_user, require_role
-from services import send_email, notify, send_web_push, log_event
-from models import *
-from email_service import (
-    send_template, tpl_welcome, tpl_dispute_opened, tpl_dispute_resolved,
-    tpl_design_phase_quote, tpl_specialist_verified, tpl_escrow_funded,
-)
+from deps import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["matching"])
@@ -32,6 +19,7 @@ async def find_matching_specialists(category: str, user_zone: str, max_results: 
         "coverage_zones": user_zone,
         "service_categories": category,
         "availability_status": {"$ne": "offline"},
+        "medic_suspended": {"$ne": True},
     }).sort([("rating", -1), ("reviews_count", -1)]).limit(max_results).to_list(max_results)
     
     # Fallback: other specialists (out of zone) sorted by rating, marked as fallback
@@ -40,6 +28,7 @@ async def find_matching_specialists(category: str, user_zone: str, max_results: 
             "role": "specialist",
             "service_categories": category,
             "availability_status": {"$ne": "offline"},
+            "medic_suspended": {"$ne": True},
             "coverage_zones": {"$ne": user_zone},
         }
         already_ids = [s["_id"] for s in primary]

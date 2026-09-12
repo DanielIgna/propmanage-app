@@ -1,6 +1,5 @@
 """Admin endpoints for the specialist onboarding email drip queue."""
-from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException
 
 from db import db
 from deps import require_role

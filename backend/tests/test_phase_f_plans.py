@@ -5,6 +5,7 @@ import os
 import io
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://phased-document.preview.emergentagent.com").rstrip("/")
 
@@ -30,7 +31,7 @@ def _login(email, password):
 
 @pytest.fixture(scope="module")
 def admin_session():
-    return _login("admin@propmanage.io", "Admin123!")
+    return _login("admin@propmanage.io", OWNER_ADMIN_PASSWORD)
 
 
 @pytest.fixture(scope="module")

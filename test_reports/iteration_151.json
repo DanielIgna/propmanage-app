@@ -1,0 +1,24 @@
+{
+  "summary": "Iteration 151 — PropManage Audit + Service Manager BETA config. Backend (8/8 pytest passed) and frontend flows fully validated: public site-menu contains only 4 beta services, service-visibility map correct, /public/services/{id} returns 404 for inactive/inexistent, admin site-menu has all new Service Manager fields, provider add/persist/cleanup roundtrip works end-to-end via API and via MenuManagerPage UI, platform rule (activate/deactivate specialisti) works correctly. Frontend: /servicii/mobilier public page renders with svc-no-providers empty state + svc-lead-cta -> /design-interior#lead; anonymous /marketplace and /marketplace/:slug redirect to /; admin bypass to /marketplace works; eco-flow-specialists chip is SPAN (non-clickable) while all other eco chips remain <a>; /design-interior contains zero /marketplace links (v4 eco cards); /imobile-verificate loads normally.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_site_menu_beta.py",
+    "/app/test_reports/pytest/iter151_beta.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "MenuManagerPage: provider row lacks a data-testid on the per-row delete button — for future test automation, add data-testid='mm-provider-remove-<serviceId>-<index>' to allow explicit removal (currently cleanup relies on clearing the name input so the backend sanitizer drops the row).",
+    "routes/site_menu.py `_upgrade_items_v2` fully overwrites custom child data with defaults when ID matches — any admin-configured description/providers on existing v1 doc would be lost on migration. Since migration already ran in this DB, no impact, but flag for future migrations."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_site_menu_beta.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (used for admin flows).",
+  "seed_data_creation": "Test provider TEST_UIProvider added via UI + TEST_ProviderX via API — both cleaned up after test; verified providers=[] on /api/public/services/mobilier post-cleanup.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend pytest at /app/backend/tests/test_site_menu_beta.py covers all 5 backend acceptance criteria and self-cleans state (specialisti reset to inactive, mobilier providers reset to []). MenuManagerPage renders details panel inline (auto-expanded); required data-testids: mm-details-btn-<id>, mm-desc-<id>, mm-dest-<id>, mm-vissite-<id>, mm-vismkt-<id>, mm-add-provider-<id>, menu-manager-save. Anonymous redirect on /marketplace and /marketplace/:slug is enforced by <ServiceGate serviceId='specialisti'> wrapper — admin role bypasses.",
+  "rca of the issue": "No issues identified — feature works end-to-end as specified."
+}

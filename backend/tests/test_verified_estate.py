@@ -12,10 +12,11 @@ Covers:
 import os
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://phased-document.preview.emergentagent.com").rstrip("/")
 ADMIN_EMAIL = "admin@propmanage.io"
-ADMIN_PASSWORD = "Admin123!"
+ADMIN_PASSWORD = OWNER_ADMIN_PASSWORD
 
 
 @pytest.fixture(scope="module")

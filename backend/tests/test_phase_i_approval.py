@@ -15,6 +15,7 @@ import pytest
 import requests
 import jwt as _jwt
 from datetime import datetime, timezone, timedelta
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 try:
     from pypdf import PdfWriter
@@ -60,14 +61,14 @@ def _make_pdf(pages: int = 1) -> bytes:
 
 @pytest.fixture(scope="module")
 def admin_session():
-    return _login("admin@propmanage.io", "Admin123!")
+    return _login("admin@propmanage.io", OWNER_ADMIN_PASSWORD)
 
 
 @pytest.fixture(scope="module")
 def specialist_session():
     """Specialist with DT Pro grant — receives the report (recipient = specialist email)."""
     s = _login("specialist@propmanage.io", "Spec123!")
-    admin = _login("admin@propmanage.io", "Admin123!")
+    admin = _login("admin@propmanage.io", OWNER_ADMIN_PASSWORD)
     me = s.get(f"{BASE_URL}/api/auth/me", timeout=10).json()
     uid = me.get("id") or me.get("_id") or (me.get("user") or {}).get("id")
     if uid:

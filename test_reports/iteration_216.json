@@ -1,0 +1,52 @@
+{
+  "summary": "Frontend-only regression testing of PropManage /client Home UX reorganization at mobile (390x844) and desktop (1440x900). All 30+ acceptance criteria PASS: AI Mentor pill removed from /client, Copilotul Casei summary with all sub-testids present, details collapsed by default and toggled correctly, 'Vezi alte recomandări' opens the full AI Mentor drawer with mentor-widget rendered and closes cleanly, home hierarchy order hero -> copilot -> axis verified, mobile v2-more-toggle collapse/expand works (after dismissing cookie banner overlay), no horizontal overflow on mobile, FAB visible and does not overlap bottom nav (FAB y=692..748, nav y=779..844) or cover hero CTA, bottom nav testids all present.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/client Home (mobile)", "issues": ["Cookie banner (bottom sheet) overlaps the v2-more-toggle button when it renders in the same vertical band. Interactive users may find the toggle unresponsive until they Accept/Refuz. Consider auto-hiding cookie banner over interactive controls or increasing bottom padding above cookie sheet."]}
+    ]
+  },
+  "test_results": {
+    "mobile_explain_pill_absent": true,
+    "copilot_widget_visible": true,
+    "copilot_summary_testids_present": {"copilot-next-cta": true, "copilot-explain-toggle": true, "copilot-summary-actions": true, "copilot-details-toggle": true, "copilot-open-mentor": true},
+    "copilot_details_hidden_initially": true,
+    "copilot_details_shown_after_toggle": true,
+    "v2_more_toggle_visible_mobile": true,
+    "v2_more_content_hidden_initially_mobile": true,
+    "v2_more_content_shown_after_toggle_mobile": true,
+    "order_hero_before_copilot": true,
+    "order_copilot_before_axis": true,
+    "mobile_no_horizontal_overflow": true,
+    "fab_visible": true,
+    "fab_overlaps_bottom_nav": false,
+    "fab_bounds_mobile": {"x": 318, "y": 692, "w": 56, "h": 56},
+    "nav_home_bounds_mobile": {"x": 0, "y": 779, "w": 78, "h": 65},
+    "mentor_panel_opens": true,
+    "mentor_widget_renders": true,
+    "mentor_panel_closes": true,
+    "desktop_v2_more_toggle_hidden": true,
+    "desktop_v2_more_content_shown": true,
+    "desktop_explain_pill_absent": true,
+    "bottom_nav_all_testids_present": true,
+    "fab_menu_behavior_single_channel": "In this environment AI concierge is DISABLED and only WhatsApp is enabled; per AssistantDock logic (single = !(hasWa && aiEnabled)), FAB click directly opens wa.me URL instead of rendering the menu. This is per-spec. Menu/AI/WhatsApp sub-testids are conditional and correctly NOT rendered when only one channel is on."
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Consider adjusting cookie consent banner z-index/position on mobile so it does not overlap the v2-more-toggle interactive area (non-blocking; user can Accept to proceed).",
+    "Optional: If the acceptance criteria strictly requires the assistant-dock-menu + assistant-dock-whatsapp anchor to appear when only WhatsApp is enabled, adjust AssistantDock so 'single' mode still renders the menu (currently only when BOTH are enabled)."
+  ],
+  "critical_code_review_comments": [
+    "AssistantDock.jsx line 89: In 'single' mode the FAB never toggles state, so the X icon (line 92) never shows. That is fine functionally, but the X-on-open acceptance criterion only applies when both channels are enabled. Document this clearly.",
+    "HouseCopilot: 'Detalii casă' toggle correctly renders/removes copilot-details subtree from DOM (not just visibility) — good for performance."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100%"},
+  "test_credentials": "client@propmanage.io / Client123!",
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All UX reorganization criteria pass at mobile 390x844 and desktop 1440x900. Note that FAB menu (assistant-dock-menu, -ai, -whatsapp) only renders when BOTH AI concierge and WhatsApp are enabled. In this env only WhatsApp is on, so FAB directly launches wa.me. To retest the full menu, either enable AI concierge via /api/concierge/settings or verify the code branch manually. Cookie banner overlays bottom sheet on mobile; scroll_into_view + click is sufficient in tests but user friction exists."
+}

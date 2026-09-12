@@ -201,7 +201,7 @@ export const ResetCamera = ({ resetTrigger }) => {
 // Each layer keeps its raw geometry but its material is rebuilt with the
 // layer's colour + opacity + transparency. Setting opacity=1 + transparent=false
 // renders fully opaque (structure default). Setting opacity=0.25 renders glass.
-const _LayerModel = ({ layer, clippingPlanes }) => {
+const LayerModel = ({ layer, clippingPlanes }) => {
   const { scene } = useGLTF(layer.url);
   // Clone so multiple instances of the same URL keep independent materials.
   const cloned = useMemo(() => scene.clone(true), [scene]);
@@ -247,7 +247,7 @@ export const MultiLayerScene = ({ layers, clippingPlanes, onMeshClick }) => {
       }}
     >
       {sorted.map((layer) => (
-        <_LayerModel key={layer.id} layer={layer} clippingPlanes={clippingPlanes} />
+        <LayerModel key={layer.id} layer={layer} clippingPlanes={clippingPlanes} />
       ))}
     </group>
   );

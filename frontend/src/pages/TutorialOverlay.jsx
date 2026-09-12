@@ -1,4 +1,4 @@
-// First-login tutorial overlay: 5-step guided tour.
+// Guided tour overlay (5 steps) — ON DEMAND only (PPOS P3a-M1), opened via "?" HelpButton.
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -76,23 +76,32 @@ export const TutorialOverlay = () => {
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const [closing, setClosing] = useState(false);
+  // PPOS P3a-M1: the tour NEVER auto-opens. It opens only on explicit request
+  // (the "?" HelpButton dispatches "pm-open-tour").
+  const [open, setOpen] = useState(false);
 
-  // Show only after user is loaded AND tutorial_seen is explicitly false
+  useEffect(() => {
+    const onOpen = () => { setStep(0); setOpen(true); };
+    window.addEventListener("pm-open-tour", onOpen);
+    return () => window.removeEventListener("pm-open-tour", onOpen);
+  }, []);
+
   const role = user?.active_view || user?.role;
   const steps = STEPS[role] || STEPS.client;
 
   if (!user || user === false) return null;
-  if (user.tutorial_seen === true) return null;
-  if (user.tutorial_seen === undefined) return null; // wait until /me returns the flag
-  if (closing) return null;
+  if (!open) return null;
 
   const finish = async () => {
-    setClosing(true);
+    setOpen(false);
     try {
-      await axios.post(`${API}/auth/tutorial-seen`);
-      if (refreshUser) await refreshUser();
+      if (user.tutorial_seen !== true) {
+        await axios.post(`${API}/auth/tutorial-seen`);
+        if (refreshUser) await refreshUser();
+      }
     } catch {}
+    // Chain into the in-context driver.js tour (also user-initiated now)
+    window.dispatchEvent(new Event("pm-start-roletour"));
   };
 
   const cur = steps[step];

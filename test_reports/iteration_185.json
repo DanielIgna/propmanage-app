@@ -1,0 +1,34 @@
+{
+  "summary": "Task 3 iter185 — Digital Twin Advanced entitlement gate. Backend: 12/12 pytest passed on new /app/backend/tests/test_digital_twin_gate_iter185.py. Covers: premium client sees digital_twin_advanced (inherited from CLIENT_PRO), /digital-twin/subscription returns tier/tier_label/cta_href='/pricing' correctly, POST /projects for premium ≠ 402, admin bypass reason='role_bypass', fresh FREE user has no digital_twin_advanced, /subscription for FREE returns tier='FREE'/tier_label='Gratuit'/active=false/reason='inactive', POST /projects for FREE returns 402 with detail.error='entitlement_required' + feature='digital_twin_advanced', PATCH/DELETE/pins mutations all 402 for FREE, simulated PRO plan gives digital_twin_advanced + house_health_advanced (no 402), simulated BASIC does NOT get digital_twin_advanced (POST 402), legacy digital_twin_pro=true flag still works with no subscription, /pricing basic checkout regression OK. Frontend: FREE user → /digital-twin renders LockedScreen with data-testid='dt-locked-screen', H1='Digital Twin Advanced', badge shows 'Planul tău: Gratuit · Funcție blocată', CTA data-testid='dt-cta-pricing' with text 'Vezi planurile PropManage', click navigates to /pricing.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/pricing (post CTA landing)", "issues": ["/pricing only offers 'PropManage Basic' 9€ plan, but Basic does NOT unlock digital_twin_advanced (which starts at CLIENT_PRO). A FREE user redirected here has no PRO/PREMIUM CTA — confusing UX. Consider adding PRO tier card on /pricing or renaming CTA/copy in LockedScreen."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_digital_twin_gate_iter185.py",
+    "/app/test_reports/pytest/iter185_dt_gate.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: /pricing currently only lists Gratuit + Basic — since digital_twin_advanced requires CLIENT_PRO, FREE users bounced from DT to /pricing cannot actually buy the feature. Either add PRO card to /pricing or adjust LockedScreen copy to set expectation.",
+    "OPTIONAL (code review): _has_dt_access swallows all exceptions from entitlements layer silently (except pass). If entitlements module ever crashes, DT would fall through to legacy flag path silently — consider logging at warn level."
+  ],
+  "critical_code_review_comments": [
+    "entitlements.py: TIER_CLIENT_PREMIUM = set() correctly relies on TIER_ORDER inheritance in _resolve_features. Verified via test: premium user has house_health_basic + house_health_advanced + digital_twin_advanced.",
+    "digital_twin.py:_ensure_dt_access returns 402 (Payment Required) semantic — same shape as require_entitlement dep in entitlements.py — consistent.",
+    "digital_twin.py:_has_dt_access has a broad `except Exception: pass` around entitlements lookup — silent failure would leak users into legacy fallback. Low risk but suggest logger.warning.",
+    "digital_twin.py:my_subscription reason= 'role_bypass' only for admin/operator (not franchise_admin, though franchise_admin gets tier=CLIENT_PREMIUM via entitlements → reason='entitled'). Minor asymmetry — verified franchise_admin still returns active=true.",
+    "PATCH /api/digital-twin/projects/{id} name field has min_length=2 — Pydantic 422 fires BEFORE the entitlement gate. Not a bug but worth noting for future test authors."
+  ],
+  "updated_files": ["/app/backend/tests/test_digital_twin_gate_iter185.py (new)"],
+  "success_rate": {"backend": "100% (12/12)", "frontend": "100% (locked screen + CTA + pricing nav all pass)"},
+  "test_credentials": "client@propmanage.io / Client123! (premium), admin@propmanage.io / 1!nasov01ADMIN. FREE users dynamically created as free{ts}{hex}@example.com / FreePass123! and cleaned up via mongo fixture teardown.",
+  "seed_data_creation": "Fresh FREE user via /api/auth/register (terms_accepted+privacy_policy_accepted). hh_subscriptions upserts for pro/basic plans + legacy digital_twin_pro flag on user doc — all reverted/deleted in teardown.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Task 3 clean pass. entitlements.py TIER_CLIENT_PREMIUM is empty set — Premium inherits everything from PRO via TIER_ORDER. digital_twin_advanced now lives in CLIENT_PRO. /api/digital-twin/subscription is NOT gated — it returns { active, reason, tier, tier_label, required_feature, cta_href } so frontend can show LockedScreen. All DT mutations return 402 (not 403). Legacy digital_twin_pro flag on user doc is preserved as fallback. Pydantic body validation short-circuits before gate — make sure test payloads are valid (e.g. project name min_length=2).",
+  "rca of the issue": "N/A — no bugs found. One test-authoring oversight fixed during development: PATCH project payload with name='X' (1 char) hit Pydantic 422 before the 402 gate. Fixed by using name='XX'."
+}

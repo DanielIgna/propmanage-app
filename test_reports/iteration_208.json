@@ -1,0 +1,22 @@
+{
+  "summary": "Focused retest of iteration_207 MEDIUM issue: Feature B unverified-lock inside DesignConceptStudio ConceptResult. Fix verified — RequestOfferButton is now mounted unconditionally, so offer-locked renders for unverified concepts, request-offer-btn/offer-requested renders for verified. All 3 requested checks PASS. Regression via ConceptComparison overlay also PASS (offer-locked + offer-requested + materials columns all render).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "DesignConceptStudio.jsx line 107: `{c.id && <RequestOfferButton concept={c} />}` — correct, matches ConceptComparison pattern."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "n/a", "frontend": "100% (3/3 checks passed)" },
+  "test_credentials": "client@propmanage.io / Client123!",
+  "seed_data_creation": "None — reused existing concepts 8b85e83... (verified) and 718fb3df... (rejected/unverified) in project b786fc0845f14aaa9ea6dee529637fe7.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Feature B unverified-lock retest fully passed on 1440x900 desktop. Verified via directly clicking dt-project-<id> → Deschide viewer, then JS-clicking dt-open-design (still below fold in sidebar). History tab used to open both unverified (718fb3df...) and verified (8b85e83...) concepts. Compare overlay (dt-open-compare) also renders offer-locked + offer-requested + 2 materials columns as expected.",
+  "rca of the issue": "Not applicable — retest confirms the previous MEDIUM issue is resolved. Evidence: [UNVERIFIED] offer-locked=True (text: 'Oferta se poate cere doar dintr-un concept validat profesional.'), request-offer-btn=False; [VERIFIED] offer-requested=True, request-offer-btn/offer-locked=False; [COMPARE] offer-locked=1, offer-requested=1, materials=2."
+}

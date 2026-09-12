@@ -7,7 +7,6 @@ NOT exposed to non-admin users. Each action logs a demo_simulated flag for audit
 """
 import logging
 from datetime import datetime, timezone, timedelta
-from typing import Optional
 
 from bson import ObjectId
 from bson.errors import InvalidId

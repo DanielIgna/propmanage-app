@@ -15,112 +15,50 @@ from fastapi.middleware.cors import CORSMiddleware
 from db import client
 from seed import seed
 from digest import run_daily_digests, BUCHAREST_TZ_NAME
-from routes.projects import auto_release_warranty_holds
 
-# Routers (1 file per domain)
-from routes.auth import router as auth_router
-from routes.properties import router as properties_router
-from routes.requests import router as requests_router
-from routes.operator import router as operator_nonconformity_router
-from routes.operator_twins import router as operator_twins_router
-from routes.wallet import router as wallet_router
-from routes.admin import router as admin_router, run_auto_match_cron_tick
-from routes.specialist_docs import router as specialist_docs_router
-from routes.disputes import router as disputes_router
-from routes.design import router as design_router
-from routes.portfolio import router as portfolio_router
-from routes.payments import router as payments_router
-from routes.chat import router as chat_router
-from routes.specialist_profile import router as specialist_profile_router
-from routes.notifications import router as notifications_router
-from routes.ai import router as ai_router
-from routes.marketplace import router as marketplace_router
-from routes.property_timeline import router as property_timeline_router
-from routes.regions import router as regions_router
-from routes.matching import router as matching_router
-from routes.services_avail import router as services_avail_router
-from routes.projects import router as projects_router
-from routes.trust import router as trust_router
-from routes.root import router as root_router
-from routes.admin_console import router as admin_console_router, public_router as cms_public_router, run_due_preset_schedules, run_incident_spike_alert_check
+# All API routers (registration order preserved) — see routes/register.py
+from routes.register import ALL_ROUTERS
+
+# Scheduled jobs, seeds & helpers exported by route modules
+from routes.projects import auto_release_warranty_holds
+from routes.admin import run_auto_match_cron_tick
+from routes.admin_console import run_due_preset_schedules, run_incident_spike_alert_check
 from routes.digital_twin import run_dt_auto_reminders
-from routes.admin_ai import router as admin_ai_router, run_daily_ai_digest, send_daily_ai_digest_email, run_ai_effectiveness_alert_check
+from routes.admin_ai import run_daily_ai_digest, send_daily_ai_digest_email, run_ai_effectiveness_alert_check
 from routes.auth import run_auth_health_alert_check
-from routes.security_guard import router as security_guard_router
-from routes.concierge import router as concierge_router, admin_router as concierge_admin_router
-from routes.public import router as public_router, admin_router as public_admin_router, record_health_ping
-from routes.demo_time_machine import router as demo_time_machine_router
-from routes.gdpr import router as gdpr_router, admin_router as gdpr_admin_router
-from routes.digital_twin import router as digital_twin_router, admin_router as digital_twin_admin_router, operator_router as digital_twin_operator_router
-from routes.impersonation import router as impersonation_router
-from routes.admin_smoketest import router as admin_smoketest_router, run_smoke_test_monitor_tick
-from routes.admin_healthcheck import router as admin_healthcheck_router, briefing_router as admin_morning_briefing_router
-from routes.admin_data_integrity import router as admin_data_integrity_router
-from routes.admin_backups import router as admin_backups_router
-from routes.public_trust import router as public_trust_router
-from routes.admin_exec_briefing import router as admin_exec_briefing_router
-from routes.admin_qa_maintenance import router as admin_qa_maintenance_router
+from routes.public import record_health_ping
+from routes.admin_smoketest import run_smoke_test_monitor_tick
 from executive_briefing import run_exec_briefing_job
-from routes.admin_dev_velocity import router as admin_dev_velocity_router
-from routes.docs_routes import admin_router as admin_docs_router, public_router as public_help_router
-from routes.incidents import admin_router as incidents_admin_router, public_router as incidents_public_router
-from routes.admin_onboarding import router as admin_onboarding_router
-from routes.admin_qa_playbook import router as admin_qa_playbook_router
-from routes.admin_content_audit import router as admin_content_audit_router
-from routes.admin_term_audit import router as admin_term_audit_router
-from routes.verified_estate import router as verified_estate_router, seed_demo_listings as seed_verified_estate_demo
-from routes.app_settings import router as app_settings_router, public_router as app_settings_public_router
-from routes.qa_copilot import router as qa_copilot_router
-from routes.ai_control import router as ai_control_router
-from routes.digital_twin_qa import router as dt_qa_router
-from routes.docs_ai import router as docs_ai_router
-from routes.ai_dev_team import router as ai_dev_team_router
-from routes.ai_security import router as ai_security_router
-from routes.settings_snapshots import router as settings_snapshots_router, take_auto_snapshot
-from routes.service_contracts import router as service_contracts_router
-from routes.autonomy import router as autonomy_router, take_autonomy_snapshot, weekly_auto_tune_job
-from routes.twin import router as twin_router
-from routes.house_health import router as house_health_router, admin_router as house_health_admin_router
-from routes.house_health_plans import public_router as hh_plans_public_router, admin_router as hh_plans_admin_router
-from routes.house_health_recommendations import router as hh_recommendations_router
-from routes.house_health_billing import router as hh_billing_router, webhook_router as hh_webhook_router, seed_default_plans as hh_seed_default_plans
-from routes.admin_tour import router as admin_tour_router
+from routes.verified_estate import seed_demo_listings as seed_verified_estate_demo
+from routes.settings_snapshots import take_auto_snapshot
+from routes.autonomy import weekly_auto_tune_job
+from autonomy.snapshots import take_autonomy_snapshot_with_reflex
+from orchestrator.engine import orchestrator_retry_tick
+from construction.taxonomy import construction_visibility_cron
+from orchestrator.playbooks import marketplace_medic_cron
+from orchestrator.playbooks_sprint3 import pattern_hunter_cron, finance_reconciler_cron, roadmap_advisor_cron
+from maintenance import telemetry_retention_tick
+from routes.house_health_billing import seed_default_plans as hh_seed_default_plans
 from autonomy.founder_digest import weekly_founder_digest
 from autonomy.autopilot import bootstrap_autonomy_defaults, daily_autopilot_sweep
-from routes.ai_activity import router as ai_activity_router
-from routes.ai_weekly_briefing import router as ai_weekly_briefing_router, run_weekly_briefing_job
-from routes.admin_todos import router as admin_todos_router
-from routes.experience_spaces_bootstrap import router as es_bootstrap_router
-from routes.future_ideas import router as future_ideas_router
-from routes.future_ideas_digest import router as future_ideas_digest_router, run_future_ideas_digest_job
-from routes.founder_gate_admin import router as founder_gate_admin_router
-from routes.ai_governance import router as ai_governance_router
-from routes.bug_memory_aggregator import router as bug_memory_router
-from routes.deprecation_pulse import router as deprecation_pulse_router, run_deprecation_pulse_job
-from routes.architecture_board import router as architecture_board_router
-from routes.ai_pm import router as ai_pm_router
-from routes.operating_manual import router as operating_manual_router
-from routes.experience_tiers import (
-    router as experience_tiers_router,
-    self_router as experience_tiers_self_router,
-    run_promotion_job as run_experience_tier_promotion_job,
+from routes.ai_weekly_briefing import run_weekly_briefing_job
+from routes.future_ideas_digest import run_future_ideas_digest_job
+from routes.deprecation_pulse import run_deprecation_pulse_job
+from routes.experience_tiers import run_promotion_job as run_experience_tier_promotion_job
+from routes.feature_configurator import evaluate_quests_job
+from routes.specialist_progression import run_auto_promotion
+from routes.community import seed_community_demo
+from routes.tier_milestones import cron_check_all_users
+from routes.it_digest import run_weekly_it_sprint_digest, _get_settings as _it_digest_get_settings
+from routes.legal import seed_default_legal_documents
+from routes.demo_activity import schedule_log as _schedule_demo_log
+from routes.site_menu import menu_popularity_reorder_tick
+from autonomy.self_driving import (
+    low_risk_autopilot_tick,
+    auto_materialize_tasks_job,
+    stale_request_escalation_tick,
+    weekly_lead_report_job,
 )
-from routes.feature_configurator import (
-    router as feature_configurator_router,
-    self_router as feature_configurator_self_router,
-    evaluate_quests_job,
-)
-from routes.twin_orchestrator import router as twin_orchestrator_router
-from routes.specialist_progression import router_admin as sp_admin_router, router_public as sp_public_router, run_auto_promotion
-from routes.reviews_v2 import router as reviews_v2_router
-from routes.marketplace_offers import router as marketplace_offers_router
-from routes.premium_marketplace import router as premium_marketplace_router
-from routes.bi_moe import router as bi_moe_router
-from routes.community import router as community_router, seed_community_demo
-from routes.tier_milestones import router as tier_milestones_router, cron_check_all_users
-from routes.sub_admins import router as sub_admins_router
-from routes.admin_approvals import router as admin_approvals_router
-from routes.kyc import router as kyc_router
 from middleware_scope import admin_scope_middleware
 from admin_briefing_digest import run_morning_briefing_job
 from backup_service import run_daily_backup_job
@@ -158,121 +96,170 @@ app.add_middleware(
 )
 # Admin-scope HTTP middleware (Milestone 2): URL-pattern → required-scope map
 app.middleware("http")(admin_scope_middleware)
+
+# CSRF origin guard (SEC-002 remediere Iun 2026): browserele trimit MEREU
+# header-ul Origin pe mutații cross-site — dacă Origin există și NU e într-un
+# domeniu permis, blocăm. Cererile fără Origin (curl/server-to-server/tests)
+# trec — nu sunt vector CSRF de browser.
+import re as _re  # noqa: E402
+from urllib.parse import urlparse as _urlparse  # noqa: E402
+from starlette.responses import JSONResponse as _JSONResponse  # noqa: E402
+
+# Sufixe de host permise: domeniile produsului + infrastructura de preview
+# (ingress-ul Emergent rescrie Origin către *.emergentcf.cloud).
+_CSRF_ALLOWED_SUFFIXES = ("propmanage.ro", "propmanage.io",
+                          "preview.emergentagent.com", "emergentagent.com",
+                          "emergentcf.cloud", "localhost")
+
+
+def _csrf_origin_ok(origin: str, host: str) -> bool:
+    try:
+        h = (_urlparse(origin).hostname or "").lower()
+    except Exception:  # noqa: BLE001
+        return False
+    if not h:
+        return False
+    if host and h == host.split(":")[0].lower():
+        return True  # same-origin
+    return any(h == s or h.endswith("." + s) for s in _CSRF_ALLOWED_SUFFIXES)
+
+
+@app.middleware("http")
+async def _csrf_origin_guard(request, call_next):
+    """CSRF guard pe mutațiile /api/admin (SEC-002).
+
+    Blocăm DOAR cereri de browser (au header Origin) care fie vin de pe un
+    origin nepermis, fie nu poartă header-ul custom X-PM-Client (formularele
+    HTML cross-site nu pot seta headere custom; fetch cross-site credentialed
+    pică la preflight). Cererile fără Origin (curl/server-to-server/tests)
+    nu sunt vector CSRF de browser și trec.
+    """
+    if request.method in ("POST", "PUT", "PATCH", "DELETE") and request.url.path.startswith("/api/admin"):
+        origin = request.headers.get("origin")
+        if origin:
+            origin_ok = _csrf_origin_ok(origin, request.headers.get("host", ""))
+            header_ok = request.headers.get("x-pm-client") == "propmanage-app"
+            if not origin_ok or not header_ok:
+                logging.getLogger("propmanage.csrf").warning(
+                    "[csrf] blocked origin=%r origin_ok=%s header_ok=%s method=%s path=%s",
+                    origin, origin_ok, header_ok, request.method, request.url.path)
+                return _JSONResponse({"detail": "Cross-site request blocked (CSRF guard)"}, status_code=403)
+    return await call_next(request)
+
+
+# Rate limiting pe endpoint-urile publice (TD-07, EO-026 Phase 1)
+from rate_limit import rate_limit_middleware  # noqa: E402
+app.middleware("http")(rate_limit_middleware)
+
+
+@app.middleware("http")
+async def _demo_activity_middleware(request, call_next):
+    """Log every API call made by demo sub-admins (fire-and-forget)."""
+    import time as _t
+    start = _t.time()
+    response = await call_next(request)
+    try:
+        # Only act on /api/* paths
+        if request.url.path.startswith("/api/"):
+            # Try to resolve user from request state (set by deps.get_current_user)
+            user = getattr(request.state, "user", None)
+            if user:
+                duration_ms = int((_t.time() - start) * 1000)
+                _schedule_demo_log(user, request, response.status_code, duration_ms)
+    except Exception:  # noqa: BLE001
+        pass
+    return response
+
+
 logger = logging.getLogger(__name__)
 logger.info(f"CORS configured: origins={_origins} regex={_origin_regex} credentials={_allow_credentials}")
 
-# Register all routers
-for r in (
-    auth_router, properties_router, requests_router,
-    operator_nonconformity_router, operator_twins_router,
-    wallet_router, admin_router, specialist_docs_router,
-    disputes_router, design_router, portfolio_router,
-    payments_router, chat_router, specialist_profile_router,
-    notifications_router, ai_router, marketplace_router,
-    property_timeline_router, regions_router, matching_router,
-    services_avail_router, projects_router, trust_router, root_router,
-    admin_console_router, cms_public_router, admin_ai_router,
-    security_guard_router, concierge_router, concierge_admin_router,
-    public_router,
-    public_admin_router,
-    demo_time_machine_router,
-    gdpr_router, gdpr_admin_router,
-    digital_twin_router, digital_twin_admin_router, digital_twin_operator_router,
-    impersonation_router,
-    admin_smoketest_router,
-    admin_healthcheck_router,
-    admin_morning_briefing_router,
-    admin_data_integrity_router,
-    admin_backups_router,
-    public_trust_router,
-    admin_exec_briefing_router,
-    admin_qa_maintenance_router,
-    admin_dev_velocity_router,
-    admin_docs_router,
-    public_help_router,
-    incidents_admin_router,
-    incidents_public_router,
-    admin_onboarding_router,
-    admin_qa_playbook_router,
-    admin_content_audit_router,
-    admin_term_audit_router,
-    verified_estate_router,
-    app_settings_router,
-    app_settings_public_router,
-    qa_copilot_router,
-    ai_control_router,
-    dt_qa_router,
-    docs_ai_router,
-    ai_dev_team_router,
-    ai_security_router,
-    settings_snapshots_router,
-    service_contracts_router,
-    autonomy_router,
-    twin_router,
-    house_health_router,
-    house_health_admin_router,
-    hh_plans_public_router,
-    hh_plans_admin_router,
-    hh_recommendations_router,
-    hh_billing_router,
-    hh_webhook_router,
-    admin_tour_router,
-    ai_activity_router,
-    ai_weekly_briefing_router,
-    admin_todos_router,
-    es_bootstrap_router,
-    future_ideas_router,
-    future_ideas_digest_router,
-    founder_gate_admin_router,
-    ai_governance_router,
-    bug_memory_router,
-    deprecation_pulse_router,
-    architecture_board_router,
-    ai_pm_router,
-    operating_manual_router,
-    experience_tiers_router,
-    experience_tiers_self_router,
-    feature_configurator_router,
-    feature_configurator_self_router,
-    twin_orchestrator_router,
-    sp_admin_router,
-    sp_public_router,
-    reviews_v2_router,
-    marketplace_offers_router,
-    premium_marketplace_router,
-    bi_moe_router,
-    community_router,
-    tier_milestones_router,
-    sub_admins_router,
-    admin_approvals_router,
-    kyc_router,
-):
+# Register all routers (order preserved — see routes/register.py)
+for r in ALL_ROUTERS:
     app.include_router(r)
 
 # Daily digest scheduler (19:00 Europe/Bucharest)
 scheduler = AsyncIOScheduler(timezone=pytz.timezone(BUCHAREST_TZ_NAME))
 
 
+async def _lead_followup_tick():
+    from lead_followup import run_autonomous_cycle
+    await run_autonomous_cycle(trigger="scheduler")
+
+
+async def _specialist_followup_tick():
+    from specialist_followup import run_all_sequences
+    await run_all_sequences()
+
+
+async def _tenant_selfheal_tick():
+    # Val 2 self-healing: orice insert T1 rămas fără tenant_id primește 'main' noaptea
+    from tenancy import backfill_tier1_tenant_data
+    await backfill_tier1_tenant_data(force=True)
+
+
+async def _maintenance_due_tick():
+    from routes.maintenance_calendar import maintenance_due_tick
+    await maintenance_due_tick()
+
+
+async def _campaign_detection_tick():
+    from routes.community_buildings import campaign_detection_tick
+    await campaign_detection_tick()
+
+
+async def _pb_daily_tick():
+    from routes.prop_benefits import pb_daily_tick
+    await pb_daily_tick()
+
+
+async def _cs_sentinel_tick():
+    from routes.launch_sentinel import cs_sentinel_tick
+    await cs_sentinel_tick()
+
+
+async def _money_flow_tick():
+    from routes.launch_sentinel import money_flow_tick
+    await money_flow_tick()
+
+
+async def _sitemap_regen_tick():
+    from routes.public import write_sitemap_file
+    await write_sitemap_file()
+
+
 @app.on_event("startup")
 async def startup():
     await seed()
     try:
+        from tenancy import ensure_main_tenant, backfill_user_tenants, backfill_tier1_tenant_data
+        await ensure_main_tenant()
+        await backfill_user_tenants()
+        await backfill_tier1_tenant_data()
+        from kg.registry import seed_registry
+        await seed_registry()
+    except Exception as e:
+        logger.warning(f"Tenant seed failed: {e}")
+    try:
         await hh_seed_default_plans()
     except Exception as e:
         logger.warning(f"House Health plans seed failed: {e}")
-    try:
-        await seed_verified_estate_demo()
-    except Exception as e:
-        logger.warning(f"Verified Estate demo seed failed: {e}")
-    try:
-        await seed_community_demo()
-    except Exception as e:
-        logger.warning(f"Community demo seed failed: {e}")
-    try:
-        from tier_demo_seed import seed_tier_demo_users
-        await seed_tier_demo_users()
-    except Exception as e:
-        logger.warning(f"Tier demo seed failed: {e}")
+    # Demo seeds — DOAR când SEED_DEMO_DATA=true (EO-026: producția rulează fără date demo)
+    seed_demo = (os.environ.get("SEED_DEMO_DATA") or "").strip().lower() == "true"
+    if seed_demo:
+        try:
+            await seed_verified_estate_demo()
+        except Exception as e:
+            logger.warning(f"Verified Estate demo seed failed: {e}")
+        try:
+            await seed_community_demo()
+        except Exception as e:
+            logger.warning(f"Community demo seed failed: {e}")
+        try:
+            from tier_demo_seed import seed_tier_demo_users
+            await seed_tier_demo_users()
+        except Exception as e:
+            logger.warning(f"Tier demo seed failed: {e}")
     # GDPR Phase 1 — backfill existing users with consent + verification fields (idempotent)
     try:
         from consent_backfill import run_consent_backfill
@@ -284,17 +271,111 @@ async def startup():
         await bootstrap_autonomy_defaults()
     except Exception as e:
         logger.warning(f"Autonomy autopilot bootstrap failed: {e}")
-    # Sub-admin RBAC — seed demo scoped admins (testing/frontend/backend/security)
+    # CIP-A: seed nomenclator construcții + gate inițial de vizibilitate (idempotent)
     try:
-        from sub_admin_seed import seed_sub_admins
-        await seed_sub_admins()
+        from construction.taxonomy import seed_construction_taxonomy, refresh_category_visibility
+        await seed_construction_taxonomy()
+        await refresh_category_visibility()
     except Exception as e:
-        logger.warning(f"Sub-admin seed failed: {e}")
+        logger.warning(f"Construction taxonomy bootstrap failed: {e}")
+    # CIP-B: seed Price Observatory cu date orientative (idempotent)
+    try:
+        from construction.prices import seed_price_observations
+        await seed_price_observations()
+    except Exception as e:
+        logger.warning(f"Price observatory bootstrap failed: {e}")
+    # Sub-admin RBAC — seed demo scoped admins (testing/frontend/backend/security)
+    if seed_demo:
+        try:
+            from sub_admin_seed import seed_sub_admins
+            await seed_sub_admins()
+        except Exception as e:
+            logger.warning(f"Sub-admin seed failed: {e}")
+    try:
+        await seed_default_legal_documents()
+    except Exception as e:
+        logger.warning(f"Legal docs seed failed: {e}")
+    # SEO — scrie sitemap.xml la rădăcina domeniului (frontend/public/sitemap.xml)
+    try:
+        from routes.public import write_sitemap_file
+        await write_sitemap_file()
+    except Exception as e:
+        logger.warning(f"Sitemap file generation failed: {e}")
     if not scheduler.running:
+        scheduler.add_job(
+            _lead_followup_tick,
+            CronTrigger(minute=25, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="lead_followup_hourly",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        # Faza 3 — specialist_entry follow-up (reminder 1h + nurture 24h). Rulează la fiecare 15 min.
+        scheduler.add_job(
+            _specialist_followup_tick,
+            CronTrigger(minute="*/15", timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="specialist_followup_15min",
+            replace_existing=True,
+            misfire_grace_time=900,
+        )
+        scheduler.add_job(
+            _tenant_selfheal_tick,
+            CronTrigger(hour=4, minute=15, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="tenant_selfheal_nightly",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
         scheduler.add_job(
             run_daily_digests,
             CronTrigger(hour=19, minute=0, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
             id="daily_digest",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        # CX-4: remindere mentenanță (09:00) — taskuri scadente în ≤7 zile
+        scheduler.add_job(
+            _maintenance_due_tick,
+            CronTrigger(hour=9, minute=0, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="maintenance_due_daily",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        # PM-002/PM-003: detecție automată campanii comune (08:30)
+        scheduler.add_job(
+            _campaign_detection_tick,
+            CronTrigger(hour=8, minute=30, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="campaign_detection_daily",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        # SEO: regenerare sitemap.xml static (03:30) — reflectă specialiști/pagini noi
+        scheduler.add_job(
+            _sitemap_regen_tick,
+            CronTrigger(hour=3, minute=30, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="sitemap_regen_daily",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        # PB-001: PropBenefits (08:45) — expirare beneficii + activare referral + snapshot Subscription Health
+        scheduler.add_job(
+            _pb_daily_tick,
+            CronTrigger(hour=8, minute=45, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="prop_benefits_daily",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        # Firul B: CS Sentinel (09:30) — remindere onboarding/activare pentru administratori
+        scheduler.add_job(
+            _cs_sentinel_tick,
+            CronTrigger(hour=9, minute=30, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="cs_sentinel_daily",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        # Firul B: Money-Flow Guard (07:45) — Stripe/email/coadă retry + detecție prima plată
+        scheduler.add_job(
+            _money_flow_tick,
+            CronTrigger(hour=7, minute=45, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="money_flow_guard_daily",
             replace_existing=True,
             misfire_grace_time=3600,
         )
@@ -306,9 +387,86 @@ async def startup():
             misfire_grace_time=3600,
         )
         scheduler.add_job(
-            take_autonomy_snapshot,
+            menu_popularity_reorder_tick,
+            CronTrigger(hour=4, minute=30, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="menu_popularity_reorder_daily",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        # Task 8 · Renewal Reminder — daily at 09:15 Bucharest.
+        try:
+            from routes.renewal_reminders import renewal_reminder_tick
+            scheduler.add_job(
+                renewal_reminder_tick,
+                CronTrigger(hour=9, minute=15, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+                id="renewal_reminder_daily",
+                replace_existing=True,
+                misfire_grace_time=3600,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("renewal_reminder scheduler wire failed: %s", exc)
+        # Self-Driving Automations — țintă 90%+ autonomie
+        scheduler.add_job(
+            low_risk_autopilot_tick,
+            CronTrigger(hour="*/2", minute=10, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="sd_low_risk_autopilot",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        scheduler.add_job(
+            auto_materialize_tasks_job,
+            CronTrigger(hour=3, minute=45, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="sd_auto_materialize_todos",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        scheduler.add_job(
+            stale_request_escalation_tick,
+            CronTrigger(hour="*/6", minute=20, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="sd_stale_request_escalation",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        # Operational Autonomy Loop (FN-021) — Analytics→Finding→Decizie→Acțiune→Verify→Learn
+        try:
+            from autonomy.loop import run_loop_tick as _op_loop_tick
+            scheduler.add_job(
+                lambda: _op_loop_tick(triggered_by="scheduler"),
+                CronTrigger(hour="*/3", minute=35, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+                id="autonomy_operational_loop",
+                replace_existing=True,
+                misfire_grace_time=1800,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("operational_loop scheduler wire failed: %s", exc)
+        scheduler.add_job(
+            weekly_lead_report_job,
+            CronTrigger(day_of_week="mon", hour=9, minute=0, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="sd_weekly_lead_report",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        from ai_session_store import sync_all as ai_sessions_sync
+        scheduler.add_job(
+            ai_sessions_sync,
+            CronTrigger(minute="*/30", timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="ai_sessions_sync",
+            replace_existing=True,
+            misfire_grace_time=900,
+        )
+        scheduler.add_job(
+            take_autonomy_snapshot_with_reflex,
             CronTrigger(hour=3, minute=15, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
             id="autonomy_snapshot_daily",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        # AI 27 — Enterprise Evolution Council: ședința automată nightly (Rezoluția 003)
+        from routes.evolution_council import run_evolution_council
+        scheduler.add_job(
+            run_evolution_council,
+            CronTrigger(hour=23, minute=45, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="evolution_council_nightly",
             replace_existing=True,
             misfire_grace_time=3600,
         )
@@ -403,6 +561,30 @@ async def startup():
             replace_existing=True,
             misfire_grace_time=7200,
         )
+        from routes.automation_center import run_due_rules
+        scheduler.add_job(
+            run_due_rules,
+            CronTrigger(minute=12, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="automation_rules_tick",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
+        from routes.command_center import morning_command_center
+        scheduler.add_job(
+            morning_command_center,
+            CronTrigger(hour=7, minute=0, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="morning_command_center",
+            replace_existing=True,
+            misfire_grace_time=7200,
+        )
+        from routes.audit_sentinel import run_sentinel_scan
+        scheduler.add_job(
+            run_sentinel_scan,
+            CronTrigger(minute=40, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="audit_sentinel_hourly",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
         scheduler.add_job(
             auto_release_warranty_holds,
             CronTrigger(hour=6, minute=0, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
@@ -460,6 +642,24 @@ async def startup():
             replace_existing=True,
             misfire_grace_time=3600,
         )
+        # IT Sprint Health Digest — weekly AI-powered founder email (default Sun 18:00 Europe/Bucharest)
+        try:
+            _digest_settings = await _it_digest_get_settings()
+            scheduler.add_job(
+                run_weekly_it_sprint_digest,
+                CronTrigger(
+                    day_of_week=_digest_settings.get("day_of_week", "sun"),
+                    hour=int(_digest_settings.get("hour", 18)),
+                    minute=int(_digest_settings.get("minute", 0)),
+                    timezone=pytz.timezone(BUCHAREST_TZ_NAME),
+                ),
+                id="it_sprint_digest_weekly",
+                replace_existing=True,
+                misfire_grace_time=7200,
+            )
+            logger.info(f"IT Sprint Digest scheduled: {_digest_settings.get('day_of_week','sun')} {_digest_settings.get('hour',18):02d}:{_digest_settings.get('minute',0):02d} Europe/Bucharest")
+        except Exception as e:
+            logger.warning(f"IT Sprint Digest schedule failed: {e}")
         scheduler.add_job(
             record_health_ping,
             CronTrigger(minute="*/15", timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
@@ -487,6 +687,124 @@ async def startup():
             id="smoke_test_monitor",
             replace_existing=True,
             misfire_grace_time=600,
+        )
+        # Autonomy Orchestrator — retry queue tick (Webhook Retry Guardian), every 5 min
+        scheduler.add_job(
+            orchestrator_retry_tick,
+            CronTrigger(minute="*/5", timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="orchestrator_retry_tick",
+            replace_existing=True,
+            misfire_grace_time=300,
+        )
+        # PM-AI-003: Self-Healing Watchdog — la 30 min repornește joburile cron moarte
+        from orchestrator.governance import governance_watchdog_tick, decision_review_cron
+        scheduler.add_job(
+            governance_watchdog_tick,
+            CronTrigger(minute="7,37", timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="governance_watchdog",
+            replace_existing=True,
+            misfire_grace_time=900,
+        )
+        # PM-AI-003: Decision Review — zilnic 05:30, degradează autoritatea playbook-urilor cu eșecuri
+        scheduler.add_job(
+            decision_review_cron,
+            CronTrigger(hour=5, minute=30, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="decision_review_daily",
+            replace_existing=True,
+            misfire_grace_time=7200,
+        )
+        # PM-AI-REPAIR-001: Health Repair Engine — zilnic 06:20 (detect → repair → validate)
+        from health_repair import repair_cycle_cron
+        scheduler.add_job(
+            repair_cycle_cron,
+            CronTrigger(hour=6, minute=20, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="health_repair_daily",
+            replace_existing=True,
+            misfire_grace_time=7200,
+        )
+        # Customer Journey Guardian — zilnic 06:50, audit călătoria clientului + task-uri CTO AI
+        from journey_guardian import run_journey_guardian
+        scheduler.add_job(
+            run_journey_guardian,
+            CronTrigger(hour=6, minute=50, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="journey_guardian_daily",
+            replace_existing=True,
+            misfire_grace_time=7200,
+        )
+        # Architecture Guardian — zilnic 06:40, impune arhitectura canonică + task-uri CTO AI
+        from architecture_guardian import run_architecture_guardian
+        scheduler.add_job(
+            run_architecture_guardian,
+            CronTrigger(hour=6, minute=40, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="architecture_guardian_daily",
+            replace_existing=True,
+            misfire_grace_time=7200,
+        )
+        # Product Guardian — zilnic 06:45, CTA/roluri/gates/funnel + task-uri CTO AI
+        from product_guardian import run_product_guardian
+        scheduler.add_job(
+            run_product_guardian,
+            CronTrigger(hour=6, minute=45, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="product_guardian_daily",
+            replace_existing=True,
+            misfire_grace_time=7200,
+        )
+        # AI Brain Discovery — zilnic 06:35, recartografiază structura aplicației
+        from ai_brain.core import run_discovery as ai_brain_discovery
+        scheduler.add_job(
+            ai_brain_discovery,
+            CronTrigger(hour=6, minute=35, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="ai_brain_discovery_daily",
+            replace_existing=True,
+            misfire_grace_time=7200,
+        )
+        # CIP-A: Category Visibility Gate — daily 04:30 (via Orchestrator playbook)
+        scheduler.add_job(
+            construction_visibility_cron,
+            CronTrigger(hour=4, minute=30, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="construction_visibility_daily",
+            replace_existing=True,
+            misfire_grace_time=7200,
+        )
+        # Sprint 2: Marketplace Medic — daily 05:10 (via Orchestrator playbook)
+        scheduler.add_job(
+            marketplace_medic_cron,
+            CronTrigger(hour=5, minute=10, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="marketplace_medic_daily",
+            replace_existing=True,
+            misfire_grace_time=7200,
+        )
+        # Sprint 3: Pattern Hunter — weekly Monday 06:00
+        scheduler.add_job(
+            pattern_hunter_cron,
+            CronTrigger(day_of_week="mon", hour=6, minute=0, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="pattern_hunter_weekly",
+            replace_existing=True,
+            misfire_grace_time=7200,
+        )
+        # Sprint 3: Finance Reconciler — daily 04:50
+        scheduler.add_job(
+            finance_reconciler_cron,
+            CronTrigger(hour=4, minute=50, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="finance_reconciler_daily",
+            replace_existing=True,
+            misfire_grace_time=7200,
+        )
+        # Sprint 3: Roadmap Advisor — weekly Friday 09:00
+        scheduler.add_job(
+            roadmap_advisor_cron,
+            CronTrigger(day_of_week="fri", hour=9, minute=0, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="roadmap_advisor_weekly",
+            replace_existing=True,
+            misfire_grace_time=7200,
+        )
+        # Phase 1 (TD-08): retenție telemetrie — daily 03:40
+        scheduler.add_job(
+            telemetry_retention_tick,
+            CronTrigger(hour=3, minute=40, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+            id="telemetry_retention_daily",
+            replace_existing=True,
+            misfire_grace_time=7200,
         )
         # Morning Briefing digest — daily 09:00, sent only when warn/fail
         scheduler.add_job(
@@ -537,7 +855,59 @@ async def startup():
             replace_existing=True,
             misfire_grace_time=7200,
         )
+        # Sprint 2 (Board Review 001): Revenue Hunter — oportunități comerciale zilnice
+        async def _revenue_hunter_tick():
+            from revenue_hunter import run_revenue_hunter_tick
+            await run_revenue_hunter_tick()
+        scheduler.add_job(
+            _revenue_hunter_tick,
+            CronTrigger(hour=7, minute=10, timezone=pytz.timezone("Europe/Bucharest")),
+            id="revenue_hunter_daily", replace_existing=True, misfire_grace_time=3600,
+        )
+        # Sprint GI-1 (Board 004/005/006): Growth Intelligence — scan zilnic pe date reale
+        async def _growth_intel_tick():
+            from growth_intelligence import run_growth_scan
+            await run_growth_scan(trigger="cron")
+        scheduler.add_job(
+            _growth_intel_tick,
+            CronTrigger(hour=6, minute=40, timezone=pytz.timezone("Europe/Bucharest")),
+            id="growth_intelligence_daily", replace_existing=True, misfire_grace_time=3600,
+        )
+        # Sprint GI-2 (Board GI-2): Intent & Lead Intelligence — scoring zilnic înaintea Revenue Hunter
+        async def _lead_intel_tick():
+            from lead_intelligence import run_lead_scan
+            await run_lead_scan(trigger="cron")
+        scheduler.add_job(
+            _lead_intel_tick,
+            CronTrigger(hour=6, minute=50, timezone=pytz.timezone("Europe/Bucharest")),
+            id="lead_intelligence_daily", replace_existing=True, misfire_grace_time=3600,
+        )
+        # Sprint GI-3 (Board 007): Marketing Intelligence+ — recomandări executive zilnice
+        async def _marketing_intel_tick():
+            from marketing_intelligence import run_marketing_scan
+            await run_marketing_scan(trigger="cron")
+        scheduler.add_job(
+            _marketing_intel_tick,
+            CronTrigger(hour=6, minute=55, timezone=pytz.timezone("Europe/Bucharest")),
+            id="marketing_intelligence_daily", replace_existing=True, misfire_grace_time=3600,
+        )
+        # GI-4a: Learning Engine — outcome scan zilnic (după toate motoarele)
+        async def _learning_tick():
+            from learning_engine import run_outcome_scan
+            await run_outcome_scan(trigger="cron")
+        scheduler.add_job(
+            _learning_tick,
+            CronTrigger(hour=7, minute=20, timezone=pytz.timezone("Europe/Bucharest")),
+            id="learning_outcomes_daily", replace_existing=True, misfire_grace_time=3600,
+        )
         scheduler.start()
+        # Felia 1 (Sprint 1): jurnalul central al agenților — toate execuțiile cron în agent_runs
+        try:
+            import asyncio as _asyncio
+            from agent_journal import attach_journal
+            attach_journal(scheduler, _asyncio.get_running_loop())
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Agent journal attach failed: {e}")
         # Record an immediate ping on startup so sparkline is non-empty from minute 1.
         try:
             await record_health_ping()

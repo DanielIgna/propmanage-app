@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { X, Calendar, CheckCircle2 } from "lucide-react";
 import { API } from "./DashShared";
+import { trackLeadFormConversion } from "../lib/analytics";
 
 export const BookDemoModal = ({ open, onClose }) => {
   const [form, setForm] = useState({ name: "", email: "", whatsapp: "", company: "", role: "", message: "" });
@@ -23,6 +24,7 @@ export const BookDemoModal = ({ open, onClose }) => {
     try {
       await axios.post(`${API}/public/demo-request`, form);
       setSent(true);
+      trackLeadFormConversion(); // Google Ads lead-form conversion (după succes)
     } catch (err) {
       setError(err?.response?.data?.detail || "Eroare. Încearcă din nou.");
     } finally {

@@ -1,6 +1,5 @@
 """Admin endpoints to view, trigger, and download database backups."""
 import logging
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse

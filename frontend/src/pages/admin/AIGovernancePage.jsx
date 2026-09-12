@@ -11,6 +11,7 @@ import {
   ArchiveRestore, CheckCircle2, ArchiveX, CalendarClock,
   RotateCcw, X, HeartPulse, KeyRound, Mail, Bell,
 } from "lucide-react";
+import { AIInsightCard } from "../../design-system";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const ax = axios.create({ baseURL: API, withCredentials: true });
@@ -68,6 +69,7 @@ const AIGovernancePage = () => {
   const [loading, setLoading] = useState(true);
   const [depModal, setDepModal] = useState(null);  // agent obj being deprecated
   const [busy, setBusy] = useState(false);
+  const [insights, setInsights] = useState(null);
 
   const refresh = async () => {
     const [s, a, c, au, dp, h, pm, pc, pp, ph] = await Promise.all([
@@ -99,6 +101,7 @@ const AIGovernancePage = () => {
       try { await refresh(); }
       finally { setLoading(false); }
     })();
+    ax.get("/api/admin/insights/rule?module=governance").then(r => setInsights(r.data)).catch(() => {});
   }, []);
 
   const handleDeprecate = async (form) => {
@@ -197,6 +200,15 @@ const AIGovernancePage = () => {
               <div className="flex-1 text-xs text-stone-300">
                 <strong className="text-violet-200">{summary?.phase}</strong> — {summary?.note}
               </div>
+            </div>
+
+            {/* AI Insights v2 — rule-based + LLM (Claude) */}
+            <div className="mb-6">
+              <AIInsightCard
+                bullets={insights?.bullets || []} alerts={insights?.alerts || []}
+                recommendations={insights?.recommendations || []}
+                loading={!insights} llmModule="governance" testid="governance-insights"
+              />
             </div>
 
             {/* TABS */}

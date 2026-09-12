@@ -4,12 +4,15 @@ import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import {
-  Gauge, Activity, Cpu, ShieldCheck, Wrench, Brain, RefreshCcw,
+  Gauge, Activity, Cpu, ShieldCheck, Wrench, Brain, RefreshCcw, Users,
   Loader2, TrendingUp, AlertTriangle, CheckCircle2, ChevronRight, Target, Zap, Sparkles,
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const ax = axios.create({ baseURL: API, withCredentials: true });
+import SelfDrivingPanel from "./SelfDrivingPanel";
+import OperationalLoopPanel from "./OperationalLoopPanel";
+import AutonomyActivityPanel from "./AutonomyActivityPanel";
 
 const TIER_META = {
   "self-driving": { label: "Self-Driving", color: "#a855f7", ring: "stroke-violet-500", text: "text-violet-300", bg: "bg-violet-500/15 border-violet-500/30" },
@@ -24,6 +27,7 @@ const SUB_META = {
   security:    { icon: ShieldCheck,label: "Security",     hint: "OAuth, findings critice, GDPR" },
   dev:         { icon: Wrench,     label: "Dev",          hint: "Quality gates, QA findings, stabilitate" },
   ai:          { icon: Brain,      label: "AI",           hint: "Findings închise, memorie, knowledge base" },
+  human:       { icon: Users,      label: "Human (HDI)",  hint: "Intervenții umane pendinte — 100 = platforma merge singură" },
 };
 
 const PRIORITY_META = {
@@ -382,7 +386,7 @@ export const AutonomyEnginePage = () => {
 
   const boostDev = async () => {
     if (boosting) return;
-    if (!window.confirm("Confirmi BOOST DEV?\n\n• Rulează un Release Gate\n• Marchează findings vechi (>14 zile) ca 'dismissed'\n• Recalculează snapshotul Autonomy\n\nEste sigur și reversibil pentru findings.")) return;
+    if (!window.confirm("Confirmi BOOST DEV?\n\n• Rulează un Release Gate REAL (în background)\n• Recalculează snapshotul Autonomy (onest)\n\nNu mai marchează findings-uri ca 'dismissed' (decontaminare P1).")) return;
     setBoosting(true);
     setBoostResult(null);
     try {
@@ -413,7 +417,7 @@ export const AutonomyEnginePage = () => {
 
   const boostAI = async () => {
     if (boostingAI) return;
-    if (!window.confirm("Confirmi BOOST AI?\n\n• Inserează 17 documente interne (PRD, RBAC, KYC, runbooks) în AI Knowledge Base\n• Generează 100+ memorii sintetice din admin_actions_log\n• Recalculează snapshotul Autonomy\n\nIdempotent — sare peste cele care există deja.")) return;
+    if (!window.confirm("BOOST AI este DEZACTIVAT (decontaminare P1).\n\nScorul AI se calculează acum DOAR pe date reale. Injectarea de documente/memorii sintetice nu mai influențează scorul.\n\nApeși pentru a vedea numărul REAL de documente/memorii?")) return;
     setBoostingAI(true);
     setBoostAIResult(null);
     try {
@@ -436,7 +440,7 @@ export const AutonomyEnginePage = () => {
 
   const autoTune = async () => {
     if (autoTuning) return;
-    if (!window.confirm("Confirmi AUTO-TUNE TO SELF-DRIVING?\n\nOrchestrator one-click care rulează:\n• Seed AI Knowledge Base (docs + memorii)\n• Seed Repair Effectiveness (13 decizii sintetice)\n• Seed Concierge Traffic (15 mesaje non-blocked)\n• Dismiss QA findings vechi (>14z)\n• Snapshot Autonomy + AI Health\n\nIdempotent. Durează ~5 secunde.")) return;
+    if (!window.confirm("Confirmi RECALCULARE ONESTĂ (Auto-Tune)?\n\n• Recalculează scorurile din semnale REALE\n• Snapshot Autonomy + AI Health\n\nDECONTAMINAT (P1): NU mai injectează date sintetice și NU mai marchează automat findings-uri. Idempotent.")) return;
     setAutoTuning(true);
     setAutoTuneResult(null);
     try {
@@ -489,20 +493,23 @@ export const AutonomyEnginePage = () => {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <Link to="/admin/orchestrator" className="pm-btn pm-btn-sm bg-violet-500/15 border border-violet-500/40 text-violet-200 hover:bg-violet-500/25" data-testid="autonomy-to-orchestrator" title="Orchestrator: playbook-uri self-healing + ledger acțiuni automate">
+              <Activity className="w-3.5 h-3.5" /> Orchestrator
+            </Link>
             <button
               onClick={autoTune}
               disabled={autoTuning}
               className="pm-btn pm-btn-sm bg-gradient-to-r from-fuchsia-500 to-violet-600 border border-fuchsia-400/50 text-white shadow-lg shadow-fuchsia-500/30 hover:from-fuchsia-400 hover:to-violet-500 disabled:opacity-60 font-semibold"
               data-testid="autonomy-auto-tune"
-              title="Auto-Tune: orchestrează Seed AI + Repair + Concierge + Dismiss findings + Snapshot"
+              title="Recalculare onestă: recompute scoruri din semnale reale + snapshot (fără date sintetice)"
             >
-              {autoTuning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Auto-Tune to Self-Driving
+              {autoTuning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Recalculează (onest)
             </button>
-            <button onClick={boostDev} disabled={boosting} className="pm-btn pm-btn-sm bg-violet-500/15 border border-violet-500/40 text-violet-200 hover:bg-violet-500/25" data-testid="autonomy-boost-dev" title="Boost DEV: Release Gate + dismiss stale findings + new snapshot">
+            <button onClick={boostDev} disabled={boosting} className="pm-btn pm-btn-sm bg-violet-500/15 border border-violet-500/40 text-violet-200 hover:bg-violet-500/25" data-testid="autonomy-boost-dev" title="Boost DEV: rulează Release Gate real + snapshot onest (fără dismiss de findings)">
               {boosting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />} Boost DEV
             </button>
-            <button onClick={boostAI} disabled={boostingAI} className="pm-btn pm-btn-sm bg-cyan-500/15 border border-cyan-500/40 text-cyan-200 hover:bg-cyan-500/25" data-testid="autonomy-boost-ai" title="Boost AI: Seed knowledge base + sintetic memorii">
-              {boostingAI ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Brain className="w-3.5 h-3.5" />} Boost AI
+            <button onClick={boostAI} disabled={boostingAI} className="pm-btn pm-btn-sm bg-stone-500/10 border border-stone-500/30 text-stone-400 hover:bg-stone-500/15" data-testid="autonomy-boost-ai" title="Dezactivat (decontaminare P1): scorul AI se calculează doar pe date reale">
+              {boostingAI ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Brain className="w-3.5 h-3.5" />} Boost AI (off)
             </button>
             <button onClick={takeSnap} disabled={snapping} className="pm-btn pm-btn-secondary pm-btn-sm" data-testid="autonomy-take-snap">
               {snapping ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />} Snapshot acum
@@ -540,6 +547,13 @@ export const AutonomyEnginePage = () => {
               <div className="space-y-1">
                 <div className="text-red-300 flex items-center gap-2 font-semibold"><AlertTriangle className="w-4 h-4" /> Boost AI eșuat</div>
                 <div className="text-stone-300 text-xs">{boostAIResult.error}</div>
+              </div>
+            ) : boostAIResult.deprecated ? (
+              <div className="space-y-1.5">
+                <div className="text-amber-300 font-semibold flex items-center gap-2"><Brain className="w-4 h-4" /> Boost AI — dezactivat (decontaminare P1)</div>
+                <div className="text-stone-300 text-xs">{boostAIResult.message}</div>
+                <div>• Documente REALE: <strong className="text-cyan-200">{boostAIResult.real_documents}</strong> <span className="text-stone-500">(seed excluse: {boostAIResult.excluded_seed_documents})</span></div>
+                <div>• Memorii REALE: <strong className="text-cyan-200">{boostAIResult.real_memories}</strong> <span className="text-stone-500">(seed excluse: {boostAIResult.excluded_seed_memories})</span></div>
               </div>
             ) : (
               <div className="space-y-1.5">
@@ -585,7 +599,10 @@ export const AutonomyEnginePage = () => {
         )}
 
         {/* HERO: ring + tier + summary */}
-        <div className="bg-[#0e0e10] border border-white/10 rounded-3xl p-6 md:p-8 mt-6">
+        <div className="mt-6">
+          <SelfDrivingPanel />
+        </div>
+        <div className="bg-[#0e0e10] border border-white/10 rounded-3xl p-6 md:p-8">
           <div className="grid md:grid-cols-[auto_1fr] gap-8 items-center">
             <div className="flex justify-center">
               <ScoreRing score={general} color={tierMeta.color} target={targetGeneral} />
@@ -619,7 +636,7 @@ export const AutonomyEnginePage = () => {
 
         {/* SUB-SCORES */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mt-6">
-          {["operational", "technical", "security", "dev", "ai"].map(k => (
+          {["operational", "technical", "security", "dev", "ai", "human"].map(k => (
             <SubScoreCard
               key={k}
               k={k}
@@ -641,14 +658,13 @@ export const AutonomyEnginePage = () => {
                 onClick={async () => {
                   if (!window.confirm("Materializez recomandările ca TODO-uri în /admin/todo?")) return;
                   try {
-                    const r = await fetch(`${API}/api/admin/autonomy/generate-tasks`, {
-                      method: "POST", credentials: "include",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ max_items: 6 }),
-                    });
-                    const data = await r.json();
+                    const { data } = await ax.post("/api/admin/autonomy/generate-tasks", { max_items: 6 });
+                    if (data?.ok === false) { alert("Eroare la materializare: " + (data.error || "necunoscută")); return; }
                     alert(`${data.counts?.injected || 0} TODO-uri create, ${data.counts?.skipped || 0} duplicate.`);
-                  } catch (e) { alert("Eroare: " + e.message); }
+                  } catch (e) {
+                    const msg = e?.response?.data?.detail || e?.response?.data?.error || e.message || "Eroare necunoscută";
+                    alert("Eroare la materializare: " + msg);
+                  }
                 }}
                 className="ml-auto text-[10px] inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#d4ff3a]/15 border border-[#d4ff3a]/40 text-[#d4ff3a] hover:bg-[#d4ff3a]/25"
                 data-testid="autonomy-generate-tasks"
@@ -681,6 +697,12 @@ export const AutonomyEnginePage = () => {
             </div>
           )}
         </div>
+
+        {/* OPERATIONAL AUTONOMY LOOP (FN-021) */}
+        <OperationalLoopPanel />
+
+        {/* AUTONOMY ACTIVITY — unified action queue + real metrics (FN-021) */}
+        <AutonomyActivityPanel />
 
         {/* TIER DOWNGRADE ALERTS PANEL */}
         <TierAlertsPanel />

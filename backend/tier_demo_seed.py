@@ -3,7 +3,6 @@ Tier-specific demo accounts for Admin QA testing.
 Idempotent — only creates accounts that don't exist yet.
 Allows the admin to test progressive disclosure at each tier level.
 """
-import uuid
 import logging
 from datetime import datetime, timezone
 
@@ -163,8 +162,10 @@ async def seed_tier_demo_users():
         experience_tier = TIER_TO_EXPERIENCE.get(u.get("tier"), "junior")
         existing = await db.users.find_one({"email": u["email"]})
         if existing:
-            # Update tier/stats only — preserve consents and any data the user may have
+            # Update tier/stats only — preserve consents and any data the user may have.
+            # `role` este AUTORITAR pentru conturile demo canonice (repară drift, ex. client→specialist pe PROD).
             update_fields = {
+                "role": u["role"],
                 "tier": u.get("tier"),
                 "experience_tier": experience_tier,
                 "rating": u.get("rating"),
@@ -185,6 +186,11 @@ async def seed_tier_demo_users():
             elif u["role"] == "client":
                 update_fields["zone"] = existing.get("zone") or "Bucuresti-Sector1"
                 update_fields["kyc_status"] = u.get("kyc_status", "pending")
+                # curăță atribute de specialist rămase din drift (ex. specialty pe un client)
+                update_fields["specialty"] = None
+                update_fields["service_categories"] = []
+                update_fields["coverage_zones"] = []
+                update_fields["availability_status"] = None
             if not verify_password(u["password"], existing["password_hash"]):
                 update_fields["password_hash"] = hash_password(u["password"])
             await db.users.update_one({"_id": existing["_id"]}, {"$set": update_fields})

@@ -29,7 +29,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from db import db
-from deps import get_current_user, require_role
+from deps import require_role
 from core_utils import serialize_doc
 from email_service import send_email
 
@@ -102,6 +102,48 @@ async def _create_draft_listing_from_order(order: dict):
     await db.verified_estate_listings.insert_one(listing_doc)
     return str(listing_doc["_id"])
 
+
+async def mark_order_paid(session_id: str) -> bool:
+    """Idempotent: mark a VE order paid (Stripe webhook or status poll).
+    Creates draft listing + notifies admin + emails buyer. Returns True if transitioned."""
+    order = await db.verified_estate_orders.find_one({"session_id": session_id})
+    if not order or order.get("status") == "paid":
+        return False
+    now = datetime.now(timezone.utc)
+    await db.verified_estate_orders.update_one(
+        {"_id": order["_id"]}, {"$set": {"status": "paid", "paid_at": now}}
+    )
+    order["status"] = "paid"
+    try:
+        draft_id = await _create_draft_listing_from_order(order)
+        await db.verified_estate_orders.update_one({"_id": order["_id"]}, {"$set": {"draft_listing_id": draft_id}})
+    except Exception as e:
+        logger.warning(f"Auto-create draft failed: {e}")
+    label = order.get("label", order.get("package", ""))
+    amount = float(order.get("amount_ron") or 0)
+    await _notify_admin(
+        f"[Imobile Verificate] 💰 PLATĂ CONFIRMATĂ · {order.get('package')} · {amount:.0f} RON",
+        f"""<h2>Plată Stripe confirmată</h2>
+        <p><strong>Pachet:</strong> {label}</p>
+        <p><strong>Sumă:</strong> {amount:.0f} RON</p>
+        <p><strong>Client:</strong> {order.get('contact_name', '')} · {order.get('contact_email', '')} · {order.get('contact_phone') or '—'}</p>
+        <p><strong>Adresă proprietate:</strong> {order.get('property_address', '')}</p>
+        <p><em>Listing draft creat automat în Admin Kanban. Programează auditul în 24h.</em></p>"""
+    )
+    try:
+        import asyncio
+        asyncio.create_task(send_email(
+            order.get("contact_email"),
+            f"Confirmare plată · {label} · {amount:.0f} RON",
+            f"""<h2>Mulțumim, {order.get('contact_name', '')}!</h2>
+            <p>Plata pentru <strong>{label}</strong> a fost confirmată.</p>
+            <p>Echipa noastră te va contacta în maxim 24h pentru a programa auditul la <strong>{order.get('property_address', '')}</strong>.</p>
+            <p>— Echipa PropManage Imobile Verificate</p>"""
+        ))
+    except Exception:
+        pass
+    logger.info(f"VE order {order['_id']} marked paid (session {session_id})")
+    return True
 
 
 def _ensure_enabled():
@@ -366,7 +408,7 @@ async def admin_create_listing(body: ListingCreate, user: dict = Depends(require
 
 @router.get("/admin/listings")
 async def admin_list_listings(
-    status: Optional[str] = Query(None, pattern="^(draft|pending_review|published|archived|rejected)$"),
+    status: Optional[str] = Query(None, pattern="^(draft|pending_review|published|sold|archived|rejected)$"),
     limit: int = Query(50, ge=1, le=200),
     skip: int = Query(0, ge=0),
     user: dict = Depends(require_role("admin", "operator")),
@@ -457,6 +499,101 @@ async def admin_archive_listing(listing_id: str, user: dict = Depends(require_ro
     return {"ok": True}
 
 
+class MarkSoldRequest(BaseModel):
+    sale_price_ron: float = Field(..., gt=0)
+    buyer_name: Optional[str] = ""
+    buyer_email: Optional[str] = ""
+    notes: Optional[str] = ""
+
+
+@router.post("/admin/listings/{listing_id}/mark-sold")
+async def admin_mark_sold(listing_id: str, body: MarkSoldRequest, user: dict = Depends(require_role("admin", "operator"))):
+    """Close a sale: computes the 2.5% commission (twin cost deducted per pricing policy),
+    records the sale in `verified_estate_sales` and marks the listing as sold."""
+    _ensure_enabled()
+    try:
+        oid = ObjectId(listing_id)
+    except InvalidId:
+        raise HTTPException(404, "Listing not found")
+    listing = await db.verified_estate_listings.find_one({"_id": oid})
+    if not listing:
+        raise HTTPException(404, "Listing not found")
+    if listing.get("status") != "published":
+        raise HTTPException(400, "Doar listingurile publicate pot fi marcate ca vândute")
+
+    comm_pct = COMMISSION_PCT
+    twin_price = PRICE_TWIN_RON
+    try:
+        s = await db.app_settings.find_one({"_id": "app_settings"})
+        if s and s.get("pricing"):
+            comm_pct = float(s["pricing"].get("commission_pct", comm_pct))
+            twin_price = float(s["pricing"].get("twin_ron", twin_price))
+    except Exception:
+        pass
+
+    commission_gross = round(body.sale_price_ron * comm_pct / 100.0, 2)
+    twin_deduction = 0.0
+    src_order_id = listing.get("source_order_id")
+    if src_order_id:
+        try:
+            src = await db.verified_estate_orders.find_one({"_id": ObjectId(src_order_id)})
+            if src and src.get("status") == "paid" and src.get("package") in ("twin", "bundle"):
+                twin_deduction = twin_price
+        except Exception:
+            pass
+    commission_net = round(max(0.0, commission_gross - twin_deduction), 2)
+
+    now = datetime.now(timezone.utc)
+    sale_doc = {
+        "_id": ObjectId(),
+        "listing_id": str(oid),
+        "listing_title": listing.get("title", ""),
+        "sale_price_ron": body.sale_price_ron,
+        "commission_pct": comm_pct,
+        "commission_gross_ron": commission_gross,
+        "twin_deduction_ron": twin_deduction,
+        "commission_net_ron": commission_net,
+        "buyer_name": (body.buyer_name or "").strip(),
+        "buyer_email": (body.buyer_email or "").strip().lower(),
+        "notes": body.notes or "",
+        "sold_by": str(user.get("id")),
+        "created_at": now,
+    }
+    await db.verified_estate_sales.insert_one(sale_doc)
+    await db.verified_estate_listings.update_one(
+        {"_id": oid},
+        {"$set": {
+            "status": "sold", "sold_at": now, "updated_at": now,
+            "sale_price_ron": body.sale_price_ron, "sale_id": str(sale_doc["_id"]),
+            "commission_net_ron": commission_net,
+        }},
+    )
+    await _notify_admin(
+        f"[Imobile Verificate] 🏆 VÂNZARE ÎNCHISĂ · {body.sale_price_ron:,.0f} RON · comision net {commission_net:,.0f} RON",
+        f"""<h2>Vânzare finalizată</h2>
+        <p><strong>Imobil:</strong> {listing.get('title', '')}</p>
+        <p><strong>Preț vânzare:</strong> {body.sale_price_ron:,.0f} RON</p>
+        <p><strong>Comision ({comm_pct}%):</strong> {commission_gross:,.0f} RON</p>
+        <p><strong>Deducere Digital Twin:</strong> {twin_deduction:,.0f} RON</p>
+        <p><strong>Comision NET:</strong> {commission_net:,.0f} RON</p>
+        <p><strong>Cumpărător:</strong> {body.buyer_name or '—'} · {body.buyer_email or '—'}</p>"""
+    )
+    return {"ok": True, "sale": serialize_doc(sale_doc)}
+
+
+@router.get("/admin/sales")
+async def admin_list_sales(
+    limit: int = Query(50, ge=1, le=200),
+    skip: int = Query(0, ge=0),
+    user: dict = Depends(require_role("admin", "operator")),
+):
+    _ensure_enabled()
+    cursor = db.verified_estate_sales.find({}).sort("created_at", -1).skip(skip).limit(limit)
+    items = [serialize_doc(d) async for d in cursor]
+    total = await db.verified_estate_sales.count_documents({})
+    return {"items": items, "total": total, "skip": skip, "limit": limit}
+
+
 @router.get("/admin/inquiries")
 async def admin_list_inquiries(
     limit: int = Query(50, ge=1, le=200),
@@ -493,11 +630,25 @@ async def admin_stats(user: dict = Depends(require_role("admin", "operator"))):
     pending = await db.verified_estate_listings.count_documents({"status": "pending_review"})
     inquiries_open = await db.verified_estate_inquiries.count_documents({"status": "new"})
     external_open = await db.verified_estate_external_requests.count_documents({"status": "new"})
+    sold = await db.verified_estate_listings.count_documents({"status": "sold"})
+
+    async def _sum(coll, query, field):
+        pipe = [{"$match": query}, {"$group": {"_id": None, "t": {"$sum": f"${field}"}}}]
+        rows = await db[coll].aggregate(pipe).to_list(1)
+        return round(rows[0]["t"], 2) if rows else 0.0
+
+    commission_net_total = await _sum("verified_estate_sales", {}, "commission_net_ron")
+    revenue_real = await _sum("verified_estate_orders", {"status": "paid", "demo_mode": {"$ne": True}}, "amount_ron")
+    revenue_demo = await _sum("verified_estate_orders", {"status": "paid", "demo_mode": True}, "amount_ron")
     return {
         "listings_total": total_listings,
         "listings_published": published,
         "listings_draft": drafts,
         "listings_pending_review": pending,
+        "listings_sold": sold,
+        "commission_net_total_ron": commission_net_total,
+        "orders_revenue_real_ron": revenue_real,
+        "orders_revenue_demo_ron": revenue_demo,
         "inquiries_new": inquiries_open,
         "external_requests_new": external_open,
         "feature_enabled": FEATURE_FLAG,
@@ -697,11 +848,24 @@ async def create_checkout(body: CheckoutRequest, request: Request):
 
 @router.get("/checkout/status/{session_id}")
 async def get_checkout_status(session_id: str):
-    """Polled by frontend after redirect to confirm payment."""
+    """Polled by frontend after redirect to confirm payment.
+    For REAL Stripe orders still pending, verifies status directly with Stripe
+    (robust even if webhook is missed) and marks the order paid."""
     _ensure_enabled()
     order = await db.verified_estate_orders.find_one({"session_id": session_id})
     if not order:
         raise HTTPException(404, "Order not found")
+    if order.get("status") == "pending" and not order.get("demo_mode"):
+        try:
+            from emergentintegrations.payments.stripe.checkout import StripeCheckout
+            STRIPE_KEY = os.environ.get("STRIPE_API_KEY", "sk_test_emergent")
+            checkout = StripeCheckout(api_key=STRIPE_KEY, webhook_url="")
+            st = await checkout.get_checkout_status(session_id)
+            if st.payment_status == "paid":
+                await mark_order_paid(session_id)
+                order = await db.verified_estate_orders.find_one({"session_id": session_id})
+        except Exception as e:
+            logger.warning(f"Stripe status poll failed for {session_id}: {e}")
     return serialize_doc(order)
 
 

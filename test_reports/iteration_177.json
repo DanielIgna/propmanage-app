@@ -1,0 +1,25 @@
+{
+  "summary": "Frontend-only regression of Knowledge Center artifact search parser + scope UX (iteration_176 follow-up). Executed 15 Playwright scenarios covering: case-insensitive normalization (DOCUMENT/document/ARTIFACT:REGISTRY/Artifact:Graph), position-agnostic parsing (token at start and end), all 6 artifact types (DOCUMENT/REGISTRY/GRAPH/LEDGER/INDEX/CATALOG), scope chip presence rules, scoped empty state copy accuracy ('No {Singular} artifacts available yet.' + 'Infrastructure ready.'), invalid type regression (artifact:XYZ → no chip, treated as plain text), plain-text regression ('sprint' → no chip), combined query with free text (artifact:REGISTRY trust → 0 results + scoped empty state), and total counter token-stripping ('276 rezultate' no quotes when only token; '50 rezultate pentru „audit\"' when combined). ALL 15 scenarios PASSED — parser is robust and UX correctly indicates scope in every case.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_177.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "parseArtifactToken regex `/(?:^|\\s)artifact:(TYPE)(?=\\s|$)/i` on line 256 correctly handles case-insensitivity + position-agnostic matching; m[1].toUpperCase() normalizes to enum. Solid.",
+    "Display-query strip regex on line 359 uses same pattern with dynamic scope — deterministic and matches parser behavior.",
+    "KnowledgeCenter.jsx is 474 lines — approaching (but under) the 700-line split threshold; consider extracting SearchPanel + Inspector into subcomponents in a future pass if it grows further.",
+    "Client-side filter fallback (line 285) may under-report totals when backend returns paginated docs; acceptable for current dataset (276 docs, all DOCUMENT type) but worth revisiting if types populate."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (not tested per request)", "frontend": "100% (15/15)"},
+  "test_credentials": "danieligna1@gmail.com / Founder2026!kc (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration_177 fully validated the artifact:<TYPE> parser + scope UX bugfix. artifact_type_counts at test time: DOCUMENT=276, all others=0. All 15 parser/UX scenarios green including chip presence rules, empty-state copy accuracy for all 5 zero-count types, token stripping from total display, and invalid-type regression. Backend contract confirmed untouched (search still hits /api/founder/knowledge/search only). No further retest needed for this bugfix.",
+  "rca of the issue": "Original user report ('parser returns 0 results, treated as text') was a false positive — parser worked but UX was ambiguous (no visible scope indicator). Fix in this iteration: (1) hardened regex to be case-insensitive + position-agnostic + whitespace-tolerant; (2) added kc-search-scope-chip and kc-search-empty-scoped UI affordances so scope is always visible; (3) stripped the artifact:X token from the displayed query so the total counter shows only free-text quotes. Verified end-to-end via Playwright — all scenarios pass."
+}

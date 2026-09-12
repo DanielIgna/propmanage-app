@@ -1,7 +1,7 @@
 // Specialist verification queue + Disputes & nonconformities — reuses existing modals
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Eye, Scale, Clock, AlertTriangle, Flag } from "lucide-react";
+import { Eye, Scale, Clock, AlertTriangle, Flag, Sparkles } from "lucide-react";
 import { AdminCard, AdminBtn } from "./AdminLayoutMetronic";
 import { SpecialistDetailModal, DisputeResolveModal } from "../AdminModals";
 import { RequestTimelineModal } from "../ActivityTimeline";
@@ -11,7 +11,7 @@ export const AdminVerification = () => {
   const [pending, setPending] = useState([]);
   const [detailId, setDetailId] = useState(null);
 
-  const load = () => axios.get(`${API}/admin/specialists/pending`).then(r => setPending(r.data));
+  const load = () => axios.get(`${API}/admin/specialists/pending`).then(r => setPending(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
 
   return (
@@ -111,6 +111,33 @@ export const AdminDisputes = () => {
                 </div>
               </div>
               <div className="text-sm italic text-slate-600 dark:text-slate-300 mb-3 line-clamp-2">"{d.reason}"</div>
+              {d.ai_triage && (
+                <div className="mb-3 p-3 rounded-lg bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/25" data-testid={`ai-triage-${d.id}`}>
+                  <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-violet-500" />
+                    <span className="text-xs font-bold text-violet-700 dark:text-violet-300">Triage AI</span>
+                    <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-300">{d.ai_triage.category}</span>
+                    <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded ${
+                      d.ai_triage.severity === "high" ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300" :
+                      d.ai_triage.severity === "medium" ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" :
+                      "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                    }`}>{d.ai_triage.severity}</span>
+                    {d.ai_triage.suggested_split?.client_pct !== undefined && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300">
+                        split propus: {d.ai_triage.suggested_split.client_pct}% client / {d.ai_triage.suggested_split.specialist_pct}% specialist
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-700 dark:text-slate-300"><strong>Propunere:</strong> {d.ai_triage.proposed_resolution}</div>
+                  {(d.ai_triage.arguments || []).length > 0 && (
+                    <ul className="mt-1 space-y-0.5">
+                      {d.ai_triage.arguments.map((a, i) => (
+                        <li key={i} className="text-[11px] text-slate-500 dark:text-slate-400">• {a}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
               <div className="flex gap-2">
                 <AdminBtn variant="secondary" onClick={() => setTimelineId(d.request_id)}>
                   <Clock className="w-3 h-3 inline mr-1" /> Timeline

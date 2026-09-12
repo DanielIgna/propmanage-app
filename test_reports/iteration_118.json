@@ -1,0 +1,35 @@
+{
+  "summary": "Sprint 1/Felia 1 (Property DNA + Event Bus + Agent Journal) validated. Backend: 10/10 pytest passed — request lifecycle regression OK (log_event delegation to event_bus does NOT break create/list flows), Property DNA API returns 200 for owner with 10 capabilities, timeline includes newly-created request event, works.total>0, specialist gets 403, unauth gets 401, admin /api/admin/agent-runs returns {runs, total_recorded, errors_recorded, top_failing}, client gets 403. Frontend (mobile 390px): client Property tab shows dna-card with dna-completeness=70%, dna-capabilities, dna-timeline with items; hubs (twin/health/wallet) open without errors; specialist dashboard shows spec-today-summary. No 500 responses observed during UI testing.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/requests/{req_id}", "issue": "Pre-existing route-order bug: any non-ObjectId path segment like /api/requests/marketplace returns 500 InvalidId from bson. Should validate req_id format or add explicit named routes before the catch-all. NOT introduced by this sprint, but visible when testing exploratory endpoints."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_property_dna.py",
+    "/app/test_reports/pytest/iter118.xml"
+  ],
+  "action_items": [
+    "(Optional) Harden /api/requests/{req_id} against non-ObjectId path segments — return 404 instead of 500."
+  ],
+  "critical_code_review_comments": [
+    "event_bus.emit is best-effort with try/except around insert and orchestrator forward — good defensive design; confirmed doesn't break upstream flows.",
+    "property_dna.py timeline dedup uses (etype_norm, request_id) tuple; may still yield near-duplicates if same event_type is stored both as dot and underscore variants — acceptable per problem statement (do not report).",
+    "agent_journal caps agent_runs collection at ~6000 rows — good."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_property_dna.py (new)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "client@propmanage.io/Client123!, specialist@propmanage.io/Spec123!, admin@propmanage.io/1!nasov01ADMIN",
+  "seed_data_creation": "Created one TEST_DNA_ request via client account for regression + DNA timeline validation.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend regression suite lives at /app/backend/tests/test_property_dna.py — reuse for future event-bus/DNA changes. Client demo property has enough history for DNA to reach ~70% completeness."
+}

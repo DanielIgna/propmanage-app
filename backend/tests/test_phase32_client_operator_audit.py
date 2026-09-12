@@ -4,10 +4,10 @@ Tests are stateful and rely on demo seed accounts in /app/memory/test_credential
 Cookie auth (httpOnly) — use requests.Session().
 """
 import os
-import time
 import uuid
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://phased-document.preview.emergentagent.com").rstrip("/")
 
@@ -15,7 +15,7 @@ CLIENT = {"email": "client@propmanage.io", "password": "Client123!"}
 SPEC = {"email": "specialist@propmanage.io", "password": "Spec123!"}
 SPEC2 = {"email": "specialist2@propmanage.io", "password": "Spec123!"}
 OP = {"email": "operator@propmanage.io", "password": "Op123!"}
-ADMIN = {"email": "admin@propmanage.io", "password": "Admin123!"}
+ADMIN = {"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD}
 
 TAG = uuid.uuid4().hex[:6]
 

@@ -50,13 +50,13 @@ export const ImpersonationBanner = () => {
       role="alert"
       aria-live="polite"
     >
-      <div className="max-w-7xl mx-auto px-4 py-2 flex items-center gap-3 text-sm">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-1.5 sm:py-2 flex items-center gap-2 sm:gap-3 text-sm">
         <ShieldAlert className="w-5 h-5 shrink-0 animate-pulse" />
         <div className="flex-1 min-w-0">
-          <div className="font-semibold truncate" data-testid="impersonation-banner-target">
+          <div className="font-semibold truncate text-xs sm:text-sm" data-testid="impersonation-banner-target">
             Vizionezi ca <strong>{user.name || user.email}</strong> · rol: <strong>{user.role}</strong>
           </div>
-          <div className="text-[11px] text-red-100 truncate">
+          <div className="hidden sm:block text-[11px] text-red-100 truncate">
             Admin: <strong>{imp.admin_email}</strong> · sesiune jurnalizată GDPR (ID {imp.log_id?.slice(-8)})
           </div>
         </div>
@@ -69,11 +69,11 @@ export const ImpersonationBanner = () => {
         <button
           onClick={stop}
           disabled={busy}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-red-700 hover:bg-red-50 text-xs font-bold disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-white text-red-700 hover:bg-red-50 text-xs font-bold disabled:opacity-60 shrink-0"
           data-testid="impersonation-banner-stop"
         >
           <LogOut className="w-3.5 h-3.5" />
-          {busy ? "Ies..." : "Ieși din impersonare"}
+          {busy ? "Ies..." : <><span className="sm:hidden">Ieși</span><span className="hidden sm:inline">Ieși din impersonare</span></>}
         </button>
       </div>
     </div>

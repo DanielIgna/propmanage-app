@@ -1,23 +1,13 @@
 """PropManage router: portfolio."""
-import os
-import asyncio
-import json
 import logging
-from typing import Optional, List, Literal, Dict
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException
 
 from db import db
-from core_utils import serialize_doc, effective_role
-from deps import get_current_user, require_role
-from services import send_email, notify, send_web_push, log_event
-from models import *
-from email_service import (
-    send_template, tpl_welcome, tpl_dispute_opened, tpl_dispute_resolved,
-    tpl_design_phase_quote, tpl_specialist_verified, tpl_escrow_funded,
-)
+from core_utils import serialize_doc
+from deps import require_role
+from models import PortfolioItemIn
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["portfolio"])
@@ -26,6 +16,13 @@ router = APIRouter(prefix="/api", tags=["portfolio"])
 
 MAX_PORTFOLIO_ITEMS = 30
 MAX_IMAGE_SIZE_BYTES = 5_500_000  # ~4MB base64
+
+EXTENDED_FIELDS = ["project_type", "services", "role", "budget_range", "tags", "before_image",
+                   "after_image", "video_url", "tour_url", "awards", "client_review", "is_public"]
+
+
+def _extended(data) -> dict:
+    return {k: getattr(data, k, None) for k in EXTENDED_FIELDS}
 
 def _validate_image_payload(b64_or_url: str) -> bool:
     if not b64_or_url:
@@ -73,6 +70,7 @@ async def add_portfolio_item(data: PortfolioItemIn, user: dict = Depends(require
         "completion_date": data.completion_date,
         "location": data.location,
         "surface": data.surface,
+        **_extended(data),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     res = await db.portfolio.insert_one(doc)
@@ -102,6 +100,7 @@ async def update_portfolio_item(item_id: str, data: PortfolioItemIn, user: dict 
             "completion_date": data.completion_date,
             "location": data.location,
             "surface": data.surface,
+            **_extended(data),
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }}
     )

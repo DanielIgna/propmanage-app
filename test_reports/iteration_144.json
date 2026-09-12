@@ -1,0 +1,41 @@
+{
+  "summary": "Iteration 144 — GBOS Trust Growth Engine end-to-end validation. Backend: 14/15 tests PASSED (1 conditional skip on dedupe pre-existing data). Frontend: ReferralHub verified on client + specialist (dark variant); public /specialists/{id} profile shows profile-trust-chips with recommenders chip while rebook chip is correctly hidden below 5 responses (PM-200 honesty rule). Marketplace public loads with 98 specialists (regression OK); specialist Opportunities dashboard functional.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/referrals/mine", "issue": "Response includes referral_url with hardcoded FRONTEND_URL fallback https://propmanage.ro when env not set — cosmetic in preview only; users see propmanage.ro instead of preview URL in copy-link buttons"},
+      {"endpoint": "/api/referrals/recommend/{self_id}", "issue": "When client sends specialist_id equal to own user id, backend returns 404 ('Specialist inexistent') instead of 400 ('Auto-recomandarea nu este permisă') because the id lookup is scoped to role=specialist. The explicit 400 branch is unreachable for cross-role users. Test accepts either 400/404; consider re-ordering checks for clearer error."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Specialist dashboard load", "issue": "One console PAGEERROR observed: \"Cannot read properties of null (reading 'sequence')\" on /specialist after login. Does not crash UI, but should be investigated (likely in an AI/insights widget).", "affected_selectors": []}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_trust_growth_iter144.py",
+    "/app/test_reports/pytest/iter144_trust.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: Reorder /api/referrals/recommend/{specialist_id} self-check to run before role-scoped lookup so self-recommendation returns 400 instead of 404.",
+    "INVESTIGATE: Console PAGEERROR ('sequence' of null) on /specialist dashboard — non-blocking but should be traced.",
+    "OPTIONAL: Set FRONTEND_URL env var in backend so referral links point to preview URL instead of hardcoded https://propmanage.ro."
+  ],
+  "critical_code_review_comments": [
+    "trust_growth.py: uses ObjectId(specialist_id) with a bare try/except — good. recommenders_rollup performs two full-collection scans; consider unified aggregation with $unionWith for scale.",
+    "REBOOK_MIN_SHOW=5 hardcoded — acceptable for MVP but should be configurable via app_settings for tenant tuning.",
+    "Referral invite email uses hardcoded FRONTEND_URL fallback; env not set in preview backend .env."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_trust_growth_iter144.py (new)"
+  ],
+  "success_rate": {"backend": "93% (14/15 tests, 1 conditional skip)", "frontend": "100% on tested flows"},
+  "test_credentials": "client@propmanage.io/Client123!, specialist@propmanage.io/Spec123!. Preview URL: https://phased-document.preview.emergentagent.com",
+  "seed_data_creation": "Created test specialist accounts each run (email pattern test_iter144_spec_<uuid>@test.io / Test1234!) and multiple referral_invites codes. Also new recommendation from client@ → specialist2@propmanage.io (dedupe protected). NOT deleted — safe (prefix-tagged TEST/test_iter144). Also verified pre-existing gbos.spec.test seed at id 6a679f135b0de3b1e45d17d5 still has recommenders=1.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Test file /app/backend/tests/test_trust_growth_iter144.py covers full referral+recommend+trust rollup flow. Each run creates a fresh specialist. Backend endpoints all live at /api/referrals/* and /api/marketplace/specialists/{id}/{trust,recommendations}. Frontend route for public specialist profile is /specialists/:id (plural). ReviewModal integration was NOT re-tested end-to-end since the full request→accept→complete→confirm→review chain is per context stable since iter138; ReviewIn model correctly accepts would_hire_again and would_recommend and rebook_rollup uses those fields directly.",
+  "rca of the issue": "N/A — no blockers. Only two cosmetic points: (1) self-recommendation error code sequence returns 404 instead of 400 because ObjectId lookup filters role=specialist first, so a client's own id is never found; move the `if specialist_id == user['id']` check above the ObjectId lookup to fix. (2) FRONTEND_URL env not set → referral links show hardcoded propmanage.ro."
+}

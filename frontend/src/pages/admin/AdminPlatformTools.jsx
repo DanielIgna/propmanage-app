@@ -1,8 +1,9 @@
 // Trust score weights + platform settings + finance + projects + activity feed
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Save, AlertCircle, Download, RotateCcw } from "lucide-react";
+import { Save, AlertCircle, Download, RotateCcw, Wallet, ShieldCheck, Activity } from "lucide-react";
 import { AdminCard, AdminBtn } from "./AdminLayoutMetronic";
+import { KpiCard as DSKpiCard, AIInsightCard, DataTable } from "../../design-system";
 import { API } from "../DashShared";
 
 // ============= TRUST WEIGHTS =============
@@ -15,7 +16,7 @@ export const AdminTrustWeights = () => {
     axios.get(`${API}/admin/trust-weights`).then(r => {
       const { is_default, updated_at, ...weights } = r.data;
       setW(weights);
-    });
+    }).catch(() => {});
   }, []);
 
   const total = Object.values(w).reduce((s, v) => s + v, 0);
@@ -86,7 +87,7 @@ export const AdminPlatformSettings = () => {
   const [saving, setSaving] = useState(false);
   const [copyMsg, setCopyMsg] = useState("");
 
-  const load = () => axios.get(`${API}/admin/settings`).then(r => { setS(r.data); setDirty({}); });
+  const load = () => axios.get(`${API}/admin/settings`).then(r => { setS(r.data); setDirty({}); }).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const set = (k, v) => setDirty(d => ({ ...d, [k]: v }));
@@ -269,19 +270,25 @@ export const AdminPlatformSettings = () => {
 export const AdminFinance = () => {
   const [data, setData] = useState(null);
 
-  useEffect(() => { axios.get(`${API}/admin/finance/overview`).then(r => setData(r.data)); }, []);
+  useEffect(() => { axios.get(`${API}/admin/finance/overview`).then(r => setData(r.data)).catch(() => {}); }, []);
+
+  const txTotal = (data?.tx_by_type || []).reduce((s, t) => s + t.count, 0);
+  const topTx = [...(data?.tx_by_type || [])].sort((a, b) => b.total - a.total)[0];
+  const insights = data ? {
+    bullets: [
+      `${(data.escrow_held || 0).toLocaleString("ro")} RON securizați în escrow din ${(data.total_wallet || 0).toLocaleString("ro")} RON total în wallets.`,
+      ...(topTx ? [`Cel mai mare volum pe 30 zile: «${topTx.type}» — ${topTx.count} tranzacții, ${Number(topTx.total).toLocaleString("ro")} RON.`] : []),
+    ],
+    alerts: (data.escrow_held || 0) > (data.total_wallet || 0) ? ["Escrow held depășește soldul total din wallets — verifică reconcilierea."] : [],
+    recommendations: txTotal === 0 ? ["Nicio tranzacție în 30 zile — verifică fluxul de plăți Stripe."] : [],
+  } : { bullets: [], alerts: [], recommendations: [] };
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <AdminCard testid="finance-total-wallet">
-          <div className="text-xs text-slate-500 uppercase tracking-wider">Total în Wallets</div>
-          <div className="text-3xl font-bold mt-2">{(data?.total_wallet || 0).toLocaleString("ro")} RON</div>
-        </AdminCard>
-        <AdminCard testid="finance-escrow">
-          <div className="text-xs text-slate-500 uppercase tracking-wider">Escrow Securizat</div>
-          <div className="text-3xl font-bold mt-2">{(data?.escrow_held || 0).toLocaleString("ro")} RON</div>
-        </AdminCard>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <DSKpiCard icon={Wallet} label="Total în wallets" value={`${(data?.total_wallet || 0).toLocaleString("ro")} RON`} accent="info" testid="finance-total-wallet" />
+        <DSKpiCard icon={ShieldCheck} label="Escrow securizat" value={`${(data?.escrow_held || 0).toLocaleString("ro")} RON`} accent="success" testid="finance-escrow" />
+        <DSKpiCard icon={Activity} label="Tranzacții 30 zile" value={txTotal} accent="neutral" testid="finance-tx-count" />
         <AdminCard testid="finance-export-card">
           <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Export</div>
           <div className="flex flex-col gap-2">
@@ -295,26 +302,19 @@ export const AdminFinance = () => {
         </AdminCard>
       </div>
 
-      <AdminCard title="Top 10 Wallets" testid="top-wallets-card">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 dark:border-slate-800">
-              <th className="text-left py-2 text-xs font-bold uppercase text-slate-500">Nume</th>
-              <th className="text-left py-2 text-xs font-bold uppercase text-slate-500">Rol</th>
-              <th className="text-right py-2 text-xs font-bold uppercase text-slate-500">Sold</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(data?.top_wallets || []).map(w => (
-              <tr key={w.id} className="border-b border-slate-100 dark:border-slate-800/50">
-                <td className="py-2.5">{w.name}<div className="text-[11px] text-slate-500">{w.email}</div></td>
-                <td className="py-2.5"><span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800">{w.role}</span></td>
-                <td className="py-2.5 text-right tabular-nums font-medium">{Number(w.balance).toLocaleString("ro")} RON</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </AdminCard>
+      <AIInsightCard bullets={insights.bullets} alerts={insights.alerts} recommendations={insights.recommendations}
+        loading={!data} llmModule="finance" testid="finance-ai-insights" />
+
+      <DataTable
+        title="Top 10 Wallets"
+        columns={[
+          { key: "name", label: "Nume", render: w => <>{w.name}<div className="text-[11px] text-slate-500">{w.email}</div></> },
+          { key: "role", label: "Rol", render: w => <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800">{w.role}</span> },
+          { key: "balance", label: "Sold (RON)", render: w => <b className="tabular-nums">{Number(w.balance).toLocaleString("ro")}</b> },
+        ]}
+        rows={data?.top_wallets || []} searchKeys={["name", "email"]} exportName="top-wallets"
+        emptyTitle="Niciun wallet cu sold." testid="top-wallets-card"
+      />
 
       <AdminCard title="Tranzacții 30 zile (per tip)" testid="tx-by-type-card">
         <div className="space-y-2">
@@ -342,7 +342,7 @@ export const AdminProjects = () => {
   useEffect(() => {
     const params = {};
     if (status) params.status = status;
-    axios.get(`${API}/admin/projects`, { params }).then(r => setData(r.data));
+    axios.get(`${API}/admin/projects`, { params }).then(r => setData(r.data)).catch(() => {});
   }, [status]);
 
   return (
@@ -392,7 +392,7 @@ export const AdminProjects = () => {
 export const AdminActivityFull = () => {
   const [events, setEvents] = useState([]);
   useEffect(() => {
-    const load = () => axios.get(`${API}/admin/activity-feed-live?limit=50`).then(r => setEvents(r.data));
+    const load = () => axios.get(`${API}/admin/activity-feed-live?limit=50`).then(r => setEvents(r.data)).catch(() => {});
     load();
     const interval = setInterval(load, 10000);
     return () => clearInterval(interval);
@@ -426,7 +426,7 @@ const LandingPresetsCard = ({ currentFlags, onApply, onPersistedApply }) => {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
 
-  const load = () => axios.get(`${API}/admin/landing-presets`).then(r => setPresets(r.data));
+  const load = () => axios.get(`${API}/admin/landing-presets`).then(r => setPresets(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const flash = (msg) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
@@ -580,7 +580,7 @@ const SchedulesSection = ({ presets }) => {
   const [toast, setToast] = useState("");
   const flash = (m) => { setToast(m); setTimeout(() => setToast(""), 3000); };
 
-  const load = () => axios.get(`${API}/admin/preset-schedules`).then(r => setSchedules(r.data));
+  const load = () => axios.get(`${API}/admin/preset-schedules`).then(r => setSchedules(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const toggleDay = (d) => setForm(f => ({
@@ -737,7 +737,7 @@ const ScheduleHistorySection = ({ presets }) => {
     const params = { limit: 50 };
     if (filterPreset) params.preset_id = filterPreset;
     axios.get(`${API}/admin/schedule-history`, { params })
-      .then(r => setHistory(r.data))
+      .then(r => setHistory(r.data)).catch(() => {})
       .finally(() => setLoading(false));
   };
 

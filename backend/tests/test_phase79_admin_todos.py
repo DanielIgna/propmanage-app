@@ -2,11 +2,12 @@
 import os
 import requests
 import pytest
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://phased-document.preview.emergentagent.com").rstrip("/")
 
 ADMIN_EMAIL = "admin@propmanage.io"
-ADMIN_PASS = "Admin123!"
+ADMIN_PASS = OWNER_ADMIN_PASSWORD
 CLIENT_EMAIL = "client@propmanage.io"
 CLIENT_PASS = "Client123!"
 

@@ -1,11 +1,12 @@
-// Unified user management: list, filter, edit, ban
+// Unified user management — Design System standard (KPI → AI Insights → Filtre → Tabel)
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Search, Download, Edit2, Ban, CheckCircle2, X, UserCheck, Trash2, AlertTriangle, Mail, Phone, Megaphone, MailX, PhoneOff } from "lucide-react";
-import { AdminCard, AdminBtn } from "./AdminLayoutMetronic";
+import { Search, Download, Edit2, Ban, CheckCircle2, X, UserCheck, Trash2, AlertTriangle, Mail, Phone, Megaphone, MailX, PhoneOff, Users as UsersIcon, UserPlus, Wrench } from "lucide-react";
+import { AdminBtn } from "./AdminLayoutMetronic";
 import { API } from "../DashShared";
 import { ImpersonateModal } from "./ImpersonateModal";
 import { useAuth } from "../../auth";
+import { KpiCard, AIInsightCard, DataTable, DSButton, CARD } from "../../design-system";
 
 const EditUserModal = ({ user, onClose, onSaved }) => {
   const [form, setForm] = useState({
@@ -82,6 +83,8 @@ const EditUserModal = ({ user, onClose, onSaved }) => {
 export const AdminUsers = () => {
   const { user: me } = useAuth();
   const [data, setData] = useState({ items: [], total: 0 });
+  const [stats, setStats] = useState(null);
+  const [insights, setInsights] = useState(null);
   const [q, setQ] = useState("");
   const [role, setRole] = useState("");
   const [emailVerifiedFilter, setEmailVerifiedFilter] = useState("");
@@ -106,6 +109,10 @@ export const AdminUsers = () => {
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, [skip, role, emailVerifiedFilter, phoneVerifiedFilter, marketingFilter]);
+  useEffect(() => {
+    axios.get(`${API}/admin/bi/overview`).then(r => setStats(r.data)).catch(() => {});
+    axios.get(`${API}/admin/insights/rule?module=users`).then(r => setInsights(r.data)).catch(() => {});
+  }, []);
 
   const onSearch = (e) => { e.preventDefault(); setSkip(0); load(); };
 
@@ -119,9 +126,70 @@ export const AdminUsers = () => {
     window.open(`${API}/admin/export/users.csv`, "_blank");
   };
 
+  const roleBadge = (r) => <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700">{r}</span>;
+  const tierBadge = (t) => t ? (
+    <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${t === "VERIFIED" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400" : t === "PREMIUM" ? "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400" : "bg-slate-100 dark:bg-slate-700"}`}>{t}</span>
+  ) : null;
+
+  const columns = [
+    { key: "name", label: "Nume", render: u => <span className="font-medium">{u.name || "—"}</span> },
+    { key: "email", label: "Email", render: u => (
+      <div>
+        <div className="text-slate-600 dark:text-slate-400">{u.email}</div>
+        {u.phone && <div className="text-[10px] text-slate-500 font-mono" data-testid={`user-phone-${u.id}`}>📞 {u.phone}</div>}
+      </div>
+    ) },
+    { key: "role", label: "Rol", render: u => roleBadge(u.role) },
+    { key: "tier", label: "Tier", render: u => tierBadge(u.tier) },
+    { key: "wallet_balance", label: "Wallet", render: u => <span className="tabular-nums">{Number(u.wallet_balance || 0).toFixed(2)}</span> },
+    { key: "_verif", label: "Verificări", sortable: false, render: u => (
+      <span className="inline-flex items-center gap-2">
+        {u.email_verified ? <Mail className="w-3.5 h-3.5 text-emerald-500" title="Email verificat" /> : <MailX className="w-3.5 h-3.5 text-amber-500" title="Email NEverificat" />}
+        {u.phone_verified ? <Phone className="w-3.5 h-3.5 text-emerald-500" title="Telefon verificat" /> : <PhoneOff className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600" title="Telefon NEverificat" />}
+        {u.marketing_consent ? <Megaphone className="w-3.5 h-3.5 text-emerald-500" title="Acord marketing" /> : <span className="text-slate-300 dark:text-slate-600 text-xs w-3.5 text-center">—</span>}
+      </span>
+    ) },
+    { key: "banned", label: "Status", render: u => (
+      u.banned ? <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400">Banned</span>
+        : u.verified ? <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+        : <span className="text-slate-300">—</span>
+    ) },
+    { key: "_actions", label: "Acțiuni", sortable: false, render: u => (
+      <span className="inline-flex items-center gap-2">
+        <button onClick={() => setEditing(u)} className="text-blue-600 hover:text-blue-700 dark:text-blue-400" title="Editare" data-testid={`edit-user-${u.id}`}>
+          <Edit2 className="w-4 h-4" />
+        </button>
+        {u.role !== "admin" && u.id !== me?.id && !u.banned && (
+          <button onClick={() => setImpersonating(u)} className="text-red-600 hover:text-red-700 dark:text-red-400" title="Intră în contul lui (jurnalizat GDPR)" data-testid={`impersonate-user-${u.id}`}>
+            <UserCheck className="w-4 h-4" />
+          </button>
+        )}
+        <button onClick={() => ban(u.id, u.banned)} className={u.banned ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"} title={u.banned ? "Unban" : "Ban"} data-testid={`ban-user-${u.id}`}>
+          <Ban className="w-4 h-4" />
+        </button>
+      </span>
+    ) },
+  ];
+
   return (
-    <div className="space-y-4">
-      <AdminCard>
+    <div className="space-y-6" data-testid="admin-users-page">
+      {/* 1. KPI Cards standard */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <KpiCard icon={UsersIcon} label="Total useri" value={stats?.total_users ?? "—"} accent="info" testid="users-kpi-total" />
+        <KpiCard icon={UserCheck} label="Clienți activi" value={stats?.active_clients ?? "—"} accent="success" testid="users-kpi-clients" />
+        <KpiCard icon={Wrench} label="Specialiști activi" value={stats?.active_specialists ?? "—"} accent="ai" testid="users-kpi-specialists" />
+        <KpiCard icon={UserPlus} label="Useri noi (30z)" value={stats?.new_users_30d ?? "—"} accent="warning" testid="users-kpi-new" />
+      </div>
+
+      {/* 2. AI Insights — obligatoriu după KPI */}
+      <AIInsightCard
+        bullets={insights?.bullets || []} alerts={insights?.alerts || []}
+        recommendations={insights?.recommendations || []}
+        loading={!insights} llmModule="users" testid="users-ai-insights"
+      />
+
+      {/* 3. Filtre + acțiuni */}
+      <div className={`${CARD} p-4`}>
         <div className="flex flex-wrap gap-3 items-center">
           <form onSubmit={onSearch} className="flex-1 min-w-[200px] relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -155,105 +223,33 @@ export const AdminUsers = () => {
             <option value="yes">📣 Acceptat</option>
             <option value="no">📣 Refuzat</option>
           </select>
-          <AdminBtn variant="secondary" onClick={exportCsv} data-testid="users-export-csv">
-            <Download className="w-3.5 h-3.5 inline mr-1.5" /> CSV
-          </AdminBtn>
-          <AdminBtn
-            variant="secondary"
+          <DSButton variant="secondary" icon={Download} onClick={exportCsv} data-testid="users-export-csv">CSV</DSButton>
+          <DSButton
+            variant="danger"
+            icon={Trash2}
             onClick={() => setShowCleanup(true)}
             data-testid="users-cleanup-test-btn"
             title="Șterge userii de test (test_*@test.io, beta_*@example.com, etc.)"
           >
-            <Trash2 className="w-3.5 h-3.5 inline mr-1.5 text-red-500" />Curăță userii de test
-          </AdminBtn>
+            Curăță userii de test
+          </DSButton>
         </div>
-      </AdminCard>
+      </div>
 
-      <AdminCard testid="users-table-card">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-800">
-                <th className="text-left py-2 px-3 text-xs font-bold uppercase tracking-wider text-slate-500">Nume</th>
-                <th className="text-left py-2 px-3 text-xs font-bold uppercase tracking-wider text-slate-500">Email</th>
-                <th className="text-left py-2 px-3 text-xs font-bold uppercase tracking-wider text-slate-500">Rol</th>
-                <th className="text-left py-2 px-3 text-xs font-bold uppercase tracking-wider text-slate-500">Tier</th>
-                <th className="text-right py-2 px-3 text-xs font-bold uppercase tracking-wider text-slate-500">Wallet</th>
-                <th className="text-center py-2 px-3 text-xs font-bold uppercase tracking-wider text-slate-500" title="Email verificat">✉</th>
-                <th className="text-center py-2 px-3 text-xs font-bold uppercase tracking-wider text-slate-500" title="Telefon verificat">📱</th>
-                <th className="text-center py-2 px-3 text-xs font-bold uppercase tracking-wider text-slate-500" title="Marketing">📣</th>
-                <th className="text-center py-2 px-3 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
-                <th className="text-right py-2 px-3 text-xs font-bold uppercase tracking-wider text-slate-500">Acțiuni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.items.map(u => (
-                <tr key={u.id} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30" data-testid={`user-row-${u.id}`}>
-                  <td className="py-2.5 px-3 font-medium">{u.name || "—"}</td>
-                  <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
-                    <div>{u.email}</div>
-                    {u.phone && <div className="text-[10px] text-slate-500 dark:text-slate-500 font-mono" data-testid={`user-phone-${u.id}`}>📞 {u.phone}</div>}
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800">{u.role}</span>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    {u.tier && <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${u.tier === "VERIFIED" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400" : u.tier === "PREMIUM" ? "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400" : "bg-slate-100 dark:bg-slate-800"}`}>{u.tier}</span>}
-                  </td>
-                  <td className="py-2.5 px-3 text-right tabular-nums">{Number(u.wallet_balance || 0).toFixed(2)}</td>
-                  <td className="py-2.5 px-3 text-center" title={u.email_verified ? "Email verificat" : "Email NEverificat"}>
-                    {u.email_verified ? <Mail className="w-3.5 h-3.5 text-emerald-500 inline" /> : <MailX className="w-3.5 h-3.5 text-amber-500 inline" />}
-                  </td>
-                  <td className="py-2.5 px-3 text-center" title={u.phone_verified ? "Telefon verificat" : "Telefon NEverificat"}>
-                    {u.phone_verified ? <Phone className="w-3.5 h-3.5 text-emerald-500 inline" /> : <PhoneOff className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 inline" />}
-                  </td>
-                  <td className="py-2.5 px-3 text-center" title={u.marketing_consent ? "Acord marketing acceptat" : "Refuzat marketing"}>
-                    {u.marketing_consent ? <Megaphone className="w-3.5 h-3.5 text-emerald-500 inline" /> : <span className="text-slate-300 dark:text-slate-600 text-xs">—</span>}
-                  </td>
-                  <td className="py-2.5 px-3 text-center">
-                    {u.banned ? (
-                      <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400">Banned</span>
-                    ) : u.verified ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500 inline" />
-                    ) : (
-                      <span className="text-slate-300">—</span>
-                    )}
-                  </td>
-                  <td className="py-2.5 px-3 text-right">
-                    <button onClick={() => setEditing(u)} className="text-blue-600 hover:text-blue-700 dark:text-blue-400 mr-2" title="Editare" data-testid={`edit-user-${u.id}`}>
-                      <Edit2 className="w-4 h-4 inline" />
-                    </button>
-                    {u.role !== "admin" && u.id !== me?.id && !u.banned && (
-                      <button
-                        onClick={() => setImpersonating(u)}
-                        className="text-red-600 hover:text-red-700 dark:text-red-400 mr-2"
-                        title="Intră în contul lui (jurnalizat GDPR)"
-                        data-testid={`impersonate-user-${u.id}`}
-                      >
-                        <UserCheck className="w-4 h-4 inline" />
-                      </button>
-                    )}
-                    <button onClick={() => ban(u.id, u.banned)} className={u.banned ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"} title={u.banned ? "Unban" : "Ban"} data-testid={`ban-user-${u.id}`}>
-                      <Ban className="w-4 h-4 inline" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {!loading && data.items.length === 0 && (
-                <tr><td colSpan="10" className="text-center py-8 text-slate-500">Niciun user găsit</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex justify-between items-center pt-4 mt-2 text-sm">
-          <div className="text-slate-500">Total: {data.total}</div>
-          <div className="flex gap-2">
-            <AdminBtn variant="secondary" onClick={() => setSkip(Math.max(0, skip - 25))} disabled={skip === 0}>← Anterior</AdminBtn>
-            <AdminBtn variant="secondary" onClick={() => setSkip(skip + 25)} disabled={skip + 25 >= data.total}>Următor →</AdminBtn>
-          </div>
-        </div>
-      </AdminCard>
+      {/* 4. Tabel standard (DataTable) + paginare server-side */}
+      <DataTable
+        title="Utilizatori"
+        columns={columns}
+        rows={data.items}
+        emptyTitle="Niciun user găsit"
+        emptyHint="Ajustează filtrele sau căutarea."
+        testid="users-table"
+        headerExtra={<span className="text-xs text-slate-400" data-testid="users-total">Total: {data.total}</span>}
+      />
+      <div className="flex justify-end gap-2">
+        <DSButton variant="secondary" onClick={() => setSkip(Math.max(0, skip - 25))} disabled={skip === 0}>← Anterior</DSButton>
+        <DSButton variant="secondary" onClick={() => setSkip(skip + 25)} disabled={skip + 25 >= data.total}>Următor →</DSButton>
+      </div>
 
       {editing && <EditUserModal user={editing} onClose={() => setEditing(null)} onSaved={load} />}
       {impersonating && <ImpersonateModal user={impersonating} onClose={() => setImpersonating(null)} />}

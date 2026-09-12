@@ -1,0 +1,39 @@
+{
+  "summary": "Iter 117 — XOS 2026 redesign regression (frontend + backend). Backend: 7/7 pytest passed (track/config, public client-junior/request lead creation with request_number CJ-*, cookies/consent, concierge/settings/public, client/copilot, specialist/cockpit, auth/register specialist ENTRY). Frontend: /incepe mobile 390px — hero + 2 signature cards (cj-feat-digital_twin, cj-feat-design_interior) + 6 grid cards, search filter works (cj-search-input 'zugra' -> 1 result), cookie banner is FIXED TOP strip (y=0, h=51.5), accept/reject closes it and cookie-banner-reopen appears bottom-left. Wizard end-to-end: cj-grid-zugraveli → 3 radio steps → contact form → submit → cj-request-number 'CJ-764B47' → cj-go-jobs-btn → cj-jobs-view visible with lead. Bottom nav cj-nav-home/jobs/notifications/settings all present. Client V2 (/client): v2-hero-c + v2-actions (4 quick actions) + v2-copilot-card + v2-discover + v2-nav-jobs/property/settings/request all OK. Desktop 1920px: v2-desktop-cta opens RequestWizard modal. Light theme: body bg = rgb(250,250,249) via computed style. Specialist: dash-title 'Oportunități' + 4 KPI tiles + spec-cockpit + spec-pipe-money OK. AssistantDock FAB (assistant-dock-fab) present on both /client and /specialist, legacy whatsapp-float-btn and concierge-bubble-launch are GONE. FAB (318,692,56x56) does NOT overlap bottom nav (y=778) on 390px viewport.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "AssistantDock menu (client user)", "issue": "For client@propmanage.io the /concierge/settings/public returns is_blocked:true (quota reached in DB seed), so aiEnabled=false and dock enters single-mode → FAB opens WhatsApp directly in new tab, no menu with assistant-dock-menu/ai/whatsapp entries. Code is correct; this is a seed/data state, NOT a redesign regression. To visually verify the menu path, unblock the account (reset concierge_state) or use a different user.", "affected_selectors": ["assistant-dock-menu", "assistant-dock-ai", "assistant-dock-whatsapp"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter117_xos_regression.py",
+    "/app/test_reports/pytest/iter117.xml"
+  ],
+  "action_items": [
+    "(optional) Reset concierge quota / is_blocked for client@propmanage.io seed so the AssistantDock two-option menu can be visually regression-tested. Not a code fix — data state only."
+  ],
+  "critical_code_review_comments": [
+    "AssistantDock.jsx correctly hides itself when panelOpen (listens to 'pm-ai-state' event) and removes legacy launchers (WhatsAppFloat, concierge-bubble-launch confirmed absent in DOM).",
+    "AssistantDock single-mode fallback: when only WA or only AI is available, FAB acts as direct action (opens link/dispatches pm-open-ai). Good UX; only downside is regression tests need to know which mode a fixture user is in.",
+    "CookieBanner is now a FIXED TOP strip (bounding box y=0, height≈51.5px) and does not cover bottom CTAs — confirmed. Reopen button rendered bottom-left as expected.",
+    "ClientJuniorDashboard flow works end-to-end and creates a real lead via POST /api/public/client-junior/request (server returns request_number CJ-XXXXXX). Payload contract: name/phone/email/category/category_label/answers/consent (flat, not nested 'contact').",
+    "HomeV2.jsx: only ONE of v2-hero-a/b/c is rendered at a time (state-driven variant). The review request's phrasing 'v2-hero-a/b/c vizibil' should be read as 'one variant visible', not all three.",
+    "Light theme via localStorage propmanage_theme=light correctly applies — body computed backgroundColor rgb(250,250,249). Screenshot capture can misrepresent this due to browser auto-dark; getComputedStyle is the reliable check (as noted in the review)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter117_xos_regression.py (NEW)"
+  ],
+  "success_rate": {"backend": "100% (7/7)", "frontend": "100% for redesign-scope flows (10/10: /incepe home, search, wizard 4 steps, confirmation, jobs-view, cookie top-strip, client V2 mobile, client V2 desktop bento, light theme, specialist dashboard). AssistantDock two-option menu could not be visually asserted due to seed data (is_blocked=true) — code path verified via source review."},
+  "test_credentials": "client@propmanage.io / Client123!; specialist@propmanage.io / Spec123! (from /app/memory/test_credentials.md).",
+  "seed_data_creation": "Ephemeral: 1 client_junior lead (CJ-764B47, name 'TEST XOS User', phone 0722555666, category zugraveli) via /api/public/client-junior/request; 1 specialist account TEST_xos_spec_<uuid>@example.com via /api/auth/register (specialist role, zugravit category, bucuresti coverage). Not cleaned up — recommend periodic cleanup of TEST_* users/leads.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Regression suite at /app/backend/tests/test_iter117_xos_regression.py is ready. Key gotchas: (1) POST /api/public/client-junior/request expects FLAT payload {name,phone,email,category,category_label,answers,consent}, not nested contact. (2) POST /api/auth/register for specialist requires terms_accepted+privacy_policy_accepted+phone+service_categories (from ALLOWED_SPECIALTIES: hvac/electric/plumbing/interior_design/carpentry/painting/cleaning/appliance_repair/gardening/other/parchet/zugravit/faianta/handyman/gips_carton — NOTE 'zugravit' not 'zugraveli'). (3) AssistantDock has single-mode when only one of AI/WA is enabled — clicking FAB triggers action directly without menu. For seed client user, concierge is is_blocked=true so AI is disabled, single-mode WA. To test the two-option menu you need a user with fresh concierge quota AND wa enabled. (4) Only one of v2-hero-a/b/c renders at a time (variant based on active job/property state).",
+  "rca of the issue": "No bugs. The one 'concern' (assistant-dock-menu MISSING) traces to concierge quota state (is_blocked=true) for seeded client, not a redesign regression. Playwright test-side fixes: (a) client-junior request payload was nested 'contact' instead of flat — server returned 400 'Numele este obligatoriu'; fixed. (b) specialist register missed terms/phone/service_categories with valid slug; fixed by adding terms_accepted, privacy_policy_accepted, phone, service_categories=['zugravit']."
+}

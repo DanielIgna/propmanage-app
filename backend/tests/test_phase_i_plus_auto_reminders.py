@@ -19,6 +19,7 @@ import asyncio
 import pytest
 import requests
 from datetime import datetime, timezone, timedelta
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE_URL = os.environ.get(
     "REACT_APP_BACKEND_URL",
@@ -73,7 +74,7 @@ def _backdate(db_handle, pin_id, report_id, days):
 # ---------- session fixtures ----------
 @pytest.fixture(scope="module")
 def admin_session():
-    return _login("admin@propmanage.io", "Admin123!")
+    return _login("admin@propmanage.io", OWNER_ADMIN_PASSWORD)
 
 
 @pytest.fixture(scope="module")
@@ -395,14 +396,15 @@ class TestAutoFireSideEffects:
         )
         _backdate(db, pin_id, rid, days=5)
 
-        def _count(resp):
+        def _latest_reminder_ts(resp):
             if resp.status_code != 200:
-                return 0
+                return ""
             body = resp.json()
             items = body if isinstance(body, list) else body.get("items", [])
-            return sum(1 for n in items if n.get("type") == "dt_report_reminder")
+            stamps = [n.get("created_at") or "" for n in items if n.get("type") == "dt_report_reminder"]
+            return max(stamps, default="")
 
-        before_count = _count(specialist_session.get(f"{BASE_URL}/api/notifications", timeout=10))
+        before_ts = _latest_reminder_ts(specialist_session.get(f"{BASE_URL}/api/notifications", timeout=10))
 
         # Fire
         admin_session.post(f"{BASE_URL}/api/admin/digital-twin/auto-reminders/run-now", timeout=30)
@@ -414,7 +416,9 @@ class TestAutoFireSideEffects:
         assert item["reminder_count"] >= 1
 
         # Verify notification delivered
-        after_count = _count(specialist_session.get(f"{BASE_URL}/api/notifications", timeout=10))
-        assert after_count > before_count, (
-            f"expected dt_report_reminder notification: before={before_count} after={after_count}"
+        after_ts = _latest_reminder_ts(specialist_session.get(f"{BASE_URL}/api/notifications", timeout=10))
+        # The notifications list is capped, so counting is unreliable — assert a
+        # NEWER dt_report_reminder notification exists instead.
+        assert after_ts > before_ts, (
+            f"expected a new dt_report_reminder notification: before={before_ts!r} after={after_ts!r}"
         )

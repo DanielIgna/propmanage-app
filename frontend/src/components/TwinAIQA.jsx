@@ -50,7 +50,8 @@ export default function TwinAIQA({ projectId, defaultOpen = false }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-40 pm-btn pm-btn-primary pm-btn-lg shadow-2xl shadow-[#d4ff3a]/20"
+        className="fixed right-6 z-40 pm-btn pm-btn-primary pm-btn-lg shadow-2xl shadow-[#d4ff3a]/20"
+        style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
         data-testid="twin-ai-open"
       >
         <Sparkles className="w-4 h-4" /> Întreabă Digital Twin
@@ -59,7 +60,7 @@ export default function TwinAIQA({ projectId, defaultOpen = false }) {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-40 w-[400px] max-w-[calc(100vw-3rem)] bg-[#0e0e10] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col" style={{maxHeight: "70vh"}} data-testid="twin-ai-panel">
+    <div className="fixed right-6 z-40 w-[400px] max-w-[calc(100vw-3rem)] bg-[#0e0e10] border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col" style={{maxHeight: "70vh", bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))"}} data-testid="twin-ai-panel">
       <div className="flex items-center gap-2 p-4 border-b border-white/10">
         <Sparkles className="w-4 h-4 text-[#d4ff3a]" />
         <h3 className="font-serif text-lg">Digital Twin AI</h3>

@@ -1,0 +1,27 @@
+{
+  "summary": "Full backend + frontend verification of Property Technical Record v2 (iter182): Diagnostic verification chain (verify with evidence / reject with reason), document_ref validation + document_snapshot, Building axis (verify/attach/neighbours/search), viewer.is_verifier flag, and Readiness PDF export. Backend pytest: 18/18 passed (evidence gating, RBAC 403 for client, reject reason ≥3, document snapshot fields, building verify + auto-reset to unverified on any context edit, neighbours filter self, search minimum 2 chars, attach 404, PDF %PDF- magic bytes + Content-Type + Content-Disposition + >1KB, viewer flag). Frontend: client login → PropertyHubV2 → hub-subnav-dosar loads PropertyTechnicalRecord; ptr-d-doc-picker rendered in diagnostic form; ptr-readiness-pdf-btn visible in Pregătire tranzacție section; ptr-neighbours-card visible in Contextul clădirii; verifier-only buttons (ptr-diag-verify-btn-*, ptr-building-verify-btn) correctly hidden for client role. Attach building card hidden because building is already attached (expected). No regressions found (technical-record + transaction-readiness JSON with 10 criteria still OK).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_property_technical_record_iter182.py",
+    "/app/test_reports/pytest/iter182_ptr.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "property_technical_record.py is now ~1191 lines — clearly exceeds the 700-line guideline. Recommend splitting into modules: vocabulary.py, building_context.py, diagnostics.py, verification_admin.py, building_axis.py, readiness_pdf.py.",
+    "The verify endpoint accepts source_reference as valid evidence but that field is free-form text with no URL/format validation — an admin can technically satisfy the evidence rule with a single character-limited string. Consider tightening (e.g. min_length or URL/regex) if evidence must be auditable.",
+    "verify_diagnostic does not check current verification_status — an already 'verified' diagnostic can be re-verified, overwriting verified_at/verified_by. Consider a guard or explicit re-verify semantics.",
+    "attach-building does not check whether the property already has a different building_id (silent re-parent). Consider a warning or explicit force flag.",
+    "PDF generation is synchronous inside the async route. For heavier reports later, wrap in run_in_executor to avoid blocking the event loop."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_property_technical_record_iter182.py (new)"
+  ],
+  "success_rate": {"backend": "100% (18/18)", "frontend": "100% of critical flows"},
+  "test_credentials": "client@propmanage.io / Client123!, admin@propmanage.io / 1!nasov01ADMIN (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "TEST_iter182 diagnostics created on property 6a11d70e600be19667009c93 (electrical/RO, with and without evidence) — cleaned up via module teardown (soft-delete). Skyline Loft A4 building context was temporarily verified then reset to 'unverified' by test_admin_verify_building_and_context_reset (intentional behaviour of any context edit); final state is unverified (expected — matches original iter181 state).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "PTR v2 verification chain is production-ready. Frontend testids stable: ptr-d-doc-picker (form doc picker), ptr-diag-verify-btn-{id}/ptr-diag-reject-btn-{id} (verifier only), ptr-verify-modal + ptr-verify-notes + ptr-verify-confirm, ptr-building-verify-btn (admin only), ptr-neighbours-card, ptr-neighbours-list, ptr-neighbour-{id}, ptr-attach-building (only when no building attached), ptr-attach-toggle/search-input/search-btn/do-{id}, ptr-readiness-pdf-btn, ptr-diag-doc-{id}, ptr-diag-verified-by-{id}, ptr-diag-rejected-{id}, ptr-building-shared. Verifier buttons gate is client-side via viewer.is_verifier from GET /api/properties/{id}/technical-record + server-side 403 via _require_verifier — both layers verified. Endpoint POST /api/properties/{id}/building-context always resets verification_status to 'unverified' via _build_context_payload (intentional).",
+  "rca of the issue": "No issues found. All specified rules enforced correctly: (1) verify without evidence → 400, (2) reject reason <3 → 422, (3) client → 403 on admin endpoints, (4) any context edit resets building verification to unverified, (5) invalid document_ref → 400, (6) PDF starts with %PDF-, Content-Type application/pdf, >1KB."
+}

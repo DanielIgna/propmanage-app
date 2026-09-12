@@ -33,6 +33,16 @@ const ROLE_TITLES = {
 export const AIConciergeBubble = () => {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const h = () => setOpen(true);
+    window.addEventListener("pm-open-ai", h);
+    return () => window.removeEventListener("pm-open-ai", h);
+  }, []);
+  // Anunță AssistantDock când panoul e deschis (dock-ul se ascunde → zero suprapuneri)
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("pm-ai-state", { detail: { open } }));
+  }, [open]);
   const [enabled, setEnabled] = useState(false);
   const [supportEmail, setSupportEmail] = useState("contact@propmanage.ro");
   const [messages, setMessages] = useState([]);
@@ -118,19 +128,7 @@ export const AIConciergeBubble = () => {
 
   return (
     <>
-      {/* Floating launch button */}
-      {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-[55] w-14 h-14 rounded-full bg-gradient-to-br from-[#d4ff3a] to-[#a8e028] shadow-2xl shadow-lime-500/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
-          data-testid="concierge-bubble-launch"
-          aria-label="Deschide asistent AI"
-        >
-          <MessageCircle className="w-6 h-6 text-black" strokeWidth={2.2} />
-          <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white animate-pulse" />
-        </button>
-      )}
-
+      {/* Lansarea se face prin AssistantDock (FAB unificat) via evenimentul "pm-open-ai" */}
       {/* Chat panel */}
       {open && (
         <div

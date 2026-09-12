@@ -1,0 +1,40 @@
+{
+  "summary": "Iteration 107 — Unified CMS menu (SiteNav + MenuManager) + Interior Design AI rate limit fully tested and passing. All 17 backend tests pass. All 19 frontend flows pass (10 guest mobile+desktop, 4 client auth, 5 admin menu manager) + design-interior regression. Deactivation via UI hides from public menu; reset restores. Rate limit 429 with Romanian message verified via public URL.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/interior-design/assistant", "issue": "Rate limit is in-memory per-worker, keyed on `request.client.host` which behind K8s ingress is the ingress IP. Effectively works as a GLOBAL rate limit (all users share the same bucket) rather than per real user IP. To be per-IP, should read X-Forwarded-For header. Also state is lost on backend reload (uvicorn --reload)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_site_menu_iter107.py",
+    "/app/test_reports/pytest/iter107_site_menu.xml"
+  ],
+  "action_items": [
+    "(Optional) Improve rate limiting to be truly per-IP by reading X-Forwarded-For (starlette Request.headers). Currently behind ingress, all traffic looks like the same IP and any spammer can DOS the endpoint for all users after 10 hits.",
+    "(Optional) Persist rate-limit counters to Redis/Mongo so state survives backend reloads."
+  ],
+  "critical_code_review_comments": [
+    "site_menu.py `_public_items` correctly filters `active` at both levels and does NOT filter by visibility (that's frontend's job) — matches PRD.",
+    "site_menu.py `_sanitize_items` correctly caps depth at 1 (children of children ignored) — good defense-in-depth.",
+    "SiteNav.jsx line 62 `resolveHref` replaces `/dashboard` prefix with role — works for /dashboard and /dashboard#proiecte etc. Handles logout via special `#logout` href. Nice pattern.",
+    "MenuManagerPage.jsx uses browser `window.confirm` (line 110) for reset — works but a shadcn Dialog would be more consistent with rest of admin UI.",
+    "interior_design.py:174 rate limit dict `_ai_hits` is process-global and never garbage-collects old IPs — small memory leak over months of uptime. Consider clearing IPs whose hits list is empty.",
+    "SiteNav initial render: `visible` is empty until axios finishes → tiny FOUC on desktop nav (empty then flashes items). Consider skeleton or SSR fallback."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_site_menu_iter107.py (new)"
+  ],
+  "success_rate": {"backend": "100% (17/17)", "frontend": "100% (19/19 flows + 1 regression)"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (from backend/.env SEED_ADMIN_PASSWORD). client@propmanage.io / Client123!. /app/memory/test_credentials.md still shows stale Admin123! for admin.",
+  "seed_data_creation": "None. Menu was mutated (companie deactivated, acasa relabeled, order swapped) then restored via POST /api/admin/site-menu/reset in test teardown fixture AND at end of admin UI test. Production menu is intact.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "The unified site menu backend endpoints are: GET /api/public/site-menu (no auth), GET/PUT /api/admin/site-menu (admin), POST /api/admin/site-menu/reset (admin). Default structure has 6 top items (acasa, servicii-12ch, proprietari-4ch, companie-3ch, cont_guest-2ch guests-only, cont_auth-6ch auth-only). SiteNav.jsx handles Desktop (hover dropdowns) + Mobile (framer-motion left drawer, testids drawer-item-*/drawer-sub-*/mobile-drawer/mobile-drawer-overlay/mobile-menu-btn/mobile-drawer-close/drawer-cta-register). MenuManagerPage.jsx testids mm-group-*, mm-toggle-*, mm-label-*, mm-href-*, mm-icon-*, mm-vis-*, mm-up-*, mm-down-*, mm-del-*, mm-add-child-*, menu-manager-page, menu-manager-save, menu-manager-reset, menu-manager-add-item. Rate limit for AI assistant is 10/600s per client.host (effectively global due to ingress).",
+  "rca of the issue": "N/A — no bugs found in tested scope."
+}

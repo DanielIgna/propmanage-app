@@ -21,7 +21,7 @@ Sponsorizat badge: top 1-2 offers with priority_fee_ron > 0 get `sponsored=True`
 import logging
 import math
 from datetime import datetime, timezone, timedelta
-from typing import Optional, List
+from typing import Optional
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query

@@ -1,4 +1,10 @@
 // Operator-specific components: Twins List + 2D Floorplan Editor + Validator
+//
+// PROPERTY TWIN · STRATUL 2D (decizie Fondator, 27 Aug 2026): această suprafață operează pe
+// colecția `twins` (camere + geometrie + active poziționate) = stratul 2D structurat, client-facing.
+// NU e duplicat cu OperatorDigitalTwin.jsx — acela e stratul 3D profesional (`digital_twin_projects`).
+// Ambele sunt suprafețe operator ale ACELUIAȘI Property Twin (2D + 3D), expuse ca tab-uri în
+// OperatorDashboard ("twins" vs "dt_pro"). Consolidare = clarificare non-breaking, FĂRĂ ștergere.
 import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";

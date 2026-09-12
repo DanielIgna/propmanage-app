@@ -34,7 +34,7 @@ export const AdminBetaTesters = () => {
   useEffect(() => {
     setLoading(true);
     axios.get(`${API}/admin/beta-testers`, { params: { days, role: roleFilter } })
-      .then(r => setData(r.data))
+      .then(r => setData(r.data)).catch(() => {})
       .finally(() => setLoading(false));
   }, [days, roleFilter]);
 

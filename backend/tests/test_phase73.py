@@ -4,6 +4,7 @@ import time
 import uuid
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 def _read_backend_url():
     url = os.environ.get('REACT_APP_BACKEND_URL')
@@ -20,7 +21,7 @@ def _read_backend_url():
 
 BASE_URL = _read_backend_url()
 
-ADMIN = {"email": "admin@propmanage.io", "password": "Admin123!"}
+ADMIN = {"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD}
 CLIENT = {"email": "client@propmanage.io", "password": "Client123!"}
 SPECIALIST = {"email": "specialist@propmanage.io", "password": "Spec123!"}
 
@@ -179,6 +180,7 @@ class TestContracts:
         s = requests.Session()
         unique = f"test_nonparty_{uuid.uuid4().hex[:8]}@example.com"
         reg = s.post(f"{BASE_URL}/api/auth/register", json={
+            "terms_accepted": True, "privacy_policy_accepted": True, "phone": "+40712000999",
             "email": unique, "password": "Pass123!", "name": "NonParty", "role": "client"
         }, timeout=15)
         if reg.status_code not in (200, 201):

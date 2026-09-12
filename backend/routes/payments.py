@@ -1,23 +1,16 @@
 """PropManage router: payments."""
 import os
-import asyncio
-import json
 import logging
 import uuid
-from typing import Optional, List, Literal, Dict
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from db import db
-from core_utils import serialize_doc, effective_role
 from deps import get_current_user, require_role
-from services import send_email, notify, send_web_push, log_event
-from models import *
+from services import log_event
 from email_service import (
-    send_template, tpl_welcome, tpl_dispute_opened, tpl_dispute_resolved,
-    tpl_design_phase_quote, tpl_specialist_verified, tpl_escrow_funded,
+    send_template, tpl_escrow_funded,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,7 +19,6 @@ router = APIRouter(prefix="/api", tags=["payments"])
 
 import stripe
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
-import httpx
 stripe.api_key = os.environ.get("STRIPE_API_KEY", "sk_test_emergent")
 
 # ============= STRIPE ESCROW =============# ============= STRIPE ESCROW =============
@@ -226,6 +218,11 @@ async def stripe_webhook(request: Request):
     try:
         evt = await stripe_checkout.handle_webhook(body, signature)
     except Exception as e:
+        try:
+            from orchestrator.engine import emit_signal
+            await emit_signal("webhook_fail", {"source": "stripe", "error": str(e)[:300]})
+        except Exception:  # noqa: BLE001
+            pass
         raise HTTPException(400, f"Webhook error: {e}")
     if evt.payment_status == "paid":
         payment = await db.payment_transactions.find_one({"session_id": evt.session_id})
@@ -244,6 +241,19 @@ async def stripe_webhook(request: Request):
                 "request_id": payment["request_id"], "session_id": evt.session_id, "via_webhook": True,
                 "created_at": now_iso,
             })
+        # Verified Estate orders (Phase A — first revenue)
+        try:
+            from routes.verified_estate import mark_order_paid as _ve_mark_paid
+            await _ve_mark_paid(evt.session_id)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"VE order webhook processing failed: {e}")
+        # House Health subscriptions (webhook canonic unic — Architecture Guardian:
+        # handler-ul duplicat din house_health_billing nu era servit niciodată de FastAPI)
+        try:
+            from routes.house_health_billing import _activate_subscription_if_paid
+            await _activate_subscription_if_paid(evt.session_id)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"House Health webhook processing failed: {e}")
     return {"received": True, "event_type": evt.event_type, "session_id": evt.session_id}
 
 

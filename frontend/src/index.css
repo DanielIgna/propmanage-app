@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -9,7 +9,7 @@ body {
     font-family: 'Geist', -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background: #0a0a0b;
+    background: #050505;
     color: #f5f5f4;
     overflow-x: hidden;
 }
@@ -198,24 +198,25 @@ html { scroll-behavior: smooth; }
    ============================================================ */
 
 :root {
-  /* Surface hierarchy (dark by default) */
-  --pm-bg: #0a0d0c;
-  --pm-surface-lowest: #0d1110;
-  --pm-surface: #131817;
-  --pm-surface-high: #1a201e;
-  --pm-surface-highest: #232a28;
+  /* Surface hierarchy (dark by default) — crisp obsidian, no muddy navy */
+  --pm-bg: #050505;
+  --pm-surface-lowest: #0b0b0b;
+  --pm-surface: #111111;
+  --pm-surface-high: #1a1a1a;
+  --pm-surface-highest: #232323;
 
   /* Borders & outlines */
-  --pm-outline: rgba(255, 255, 255, 0.08);
-  --pm-outline-variant: rgba(255, 255, 255, 0.05);
-  --pm-outline-strong: rgba(255, 255, 255, 0.16);
+  --pm-outline: rgba(255, 255, 255, 0.10);
+  --pm-outline-variant: rgba(255, 255, 255, 0.06);
+  --pm-outline-strong: rgba(255, 255, 255, 0.18);
 
-  /* Brand colors */
-  --pm-primary: #d4ff3a;             /* lime-400 — main accent */
-  --pm-primary-dim: #a3e635;         /* lime-500 — secondary accent */
-  --pm-primary-container: #1f3300;   /* dark lime tinted bg */
-  --pm-on-primary: #0a0d0c;          /* text on lime button */
-  --pm-on-primary-container: #d4ff3a;
+  /* Brand colors — Electric Luminous */
+  --pm-primary: #ccff00;             /* luminous chartreuse — main accent */
+  --pm-accent-ink: #ccff00;          /* accent ca TEXT (light: olive lizibil) */
+  --pm-primary-dim: #b3e600;         /* secondary accent */
+  --pm-primary-container: #1c2400;   /* dark chartreuse tinted bg */
+  --pm-on-primary: #050505;          /* text on accent button */
+  --pm-on-primary-container: #ccff00;
 
   /* Text */
   --pm-text: #f5f5f4;
@@ -248,10 +249,10 @@ html { scroll-behavior: smooth; }
 
 /* Light mode override */
 html[data-theme="light"] {
-  --pm-bg: #fafaf9;
+  --pm-bg: #f7f7f5;
   --pm-surface-lowest: #ffffff;
-  --pm-surface: #f5f5f4;
-  --pm-surface-high: #efeeec;
+  --pm-surface: #ffffff;
+  --pm-surface-high: #f0f0f0;
   --pm-surface-highest: #e7e5e4;
   --pm-outline: rgba(28, 25, 23, 0.10);
   --pm-outline-variant: rgba(28, 25, 23, 0.06);
@@ -259,8 +260,9 @@ html[data-theme="light"] {
   --pm-primary-container: #f0ffc3;
   --pm-on-primary-container: #1a3300;
   --pm-text: #1c1917;
-  --pm-text-variant: rgba(28, 25, 23, 0.65);
-  --pm-text-muted: rgba(28, 25, 23, 0.45);
+  --pm-text-variant: rgba(28, 25, 23, 0.78);
+  --pm-text-muted: rgba(28, 25, 23, 0.6);
+  --pm-accent-ink: #3f6212;
 }
 
 /* =========================
@@ -340,7 +342,7 @@ html[data-theme="light"] .pm-stat { background: rgba(255,255,255,0.78); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--pm-primary);
+  color: var(--pm-accent-ink);
 }
 .pm-stat-label {
   font-size: 0.7rem;
@@ -350,12 +352,13 @@ html[data-theme="light"] .pm-stat { background: rgba(255,255,255,0.78); }
   color: var(--pm-text-muted);
 }
 .pm-stat-value {
-  font-size: 2.25rem;
-  font-weight: 700;
+  font-size: 2.6rem;
+  font-weight: 300;
   color: var(--pm-text);
-  line-height: 1.1;
-  font-family: 'Geist', sans-serif;
-  letter-spacing: -0.02em;
+  line-height: 1.05;
+  font-family: 'Outfit', 'Geist', sans-serif;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
 }
 .pm-stat-delta {
   font-size: 0.75rem;
@@ -428,7 +431,7 @@ html[data-theme="light"] .pm-stat { background: rgba(255,255,255,0.78); }
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
-.pm-chip-primary { background: rgba(212,255,58,0.12); color: var(--pm-primary); border-color: rgba(212,255,58,0.35); }
+.pm-chip-primary { background: rgba(212,255,58,0.12); color: var(--pm-accent-ink); border-color: rgba(212,255,58,0.35); }
 .pm-chip-error   { background: var(--pm-error-container); color: var(--pm-error); border-color: rgba(248,113,113,0.4); }
 .pm-chip-warning { background: var(--pm-warning-container); color: var(--pm-warning); border-color: rgba(251,191,36,0.4); }
 .pm-chip-success { background: var(--pm-success-container); color: var(--pm-success); border-color: rgba(52,211,153,0.4); }
@@ -455,7 +458,7 @@ html[data-theme="light"] .pm-stat { background: rgba(255,255,255,0.78); }
   gap: 0.3rem;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--pm-primary);
+  color: var(--pm-accent-ink);
   cursor: pointer;
   transition: opacity 0.2s ease;
 }
@@ -534,7 +537,7 @@ html[data-theme="light"] .pm-bottomnav { background: rgba(250,250,249,0.92); }
   border-radius: var(--pm-radius-md);
   transition: color 0.2s ease, background 0.2s ease;
 }
-.pm-bottomnav-item.active { color: var(--pm-primary); }
+.pm-bottomnav-item.active { color: var(--pm-accent-ink); }
 .pm-bottomnav-item:hover { color: var(--pm-text); }
 
 /* =========================
@@ -671,7 +674,7 @@ html[data-theme="light"] .text-stone-200 { color: #292524 !important; }
 html[data-theme="light"] .text-stone-300 { color: #44403c !important; }
 html[data-theme="light"] .text-stone-400 { color: #57534e !important; }
 html[data-theme="light"] .text-stone-500 { color: #78716c !important; }
-html[data-theme="light"] .text-white { color: #1c1917 !important; }
+html[data-theme="light"] .text-white:not([class*="bg-blue"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-amber"]):not([class*="bg-orange"]):not([class*="bg-cyan"]):not([class*="bg-indigo"]):not([class*="bg-slate-8"]):not([class*="bg-slate-9"]):not([class*="bg-stone-8"]):not([class*="bg-stone-9"]):not([class*="bg-black"]):not([class*="bg-gradient"]) { color: #1c1917 !important; }
 
 /* Glass cards — light variant */
 html[data-theme="light"] .glass-strong {
@@ -700,7 +703,328 @@ html[data-theme="light"] textarea::placeholder { color: #a8a29e !important; }
 /* Disable grain on light mode */
 html[data-theme="light"] .grain::before { opacity: 0.02 !important; }
 
+/* ── Carduri dark hardcodate → alb în light mode (Autonomy, Settings Control, AI pages etc.) ── */
+html[data-theme="light"] .bg-\[\#0e0e10\],
+html[data-theme="light"] .bg-\[\#111210\],
+html[data-theme="light"] .bg-\[\#0f0f11\],
+html[data-theme="light"] .bg-\[\#141416\] {
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(28, 25, 23, 0.05), 0 8px 24px rgba(28, 25, 23, 0.05);
+}
+html[data-theme="light"] .bg-stone-800 { background-color: #e7e5e4 !important; }
+html[data-theme="light"] .bg-stone-800\/20,
+html[data-theme="light"] .bg-stone-800\/30,
+html[data-theme="light"] .bg-stone-800\/40,
+html[data-theme="light"] .bg-stone-800\/50,
+html[data-theme="light"] .bg-stone-800\/60,
+html[data-theme="light"] .bg-stone-900\/20,
+html[data-theme="light"] .bg-stone-900\/30,
+html[data-theme="light"] .bg-stone-900\/40,
+html[data-theme="light"] .bg-stone-900\/50,
+html[data-theme="light"] .bg-stone-900\/60,
+html[data-theme="light"] .bg-black\/20,
+html[data-theme="light"] .bg-black\/30,
+html[data-theme="light"] .bg-black\/40 { background-color: rgba(28, 25, 23, 0.05) !important; }
+html[data-theme="light"] .gradient-text {
+  background: linear-gradient(135deg, #1c1917 0%, #78716c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+html[data-theme="light"] .divider-line {
+  background: linear-gradient(90deg, transparent, rgba(28, 25, 23, 0.12), transparent);
+}
+html[data-theme="light"] .text-stone-600 { color: #57534e !important; }
+
 /* Smooth theme transitions */
 html, body, [class*="bg-"], [class*="text-"], [class*="border-"] {
   transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+}
+
+/* ── Client V2 (light) — contrast formulare: text slate-900, placeholder slate-400 ── */
+.cv2-scope input,
+.cv2-scope textarea,
+.cv2-scope select {
+  color: #0f172a;
+  background-color: #ffffff;
+  caret-color: #0f172a;
+}
+.cv2-scope input::placeholder,
+.cv2-scope textarea::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+.cv2-scope select option {
+  color: #0f172a;
+  background-color: #ffffff;
+}
+.cv2-scope input:-webkit-autofill,
+.cv2-scope textarea:-webkit-autofill {
+  -webkit-text-fill-color: #0f172a;
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+}
+
+/* ── Client V2 — micro-interacțiuni & skeleton (Faza 5) ── */
+@keyframes cv2FadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.cv2-fade { animation: cv2FadeUp .45s cubic-bezier(.16,1,.3,1) backwards; }
+/* UX-001 · celebrare discretă (fără agresivitate) */
+.cv2-celebrate { animation: cv2Celebrate .7s cubic-bezier(.16,1,.3,1) backwards; }
+@keyframes cv2Celebrate {
+  0% { opacity: 0; transform: translateY(8px) scale(.97); }
+  60% { opacity: 1; transform: translateY(-2px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.cv2-d1 { animation-delay: .06s; } .cv2-d2 { animation-delay: .14s; } .cv2-d3 { animation-delay: .22s; }
+@keyframes cv2Shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+.cv2-skeleton { background: linear-gradient(90deg, #f1f5f9 25%, #e8edf3 37%, #f1f5f9 63%); background-size: 400px 100%; animation: cv2Shimmer 1.3s infinite linear; }
+
+/* ============================================================
+   UNIFICARE CULORI — verdele #34C759 (Client V2 legacy) → familia lime brand
+   (cerință user: „aceleași culori peste tot, nu haos")
+   ============================================================ */
+.border-\[\#34C759\] { border-color: #65a30d !important; }
+.border-\[\#34C759\]\/40 { border-color: rgba(101, 163, 13, 0.4) !important; }
+.bg-\[\#34C759\]\/5 { background-color: rgba(212, 255, 58, 0.12) !important; }
+.bg-\[\#34C759\]\/10 { background-color: rgba(212, 255, 58, 0.2) !important; }
+.focus\:border-\[\#34C759\]:focus { border-color: #65a30d !important; }
+.shadow-\[\#34C759\]\/25, .shadow-\[\#34C759\]\/30 { --tw-shadow-color: rgba(212, 255, 58, 0.35) !important; }
+.text-\[\#34C759\] { color: #65a30d !important; }
+
+/* ============================================================
+   CLIENT V2 — TEMA ÎNTUNECATĂ (.cv2-scope, activă când tema globală e dark)
+   Suprafețe negre + același accent lime; textul rămâne lizibil.
+   ============================================================ */
+html:not([data-theme="light"]) .cv2-scope { background-color: #050505 !important; }
+html:not([data-theme="light"]) .cv2-scope .bg-\[\#FAFBFA\] { background-color: #050505 !important; }
+html:not([data-theme="light"]) .cv2-scope .bg-white { background-color: #111111 !important; }
+html:not([data-theme="light"]) .cv2-scope .bg-slate-50 { background-color: #161616 !important; }
+html:not([data-theme="light"]) .cv2-scope .bg-slate-100 { background-color: #222222 !important; }
+html:not([data-theme="light"]) .cv2-scope .text-slate-900 { color: #f8fafc !important; }
+html:not([data-theme="light"]) .cv2-scope .text-slate-800 { color: #e2e8f0 !important; }
+html:not([data-theme="light"]) .cv2-scope .text-slate-700,
+html:not([data-theme="light"]) .cv2-scope .text-slate-600 { color: #cbd5e1 !important; }
+html:not([data-theme="light"]) .cv2-scope .text-slate-500 { color: #94a3b8 !important; }
+html:not([data-theme="light"]) .cv2-scope .border-slate-100,
+html:not([data-theme="light"]) .cv2-scope .border-slate-200 { border-color: #232323 !important; }
+html:not([data-theme="light"]) .cv2-scope .border-white { border-color: #111111 !important; }
+html:not([data-theme="light"]) .cv2-scope input,
+html:not([data-theme="light"]) .cv2-scope textarea,
+html:not([data-theme="light"]) .cv2-scope select {
+  color: #f8fafc; background-color: #171717; caret-color: #f8fafc;
+}
+html:not([data-theme="light"]) .cv2-scope input::placeholder,
+html:not([data-theme="light"]) .cv2-scope textarea::placeholder { color: #64748b; }
+html:not([data-theme="light"]) .cv2-scope select option { color: #f8fafc; background-color: #171717; }
+html:not([data-theme="light"]) .cv2-scope .cv2-skeleton {
+  background: linear-gradient(90deg, #1c1c1c 25%, #262626 37%, #1c1c1c 63%);
+  background-size: 400px 100%;
+}
+
+/* Butoane pline #34C759 (client junior legacy) → lime brand cu text negru */
+.bg-\[\#34C759\] { background-color: #d4ff3a !important; color: #000 !important; }
+
+/* ============================================================
+   TEMA LIGHT — PACHET CONTRAST (cerință user: text lizibil peste tot)
+   Accentele-color folosite ca TEXT devin variante închise; fills rămân vii.
+   ============================================================ */
+html[data-theme="light"] .text-\[\#d4ff3a\],
+html[data-theme="light"] .text-lime-200,
+html[data-theme="light"] .text-lime-300,
+html[data-theme="light"] .text-lime-400 { color: #3f6212 !important; }
+html[data-theme="light"] .hover\:text-\[\#d4ff3a\]:hover { color: #365314 !important; }
+
+html[data-theme="light"] .text-amber-200,
+html[data-theme="light"] .text-amber-300,
+html[data-theme="light"] .text-amber-400 { color: #b45309 !important; }
+html[data-theme="light"] .text-emerald-300,
+html[data-theme="light"] .text-emerald-400 { color: #047857 !important; }
+html[data-theme="light"] .text-green-300,
+html[data-theme="light"] .text-green-400 { color: #15803d !important; }
+html[data-theme="light"] .text-rose-300,
+html[data-theme="light"] .text-rose-400 { color: #be123c !important; }
+html[data-theme="light"] .text-red-300,
+html[data-theme="light"] .text-red-400 { color: #b91c1c !important; }
+html[data-theme="light"] .text-blue-300,
+html[data-theme="light"] .text-blue-400 { color: #1d4ed8 !important; }
+html[data-theme="light"] .text-violet-300,
+html[data-theme="light"] .text-violet-400 { color: #6d28d9 !important; }
+html[data-theme="light"] .text-purple-300,
+html[data-theme="light"] .text-purple-400 { color: #7e22ce !important; }
+html[data-theme="light"] .text-cyan-300,
+html[data-theme="light"] .text-cyan-400 { color: #0e7490 !important; }
+html[data-theme="light"] .text-sky-300,
+html[data-theme="light"] .text-sky-400 { color: #0369a1 !important; }
+
+/* Griuri prea deschise pe alb → o treaptă mai închise */
+html[data-theme="light"] .text-slate-300 { color: #57534e !important; }
+html[data-theme="light"] .text-slate-400 { color: #64748b !important; }
+html[data-theme="light"] .text-slate-500 { color: #475569 !important; }
+html[data-theme="light"] .text-stone-500 { color: #57534e !important; }
+html[data-theme="light"] .text-white\/90,
+html[data-theme="light"] .text-white\/80 { color: rgba(28, 25, 23, 0.85) !important; }
+html[data-theme="light"] .text-white\/70,
+html[data-theme="light"] .text-white\/60 { color: rgba(28, 25, 23, 0.7) !important; }
+
+/* Fundaluri/borduri lime translucide — pe alb primesc bază olive vizibilă */
+html[data-theme="light"] .bg-\[\#d4ff3a\]\/10,
+html[data-theme="light"] .bg-\[\#d4ff3a\]\/15 { background-color: rgba(101, 163, 13, 0.12) !important; }
+html[data-theme="light"] .bg-\[\#d4ff3a\]\/20 { background-color: rgba(101, 163, 13, 0.18) !important; }
+html[data-theme="light"] .border-\[\#d4ff3a\]\/20,
+html[data-theme="light"] .border-\[\#d4ff3a\]\/30 { border-color: rgba(101, 163, 13, 0.35) !important; }
+html[data-theme="light"] .border-\[\#d4ff3a\]\/40 { border-color: rgba(101, 163, 13, 0.5) !important; }
+
+/* Badge-uri/chip-uri translucide colorate: text închis pe light */
+html[data-theme="light"] .bg-emerald-500\/15 { background-color: rgba(16, 185, 129, 0.14) !important; }
+html[data-theme="light"] .bg-amber-500\/15 { background-color: rgba(245, 158, 11, 0.16) !important; }
+html[data-theme="light"] .bg-rose-500\/15,
+html[data-theme="light"] .bg-red-500\/15 { background-color: rgba(244, 63, 94, 0.13) !important; }
+html[data-theme="light"] .bg-blue-500\/15 { background-color: rgba(59, 130, 246, 0.13) !important; }
+html[data-theme="light"] .bg-violet-500\/15 { background-color: rgba(139, 92, 246, 0.13) !important; }
+
+/* ============================================================
+   CLIENT JUNIOR UX LAB — accent green-700 AA; mapare dark coerentă
+   ============================================================ */
+html:not([data-theme="light"]) .cv2-scope .text-\[\#166534\] { color: #ccff00 !important; }
+html:not([data-theme="light"]) .cv2-scope .border-\[\#166534\] { border-color: #ccff00 !important; }
+html:not([data-theme="light"]) .cv2-scope .focus\:border-\[\#166534\]:focus { border-color: #ccff00 !important; }
+html:not([data-theme="light"]) .cv2-scope .bg-\[\#166534\]\/5 { background-color: rgba(204, 255, 0, 0.07) !important; }
+html:not([data-theme="light"]) .cv2-scope .border-\[\#166534\]\/25 { border-color: rgba(204, 255, 0, 0.3) !important; }
+html:not([data-theme="light"]) .cv2-scope .from-white { --tw-gradient-from: #050505 var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(5,5,5,0) var(--tw-gradient-to-position) !important; }
+html:not([data-theme="light"]) .cv2-scope .via-white { --tw-gradient-via: #050505 !important; --tw-gradient-stops: var(--tw-gradient-from), #050505 var(--tw-gradient-via-position), var(--tw-gradient-to) !important; }
+html:not([data-theme="light"]) .cv2-scope .bg-\[\#EDF7EF\] { background-color: #0e1404 !important; }
+/* Client Junior — stagger reveal la landing (reduce overwhelm vizual) */
+.cj-reveal { opacity: 0; animation: cjFadeUp 0.45s ease forwards; }
+@keyframes cjFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .cj-reveal { animation: none; opacity: 1; } }
+.cj-dot-pop { animation: cjPop 0.2s ease-out; }
+@keyframes cjPop { 0% { transform: scale(0.8); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+/* Specialist Entry Home — focus vizibil pe toate CTA-urile (WCAG 2.4.7) */
+[data-testid="spec-entry-home"] button:focus-visible,
+[data-testid="spec-entry-home"] a:focus-visible {
+  outline: 2px solid var(--pm-primary);
+  outline-offset: 2px;
+  border-radius: 9999px;
+}
+
+/* ============================================================
+   XOS 2026 — Experience OS redesign tokens & utilities (Iul 2026)
+   Swiss Luxury: obsidian crisp + Electric Luminous #ccff00
+   ============================================================ */
+.xos-display { font-family: 'Outfit', 'Geist', sans-serif; }
+.xos-num {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.xos-on-image { color: #ffffff !important; }
+.xos-on-image-muted { color: rgba(255, 255, 255, 0.75) !important; }
+
+/* Crisp obsidian pentru fundalurile hardcodate #0a0a0b (dark only) */
+html:not([data-theme="light"]) .bg-\[\#0a0a0b\] { background-color: #050505 !important; }
+html:not([data-theme="light"]) .bg-\[\#0a0a0b\]\/80,
+html:not([data-theme="light"]) .bg-\[\#0a0a0b\]\/95 { background-color: rgba(5, 5, 5, 0.85) !important; }
+
+/* Topbar & dock glass (Client Junior + Client V2) */
+.xos-topbar {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.07);
+}
+html:not([data-theme="light"]) .cv2-scope .xos-topbar { background: rgba(5, 5, 5, 0.82); border-bottom-color: rgba(255, 255, 255, 0.08); }
+.xos-dock {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(15, 23, 42, 0.07);
+  padding-bottom: var(--pm-safe-b, 0px);
+}
+
+/* ── BUGFIX-001: Floating Manager — sloturi coordonate pentru elemente plutitoare ── */
+:root { --pm-dock-h: 0px; --pm-safe-b: env(safe-area-inset-bottom, 0px); --pm-cookie-h: 0px; }
+.pm-float-left-1 { position: fixed; left: 1rem; bottom: calc(var(--pm-dock-h) + var(--pm-safe-b) + 0.75rem); z-index: 40; }
+.pm-float-left-2 { position: fixed; left: 1rem; bottom: calc(var(--pm-dock-h) + var(--pm-safe-b) + 4rem); z-index: 40; }
+.pm-float-right-1 { position: fixed; right: 1.5rem; bottom: calc(var(--pm-dock-h) + var(--pm-safe-b) + 0.75rem); z-index: 40; }
+.pm-float-panel { z-index: 60; }
+html:not([data-theme="light"]) .cv2-scope .xos-dock { background: rgba(5, 5, 5, 0.88); border-top-color: rgba(255, 255, 255, 0.08); }
+
+/* Panou accent (Copilot AI) */
+.xos-accent-panel { background: rgba(101, 163, 13, 0.06); border: 1px solid rgba(101, 163, 13, 0.28); }
+html:not([data-theme="light"]) .cv2-scope .xos-accent-panel { background: rgba(204, 255, 0, 0.05); border-color: rgba(204, 255, 0, 0.22); }
+
+/* AI quick action — glow violet distinct */
+.xos-ai-glow { border-color: rgba(139, 92, 246, 0.4) !important; box-shadow: 0 0 28px -10px rgba(139, 92, 246, 0.5); }
+
+/* Culori icoane/texte distincte în dark (Client V2 scope) */
+html:not([data-theme="light"]) .cv2-scope .text-sky-600 { color: #7dd3fc !important; }
+html:not([data-theme="light"]) .cv2-scope .text-amber-600 { color: #fcd34d !important; }
+html:not([data-theme="light"]) .cv2-scope .text-violet-600 { color: #c4b5fd !important; }
+html:not([data-theme="light"]) .cv2-scope .text-rose-600 { color: #fda4af !important; }
+html:not([data-theme="light"]) .cv2-scope .text-slate-400 { color: #a3a3a3 !important; }
+html:not([data-theme="light"]) .cv2-scope .text-slate-300 { color: #737373 !important; }
+html:not([data-theme="light"]) .cv2-scope .bg-slate-200 { background-color: #262626 !important; }
+html:not([data-theme="light"]) .cv2-scope .bg-slate-300 { background-color: #333333 !important; }
+html:not([data-theme="light"]) .cv2-scope .border-slate-300 { border-color: #2e2e2e !important; }
+
+/* ============================================================
+   PPOS SPRINT — P5/A11y: contrast dark pt. cardurile verzi-pale (Pasul următor)
+   + focus vizibil pentru navigarea cu tastatura (WCAG 2.4.7)
+   ============================================================ */
+html:not([data-theme="light"]) .cv2-scope .bg-\[\#F0FBF4\] { background-color: rgba(204, 255, 0, 0.08) !important; }
+html:not([data-theme="light"]) .cv2-scope .border-\[\#D2F2DC\] { border-color: rgba(204, 255, 0, 0.28) !important; }
+html:not([data-theme="light"]) .cv2-scope .bg-\[\#F6FEE7\] { background-color: rgba(204, 255, 0, 0.08) !important; }
+
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible, select:focus-visible {
+  outline: 2px solid rgba(212, 255, 58, 0.95);
+  outline-offset: 2px;
+}
+html[data-theme="light"] button:focus-visible,
+html[data-theme="light"] a:focus-visible,
+html[data-theme="light"] [role="button"]:focus-visible,
+html[data-theme="light"] select:focus-visible {
+  outline-color: #166534;
+}
+
+/* ============================================================
+   PPOS-011 — ENTERPRISE VISUAL DESIGN SYSTEM (desktop ≥1024px)
+   Tipografie mai mare, ierarhie mai puternică, contrast mai bun.
+   Never tiny text on desktop. Scope-uri: .cv2-scope (client V2),
+   .pm-shell (specialist), .admin-shell (admin Metronic).
+   ============================================================ */
+:root {
+  --pm-outline: rgba(255, 255, 255, 0.13);
+  --pm-outline-strong: rgba(255, 255, 255, 0.24);
+}
+
+@media (min-width: 1024px) {
+  /* — Client V2 — */
+  .cv2-scope .text-\[9px\] { font-size: 11px; }
+  .cv2-scope .text-\[10px\] { font-size: 12px; }
+  .cv2-scope .text-\[11px\] { font-size: 13px; }
+  .cv2-scope .text-xs { font-size: 0.875rem; line-height: 1.35rem; }
+  .cv2-scope .text-sm { font-size: 0.96875rem; line-height: 1.45rem; }
+
+  /* — Specialist shell — */
+  .pm-shell .text-\[9px\] { font-size: 11px; }
+  .pm-shell .text-\[10px\] { font-size: 12px; }
+  .pm-shell .text-\[11px\] { font-size: 13px; }
+  .pm-shell .text-xs { font-size: 0.875rem; line-height: 1.35rem; }
+  .pm-shell .text-sm { font-size: 0.96875rem; line-height: 1.45rem; }
+  .pm-shell .pm-stat-label { font-size: 0.8rem; }
+
+  /* — Admin Metronic — */
+  .admin-shell .text-\[10px\] { font-size: 11.5px; }
+  .admin-shell .text-\[11px\] { font-size: 12.5px; }
+  .admin-shell .text-xs { font-size: 0.84375rem; line-height: 1.3rem; }
+  .admin-shell .text-sm { font-size: 0.9375rem; line-height: 1.4rem; }
+  .admin-shell table { font-size: 15px; }
+  .admin-shell th { font-size: 12.5px; letter-spacing: 0.05em; }
+  .admin-shell th, .admin-shell td { padding-top: 0.7rem; padding-bottom: 0.7rem; }
+  .admin-shell tbody tr { transition: background-color 0.15s ease; }
+  .admin-shell tbody tr:hover { background-color: rgba(255, 255, 255, 0.03); }
+  /* Sidebar-ul admin păstrează 14px ca să nu taie etichetele lungi */
+  .admin-shell nav .text-sm { font-size: 0.875rem; line-height: 1.3rem; }
+
+  /* Ritm vertical mai generos între secțiunile majore din admin */
+  .admin-shell main .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 2rem; }
 }

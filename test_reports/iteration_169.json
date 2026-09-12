@@ -1,0 +1,45 @@
+{
+  "summary": "PB-003 · Community Trust & Recommendation Engine — full-stack testing complete. Backend: created /app/backend/tests/test_pb003_trust_recommendations.py — 16 passed, 2 skipped (no fresh completed/foreign request in demo DB), 1 xfailed (documented gap — see below). Regression: PB-001 24/24 pass (mentor pb_ prefix now green), PB-002 20/20 pass (+1 skip for empty buildings). Combined: 62 passed / 2 skipped / 1 xfail. Verified: (a) POST /recommendations — 404 on bad id, 409 duplicate for existing recommended request (6a11d70e600be19667009c94); (b) GET /recommendations/mine — returns items with ai_labels + effects + status=validated for client demo; (c) GET /ambassador — validated=1, threshold=2, remaining=1, is_ambassador=false; (d) POST /community-deals/{id}/signal — invalid signal → 400, bad id → 404, 'interesat' adds to counts, 'sustin' adds to supporter_ids and supported_by_me=true; (e) GET /community-deals/{id}/why — deal+demand+why(≥2)+explanation; (f) GET /trust/{sid} — score 0-100, 6 factors, community_says list, explanation string; (g) admin /community-growth — all 6 answer keys with non-empty 'answer' text, deals_demand sorted desc + negotiation_priority monotonic, recommendations.pending + validated; (h) admin /run-tick — recommendations_validated, trust_scores>0, trust_graph {nodes>0, edges>0}; (i) marketplace /specialists — trust dict now includes trust_score (numeric), confirmed_jobs, ambassadors, community_value AND preserves rebook_pct + recommenders; (j) security — anon 401/403 on new endpoints, client 403 on admin/community-growth. FRONTEND client (/client?tab=benefits): pb-ambassador-card RENDERED with pb-ambassador-progress='1/2 recomandări validate'; 12 deal cards each with 4 signal chips (pb-deal-sustin/interesat/vreau_oferta/notifica_ma — 48 chips total); clicking Interesat chip transitions text 'Interesat' → 'Interesat ✓'. FRONTEND admin (/admin/prop-benefits): pbadmin-tab-growth PRESENT; clicking it shows all 6 growth answer cards (most_valuable_deal, negotiation_to_start, top_demand_category, partner_to_contact, active_ambassadors, retention_impact) + 12 demand rows (pbadmin-demand-*); regression tabs (campaigns, deals, ecosystem) all render. FRONTEND marketplace: /marketplace anonymous is redirected to home by ServiceGate (pre-existing PB-002 iter168 finding, not a PB-003 defect) — backend batch delivers correct trust_score/confirmed_jobs/ambassadors/community_value verified via /api/marketplace/specialists pytest. PJL recommend row (pjl-recommend + pjl-recommend-reason + pjl-recommend-send) code-reviewed in PostJobGrowthLoop.jsx — component properly wired.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/benefits/success-manager", "issue": "PB-003 signals (almost_ambassador, recommend_specialist, support_deal — impact 5-7) do NOT surface for client demo because deterministic actions (use_benefit=9, docs_for_benefit=8, activate_twin=8, house_health=7) exhaust top-3 slots. Problem statement says 'almost_ambassador should appear since remaining=1' — currently it doesn't reach next_action nor secondary[:2]. Consider (a) reserving one slot for PB-003 community actions, or (b) raising impact of PB-003 signals to be competitive, or (c) returning more than 3 candidates so UI can pick relevant ones."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Anonymous /marketplace trust badges", "issue": "Anonymous visitor to /marketplace is redirected to landing by ServiceGate(serviceId='specialisti') — same behavior as iter168. Backend delivers correct extended trust fields (verified in pytest). PublicMarketplace never mounts for anon/client in demo env; would need specialist/admin session to see it — outside PB-003 scope but blocks direct UI verification.", "affected_selectors": ["[data-testid^='mkt-trust-score-']", "[data-testid^='mkt-confirmed-']"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_pb003_trust_recommendations.py",
+    "/app/test_reports/pytest/pb003_results.xml",
+    "/app/test_reports/pytest/pb003_full.xml"
+  ],
+  "action_items": [
+    "Raise PB-003 candidate impact in propbenefits/ai_agents.py::success_manager so almost_ambassador (currently 6) and recommend_specialist (currently 7) can reach top-3 for engaged clients — otherwise the promise 'AI Success Manager mentions: recommend specialist, benefit earned, one step to Ambassador, deal needs N supporters' is not visible to users with many deterministic hooks active.",
+    "OPTIONAL / pre-existing (iter168): ServiceGate('specialisti') redirects logged-in client and anonymous away from /marketplace in demo env — prevents UI trust-badge verification. Backend confirmed correct."
+  ],
+  "critical_code_review_comments": [
+    "propbenefits/ai_agents.py::success_manager returns only next_action + secondary[:2] = 3 items. When many deterministic actions are eligible, PB-003 community actions (impact 5-7) are ALWAYS crowded out. Recommend: return `pb_community: candidates_pb003[:1]` as a separate slot so recommend/ambassador/deal signals always have visibility.",
+    "propbenefits/trust_engine.py::signal_deal uses $addToSet for signals list — good (idempotent). But no cap on how many signals a single user can toggle across all deals — potential abuse vector. Non-issue for MVP.",
+    "propbenefits/trust_engine.py::sync_trust_graph runs delete_many + insert_many on every tick. On large datasets edges collection is fully rebuilt — OK for MVP but consider incremental sync at scale.",
+    "propbenefits/trust_engine.py::trust_score uses ObjectId.is_valid(specialist_id) guard but then passes a `None` inside $or if invalid — Mongo tolerates it, but explicit branch would be cleaner.",
+    "routes/prop_benefits.py::specialist_trust does not verify specialist_id belongs to an actual specialist — returns score=0 for any string. Consider 404 for unknown ids to help clients."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_pb003_trust_recommendations.py (new — 19 tests, 16 passed / 2 skipped / 1 xfail)"
+  ],
+  "success_rate": {
+    "backend": "100% (16/16 executed pass; 2 skipped due to demo data absence — client already recommended their only completed request, no foreign completed request available; 1 documented xfail on success-manager PB-003 signal visibility)",
+    "frontend": "100% on all verifiable surfaces — pb-ambassador-card + progress '1/2', 48 signal chips, Interesat click transitions to ✓, admin growth tab shows all 6 answer cards + 12 demand rows, regression tabs render. Marketplace UI blocked by pre-existing ServiceGate redirect (not PB-003)."
+  },
+  "test_credentials": "client@propmanage.io / Client123! · specialist@propmanage.io / Spec123! · admin@propmanage.io / 1!nasov01ADMIN",
+  "seed_data_creation": "None. Test only used existing demo data. Deal signals ('interesat' + 'sustin' on first deal) are idempotent via $addToSet — no data pollution beyond a supporter_ids entry already established in iter168.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend PB-003 regression file: /app/backend/tests/test_pb003_trust_recommendations.py. Combined PB-001+PB-002+PB-003 suite: `pytest backend/tests/test_pb001_prop_benefits.py backend/tests/test_pb002_prop_benefits_everywhere.py backend/tests/test_pb003_trust_recommendations.py -v` → 62 pass / 2 skip / 1 xfail. If main agent boosts PB-003 candidate impacts in ai_agents.py::success_manager, re-run TestSuccessManager::test_pb003_signals_reachable — should convert from xfail to pass. Client already has 1 validated recommendation on request 6a11d70e600be19667009c94 (409 on retry); pb_deal_signals now has 'sustin' + 'interesat' entries for client on first listed deal (idempotent).",
+  "rca of the issue": "Success Manager PB-003 signal invisibility: ai_agents.py:118 sorts all candidates by impact DESC and returns only next_action + secondary[:2]. For client demo, deterministic candidates use_benefit(9) + docs_for_benefit(8) + activate_twin(8) + house_health(7) + claim_opportunity(7) all fire, pushing recommend_specialist(7) and almost_ambassador(6) below the top-3 cutoff. Fix options: (1) increase impact of PB-003 signals (almost_ambassador should be 9 when remaining=1 — 'one step from ambassador' is arguably the highest-value nudge), (2) reserve a dedicated 'community' slot in the response payload, (3) return top-5 and let UI pick 3."
+}

@@ -1,0 +1,47 @@
+{
+  "summary": "iter75 Marketing Performance Loop — Closed Feedback System tested end-to-end. Backend: 27/27 pytest pass (4 log-performance, 2 get-logs, 1 complete-rejects-draft, 1 summary, 3 learnings inc. Claude generate, 1 calibration-loop, 6 RBAC, 9 regression iter74). Critical closed-loop test PASSED: after learnings generated from ≥3 logs, new draft via POST /campaigns/generate (skip_images=true) returns calibration_applied:true and Claude system prompt receives calibration hint. Frontend: /admin/marketing?tab=performance renders mkt-tab-performance with KPI cards (spent 720 RON, leads 83, clicks 1000, conversions 19), 4 accuracy bars (impresii 26% / clicks 74% / leads 76% / CPC 68%), top/worst performers (3 each, delta-colored), by_category table, learnings panel with active set + generate-learnings-btn (enabled, ≥3 logs). Campaign detail modal for approved Curățenie/Iași shows Performance Loop section with log-perf-btn → opens log-performance-modal with 5 numeric inputs + notes + submit; 3 existing perf-log entries displayed with delta badges. Sidebar 'Performance Loop' link (LEARN badge) present under collapsible 'Marketing & Growth' group and navigates to /admin/marketing?tab=performance.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "All admin pages", "issues": ["Cookie banner at bottom (carryover from iter74) can intercept clicks on lower action buttons until dismissed — minor first-visit-only issue."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_marketing_performance.py",
+    "/app/test_reports/pytest/iter75_perf.xml",
+    "/app/test_reports/pytest/iter75_perf2.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "marketing_performance.py (372 lines) is well-organized: separate helpers (_compute_deltas, _safe_div, _serialize_log), Pydantic model, 6 endpoints, and the get_active_calibration_hint integration point. ObjectId properly excluded from response.",
+    "generate_learnings uses session_id with uuid suffix — good for avoiding context bleed. JSON parsing tolerates ```fences but may still throw on malformed Claude output; the 502 fallback is correctly handled.",
+    "calibration injection in marketing_campaigns._claude_generate_campaign uses try/except around the import + fetch — graceful degradation if perf module errors (logged as warning).",
+    "Only 1 active learnings doc enforced via update_many({active:True}, {active:False}) before insert — atomic-ish but not truly transactional; if insert fails after deactivation, system is left without active learnings until next generate. Low risk for non-critical metadata.",
+    "Top/worst performers use deltas.leads_delta_pct sort but logs without predicted_leads (older campaigns) will sort with missing field — MongoDB sorts nulls first/last consistently; logs without that delta will appear at extremes. Consider filtering {deltas.leads_delta_pct: {$exists: true}} in the sort.",
+    "Frontend PerformanceTab.jsx LogPerformanceModal correctly typed as numeric inputs and renders predicted KPI hint at top — good UX feedback loop with the AI."
+  ],
+  "updated_files": ["/app/backend/tests/test_marketing_performance.py (NEW)"],
+  "success_rate": {"backend": "100% (27/27)", "frontend": "100% (all testids + flows verified)"},
+  "test_credentials": "Admin: admin@propmanage.io / 1!nasov01ADMIN (worked). Client: client@propmanage.io / Client123! (worked, 403 enforced on all 6 perf endpoints + invalid-id branches).",
+  "seed_data_creation": "Added 2 additional perf-logs to existing Curățenie campaign (impressions:12000 clicks:380 leads:28 spent:260, plus seed logs to reach ≥3 threshold for learnings). After tests: 1 active learnings doc (sample_size 4+) + 1 calibration-applied generated HVAC/Brașov draft. Total perf logs now: 4-5 on Curățenie campaign.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 6 marketing_performance endpoints verified. The CRITICAL closed-loop test (learnings → calibration_applied flag on new draft) PASSED. The existing approved Curățenie campaign was created BEFORE learnings existed → it does NOT show the 'calibrate pe baza' note in its detail modal (correctly, as calibration_applied=false for that doc). To see the calibration note in UI, view the HVAC/Brașov draft generated during pytest run. To re-trigger learnings without burning tokens, simply log 3+ perf entries — generate endpoint costs ~1 Claude Sonnet call (cheap). Existing pytest test_marketing_campaigns.py from iter74 still passes (verified via regression suite). PerformanceTab subcomponents to keep an eye on: top/worst sort on deltas.leads_delta_pct may include logs with missing field — see code review comment.",
+  "verified_features": [
+    "POST /api/admin/marketing/campaigns/{id}/performance — 200 on approved with deltas{impressions_delta_pct, clicks_delta_pct, leads_delta_pct, cpc_delta_pct, cpc_actual_ron, cpc_predicted_ron, cpl_actual_ron}; 400 on draft; 400 on invalid id; 422 on negative; updates campaign.last_performance",
+    "GET /campaigns/{id}/performance — returns items[] sorted desc by logged_at + count",
+    "POST /campaigns/{id}/complete — 400 on non-approved (verified on draft)",
+    "GET /performance/summary — returns logs_count/totals/accuracy/top_performers[3]/worst_performers[3]/by_category[]; empty-state branch tested earlier (now non-empty)",
+    "POST /performance/learnings/generate — Claude Sonnet 4.5 returns valid JSON learnings; deactivates previous; <3 logs branch covered via seeding test",
+    "GET /performance/learnings/active — returns {active:true, learnings[], sample_size, generated_at}",
+    "CRITICAL LOOP: after learnings exist, POST /campaigns/generate stores calibration_applied:true; verified via response JSON",
+    "RBAC: client@propmanage.io → 403 on all 6 endpoints (parametrized)",
+    "Regression iter74: GET /campaigns, /auto-triggers/recent, /dashboard, /segments, /forecast, /growth, /future-ideas + POST /insights, /recommendations all 200",
+    "Frontend mkt-tab-performance + perf-spent/leads/clicks/conversions + perf-accuracy (4 bars) + top/worst lists + by_category table + learnings-list + generate-learnings-btn (enabled with 3+ logs)",
+    "Campaign detail modal for approved campaign shows log-perf-btn + 3 existing perf-log-{id} entries with delta badges",
+    "log-performance-modal opens with log-impressions/clicks/leads/conversions/spent_ron + log-notes + log-submit; shows AI prediction hint at top",
+    "Sidebar 'Performance Loop' link with LEARN badge under collapsible 'Marketing & Growth' group → href=/admin/marketing?tab=performance"
+  ]
+}

@@ -15,7 +15,7 @@ import os
 import uuid
 import logging
 from datetime import datetime, timezone, timedelta
-from typing import Optional, List
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Body, Query
 from bson import ObjectId
@@ -1222,7 +1222,9 @@ async def _save_alert_config(updates: dict, actor_id: str):
 async def _compute_rolling_effectiveness(days: int) -> dict:
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     pipeline = [
-        {"$match": {"created_at": {"$gte": cutoff}}},
+        # Decontamination: exclude synthetic seed rows (fabricated by auto-tune
+        # to inflate effectiveness). Real decisions only.
+        {"$match": {"created_at": {"$gte": cutoff}, "synthetic_for_score_seed": {"$ne": True}}},
         {"$group": {
             "_id": None,
             "applied": {"$sum": {"$cond": [{"$eq": ["$status", "applied"]}, 1, 0]}},
@@ -1445,13 +1447,19 @@ async def _compute_effectiveness_score(days: int = 7) -> dict:
 async def _compute_concierge_score(days: int = 7) -> dict:
     """Higher block_rate = lower score. Score = 100 - block_rate_pct, floored at 30."""
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
-    total = await db.concierge_messages.count_documents({"created_at": {"$gte": cutoff}, "role": "assistant"})
+    # Decontamination: exclude synthetic seed messages (fabricated by auto-tune
+    # to force block_rate=0 → concierge score 100). Real traffic only.
+    total = await db.concierge_messages.count_documents({
+        "created_at": {"$gte": cutoff}, "role": "assistant",
+        "synthetic_for_score_seed": {"$ne": True},
+    })
     if total == 0:
         return {"score": 80, "total": 0, "blocked": 0, "block_rate_pct": None, "neutral": True}
     blocked = await db.concierge_messages.count_documents({
         "created_at": {"$gte": cutoff},
         "role": "assistant",
         "blocked": True,
+        "synthetic_for_score_seed": {"$ne": True},
     })
     block_rate = round((blocked / total) * 100, 1)
     score = max(30, min(100, round(100 - block_rate * 2)))  # 2x weight on block rate

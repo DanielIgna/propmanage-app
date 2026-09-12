@@ -4,6 +4,7 @@ import os
 import pytest
 import requests
 from dotenv import load_dotenv
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 load_dotenv("/app/frontend/.env")
 BASE_URL = os.environ["REACT_APP_BACKEND_URL"].rstrip("/")
@@ -11,7 +12,7 @@ API = f"{BASE_URL}/api"
 
 CLIENT = {"email": "client@propmanage.io", "password": "Client123!"}
 SPECIALIST = {"email": "specialist@propmanage.io", "password": "Spec123!"}
-ADMIN = {"email": "admin@propmanage.io", "password": "Admin123!"}
+ADMIN = {"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD}
 OPERATOR = {"email": "operator@propmanage.io", "password": "Op123!"}
 
 

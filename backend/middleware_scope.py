@@ -17,6 +17,7 @@ request, using the same ``admin_actions_log`` collection.
 """
 import re
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 
 import jwt
@@ -40,7 +41,7 @@ SCOPE_RULES = [
     # ----- SECURITY -----
     (re.compile(r"^/api/admin/security"),                "security"),
     (re.compile(r"^/api/admin/gdpr"),                    "security"),
-    (re.compile(r"^/api/admin/impersonation"),           "security"),
+    (re.compile(r"^/api/admin/impersonat"),              "security"),
     (re.compile(r"^/api/admin/ai-security"),             "security"),
     (re.compile(r"^/api/kyc/admin"),                     "security"),
     # ----- AI -----
@@ -58,10 +59,15 @@ SCOPE_RULES = [
     (re.compile(r"^/api/admin/(cms|texts|emails?|zones|content-audit|term-audit)"), "frontend"),
     (re.compile(r"^/api/admin/feature-configurator"),    "frontend"),
     (re.compile(r"^/api/admin/design"),                  "frontend"),
+    # Config surfaces (SEC-001 remediere Iun 2026):
+    (re.compile(r"^/api/admin/config-history"),          "frontend"),  # read VIEW peste audit config
+    (re.compile(r"^/api/admin/pages"),                   "frontend"),  # Page Registry (conținut/SEO)
     # ----- BACKEND -----
     (re.compile(r"^/api/admin/(backup|data-)"),          "backend"),
     (re.compile(r"^/api/admin/app-settings"),            "backend"),
     (re.compile(r"^/api/admin/architecture-board"),      "backend"),
+    # ----- OPS (extindere SEC-001) -----
+    (re.compile(r"^/api/admin/renewal-reminders"),       "ops"),
     # ----- GENERAL (everything else under /api/admin/) -----
     # Sub-admins management itself is a super-admin (general) area
     # — but /me/scope must be readable by ANY admin
@@ -73,6 +79,10 @@ SCOPE_RULES = [
     (re.compile(r"^/api/admin/stats"),                   "general"),
     (re.compile(r"^/api/admin/finance"),                 "general"),
     (re.compile(r"^/api/admin/users"),                   "general"),
+    # Config I/O import/export + Snapshots restore ating TOATE suprafețele de
+    # config (design + cms + pages + settings + fees) → doar super-admin.
+    (re.compile(r"^/api/admin/config"),                  "general"),
+    (re.compile(r"^/api/admin/snapshots"),               "general"),
 ]
 
 
@@ -131,7 +141,7 @@ async def admin_scope_middleware(request: Request, call_next):
             "allowed_scopes": sorted(allowed),
             "outcome": "denied",
             "source": "middleware",
-            "ts": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+            "ts": datetime.now(timezone.utc).isoformat(),
         })
     except Exception:  # noqa: BLE001
         pass

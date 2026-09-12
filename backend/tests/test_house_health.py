@@ -10,17 +10,17 @@ Validates the end-to-end lifecycle:
 """
 import io
 import os
-import uuid
 
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://phased-document.preview.emergentagent.com").rstrip("/")
 TWIN_ID = "2d0a899472b34e32a8eaf79b88d7c012"
 
 CRED = {
     "client": {"email": "client@propmanage.io", "password": "Client123!"},
-    "admin": {"email": "admin@propmanage.io", "password": "1!nasov01ADMIN"},
+    "admin": {"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD},
     "specialist": {"email": "specialist@propmanage.io", "password": "Spec123!"},
     "specialist2": {"email": "specialist2@propmanage.io", "password": "Spec123!"},
 }

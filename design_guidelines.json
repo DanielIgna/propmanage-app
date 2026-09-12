@@ -1,0 +1,128 @@
+{
+  "design_philosophy": {
+    "identity": "Experience OS - Premium, High-Contrast, Swiss-inspired, Trust-centric",
+    "core_principles": [
+      "No More 'AI Slop': Remove repetitive soft-green icon chips and washed-out dark colors.",
+      "Signature vs Commodity: 'Digital Twin' and 'Interior Design' must have hero-level, photography-backed cards. Commodities get clean, typographic minimal treatments.",
+      "The 'Bento' Protocol: On desktop, never stretch mobile columns. Use asymmetrical grids (e.g., col-span-8 and col-span-4) with generous max-widths (max-w-7xl).",
+      "Floating Element Resolution: Implement a unified 'Command Dock'. Cookie banners must be top-fixed. WhatsApp/AI Chat merge into a single 'Assistant' FAB to prevent bottom-right collisions.",
+      "Optical Clarity: Use true blacks (#0A0A0A) in dark mode with crisp 1px borders (#222). No muddy navy. In light mode, stark white with high-contrast text."
+    ]
+  },
+  "typography": {
+    "instructions_to_main_agent": "Ensure these fonts are loaded via Google Fonts or local assets. Strict adherence to tracking and leading is required.",
+    "headings": {
+      "family": "'Outfit', sans-serif",
+      "weights": ["300", "500", "700"],
+      "styling": "tracking-tight leading-none",
+      "usage": "Use font-light (300) for massive hero text to create elegance, or font-bold (700) for punchy metric numbers."
+    },
+    "body": {
+      "family": "'Plus Jakarta Sans', sans-serif",
+      "weights": ["400", "500", "600"],
+      "styling": "tracking-normal leading-relaxed"
+    },
+    "hierarchy_rules": {
+      "H1_Hero": "text-4xl sm:text-5xl lg:text-6xl tracking-tighter font-light",
+      "H2_Section": "text-2xl sm:text-3xl lg:text-4xl tracking-tight font-medium",
+      "Overlines": "text-xs tracking-[0.2em] uppercase font-bold text-muted-foreground"
+    }
+  },
+  "colors": {
+    "theme_strategy": "Dual Theme (Light/Dark). The user left it to the designer. We are pivoting to 'Electric Luminous' combined with 'Deep Obsidian'.",
+    "brand_accent": {
+      "primary": "#ccff00",
+      "primary_foreground": "#050505",
+      "description": "Luminous Chartreuse/Acid Yellow. Replaces the old soft lime for a sharper, tech-forward 'Experience OS' feel."
+    },
+    "dark_mode": {
+      "background": "#050505",
+      "surface": "#111111",
+      "surface_hover": "#1A1A1A",
+      "border": "#222222",
+      "text_primary": "#FAFAFA",
+      "text_secondary": "#A1A1A1"
+    },
+    "light_mode": {
+      "background": "#F7F7F5",
+      "surface": "#FFFFFF",
+      "surface_hover": "#F0F0F0",
+      "border": "#E5E5E5",
+      "text_primary": "#111111",
+      "text_secondary": "#666666"
+    }
+  },
+  "visual_enhancers": {
+    "surfaces": {
+      "cards": "Flat background, 1px solid border matching theme border, subtle shadow only in light mode. NO muddy backgrounds.",
+      "glassmorphism": "backdrop-blur-xl bg-white/70 dark:bg-black/60 border border-white/20 dark:border-white/10. Used exclusively for sticky headers and the floating dock."
+    },
+    "motion": {
+      "hover": "transition-transform duration-300 ease-out hover:-translate-y-1",
+      "button_active": "active:scale-95 transition-transform duration-150"
+    }
+  },
+  "layouts_and_surfaces": {
+    "1_public_client_funnel": {
+      "path": "/incepe",
+      "desktop_layout": "Split-screen or Centered Max-W-3xl container for the wizard. Not a stretched mobile view.",
+      "components": {
+        "Header": "Glassmorphic sticky top. Minimalist Logo.",
+        "Hero": "H1: 'Ce vrei să rezolvi azi?' in Outfit Light. Search input with large, plush padding.",
+        "Trust_Strip": "Horizontal flex, text-xs uppercase, separated by bullets. Icons: ShieldCheck, Clock, Zap.",
+        "Signature_Cards": "Digital Twin & Interior Design must span full width or 2-col. Background image with black/40 overlay. White text, bottom-left aligned. Action button: Glass pill.",
+        "Commodity_Cards": "Grid of 6. Clean white/dark boxes, no background image. Minimalist lucide icon in top left, text bottom left. NO repeating soft-green background chips.",
+        "Wizard_Flow": "Clean radio lists. Progress bar at top (1px height, brand accent color). Sticky bottom CTA."
+      }
+    },
+    "2_client_dashboard_v2": {
+      "path": "/client",
+      "desktop_layout": "Sidebar nav or Slim Top Nav. Main content max-w-7xl using High Density Grid (Bento).",
+      "components": {
+        "Hero_Card": "State-driven. State C (Active Job): 4-step progress pills using text-sm, brand accent active state. Huge primary CTA 'Plătește avansul'.",
+        "Quick_Actions_Grid": "2x2 crisp squares. 'Întreabă AI' gets a special 'Tracing Beam' border or subtle gradient glow to stand out.",
+        "AI_Copilot": "Distinct surface (e.g., slight tint of the brand accent background at 5% opacity). 'Rezumat AI' button.",
+        "Discover_Row": "Horizontal scroll (hide scrollbar). High-quality image cards for Digital Twin/House Health."
+      }
+    },
+    "3_specialist_entry_home": {
+      "description": "Simplified entry tier. Maximize urgency and clarity.",
+      "desktop_layout": "Centered max-w-2xl content.",
+      "components": {
+        "Checklist_Card": "Vertical stepped list. Active step highlighted, inactive muted. Progress bar.",
+        "Opportunities_List": "Rows. Each row: Title, robust budget tag (font-mono for numbers), 'URGENT' chip (Red/Orange accent), and 'Acceptă' CTA."
+      }
+    },
+    "4_specialist_dashboard_full": {
+      "desktop_layout": "Full width dashboard. Left sidebar for navigation.",
+      "components": {
+        "Header": "Serif/Outfit Light 'Oportunități' title.",
+        "KPI_Cards": "4 column grid. Huge numbers (font-outfit font-light text-5xl). Subtle labels.",
+        "Pipeline_Bani_Cockpit": "Bento box. 2x2 grid inside a larger card. Highlight '+117%' in bright green.",
+        "Business_Assistant_AI": "Floating or pinned right-side panel.",
+        "Bottom_Nav_Mobile": "Floating pill, backdrop-blur, containing the 4 primary destinations with count badges."
+      }
+    }
+  },
+  "collision_resolution": {
+    "instructions": "The user complained about overlapping floating elements (Cookie, WhatsApp, AI Chat, Bottom Nav).",
+    "solution": {
+      "Cookie_Banner": "Must be fixed to the TOP of the screen as a slim inline strip, pushing body content down. NEVER floating at the bottom.",
+      "Chat_and_Support": "Combine WhatsApp and AI Chat into a single 'Assistant' FAB located at bottom-right (bottom-24 on mobile to clear nav, bottom-8 on desktop). Clicking it opens a small popover to choose AI or WhatsApp.",
+      "Mobile_Bottom_Nav": "Strictly z-50. Fixed bottom-0 w-full glassmorphic bar. No other floating elements exist at bottom-0."
+    }
+  },
+  "image_urls": {
+    "interior_design": "https://images.pexels.com/photos/29012619/pexels-photo-29012619.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    "digital_twin_blueprint": "https://images.unsplash.com/photo-1721244654394-36a7bc2da288?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzh8MHwxfHNlYXJjaHwyfHxhcmNoaXRlY3R1cmFsJTIwYmx1ZXByaW50JTIwYnVpbGRpbmd8ZW58MHx8fHwxNzg0OTkwMDEyfDA&ixlib=rb-4.1.0&q=85",
+    "renovation": "https://images.pexels.com/photos/36035073/pexels-photo-36035073.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+  },
+  "universal_guidelines_for_main_agent": [
+    "Do NOT use 'transition: all'. Explicitly use 'transition-transform transition-colors'.",
+    "Never center align the main .App container text.",
+    "Add data-testid attributes to all interactive elements.",
+    "Do NOT use placeholder image URLs. Use the provided high-quality image_urls for the signature services.",
+    "Make sure dark mode colors are crisp (#0A0A0A) and not washed out navy blues.",
+    "Use Lucide-react icons, but do NOT wrap them in repetitive colored square backgrounds for every single card. Let them breathe."
+  ]
+}

@@ -13,8 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth, formatApiError } from "../auth";
 import { API } from "./DashShared";
-import { ClientTwinViewerModal } from "./ClientTwinViewer";
-import DigitalTwinViewer from "../components/DigitalTwinViewer";
+import { PropertyTwinModal } from "./ClientTwinViewer";
 import { pushSupported, getPushStatus, subscribeToPush, unsubscribeFromPush, ensureServiceWorker } from "../push";
 
 // ============= ROW (hoisted out of SettingsPanel to avoid no-unstable-nested-components) =============
@@ -48,7 +47,7 @@ export const SettingsPanel = () => {
 
   useEffect(() => {
     if (!pushSupported()) return;
-    ensureServiceWorker().then(() => getPushStatus().then(setPushStatus));
+    ensureServiceWorker().then(() => getPushStatus().then(setPushStatus)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -380,22 +379,13 @@ export const SettingsPanel = () => {
       {modal === "coverage" && <CoverageModal user={user} refreshUser={refreshUser} onClose={() => setModal(null)} />}
       {modal === "become-specialist" && <BecomeSpecialistModal onClose={() => setModal(null)} refreshUser={refreshUser} />}
       {twinViewerProp && (
-        twinViewerProp.dt_project_id && twinViewerProp.model_url ? (
-          // Real 3D viewer with Three.js — supports rotation 360°, X-Ray, wireframe, sections, pins
-          <DigitalTwinViewer
-            projectId={twinViewerProp.dt_project_id}
-            modelUrl={twinViewerProp.model_url}
-            projectName={twinViewerProp.property_name || twinViewerProp.dt_project_name}
-            onClose={() => setTwinViewerProp(null)}
-          />
-        ) : (
-          // Fallback: 2D top-down room layout from twins collection
-          <ClientTwinViewerModal
-            propertyId={twinViewerProp.property_id}
-            propertyName={twinViewerProp.property_name}
-            onClose={() => setTwinViewerProp(null)}
-          />
-        )
+        <PropertyTwinModal
+          propertyId={twinViewerProp.property_id}
+          propertyName={twinViewerProp.property_name}
+          dtProjectId={twinViewerProp.dt_project_id}
+          modelUrl={twinViewerProp.model_url}
+          onClose={() => setTwinViewerProp(null)}
+        />
       )}
       {modal === "privacy" && <PrivacyModal onClose={() => setModal(null)} />}
       {modal === "referral" && <ReferralModal onClose={() => setModal(null)} />}

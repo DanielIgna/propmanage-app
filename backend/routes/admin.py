@@ -1,23 +1,18 @@
 """PropManage router: admin."""
-import os
 import asyncio
-import json
 import logging
-from typing import Optional, List, Literal, Dict
+from typing import Optional
 from datetime import datetime, timezone, timedelta
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status, Body
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Body
 
 from db import db
-from core_utils import serialize_doc, effective_role
-from deps import get_current_user, require_role
-from services import send_email, notify, send_web_push, log_event
+from core_utils import serialize_doc
+from deps import require_role
+from services import notify, log_event
 from models import DocumentReviewIn, SpecialistRejectIn
 from email_service import (
-    send_template, tpl_welcome, tpl_dispute_opened, tpl_dispute_resolved,
-    tpl_design_phase_quote, tpl_specialist_verified, tpl_escrow_funded,
-    tpl_trust_badge_invite,
+    send_template, tpl_specialist_verified, tpl_trust_badge_invite,
 )
 from demo_reset import reset_demo_accounts
 
@@ -374,6 +369,19 @@ async def verify_specialist(spec_id: str, user: dict = Depends(require_role("adm
         await check_tier_milestones(spec_id)
     except Exception:
         pass
+    # CIP-A: specialist verificat → recalculează vizibilitatea nomenclatorului
+    try:
+        from orchestrator.engine import emit_signal
+        await emit_signal("category_visibility_refresh", {"trigger": f"specialist_verified:{spec_id}"})
+    except Exception:  # noqa: BLE001
+        pass
+    # SEO: verification may push a service×city over the gate threshold → refresh sitemap.
+    try:
+        import asyncio
+        from seo_regen import on_specialist_verification_changed
+        asyncio.create_task(on_specialist_verification_changed(spec_id, source="admin_verify"))
+    except Exception:  # noqa: BLE001
+        pass
     return {"ok": True}
 
 
@@ -429,14 +437,15 @@ async def list_disputes(user: dict = Depends(require_role("admin"))):
     for d in docs:
         d = serialize_doc(d)
         req = reqs_map.get(d.get("request_id"))
-        if req:
-            d["request_title"] = req.get("title")
-            d["request_status"] = req.get("status")
-            d["escrow_amount"] = req.get("escrow_amount", 0)
-            client_u = users_map.get(req.get("client_id"))
-            spec_u = users_map.get(req.get("specialist_id"))
-            d["client_name"] = client_u.get("name") if client_u else None
-            d["specialist_name"] = spec_u.get("name") if spec_u else None
+        # Enriched fields are ALWAYS present (None/0 for orphaned disputes
+        # whose request was deleted) — stable contract for the admin UI.
+        d["request_title"] = req.get("title") if req else None
+        d["request_status"] = req.get("status") if req else None
+        d["escrow_amount"] = req.get("escrow_amount", 0) if req else 0
+        client_u = users_map.get(req.get("client_id")) if req else None
+        spec_u = users_map.get(req.get("specialist_id")) if req else None
+        d["client_name"] = client_u.get("name") if client_u else None
+        d["specialist_name"] = spec_u.get("name") if spec_u else None
         out.append(d)
     return out
 

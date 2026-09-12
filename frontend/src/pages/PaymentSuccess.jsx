@@ -22,6 +22,8 @@ export const PaymentSuccess = () => {
         setAmount(data.amount);
         if (data.payment_status === "paid") {
           setStatus("paid");
+          // Conversie Google Ads + intern: plată reușită (wallet topup / escrow finanțat)
+          import("../lib/analytics").then(({ trackConversion }) => trackConversion("purchase", { value: Number(data.amount) || 0 })).catch(() => {});
         } else if (data.status === "expired") {
           setStatus("expired");
         } else if (attempts < 10) {

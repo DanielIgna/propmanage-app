@@ -1,0 +1,37 @@
+{
+  "summary": "Iter 115 backend-only regression: Tenant Val 2 backfill + lead_followup engine (Resend). 22/22 pytest cases PASSED. Verified: (1) coverage endpoint returns 100% T1 tenant_id coverage after idempotent force-backfill; (2) POST /admin/tenants/backfill returns skipped:true when marker exists and backfilled_docs 0 on force; (3) admin auth guards active on coverage/backfill/followup routes; (4) followup config defaults enabled:false + delay_hours:48 + segments:['warm'] + max_attempts:3, PUT persists valid keys, invalid keys silently ignored, no crash; (5) E2E with synthetic warm lead: dry_run creates log entry with status 'dry_run' and does NOT set followup.sent_at; real run fails with Resend 'domain not verified' (EXPECTED — DNS pending) and increments followup.attempts=1 + records followup.last_error; lead correctly excluded from candidates after attempts=max_attempts; (6) run_followup_scan(manual=False) with enabled=False short-circuits to {ran:false, reason:'disabled'}; scheduler registered lead_followup_hourly at cron minute=25 Europe/Bucharest (confirmed via backend logs, no startup errors); (7) regression: admin login OK, /api/services/design-exterior/content OK, /api/public/demo-request OK, /api/admin/kg/governance tenancy totals reflect 100% coverage post-backfill.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/public/demo-request → db.demo_leads.insert_one", "issue": "New demo_leads documents are inserted WITHOUT tenant_id (line 33-52 of /app/backend/routes/public.py). Any new demo lead creates a T1 tenancy gap until backfill re-runs — breaks the 100% invariant claim on kg/governance and tenants/coverage between backfills. sync_lead() sets tenant_id on the unified `leads` collection but the raw demo_leads insert lacks it. Add tenant_id:'main' to the doc (or infer via resolve_tenant_slug)."},
+      {"endpoint": "POST /api/admin/demo/reset (via conftest.reset_demo_state)", "issue": "The demo reset flow re-seeds T1 documents without tenant_id — verified empirically: initial coverage after reset showed 96139/96142 (gap=3 docs). Required a force-backfill inside the test to normalize. Same class of issue as demo-request (any T1 insert path that skips tenant_id)."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter115_tenancy_wave2_followup.py",
+    "/app/test_reports/pytest/iter115_tenancy_followup.xml"
+  ],
+  "action_items": [
+    "(minor) Add tenant_id:'main' (or resolved slug) when inserting into db.demo_leads in /app/backend/routes/public.py POST /public/demo-request to keep the 100% T1 coverage invariant airtight between scheduled backfills.",
+    "(minor) Audit any other T1 insert paths that omit tenant_id (demo reset appears to re-create ~3 docs without it). Consider a helper `insert_t1_doc(collection, doc, tenant_id)` that always injects tenant_id, or a Mongo change-stream/pre-insert hook.",
+    "(no action) Resend 'domain not verified' error at real run is EXPECTED — DNS still pending per user."
+  ],
+  "critical_code_review_comments": [
+    "lead_followup.py is well-scoped (~110 lines): DEFAULT_CONFIG whitelist enforced in update_config (prevents arbitrary key injection), dry_run short-circuit skips send_email cleanly, retry attempts tracked via $inc + last_error truncated to 300 chars — good defensive coding.",
+    "tenancy.py backfill_tier1_tenant_data is properly idempotent: wave-2 marker in tenant_migrations, force flag override, index creation per collection, exception per-collection so one failure doesn't cascade. Nice.",
+    "routes/lead_followup.py admin guards are consistent (require_role('admin') on all 4 endpoints), default dry_run=true on POST /run — safe by default.",
+    "Scheduler job lead_followup_hourly correctly uses CronTrigger with misfire_grace_time=1800; startup order safe (add_job only if scheduler not running).",
+    "MINOR: routes/public.py POST /public/demo-request inserts to db.demo_leads without tenant_id — see issue above. Same for the demo reset path."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter115_tenancy_wave2_followup.py (NEW)",
+    "/app/test_reports/pytest/iter115_tenancy_followup.xml (NEW)"
+  ],
+  "success_rate": {"backend": "100% (22/22)", "frontend": "n/a (backend-only)"},
+  "test_credentials": "Admin: admin@propmanage.io / 1!nasov01ADMIN; Client: client@propmanage.io / Client123! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Synthetic lead in `leads` collection: id=TEST_followup_<hex>, email=TEST_followup@example.com, source=design_exterior, segment=warm, stage=new, tenant_id=main, created_at=72h ago. Cleaned in test_cleanup (verified: no residue in leads or lead_followup_log). Also test_d_public_demo_request creates one demo_lead (TEST_demo_regr@example.com) — cleaned externally after test run.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Test file /app/backend/tests/test_iter115_tenancy_wave2_followup.py uses pymongo SYNC (MongoClient) to seed/cleanup — avoids motor's 'Event loop is closed' error when mixing asyncio.run() across multiple test methods. TestFollowupConfig.test_put_invalid_key_ignored confirmed the DEFAULT_CONFIG whitelist filter works (see /app/backend/lead_followup.py:38). TestSchedulerGuard imports run_followup_scan in-process to verify enabled=False short-circuit. The 100% T1 coverage invariant is fragile: any T1 insert path that skips tenant_id (public/demo-request, demo/reset) will create a small gap that only backfill re-run fixes — test uses force-backfill at start to normalize."
+}

@@ -18,11 +18,11 @@ Schema (db.incidents):
 """
 import logging
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import List
 
 from bson import ObjectId
 from bson.errors import InvalidId
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from db import db

@@ -1,13 +1,13 @@
 // PropManage - Specialist Dashboard with 4-zone bottom navigation
 // Tabs: Oportunități | Lucrările mele | Notificări | Setări
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import {
   Wallet, Star, Briefcase, Award, Sparkles, FileCheck, MessageSquare, AlertTriangle,
   Palette, Plus, Image as ImageIcon, Target, ClipboardCheck, Bell,
   Settings as SettingsIcon, Search, RefreshCw, Clock, Crown, MapPin, Flame,
-  CheckCircle2, ShieldCheck, ChevronRight, Inbox, TrendingUp,
+  CheckCircle2, ShieldCheck, ChevronRight, Inbox, TrendingUp, Layers,
 } from "lucide-react";
 import { useAuth, formatApiError } from "../auth";
 import { ChatPanel } from "./ChatPanel";
@@ -18,16 +18,20 @@ import { ProjectListSection } from "./ProjectWorkspace";
 import { API, DashLayout, StatusBadge, NavigateButtons } from "./DashShared";
 import { BottomNav } from "./BottomNav";
 import { SettingsPanel } from "./SettingsPanel";
-import { RequestTimelineModal, ScheduleProposalModal, LastActionBanner } from "./ActivityTimeline";
+import { ReferralHub, claimPendingInvite } from "../components/ReferralHub";import { RequestTimelineModal, ScheduleProposalModal, LastActionBanner } from "./ActivityTimeline";
 import { TierCelebrationBanner } from "../lib/TierCelebrationBanner";
-import { TierToolsPanel } from "../lib/TierToolsPanel";
 import { QuestPanel } from "../lib/QuestPanel";
+import { SpecialistCockpit } from "./SpecialistCockpit";
 import { useTier } from "../lib/useTier";
 import {
   PMCard, PMCardPrimary, PMStatCard, PMPillButton, PMChip,
   PMSectionHeader, PMEmptyState,
 } from "../components/pm";
-import { TierProgressWidget } from "../components/TierProgressWidget";
+import { SpecialistProgressCard } from "../components/SpecialistProgressCard";
+import { SpecialistBenefitsCard } from "../components/pb/PbEverywhere";
+import { SpecialistCampaigns } from "../components/SpecialistCampaigns";
+import { BetaFeedbackEntry } from "../components/BetaFeedbackWidget";
+import { SpecialistEntryHome } from "./dashboard/SpecialistEntryHome";
 
 export const SpecialistDashboard = () => {
   const { user, refreshUser } = useAuth();
@@ -40,16 +44,40 @@ export const SpecialistDashboard = () => {
   const [proposePhaseFor, setProposePhaseFor] = useState(null);
   const [showPortfolio, setShowPortfolio] = useState(false);
   const [showNewProject, setShowNewProject] = useState(false);
-  const [tab, setTab] = useState("opportunities");
+  const [tab, setTab] = useState(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    return ["opportunities", "jobs", "notifications", "settings"].includes(t) ? t : "opportunities";
+  });
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab")) {
+      window.history.replaceState(null, "", "/specialist");
+    }
+  }, []);
   const [searchQ, setSearchQ] = useState("");
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [acceptingReq, setAcceptingReq] = useState(null);  // {id, title} for ScheduleProposalModal
   const [timelineRequestId, setTimelineRequestId] = useState(null);
+  const [entryFull, setEntryFull] = useState(() => localStorage.getItem("pm_spec_full") === "1");
+  const entryMode = tierInfo.tier === "ENTRY" && !entryFull;
 
+  const [xosLayout, setXosLayout] = useState(null);
+  const [xosHidden, setXosHidden] = useState([]);
+  useEffect(() => {
+    axios.get(`${API}/xos/layout/specialist_home`).then(r => setXosLayout(r.data.items || null)).catch(() => {});
+    axios.get(`${API}/ui-rules/my`).then(r => setXosHidden(r.data.hidden || [])).catch(() => {});
+  }, []);
+
+  const specOpenedRef = useRef(false);
   const load = () => axios.get(`${API}/requests`).then(r => setRequests(r.data)).catch(() => {});
   const loadNotifs = () => axios.get(`${API}/notifications`).then(r => setNotifs(r.data)).catch(() => {});
   useEffect(() => {
     if (user) {
+      claimPendingInvite();
+      // Funnel comercial (etapa 5): specialistul a deschis zona de leads
+      if (!specOpenedRef.current) {
+        specOpenedRef.current = true;
+        import("../lib/analytics").then(({ trackIntent }) => trackIntent("specialist_flow_opened")).catch(() => {});
+      }
       load();
       loadNotifs();
       const interval = setInterval(loadNotifs, 30000);
@@ -57,11 +85,11 @@ export const SpecialistDashboard = () => {
     }
   }, [user]);
 
-  const openAccept = (r) => setAcceptingReq({ id: r.id, title: r.title });
+  const openAccept = (r) => setAcceptingReq({ id: r.id, title: r.title, feeWaived: !!r.lead_fee_waived && r.direct_specialist_id === user?.id });
   const start = async (id) => { try { await axios.post(`${API}/requests/${id}/start`); load(); } catch (e) { alert(formatApiError(e)); } };
   const complete = async (id) => { try { await axios.post(`${API}/requests/${id}/complete`); load(); } catch (e) { alert(formatApiError(e)); } };
 
-  const open = requests.filter(r => r.status === "open");
+  const open = requests.filter(r => r.status === "open").sort((a, b) => (b.direct_specialist_id === user?.id ? 1 : 0) - (a.direct_specialist_id === user?.id ? 1 : 0));
   const mine = requests.filter(r => r.specialist_id === user?.id);
   const filtered = (list) => {
     let out = list;
@@ -76,6 +104,10 @@ export const SpecialistDashboard = () => {
     });
   };
   const unreadNotifs = notifs.filter(n => !n.read).length;
+  const now = new Date();
+  const monthlyEarnings = mine
+    .filter(r => r.status === "confirmed" && String(r.confirmed_at || r.updated_at || r.created_at || "").slice(0, 7) === now.toISOString().slice(0, 7))
+    .reduce((s, r) => s + (Number(r.final_price ?? r.price ?? r.budget_estimate) || 0), 0);
 
   const allTabs = [
     { id: "opportunities", label: "Oportunități", icon: Target, badge: open.length, minTier: "ENTRY" },
@@ -95,8 +127,14 @@ export const SpecialistDashboard = () => {
 
   return (
     <DashLayout role="specialist" title={title} bottomNav={<BottomNav tabs={tabs} active={tab} onChange={setTab} dataPrefix="spec-tab" />}>
+      {entryMode && tab === "opportunities" && (
+        <SpecialistEntryHome user={user} open={filtered(open)} mine={mine} onAccept={openAccept}
+          onVerify={() => setShowDocs(true)} onGoJobs={() => setTab("jobs")}
+          onSwitchFull={() => { localStorage.setItem("pm_spec_full", "1"); setEntryFull(true); }} />
+      )}
+      {/* PPOS P3a-M4: MaturityCard eliminat — al doilea sistem de progres; unicul e SpecialistProgressCard */}
       <TierCelebrationBanner />
-      {!user?.verified && (
+      {!entryMode && !user?.verified && (
         <PMCard accent="warning" className="mb-6 !bg-amber-500/5 !border-amber-500/30 pm-fade-in" testid="verify-banner">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
@@ -115,12 +153,65 @@ export const SpecialistDashboard = () => {
         </PMCard>
       )}
 
-      {tab === "opportunities" && tierInfo.canSeeQuests && <QuestPanel />}
-      {tab === "opportunities" && tierInfo.canSeeStats && <TierToolsPanel role="specialist" />}
-      {tab === "opportunities" && (
-        <>
-          {/* Tier progression widget — shows for all tiers (auto-hides at TOP) */}
-          <TierProgressWidget className="mb-4" />
+      {/* PPOS P3c — Mission Control: Main Workspace (8) + Right Context Panel (4) */}
+      {!entryMode && tab === "opportunities" && (() => {
+        const xosWidgets = {
+          today_summary: (
+            <div className="mb-6 pm-fade-in" data-testid="spec-today-summary">
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.22em] mb-3" style={{ color: "var(--pm-text-muted)" }}>Astăzi ai</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: "Cereri noi", value: open.length, onClick: () => document.querySelector('[data-tour="specialist-leads"]')?.scrollIntoView({ behavior: "smooth" }), testid: "spec-today-open" },
+                  { label: "Lucrări în lucru", value: mine.filter(r => r.status !== "confirmed").length, onClick: () => setTab("jobs"), testid: "spec-today-active" },
+                  { label: "Notificări necitite", value: unreadNotifs, onClick: () => setTab("notifications"), testid: "spec-today-notifs" },
+                  { label: "Încasări luna aceasta", value: monthlyEarnings.toLocaleString("ro"), suffix: "RON", accent: true, onClick: () => setTab("jobs"), testid: "spec-today-earnings" },
+                ].map(({ label, value, suffix, accent, onClick, testid }) => (
+                  <button key={testid} onClick={onClick} data-testid={testid}
+                    className="text-left rounded-2xl border p-4 lg:p-5 transition-transform duration-300 hover:-translate-y-1"
+                    style={{
+                      background: accent ? "rgba(204,255,0,0.07)" : "var(--pm-surface)",
+                      borderColor: accent ? "rgba(204,255,0,0.3)" : "var(--pm-outline)",
+                    }}>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--pm-text-muted)" }}>{label}</div>
+                    <div className="mt-2 xos-num text-3xl lg:text-4xl leading-none" style={{ color: accent ? "var(--pm-accent-ink)" : "var(--pm-text)" }}>
+                      {value}{suffix && <span className="text-sm font-semibold ml-1.5 align-baseline" style={{ color: "var(--pm-text-variant)" }}>{suffix}</span>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ),
+          // PPOS: Cockpit-ul de pipeline se deblochează la ADVANCED+ (progressive disclosure)
+          cockpit: ["ADVANCED", "PREMIUM", "TOP"].includes(user?.tier) ? <SpecialistCockpit onGo={(dest) => (dest === "opportunities" ? window.scrollTo({ top: 0 }) : setTab(dest))} /> : null,
+          quests: tierInfo.canSeeQuests ? <QuestPanel hideActive={mine.length > 0 || (user?.jobs_completed || 0) > 0} /> : null,
+          pb_benefits: <SpecialistBenefitsCard />,
+          tier_tools: null,
+          tier_progress: (
+            <SpecialistProgressCard
+              user={user}
+              mine={mine}
+              onGoLeads={() => document.querySelector('[data-tour="specialist-leads"]')?.scrollIntoView({ behavior: "smooth" })}
+              className="mb-4"
+            />
+          ),
+        };
+        const defaultOrder = [
+          { id: "today_summary", enabled: true }, { id: "cockpit", enabled: true },
+          { id: "pb_benefits", enabled: true },
+          { id: "quests", enabled: true }, { id: "tier_tools", enabled: true }, { id: "tier_progress", enabled: true },
+        ];
+        // layout-urile stocate primesc automat widget-urile noi din default (altfel rămân invizibile)
+        const order = xosLayout
+          ? [...xosLayout, ...defaultOrder.filter(d => !xosLayout.some(w => w.id === d.id))]
+          : defaultOrder;
+        const rail = order
+          .filter(w => w.enabled && !xosHidden.includes(`widget:${w.id}`))
+          .map(w => <React.Fragment key={w.id}>{xosWidgets[w.id] || null}</React.Fragment>);
+        return (
+        <div className="lg:grid lg:grid-cols-12 lg:gap-8 lg:items-start" data-testid="spec-workspace">
+          {/* Mobil: KPI-urile „Astăzi ai" primele (task-first). Desktop: rail dreapta sticky. */}
+          <aside className="lg:col-span-4 lg:col-start-9 lg:row-start-1 lg:sticky lg:top-6" data-testid="spec-context-panel">{rail}</aside>
+          <div className="lg:col-span-8 lg:col-start-1 lg:row-start-1 min-w-0">
           {/* Welcome hero (only ADVANCED+) */}
           {user?.verified && tierInfo.canSeeBentoHero && user?.tier && user.tier !== "ENTRY" && (
             <PMCardPrimary className="mb-6 pm-fade-in">
@@ -138,45 +229,38 @@ export const SpecialistDashboard = () => {
                     <span>{user?.reviews_count || 0} recenzii</span>
                   </div>
                 </div>
-                {user?.tier === "PREMIUM" && (
-                  <Link to="/specialist/premium-profile" data-testid="link-premium-profile">
-                    <PMPillButton variant="on-container" icon={Crown}>Editează Profil Premium</PMPillButton>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Link to="/specialist/capabilities" data-testid="link-capabilities">
+                    <PMPillButton variant="on-container" icon={Layers}>Capabilitățile mele</PMPillButton>
                   </Link>
-                )}
+                  {user?.tier === "PREMIUM" && (
+                    <Link to="/specialist/premium-profile" data-testid="link-premium-profile">
+                      <PMPillButton variant="on-container" icon={Crown}>Editează Profil Premium</PMPillButton>
+                    </Link>
+                  )}
+                </div>
               </div>
             </PMCardPrimary>
           )}
 
-          {/* Bento stats — VERIFIED+ only */}
-          {tierInfo.canSeeStats && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 pm-fade-in-delay-1">
-            <PMStatCard
-              icon={Wallet}
-              label="Sold lead-uri"
-              value={`${user?.wallet_balance?.toFixed(0) || 0} RON`}
-              testid="spec-stat-wallet"
-            />
-            <PMStatCard
-              icon={Star}
-              label="Rating"
-              value={user?.rating || "—"}
-              trailing={<span className="text-xs text-[var(--pm-text-muted)]">{user?.reviews_count || 0}</span>}
-              testid="spec-stat-rating"
-            />
-            <PMStatCard
-              icon={Briefcase}
-              label="Active"
-              value={mine.filter(r => r.status !== "confirmed").length}
-              testid="spec-stat-active"
-            />
-            <PMStatCard
-              icon={Award}
-              label="Tier"
-              value={user?.tier || "ENTRY"}
-              trailing={user?.verified ? <PMChip variant="success">VERIF</PMChip> : <PMChip variant="warning">PEND</PMChip>}
-              testid="spec-stat-tier"
-            />
-            </div>
+          {/* Capability Engine — punct de acces permanent, indiferent de tier */}
+          {!(user?.verified && tierInfo.canSeeBentoHero && user?.tier && user.tier !== "ENTRY") && (
+            <PMCard className="mb-6 pm-fade-in" testid="spec-capabilities-banner">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-2xl bg-[var(--pm-primary-container)] flex items-center justify-center shrink-0">
+                    <Layers className="w-5 h-5 text-[var(--pm-primary)]" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm">Capabilitățile tale</div>
+                    <div className="text-xs text-stone-400">Alege serviciile pe care le stăpânești — clienții și AI-ul te găsesc pe compatibilitate.</div>
+                  </div>
+                </div>
+                <Link to="/specialist/capabilities" data-testid="link-capabilities-banner">
+                  <PMPillButton variant="primary" icon={Layers}>Configurează</PMPillButton>
+                </Link>
+              </div>
+            </PMCard>
           )}
 
           {/* ENTRY/JUNIOR: friendly intro card for newcomers */}
@@ -206,16 +290,11 @@ export const SpecialistDashboard = () => {
             </PMCard>
           )}
 
-          {user?.tier !== "PREMIUM" && tierInfo.canSeeStats && (
-            <div className="mb-4 text-xs text-stone-500 bg-white/3 rounded-xl px-4 py-2.5 inline-flex items-center gap-2" data-testid="premium-hint">
-              <Crown className="w-3.5 h-3.5 text-fuchsia-300" />
-              Profilul Premium se deblochează la tier PREMIUM (50+ joburi, rating ≥4.7). <Link to="/specialist/premium-profile" className="text-fuchsia-300 hover:underline">Preview editor</Link>
-            </div>
-          )}
-
           <FilterBar searchQ={searchQ} setSearchQ={setSearchQ} urgentOnly={urgentOnly} setUrgentOnly={setUrgentOnly} urgentCount={open.filter(r => r.priority === "urgent").length} />
 
-          <div className="space-y-3 mt-4 max-w-3xl mx-auto pm-fade-in-delay-2" data-tour="specialist-leads">
+          <SpecialistCampaigns />
+
+          <div className="space-y-3 mt-4 max-w-3xl pm-fade-in-delay-2" data-tour="specialist-leads">
             <PMSectionHeader title={`${filtered(open).length} oportunități`} />
             {filtered(open).length === 0 && (
               <PMEmptyState
@@ -235,23 +314,32 @@ export const SpecialistDashboard = () => {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       {r.priority === "urgent" && <PMChip variant="error" icon={Flame}>URGENT</PMChip>}
+                      {r.direct_specialist_id === user?.id && <PMChip variant="success" icon={Star} testid={`direct-chip-${r.id}`}>Re-angajare directă · 0 RON</PMChip>}
                       <span className="text-[11px] text-stone-500">{r.client_name} · {r.property_name}</span>
                     </div>
                     <div className="font-semibold text-sm md:text-base">{r.title}</div>
                   </div>
                 </div>
                 <p className="text-xs md:text-sm text-stone-400 mb-3 line-clamp-2">{r.description}</p>
+                {r.concept_render_url && (
+                  <div className="mb-3" data-testid={`lead-concept-render-${r.id}`}>
+                    <img src={`${process.env.REACT_APP_BACKEND_URL}${r.concept_render_url}`} alt="Concept validat" className="w-full h-32 object-cover rounded-xl border border-white/10" />
+                    <div className="mt-1 text-[10px] text-emerald-300 flex items-center gap-1"><ImageIcon className="w-3 h-3" /> Concept de design validat atașat</div>
+                  </div>
+                )}
                 <div className="flex justify-between items-center gap-2 flex-wrap">
                   <div className="text-xs text-stone-400">Estimat: <span className="text-white font-semibold">{r.budget_estimate} RON</span></div>
                   <PMPillButton variant="primary" size="sm" onClick={() => openAccept(r)} testid={`accept-${r.id}`}>
-                    Acceptă · 45 RON
+                    {r.direct_specialist_id === user?.id ? "Acceptă · GRATUIT" : "Acceptă · 45 RON"}
                   </PMPillButton>
                 </div>
               </PMCard>
             ))}
           </div>
-        </>
-      )}
+          </div>
+        </div>
+        );
+      })()}
 
       {tab === "jobs" && (
         <>
@@ -277,8 +365,9 @@ export const SpecialistDashboard = () => {
               <ProjectListSection title="Proiectele tale de coordonare" />
             </div>
           )}
-          <FilterBar searchQ={searchQ} setSearchQ={setSearchQ} urgentOnly={urgentOnly} setUrgentOnly={setUrgentOnly} urgentCount={open.filter(r => r.priority === "urgent").length} />
-          <div className="space-y-3 mt-4 max-w-3xl mx-auto">
+          <FilterBar searchQ={searchQ} setSearchQ={setSearchQ} urgentOnly={urgentOnly} setUrgentOnly={setUrgentOnly} urgentCount={open.filter(r => r.priority === "urgent").length} placeholder="Caută în lucrările tale..." />
+          {/* PPOS Desktop Polish: densitate — 2 coloane pe desktop, stivă pe mobil */}
+          <div className="mt-4 max-w-3xl mx-auto lg:max-w-none lg:mx-0">
             <PMSectionHeader title={`${filtered(mine).length} lucrări`} />
             {filtered(mine).length === 0 && (
               <PMEmptyState
@@ -287,6 +376,7 @@ export const SpecialistDashboard = () => {
                 description="Acceptă o oportunitate pentru a începe."
               />
             )}
+            <div className="space-y-3 mt-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0 lg:items-start">
             {filtered(mine).map(r => (
               <PMCard key={r.id} accent={r.disputed ? "warning" : r.status === "in_progress" ? "primary" : "default"} testid={`mine-${r.id}`}>
                 <div className="flex justify-between items-start mb-2 gap-3">
@@ -333,6 +423,7 @@ export const SpecialistDashboard = () => {
                 )}
               </PMCard>
             ))}
+            </div>
           </div>
         </>
       )}
@@ -366,14 +457,22 @@ export const SpecialistDashboard = () => {
         </div>
       )}
 
-      {tab === "settings" && <SettingsPanel />}
+      {tab === "settings" && (
+        <>
+          <div className="max-w-2xl mx-auto mb-4 space-y-4">
+            <ReferralHub variant="dark" />
+            <BetaFeedbackEntry />
+          </div>
+          <SettingsPanel />
+        </>
+      )}
 
       {chatRequest && <ChatPanel requestId={chatRequest} onClose={() => setChatRequest(null)} />}
       {showDocs && <SpecialistDocumentsModal onClose={() => setShowDocs(false)} />}
       {disputeFor && <OpenDisputeModal requestId={disputeFor.id} requestTitle={disputeFor.title} onClose={() => setDisputeFor(null)} onOpened={() => load()} />}
       {proposePhaseFor && <ProposePhaseModal requestId={proposePhaseFor} onClose={() => setProposePhaseFor(null)} onProposed={() => load()} />}
       {showPortfolio && <PortfolioManagerModal onClose={() => setShowPortfolio(false)} />}
-      {acceptingReq && <ScheduleProposalModal requestId={acceptingReq.id} requestTitle={acceptingReq.title} onClose={() => setAcceptingReq(null)} onAccepted={async () => { await refreshUser(); load(); }} />}
+      {acceptingReq && <ScheduleProposalModal requestId={acceptingReq.id} requestTitle={acceptingReq.title} feeWaived={acceptingReq.feeWaived} onClose={() => setAcceptingReq(null)} onAccepted={async () => { import("../lib/analytics").then(({ trackIntent }) => trackIntent("specialist_action_taken")).catch(() => {}); await refreshUser(); load(); }} />}
       {timelineRequestId && <RequestTimelineModal requestId={timelineRequestId} onClose={() => setTimelineRequestId(null)} />}
       {showNewProject && <NewProjectModal onClose={() => setShowNewProject(false)} />}
     </DashLayout>
@@ -458,14 +557,14 @@ const NewProjectModal = ({ onClose }) => {
   );
 };
 
-const FilterBar = ({ searchQ, setSearchQ, urgentOnly, setUrgentOnly, urgentCount = 0 }) => (
+const FilterBar = ({ searchQ, setSearchQ, urgentOnly, setUrgentOnly, urgentCount = 0, placeholder = "Caută oportunități..." }) => (
   <div className="max-w-3xl mx-auto sticky top-[72px] z-10">
     <div className="pm-card-glass !p-3">
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500" />
           <input
-            type="text" placeholder="Caută oportunități..." value={searchQ} onChange={e => setSearchQ(e.target.value)}
+            type="text" placeholder={placeholder} value={searchQ} onChange={e => setSearchQ(e.target.value)}
             className="w-full bg-white/5 border border-white/10 rounded-full pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:border-[var(--pm-primary)]/50 transition-colors"
             data-testid="spec-search"
           />

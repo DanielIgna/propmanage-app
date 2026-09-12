@@ -1,0 +1,30 @@
+{
+  "summary": "Iter98 — Sprint F validation: Specialist Cockpit + AI Insights LLM (Claude) + Reconcile Orphans 1-tap. BACKEND: 9/9 pytest tests PASS in test_iter98_sprint_f.py. FRONTEND: 8/8 review criteria PASS on desktop 1440x900. STRICT LLM BUDGET respected — analytics cached (no force), finance triggered ONE allowed call. Full details: (1) GET /api/specialist/cockpit as specialist returns full shape — pipeline{leads_matched:0,leads_total,offers_active:7,done_this_month:13}, money{this_month:2600,last_month, trend_pct:+117, avg_per_job:348}, benchmark{category:'hvac', mid_avg:793, expert_avg:1071, unit:'buc'}, assistant_actions:[1 item — 'pricing']. Client role → 403 as required. (2) GET /api/admin/insights/llm?module=analytics as admin returns cached:true (no force=true used), 9 bullets/recommendations rendered. (3) module=finance returns valid JSON shape {bullets, recommendations, cached, alerts optional}. (4) module=bad → 400. Non-admin (client) → 401/403. (5) POST /api/admin/control-tower/actions/reconcile-orphans → {repaired:0, message:'Nicio tranzacție orfană...'} idempotent as expected. GET /api/admin/control-tower attention list does NOT contain 'orphan_transactions' kind. GET /api/admin/orchestrator/ledger returns 200 and payload contains 'reconcile_orphans_1tap' step. FRONTEND: /specialist mounts spec-cockpit; spec-benchmark reads 'Piața (hvac): 793–1071 lei/buc'; four mini-cards present (spec-pipe-leads=0, spec-pipe-active=7, spec-pipe-done=13, spec-pipe-money='2.600 RON luna aceasta +117%'). Clicking spec-pipe-active fires onGo('jobs') — no console error (tab switch handled by parent setTab, verified via subsequent nav being active). spec-assistant card renders with 1 action row (spec-assistant-action-pricing: 'Câștigul tău mediu/lucrare (348 RON) e sub media expert de piață…'), click navigates. Cockpit visible in BOTH dark and light themes (data-theme toggle). 'Astăzi ai' regression via spec-today-summary + spec-today-{open,active,notifs,earnings} all present. /admin/analytics-growth: ag-ai-insights-llm-btn text='Analiză AI (Claude)' initially, click → card badge switches to 'CLAUDE'/'LIVE' with 9 li items including recommendation rows with ArrowRight icons. /admin/control-tower: no 'orfan' text present, ct-autonomy-report-llm-btn present but NOT clicked (LLM budget). /admin overview renders (KPIs, briefing, AI Insights card). ZERO JS pageerrors captured across full run. Only expected 401s on unauth polling endpoints prior to login.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_iter98_sprint_f.py", "/app/test_reports/pytest/iter98_results.xml"],
+  "action_items": [
+    "OPTIONAL: /app/memory/test_credentials.md still lists admin password 'Admin123!' — actual is '1!nasov01ADMIN'. 10th consecutive iteration flagging this; please update the doc.",
+    "OPTIONAL: The click on spec-pipe-active fires onGo('jobs') via prop callback; parent (SpecialistDashboard) is expected to setTab('jobs'). We couldn't verify tab-active state via aria-selected (not set on spec-tab-desktop-jobs). Consider adding aria-selected on active BottomNav pill for a11y + testability.",
+    "OPTIONAL: SpecialistCockpit shows only 1 assistant action (pricing) despite rule engine having 5 possible rules — this is because the specialist has verified=true, reviews_count>=5, trend_pct>=0, leads_matched=0. Expected. Consider adding a 'steady' fallback message or blending 2 non-mutex rules when only 1 fires to fill the 1-4 item spec."
+  ],
+  "critical_code_review_comments": [
+    "specialist_cockpit.py L46 — trend_pct is None when last_month==0 (correct), but frontend spec-pipe-money renders '+117%' when trend_pct=+117 (int) — the '+' prefix logic `m.trend_pct > 0 ? '+' : ''` works. However if trend_pct===0 no sign shown; consider showing '±0%' or hiding trend chip entirely.",
+    "specialist_cockpit.py L74 — pricing rule text embeds `user.get('rating') or '—'` unescaped inside f-string with ★; if rating field is None it prints '—★' which is fine. OK.",
+    "AIInsightCard (design-system/index.jsx L74-83) — runLlm sets llm={error:true} on any non-ok response including 429/500. Consider surfacing status/reason for admin debugging. Minor.",
+    "AIInsightCard L96 — badge type='LIVE' with content='CLAUDE'; DSBadge may not have LIVE styling variant. Verify DSBadge switch case handles LIVE; if not, defaults to plain — cosmetic.",
+    "Positive: 6h cache on /api/admin/insights/llm materially reduces Claude cost — cached:true observed on analytics; solid pattern."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter98_sprint_f.py"],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% (8/8 review criteria)"},
+  "test_credentials": "specialist@propmanage.io/Spec123! ✓, admin@propmanage.io/1!nasov01ADMIN ✓, client@propmanage.io/Client123! ✓. /app/memory/test_credentials.md STILL lists admin as 'Admin123!' (incorrect).",
+  "seed_data_creation": "None. Read-only + one idempotent POST reconcile-orphans (already 0 repaired).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Sprint F endpoints validated. Testids: spec-cockpit, spec-benchmark, spec-pipe-leads/active/done/money, spec-assistant, spec-assistant-action-{kind}, spec-today-summary + spec-today-{open|active|notifs|earnings}, ag-ai-insights (+ ag-ai-insights-llm-btn), ct-autonomy-report-llm-btn (do NOT click — LLM cost). Cockpit onGo('jobs') doesn't set aria-selected; use URL/tab content assertion instead. Admin ledger at /api/admin/orchestrator/ledger contains 'reconcile_orphans_1tap' entry. LLM cache is 6h in ai_insights_cache collection — never use force=true unless main agent explicitly requests. Emergent LLM key + emergentintegrations lib powers Claude call in ai_insights.py.",
+  "rca of the issue": "N/A — all Sprint F criteria pass end-to-end."
+}

@@ -1,0 +1,44 @@
+{
+  "summary": "Iteration 109 — XOS Multi-surface Layout Engine (Etapa 1.2) + Role Experience Manager (Etapa 1.3) tested. Backend: 17/17 tests pass — specialist_home layout returns 5 widgets, admin surfaces returns 2 surfaces with correct labels/widgets, PUT/reset persists, experience profile GET/PUT/restore works for all 3 roles, tenant_id=main present on all 10 registry entries, unknown role/surface → 404, invalid entry_route → 400. Frontend: SpecialistDashboard regression PASS — XOS-driven opportunities tab renders today_summary (KPI grid 5 items OK), cockpit, quests, tier_tools, tier_progress correctly. Admin XOS Builder surface selector switches between client_home and specialist_home, both show correct widget lists, drag/toggle/save/reset per surface all functional. E2E XOS PASS — admin disabled quests on specialist_home → saved → specialist re-login confirmed Quest-uri panel not rendered while today_summary still visible → reset restored (verified via API). UI Rules widget target dropdown includes all specialist widgets (today_summary, cockpit, quests, tier_tools, tier_progress). Client dashboard + homepage + mobile menu regression PASS. CRITICAL BUG FOUND: ExperienceProfilesPanel is imported in XOSBuilderPage.jsx (line 8) but NEVER rendered in JSX — admin has ZERO UI access to the Role Experience Manager (Etapa 1.3 feature). Backend endpoints work; only frontend rendering gap.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/experience/profile/{role}", "issue": "Endpoint is public (no auth) — anyone can read entry_route/default_theme/layout_surface per role. Currently used by SiteNav to resolve /dashboard for logged users; safe today but consider requiring auth if these become sensitive."},
+      {"endpoint": "PUT /api/admin/experience-profiles/{role}", "issue": "Partial updates supported (only fields present are updated) — no validation that at least one of the required fields is included after sanitization; 400 raised correctly when all are invalid. Behavior OK but should be documented."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "XOSBuilderPage.jsx", "issue": "ExperienceProfilesPanel is imported at line 8 but NEVER rendered anywhere in the JSX return tree (only <XOSRegistryPanel> at line 115). The Role Experience Manager admin UI (data-testid=experience-profiles-panel with exp-save-client/specialist/admin buttons) is completely inaccessible from any page. There is also no /admin/experience-profiles route in App.js and no menu link. Etapa 1.3 admin panel is orphaned code.", "selector": "[data-testid=experience-profiles-panel]", "priority": "CRITICAL"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_xos_iter109.py",
+    "/app/test_reports/pytest/iter109_xos.xml"
+  ],
+  "action_items": [
+    "URGENT — Render ExperienceProfilesPanel inside XOSBuilderPage.jsx: add <ExperienceProfilesPanel /> in the JSX (e.g. right after <XOSRegistryPanel onChanged={...} /> at line 115). Alternatively create a dedicated /admin/experience-profiles route (App.js) and menu entry (AdminLayoutMetronic.jsx). Without this, spec item 'exp-save-client etc.' cannot be tested and Etapa 1.3 admin control is dead code."
+  ],
+  "critical_code_review_comments": [
+    "XOSBuilderPage.jsx line 8: unused import ExperienceProfilesPanel — either wire it into the page or delete the import. Lint would catch (no-unused-vars) if strictness turned up.",
+    "xos.py _get_profile line 296: correctly falls back to DEFAULT_PROFILES + overlays saved doc; simple/clean.",
+    "xos.py admin_put_profile line 318: `layout_surface: ''` treated as valid (unset). Good for admin role. Ok pattern.",
+    "SiteNav.jsx line 63: entryRoute fetched on user change; nice UX. But dashboard href line 178 fallback is `/${user.role}` which duplicates default profile — acceptable defensive coding.",
+    "SpecialistDashboard.jsx line 65: xosHidden fetch fires on mount but not re-fired when user changes/logs out — minor: if a specialist logs in as another role in same tab, stale rules could apply. Fire-and-forget acceptable for now.",
+    "SpecialistDashboard.jsx line 136-138: tier-gated widgets (quests/tier_tools) return null when user tier is too low. Good separation — 'XOS disable' and 'tier gate' are independent, both must allow render.",
+    "xos.py registry _ensure_registry_seed line 46-54: iterates each surface separately; O(N surfaces) but N=2 today — fine. If N grows, batch insert would be better.",
+    "Frontend consumers of surfaces don't await ExperienceProfilesPanel data (uses local load()) — no issue but could show a small skeleton state."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_xos_iter109.py (new)"
+  ],
+  "success_rate": {"backend": "100% (17/17 pytest)", "frontend": "88% (7/8 flows: specialist dashboard regression PASS, admin xos-builder client_home PASS, admin xos-builder specialist_home PASS, E2E disable+verify+reset PASS, UI Rules widget dropdown PASS, client dashboard regression PASS, homepage/mobile menu PASS; FAIL: ExperienceProfilesPanel is not rendered anywhere so exp-save-* buttons untestable)"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (from backend/.env SEED_ADMIN_PASSWORD). specialist@propmanage.io / Spec123!. client@propmanage.io / Client123!. /app/memory/test_credentials.md still shows STALE Admin123! for admin.",
+  "seed_data_creation": "Backend tests toggled client experience profile then restored to defaults. Frontend E2E toggled specialist_home layout (quests disabled) then reset — verified final state via API: specialist_home = [today_summary, cockpit, quests, tier_tools, tier_progress] all enabled=true. No leftover test data.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend XOS multi-surface + experience profiles = solid (17/17 tests). Frontend regression tests all pass — SpecialistDashboard opportunities tab correctly renders XOS-driven widgets via xosLayout state, respects UI Rules via xosHidden, and tier gating still applies independently. Admin XOS Builder surface selector switches contents live; drag/toggle/save/reset all functional for both surfaces. UI Rules dropdown now includes all registry widgets (client + specialist). The ONE bug is a missed render: XOSBuilderPage.jsx imports ExperienceProfilesPanel but never uses it. After fix, retest: navigate to /admin/xos-builder, scroll to experience-profiles-panel, verify 3 rows (client/specialist/admin), each with exp-entry-{role}, exp-theme-{role}, exp-surface-{role} + exp-save-{role}; edit specialist entry_route to /specialist/new, click exp-save-specialist, verify toast + GET /api/experience/profile/specialist returns /specialist/new; restore to /specialist. Cookie banner selector: not shown in this session (likely already dismissed via localStorage). Note: login button label is Romanian 'Conectează-te' not 'Login'. Chat widget (bottom-right) can block clicks — use force=True. Specialist tier is JUNIOR (per screenshot) — quests visible, tier_tools visible, so no tier gating hides them; safe to test XOS disable vs render.",
+  "rca of the issue": "XOSBuilderPage.jsx: developer added the import line 8 (`import ExperienceProfilesPanel from './ExperienceProfilesPanel';`) but forgot to render `<ExperienceProfilesPanel />` in the JSX return tree. The panel file itself is correctly implemented (data-testid=experience-profiles-panel, 3 rows with exp-save-{role} buttons wiring to PUT /api/admin/experience-profiles/{role}). Repro: as admin GET /admin/xos-builder → search DOM for `experience-profiles-panel` → count=0. Fix (1 line): inside the last <div> of XOSBuilderPage return, right after `<XOSRegistryPanel .../>` at line 115, add `<ExperienceProfilesPanel />`. No backend change needed — backend endpoints tested and working (GET /api/admin/experience-profiles returns {profiles:[client,specialist,admin], themes:['dark','light','system'], surfaces:['client_home','specialist_home']}; PUT /api/admin/experience-profiles/{role} persists correctly)."
+}

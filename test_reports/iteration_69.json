@@ -1,0 +1,43 @@
+{
+  "summary": "Iteration 69 full-stack testing of (a) Sprint Health Digest backend endpoints + frontend card on /admin/it-collaborators/copilot, and (b) Legal Sprint 1 (6 mandatory contracts) backend + frontend (LegalSignPage, LegalGate, LegalAuditPage). 24/24 pytest cases pass (digest settings/run/RBAC + legal documents/sign/me-status + admin audit/contracts/seed + versioning). Frontend: digest-card with all 5 data-testids renders on Copilot page, /admin/legal-audit page renders correctly with matrix of 6 doc columns, stats (6 total / 1 conform / 5 cu probleme), search and 'Doar non-conformi' filter and view-history eye icons. Sidebar nav items 'admin-nav-legal_audit' (Compliance section) and 'admin-nav-it_legal' (IT Collaborators Hub section) BOTH present after their sections are expanded. /legal/sign loads for dev1@team.com showing all 6 signed (signed-nda, signed-collaboration, signed-ip_cession, signed-security_policy, signed-infra_access, signed-regulation) after pytest auto-signed them. LegalGate correctly NOT shown for admin, NOT shown for dev1 (already compliant), NOT shown for client (non-strategic). APScheduler 'IT Sprint Digest scheduled: sun 18:00 Europe/Bucharest' confirmed in backend logs.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/admin/it-collaborators/digest/run", "issue": "Email delivery fails at Resend layer with 'The associated domain with your API key is not verified.' — last_status saved as 'error' but the API endpoint still correctly returns ok=True with full report. This is a Resend env/domain config issue, NOT a code bug. Endpoint behavior matches spec (ok=True, sent_to, provider, report present)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter69_digest_and_legal.py",
+    "/app/test_reports/pytest/iter69.xml"
+  ],
+  "action_items": [
+    "(env-only) Verify Resend sender domain so weekly digest emails actually deliver (response shows ok=True but Resend rejects until domain is verified). No code change needed."
+  ],
+  "critical_code_review_comments": [
+    "routes/it_digest.py (319 lines) is clean: RBAC gate via is_super_admin on all 4 endpoints, validators raise 400 for invalid hour/day, APScheduler job re-registered on settings PATCH so cron stays in sync, recipient_email lowercased, last_sent_at/last_status persisted on both success and failure paths.",
+    "routes/legal.py (411 lines) — well structured user/admin split, ObjectId properly excluded via _doc_out/_contract_out, prior versions deactivated on new active document creation, /me/accept records IP + UA + signature_name + version, expired signatures auto-marked when a newer version is signed, _is_strategic_contributor checks both explicit flag and it_collaborators link.",
+    "/me/status logic correctly returns compliant=True for non-strategic contributors regardless of signed state, surfaces 'expired' separately from 'pending' so frontend can prompt re-signing for outdated versions.",
+    "Audit endpoint marks 3-state per doc (ok/missing/outdated) and supports only_non_compliant filter — verified end-to-end.",
+    "Seed is idempotent — re-running /api/admin/legal/seed returned inserted=0 after defaults exist.",
+    "LegalGate UX: gate correctly suppressed on /legal/sign, /login, /register and for non-strategic users — verified for admin@propmanage.io and client@propmanage.io.",
+    "Sidebar items respect superAdminOnly: 'admin-nav-legal_audit' and 'admin-nav-it_legal' render only inside super-admin sections (compliance + it_hub), both navigating to /admin/legal-audit."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter69_digest_and_legal.py"
+  ],
+  "success_rate": {
+    "backend": "100% (24/24 pytest)",
+    "frontend": "100% (all 14 required data-testids verified; gate visibility correct for 3 user types)"
+  },
+  "test_credentials": "Super admin: admin@propmanage.io / 1!nasov01ADMIN. Sub-admin: testing.admin@propmanage.io / TestAdmin123!. Strategic contributor: dev1@team.com / Dev1Pass!. Client (non-strategic): client@propmanage.io / Client123!.",
+  "seed_data_creation": "Pytest signed all 6 legal documents as dev1@team.com (collaborator_contracts collection now has 6 accepted contracts for that email). A short-lived NDA test version 'testXXXXXX' was created then deactivated; v1.0 restored as active. legal_documents collection still contains the 6 default v1.0 docs.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression file: /app/backend/tests/test_iter69_digest_and_legal.py. Run with: cd /app/backend && REACT_APP_BACKEND_URL=https://phased-document.preview.emergentagent.com python -m pytest tests/test_iter69_digest_and_legal.py -v. Resend domain is unverified — digest /run returns ok=True but Resend rejects delivery (last_status='error'). dev1@team.com is fully compliant (all 6 signed). To re-test LegalGate appearance, you'd need to revoke contracts via Mongo or create a new strategic user via POST /api/admin/it-collaborators with a fresh email tied to a registered account. Frontend selectors verified: digest-card, digest-enabled, digest-day, digest-hour, digest-email, digest-send-now, legal-audit-page, filter-non-compliant, audit-search, legal-sign-page, signed-{type}, pending-{type}, admin-nav-legal_audit, admin-nav-it_legal, legal-gate-modal.",
+  "rca of the issue": "No code-level issues. The one minor concern (Resend domain unverified) is environment-only and the endpoint correctly handles the failure path: it persists last_status='error' + last_error message but still returns HTTP 200 with the full AI report — UX shows the inline error banner. No changes recommended."
+}

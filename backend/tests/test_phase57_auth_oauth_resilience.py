@@ -14,6 +14,7 @@ import os
 import re
 import requests
 import pytest
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
 AUTH_PY = "/app/backend/routes/auth.py"
@@ -31,7 +32,7 @@ def api_client():
 def admin_session(api_client):
     r = api_client.post(
         f"{BASE_URL}/api/auth/login",
-        json={"email": "admin@propmanage.io", "password": "Admin123!"},
+        json={"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD},
     )
     assert r.status_code == 200, f"Admin login failed: {r.status_code} {r.text[:200]}"
     return r
@@ -83,15 +84,16 @@ class TestGoogleSessionRetryStructure:
         with open(AUTH_PY, "r") as f:
             return f.read()
 
-    def test_retry_loop_has_3_attempts(self, src):
-        # Should contain `for attempt in range(3):`
-        assert re.search(r"for\s+attempt\s+in\s+range\(\s*3\s*\)", src), \
-            "Retry loop should iterate exactly 3 times"
+    def test_retry_loop_has_2_attempts(self, src):
+        # Retry loop intentionally reduced to 2 × 15s (+2s backoff) so the total
+        # stays under the Kubernetes ingress proxy timeout (~60s) — see auth.py.
+        assert re.search(r"for\s+attempt\s+in\s+range\(\s*2\s*\)", src), \
+            "Retry loop should iterate exactly 2 times"
 
-    def test_timeout_is_30_seconds(self, src):
-        # `httpx.AsyncClient(timeout=30)` (not 10)
-        assert re.search(r"httpx\.AsyncClient\(\s*timeout\s*=\s*30\s*\)", src), \
-            "httpx.AsyncClient timeout should be 30 seconds"
+    def test_timeout_is_15_seconds(self, src):
+        # `httpx.AsyncClient(timeout=15)` (not 10)
+        assert re.search(r"httpx\.AsyncClient\(\s*timeout\s*=\s*15\s*\)", src), \
+            "httpx.AsyncClient timeout should be 15 seconds"
         # Negative: ensure old 10s timeout is not present
         assert not re.search(r"httpx\.AsyncClient\(\s*timeout\s*=\s*10\s*\)", src), \
             "Old 10s timeout still present"
@@ -118,7 +120,7 @@ class TestLoginCookies:
     def test_admin_login_sets_access_and_refresh_and_clears_admin_stash(self, api_client):
         r = api_client.post(
             f"{BASE_URL}/api/auth/login",
-            json={"email": "admin@propmanage.io", "password": "Admin123!"},
+            json={"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD},
         )
         assert r.status_code == 200, f"Login failed: {r.text[:300]}"
 
@@ -152,7 +154,7 @@ class TestLoginCookies:
         s = requests.Session()
         login = s.post(
             f"{BASE_URL}/api/auth/login",
-            json={"email": "admin@propmanage.io", "password": "Admin123!"},
+            json={"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD},
         )
         assert login.status_code == 200
         # Try refresh endpoint (may be /api/auth/refresh)

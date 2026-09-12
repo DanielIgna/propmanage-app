@@ -9,10 +9,10 @@ Covers:
 - Existing login flows still work
 """
 import os
-import time
 import uuid
 import requests
 import pytest
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 def _get_base_url() -> str:
     """Read REACT_APP_BACKEND_URL from env, falling back to backend/.env or frontend/.env."""
@@ -40,7 +40,7 @@ BASE_URL = _get_base_url()
 API = f"{BASE_URL}/api"
 
 CLIENT = {"email": "client@propmanage.io", "password": "Client123!"}
-ADMIN = {"email": "admin@propmanage.io", "password": "Admin123!"}
+ADMIN = {"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD}
 
 
 def _new_client_session():
@@ -50,6 +50,7 @@ def _new_client_session():
     payload = {
         "email": email,
         "password": "Tester123!",
+        "terms_accepted": True, "privacy_policy_accepted": True,
         "name": "Phase52 Tester",
         "role": "client",
         "phone": "+40700000000",
@@ -135,6 +136,7 @@ class TestBecomeSpecialist:
         payload = {
             "email": email,
             "password": "Tester123!",
+            "terms_accepted": True, "privacy_policy_accepted": True,
             "name": "Native Spec",
             "role": "specialist",
             "phone": "+40700000111",

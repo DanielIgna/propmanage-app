@@ -55,7 +55,7 @@ const FeesTab = () => {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
-  const load = () => axios.get(`${API}/api/admin/fee-config`).then(r => setCfg(r.data));
+  const load = () => axios.get(`${API}/api/admin/fee-config`).then(r => setCfg(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const save = async () => {
@@ -141,7 +141,7 @@ const TierRulesTab = () => {
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    axios.get(`${API}/api/admin/tier-rules`).then(r => setRules(r.data));
+    axios.get(`${API}/api/admin/tier-rules`).then(r => setRules(r.data)).catch(() => {});
   }, []);
 
   const save = async () => {
@@ -242,7 +242,7 @@ const PoliciesTab = () => {
   const [docs, setDocs] = useState([]);
   const [editing, setEditing] = useState(null);
 
-  const load = () => axios.get(`${API}/api/admin/policy-docs`).then(r => setDocs(r.data.items || []));
+  const load = () => axios.get(`${API}/api/admin/policy-docs`).then(r => setDocs(r.data.items || [])).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const save = async (data) => {
@@ -339,7 +339,7 @@ const PolicyEditor = ({ doc, onClose, onSave }) => {
 const PromotionRunsTab = () => {
   const [items, setItems] = useState([]);
   useEffect(() => {
-    axios.get(`${API}/api/admin/tier-promotion-runs`).then(r => setItems(r.data.items || []));
+    axios.get(`${API}/api/admin/tier-promotion-runs`).then(r => setItems(r.data.items || [])).catch(() => {});
   }, []);
   if (items.length === 0) return <div className="text-stone-500 italic text-sm">Niciun istoric. Apasă "Rulează acum" în tab-ul "Praguri Tier".</div>;
   return (

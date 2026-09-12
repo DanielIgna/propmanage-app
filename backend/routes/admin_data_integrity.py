@@ -18,10 +18,9 @@ Checks performed:
 import logging
 import time
 from datetime import datetime, timezone
-from typing import Optional
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
 from db import db
 from deps import require_role
@@ -456,3 +455,218 @@ async def list_runs(
     ).sort("started_at", -1).limit(limit)
     items = await cursor.to_list(limit)
     return {"items": items, "count": len(items)}
+
+
+# ============================================================================
+# ORPHAN TWINS — SAFE REPAIR / DELETE (archive-based soft delete)
+# ----------------------------------------------------------------------------
+# An "orphan twin" = a db.twins record whose property_id no longer exists in
+# db.properties. Re-attach (repair) is only possible if the correct property can
+# be determined deterministically. In practice these twins carry NO owner_id and
+# NO other link, so re-attach is IMPOSSIBLE → the safe action is DELETE (archived
+# to db.twins_orphan_archive, recoverable). Never deletes the property, users,
+# requests, wallets, transactions or disputes — only the orphan twin record
+# (and only if no other collection references its twin_id).
+# ============================================================================
+
+# Collections that could hold a reference to a twin via `twin_id`.
+_TWIN_REF_COLLECTIONS = ["twin_snapshots", "digital_twin_projects", "property_assets", "activity_events"]
+
+
+async def _twin_external_refs(twin_id: str) -> dict:
+    """Count references to this twin_id in dependent collections. Non-zero => needs review."""
+    refs = {}
+    for coll in _TWIN_REF_COLLECTIONS:
+        try:
+            n = await db[coll].count_documents({"twin_id": twin_id})
+            if n:
+                refs[coll] = n
+        except Exception:  # noqa: BLE001
+            pass
+    return refs
+
+
+async def _compute_orphan_twins() -> list:
+    """Recompute the current orphan-twin set from the DB (source of truth).
+    Returns a classified list: deterministically-deletable vs needs-review."""
+    twins = []
+    prop_ids = set()
+    async for tw in db.twins.find({}, {"property_id": 1, "_id": 1, "status": 1, "created_at": 1, "owner_id": 1, "kind": 1}):
+        pid = tw.get("property_id")
+        if pid:
+            prop_ids.add(pid)
+        twins.append(tw)
+    existing = await _get_existing_ids("properties", prop_ids)
+    out = []
+    for tw in twins:
+        pid = tw.get("property_id")
+        if not pid or pid in existing:
+            continue  # not orphan
+        twin_id = str(tw["_id"])
+        refs = await _twin_external_refs(twin_id)
+        # Deterministic re-attach is impossible without a link; we never guess a property.
+        out.append({
+            "twin_id": twin_id,
+            "property_id": pid,
+            "status": tw.get("status"),
+            "created_at": tw.get("created_at"),
+            "has_owner": bool(tw.get("owner_id")),
+            "external_refs": refs,
+            "needs_review": bool(refs),  # dependent data present → don't auto-delete
+            "action": "needs_review" if refs else "delete_orphan",
+        })
+    return out
+
+
+@router.get("/orphan-twins")
+async def list_orphan_twins(user: dict = Depends(require_role("admin"))):
+    """List all orphan twins with a safe-action classification (read-only)."""
+    items = await _compute_orphan_twins()
+    deletable = [i for i in items if i["action"] == "delete_orphan"]
+    review = [i for i in items if i["action"] == "needs_review"]
+    return {
+        "total": len(items),
+        "deletable": len(deletable),
+        "needs_review": len(review),
+        "all_deterministic": len(review) == 0 and len(items) > 0,
+        "items": items,
+    }
+
+
+async def _audit(action: str, twin_id: str, original_property_id, result: str,
+                 admin_email: str, reason: str = "", error: str = "") -> None:
+    try:
+        await db.data_integrity_actions.insert_one({
+            "ts": _now(),
+            "admin_email": admin_email,
+            "check": "orphan_twins",
+            "action": action,              # DELETE_ORPHAN | REPAIR
+            "twin_id": twin_id,
+            "original_property_id": original_property_id,
+            "final_property_id": None,
+            "reason": reason,
+            "result": result,             # SUCCESS | SKIPPED | FAILED
+            "error": error,
+        })
+    except Exception:  # noqa: BLE001
+        pass
+
+
+async def _archive_and_delete_twin(twin_id: str, admin_email: str) -> dict:
+    """Atomically-safe soft-delete of ONE orphan twin: re-verify orphan + no refs,
+    copy to archive, then delete. Race-safe via guarded delete + archive rollback."""
+    try:
+        oid = ObjectId(twin_id)
+    except Exception:
+        await _audit("DELETE_ORPHAN", twin_id, None, "FAILED", admin_email, error="invalid_id")
+        return {"twin_id": twin_id, "result": "FAILED", "error": "invalid_id"}
+
+    tw = await db.twins.find_one({"_id": oid})
+    if not tw:
+        await _audit("DELETE_ORPHAN", twin_id, None, "SKIPPED", admin_email, reason="not_found")
+        return {"twin_id": twin_id, "result": "SKIPPED", "reason": "not_found"}
+
+    pid = tw.get("property_id")
+    # Re-verify STILL orphan (guard against race / re-created property).
+    if pid:
+        existing = await _get_existing_ids("properties", {pid})
+        if pid in existing:
+            await _audit("DELETE_ORPHAN", twin_id, pid, "SKIPPED", admin_email, reason="property_exists_now")
+            return {"twin_id": twin_id, "result": "SKIPPED", "reason": "property_exists_now"}
+    # Re-verify no dependent refs.
+    refs = await _twin_external_refs(twin_id)
+    if refs:
+        await _audit("DELETE_ORPHAN", twin_id, pid, "SKIPPED", admin_email, reason=f"has_refs:{refs}")
+        return {"twin_id": twin_id, "result": "SKIPPED", "reason": "has_refs", "refs": refs}
+
+    # 1) Archive (recoverable soft-delete).
+    archive_doc = {
+        **tw,
+        "original_id": str(tw["_id"]),
+        "archived_at": _now(),
+        "archived_by": admin_email,
+        "archive_reason": "orphan_twin_property_missing",
+    }
+    archive_doc.pop("_id", None)
+    try:
+        await db.twins_orphan_archive.insert_one(archive_doc)
+    except Exception as e:  # noqa: BLE001
+        await _audit("DELETE_ORPHAN", twin_id, pid, "FAILED", admin_email, error=f"archive_failed:{str(e)[:120]}")
+        return {"twin_id": twin_id, "result": "FAILED", "error": "archive_failed"}
+
+    # 2) Guarded delete — only if still the same orphan property_id.
+    res = await db.twins.delete_one({"_id": oid, "property_id": pid})
+    if res.deleted_count != 1:
+        # Roll back archive to avoid a dangling duplicate; leave DB untouched.
+        await db.twins_orphan_archive.delete_one({"original_id": twin_id})
+        await _audit("DELETE_ORPHAN", twin_id, pid, "SKIPPED", admin_email, reason="race_changed")
+        return {"twin_id": twin_id, "result": "SKIPPED", "reason": "race_changed"}
+
+    await _audit("DELETE_ORPHAN", twin_id, pid, "SUCCESS", admin_email, reason="archived_and_deleted")
+    return {"twin_id": twin_id, "result": "SUCCESS", "archived": True}
+
+
+@router.post("/orphan-twins/resolve")
+async def resolve_orphan_twins(
+    payload: dict,
+    user: dict = Depends(require_role("admin")),
+):
+    """Repair/delete orphan twins.
+
+    Body: {"action": "delete_orphan", "twin_ids": [...]|null, "confirm": true}
+    - action="delete_orphan" (only supported action; re-attach is impossible for
+      link-less orphans and we never guess a property).
+    - twin_ids=null => operate on ALL deterministic orphans (server recomputes the
+      set; needs_review items are excluded automatically).
+    - confirm=true is REQUIRED.
+
+    Each twin is archived to db.twins_orphan_archive then removed from db.twins.
+    Properties, users, requests, wallets, transactions and disputes are never touched.
+    """
+    action = (payload or {}).get("action") or "delete_orphan"
+    confirm = bool((payload or {}).get("confirm"))
+    twin_ids = (payload or {}).get("twin_ids")
+
+    from fastapi import HTTPException
+    if action != "delete_orphan":
+        raise HTTPException(400, "Acțiune nesuportată. Twins orfane fără legătură nu pot fi reparate determinist; folosește delete_orphan.")
+    if not confirm:
+        raise HTTPException(400, "Confirmarea explicită este necesară (confirm=true).")
+
+    admin_email = user.get("email") or "admin"
+    current = await _compute_orphan_twins()
+    deterministic = {i["twin_id"] for i in current if i["action"] == "delete_orphan"}
+    review_ids = {i["twin_id"] for i in current if i["action"] == "needs_review"}
+
+    if twin_ids is None:
+        targets = list(deterministic)
+    else:
+        # Only allow deterministic orphans; silently skip anything else (safety).
+        targets = [t for t in twin_ids if t in deterministic]
+
+    results = []
+    for tid in targets:
+        results.append(await _archive_and_delete_twin(tid, admin_email))
+
+    deleted = sum(1 for r in results if r["result"] == "SUCCESS")
+    skipped = sum(1 for r in results if r["result"] == "SKIPPED")
+    failed = sum(1 for r in results if r["result"] == "FAILED")
+
+    # Re-scan orphan twins to confirm the fix.
+    after = await _compute_orphan_twins()
+
+    return {
+        "ok": failed == 0,
+        "action": action,
+        "requested": len(targets),
+        "deleted": deleted,
+        "skipped": skipped,
+        "failed": failed,
+        "needs_review_remaining": len([i for i in after if i["action"] == "needs_review"]),
+        "orphan_twins_remaining": len(after),
+        "details": results[:50],
+        "message": (
+            f"Șterse (arhivate): {deleted} · sărite: {skipped} · eșuate: {failed}. "
+            f"Twins orfane rămase: {len(after)}."
+        ),
+    }

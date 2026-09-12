@@ -9,7 +9,6 @@ Lightweight middleware that:
 import re
 import logging
 from datetime import datetime, timezone, timedelta
-from typing import Optional
 
 from fastapi import Request
 

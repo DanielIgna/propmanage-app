@@ -32,6 +32,49 @@ logger = logging.getLogger("propmanage.autonomy.autopilot")
 # ============================================================================
 # 1. BOOTSTRAP (called once on startup)
 # ============================================================================
+async def _bootstrap_toggle(collection, defaults: dict) -> str:
+    """Enable a config doc (insert defaults or flip `enabled` ON) unless the
+    admin explicitly opted out. Returns 'enabled' or 'skipped'."""
+    cfg = await collection.find_one({"_id": "config"})
+    now_iso = datetime.now(timezone.utc).isoformat()
+    if cfg is None:
+        await collection.insert_one({
+            "_id": "config",
+            "enabled": True,
+            "auto_enabled_by_autopilot": True,
+            "updated_at": now_iso,
+            **defaults,
+        })
+        return "enabled"
+    if not cfg.get("enabled") and not cfg.get("admin_disabled"):
+        # Was disabled by old default — flip ON only if admin never opted out
+        await collection.update_one(
+            {"_id": "config"},
+            {"$set": {
+                "enabled": True,
+                "auto_enabled_by_autopilot": True,
+                "updated_at": now_iso,
+            }},
+        )
+        return "enabled"
+    return "skipped"
+
+
+async def _bootstrap_settings_snapshot() -> str:
+    """Take a settings snapshot if the latest one is older than 36h."""
+    latest = await db.app_settings_snapshots.find_one({}, sort=[("ts", -1)])
+    if latest and latest.get("ts"):
+        try:
+            ts = datetime.fromisoformat(str(latest["ts"]).replace("Z", "+00:00"))
+            if (datetime.now(timezone.utc) - ts) < timedelta(hours=36):
+                return "skipped"
+        except Exception:  # noqa: BLE001
+            pass
+    from routes.settings_snapshots import _take_snapshot
+    await _take_snapshot("auto", f"Autopilot bootstrap {datetime.now(timezone.utc).isoformat()[:10]}", "autopilot")
+    return "taken"
+
+
 async def bootstrap_autonomy_defaults() -> dict:
     """Enable autonomy-friendly defaults the FIRST time the app boots.
 
@@ -39,85 +82,31 @@ async def bootstrap_autonomy_defaults() -> dict:
     marker (``auto_enabled_by_autopilot``) is left in place but values are not
     re-overridden, so admin's intent is preserved.
     """
-    summary = {
-        "smoke_test_monitor": "skipped",
-        "auto_match_schedule": "skipped",
-        "settings_snapshot": "skipped",
-    }
+    summary = {}
 
     # ---- (a) Smoke Test Monitor ----
     try:
-        cfg = await db.smoke_test_config.find_one({"_id": "config"})
-        if cfg is None:
-            now_iso = datetime.now(timezone.utc).isoformat()
-            await db.smoke_test_config.insert_one({
-                "_id": "config",
-                "enabled": True,
-                "interval_minutes": 30,
-                "last_alert_at": None,
-                "last_status": None,
-                "auto_enabled_by_autopilot": True,
-                "updated_at": now_iso,
-            })
-            summary["smoke_test_monitor"] = "enabled"
-        elif not cfg.get("enabled") and not cfg.get("admin_disabled"):
-            # Was disabled by old default — flip ON only if admin never opted out
-            await db.smoke_test_config.update_one(
-                {"_id": "config"},
-                {"$set": {
-                    "enabled": True,
-                    "auto_enabled_by_autopilot": True,
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                }},
-            )
-            summary["smoke_test_monitor"] = "enabled"
+        summary["smoke_test_monitor"] = await _bootstrap_toggle(
+            db.smoke_test_config,
+            {"interval_minutes": 30, "last_alert_at": None, "last_status": None},
+        )
     except Exception as e:  # noqa: BLE001
         logger.warning(f"[autopilot] smoke monitor bootstrap failed: {e}")
         summary["smoke_test_monitor"] = f"error:{str(e)[:80]}"
 
     # ---- (b) Auto-Match Schedule ----
     try:
-        cfg = await db.auto_match_schedule.find_one({"_id": "config"})
-        if cfg is None:
-            await db.auto_match_schedule.insert_one({
-                "_id": "config",
-                "enabled": True,
-                "interval_hours": 6,
-                "min_rating": 0.0,
-                "limit": 100,
-                "auto_enabled_by_autopilot": True,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            })
-            summary["auto_match_schedule"] = "enabled"
-        elif not cfg.get("enabled") and not cfg.get("admin_disabled"):
-            await db.auto_match_schedule.update_one(
-                {"_id": "config"},
-                {"$set": {
-                    "enabled": True,
-                    "auto_enabled_by_autopilot": True,
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                }},
-            )
-            summary["auto_match_schedule"] = "enabled"
+        summary["auto_match_schedule"] = await _bootstrap_toggle(
+            db.auto_match_schedule,
+            {"interval_hours": 6, "min_rating": 0.0, "limit": 100},
+        )
     except Exception as e:  # noqa: BLE001
         logger.warning(f"[autopilot] auto-match bootstrap failed: {e}")
         summary["auto_match_schedule"] = f"error:{str(e)[:80]}"
 
     # ---- (c) Settings Snapshot freshness ----
     try:
-        latest = await db.app_settings_snapshots.find_one({}, sort=[("ts", -1)])
-        is_stale = True
-        if latest and latest.get("ts"):
-            try:
-                ts = datetime.fromisoformat(str(latest["ts"]).replace("Z", "+00:00"))
-                if (datetime.now(timezone.utc) - ts) < timedelta(hours=36):
-                    is_stale = False
-            except Exception:
-                pass
-        if is_stale:
-            from routes.settings_snapshots import _take_snapshot
-            await _take_snapshot("auto", f"Autopilot bootstrap {datetime.now(timezone.utc).isoformat()[:10]}", "autopilot")
-            summary["settings_snapshot"] = "taken"
+        summary["settings_snapshot"] = await _bootstrap_settings_snapshot()
     except Exception as e:  # noqa: BLE001
         logger.warning(f"[autopilot] snapshot bootstrap failed: {e}")
         summary["settings_snapshot"] = f"error:{str(e)[:80]}"
@@ -129,6 +118,72 @@ async def bootstrap_autonomy_defaults() -> dict:
 # ============================================================================
 # 2. DAILY SWEEP (called by APScheduler)
 # ============================================================================
+async def _sweep_qa_findings(cutoff_14d: str) -> int:
+    """Auto-resolve non-critical QA findings open for >14 days. Returns count."""
+    resolved = 0
+    async for sess in db.qa_sessions.find({}, {"_id": 1, "findings": 1, "created_at": 1}):
+        findings = sess.get("findings") or []
+        changed = False
+        for f in findings:
+            status = f.get("status") or "open"
+            created = f.get("created_at") or sess.get("created_at") or ""
+            severity = (f.get("severity") or "").lower()
+            # auto-resolve OPEN findings >14d that are not critical (low/medium/info)
+            if status == "open" and isinstance(created, str) and created < cutoff_14d and severity not in {"critical", "high"}:
+                f["status"] = "resolved"
+                f["resolved_at"] = datetime.now(timezone.utc).isoformat()
+                f["resolved_reason"] = "autopilot_stale_auto_resolve"
+                changed = True
+                resolved += 1
+        if changed:
+            await db.qa_sessions.update_one({"_id": sess["_id"]}, {"$set": {"findings": findings}})
+    return resolved
+
+
+async def _sweep_ai_findings(cutoff_30d: str) -> int:
+    """Dismiss non-critical AI findings open for >30 days. Returns count."""
+    res = await db.admin_ai_findings.update_many(
+        {
+            "status": "open",
+            "severity": {"$nin": ["high", "critical"]},
+            "created_at": {"$lt": cutoff_30d},
+        },
+        {"$set": {
+            "status": "dismissed",
+            "dismissed_at": datetime.now(timezone.utc).isoformat(),
+            "dismissed_reason": "autopilot_stale_auto_dismiss",
+        }},
+    )
+    return res.modified_count
+
+
+async def _refresh_autonomy_snapshot() -> dict:
+    """Invalidate the score cache and take a fresh snapshot."""
+    from autonomy.snapshots import take_autonomy_snapshot, _CACHE
+    _CACHE["data"] = None
+    snap = await take_autonomy_snapshot()
+    return {
+        "general": (snap.get("scores") or {}).get("general"),
+        "tier": snap.get("tier"),
+    }
+
+
+async def _log_sweep_run(out: dict) -> None:
+    """Persist a run log (keep last 90) so the admin can see history."""
+    try:
+        await db.autopilot_runs.insert_one({
+            "ran_at": datetime.now(timezone.utc).isoformat(),
+            "kind": "daily_sweep",
+            "result": out,
+        })
+        cur = db.autopilot_runs.find({}, {"_id": 1}).sort("ran_at", -1).skip(90)
+        old = [d["_id"] async for d in cur]
+        if old:
+            await db.autopilot_runs.delete_many({"_id": {"$in": old}})
+    except Exception:  # noqa: BLE001
+        pass
+
+
 async def daily_autopilot_sweep() -> dict:
     """Run the autonomy daily sweep — close stale findings + refresh score.
 
@@ -139,75 +194,25 @@ async def daily_autopilot_sweep() -> dict:
     cutoff_14d = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
     cutoff_30d = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
 
-    # ---- (a) QA findings ----
     try:
-        async for sess in db.qa_sessions.find({}, {"_id": 1, "findings": 1, "created_at": 1}):
-            findings = sess.get("findings") or []
-            changed = False
-            for f in findings:
-                status = f.get("status") or "open"
-                created = f.get("created_at") or sess.get("created_at") or ""
-                severity = (f.get("severity") or "").lower()
-                # auto-resolve OPEN findings >14d that are not critical (low/medium/info)
-                if status == "open" and isinstance(created, str) and created < cutoff_14d and severity not in {"critical", "high"}:
-                    f["status"] = "resolved"
-                    f["resolved_at"] = datetime.now(timezone.utc).isoformat()
-                    f["resolved_reason"] = "autopilot_stale_auto_resolve"
-                    changed = True
-                    out["qa_findings_resolved"] += 1
-            if changed:
-                await db.qa_sessions.update_one({"_id": sess["_id"]}, {"$set": {"findings": findings}})
+        out["qa_findings_resolved"] = await _sweep_qa_findings(cutoff_14d)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"[autopilot] QA sweep failed: {e}")
         out["qa_findings_error"] = str(e)[:160]
 
-    # ---- (b) AI findings (admin_ai_findings) ----
     try:
-        res = await db.admin_ai_findings.update_many(
-            {
-                "status": "open",
-                "severity": {"$nin": ["high", "critical"]},
-                "created_at": {"$lt": cutoff_30d},
-            },
-            {"$set": {
-                "status": "dismissed",
-                "dismissed_at": datetime.now(timezone.utc).isoformat(),
-                "dismissed_reason": "autopilot_stale_auto_dismiss",
-            }},
-        )
-        out["ai_findings_dismissed"] = res.modified_count
+        out["ai_findings_dismissed"] = await _sweep_ai_findings(cutoff_30d)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"[autopilot] AI findings sweep failed: {e}")
         out["ai_findings_error"] = str(e)[:160]
 
-    # ---- (c) Refresh autonomy snapshot ----
     try:
-        from routes.autonomy import take_autonomy_snapshot, _CACHE
-        _CACHE["data"] = None
-        snap = await take_autonomy_snapshot()
-        out["snapshot"] = {
-            "general": (snap.get("scores") or {}).get("general"),
-            "tier": snap.get("tier"),
-        }
+        out["snapshot"] = await _refresh_autonomy_snapshot()
     except Exception as e:  # noqa: BLE001
         logger.warning(f"[autopilot] snapshot refresh failed: {e}")
         out["snapshot_error"] = str(e)[:160]
 
-    # Persist a run log so the admin can see history
-    try:
-        await db.autopilot_runs.insert_one({
-            "ran_at": datetime.now(timezone.utc).isoformat(),
-            "kind": "daily_sweep",
-            "result": out,
-        })
-        # keep last 90 runs
-        cur = db.autopilot_runs.find({}, {"_id": 1}).sort("ran_at", -1).skip(90)
-        old = [d["_id"] async for d in cur]
-        if old:
-            await db.autopilot_runs.delete_many({"_id": {"$in": old}})
-    except Exception:  # noqa: BLE001
-        pass
-
+    await _log_sweep_run(out)
     logger.info(f"[autopilot] daily sweep done: {out}")
     return out
 

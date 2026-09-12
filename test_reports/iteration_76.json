@@ -1,0 +1,33 @@
+{
+  "summary": "iter76 Demo Accounts Manager + Cookie Banner compaction + Documentation update — backend 19/19 pytest PASS, frontend critical flows PASS. Backend verified: GET /api/admin/demo-accounts returns 5 items (testing/frontend/backend/security/marketing scopes, marketing.admin has role=marketing_manager, others role=admin) with default_password visible to super_admin only (non-super → 403); all 5 demo accounts login with default passwords; POST /reset-password returns {ok:true,new_password:<default>} and login post-reset works; wrong master_code '9999' → 403 'Cod master incorect.'; email not in DEMO_EMAILS → 400; POST /set-password with CustomPass2026! → 200, custom login works, old default rejected; weak pw (no digits) → 400; <8 chars → 422; wrong master on set → 403; non-super (testing.admin) → 403 on all 3 endpoints. Regression iter73-75 (marketing dashboard / campaigns / performance summary) → 200. Frontend verified at /admin/demo-accounts: demo-accounts-page renders with all 5 demo-row-{scope} rows; scope badges color-coded; Schimbă parola opens code-modal with master-code-input + new-password-input (both fillable, '0108'+'NewPass2026!'+confirm-code-btn → modal closes with success flash); Reset implicit opens code-modal with ONLY code input (new-password-input correctly absent), '0108'+confirm → flash 'Parola pentru testing.admin@propmanage.io a fost resetată la valoarea implicită: Test!Demo2026Strong'. Cookie banner now compact bottom-right (desktop bbox x=1531, y=952, w=373/1920≈19%; mobile bbox x=16, y=697, w=358/390 fits with left-4 padding). Marketing row 'Schimbă parola' button at y=521 is clickable WITHOUT dismissing cookie banner (banner at y=952). cookie-accept-all + other cookie testids preserved. /admin/documentation renders docs-topic-marketing-department, docs-topic-strategic-partners, docs-topic-demo-accounts as first 3 entries. Sidebar IT COLLABORATORS HUB section (collapsible) expanded reveals 'Demo Accounts Manager' entry with '0108' badge linking to /admin/demo-accounts.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_demo_accounts.py",
+    "/app/test_reports/pytest/iter76_demo_accounts.xml"
+  ],
+  "action_items": [
+    "Minor (docs only): The review request spec calls out testids 'pw-toggle-{scope}', 'pw-copy-{scope}', 'reset-btn-{scope}', 'code-modal-confirm', 'code-modal-cancel' — actual implementation uses 'toggle-{pw[0:3]}', 'copy-{pw[0:3]}', 'reset-{scope}', 'set-{scope}', 'confirm-code-btn'. All functionality works perfectly; only the testid names diverge from the spec. Consider aligning testid names for consistency, OR update the spec doc — non-blocking.",
+    "Minor: 'toggle-Tes' / 'copy-Tes' testids derive from first 3 chars of the default password. Since two demo accounts could theoretically share a prefix this could collide — current passwords are unique-prefix so safe today, but using scope (toggle-{scope}/copy-{scope}) would be more robust."
+  ],
+  "critical_code_review_comments": [
+    "demo_accounts.py (141 lines) is clean and focused: master code check before any DB write, demo-email allowlist enforced, idempotent bcrypt hashing, super_admin gate via is_super_admin(). Hardcoded MASTER_CODE='0108' is acceptable per super_admin's explicit request but consider moving to env var (e.g., DEMO_MASTER_CODE) for rotability without code redeploy.",
+    "set-password weak check is minimal (letters + digits only, no special-char requirement). Pydantic min_length=8 covers length. If platform-wide password policy tightens later, this validator should call a shared helper.",
+    "reset-password fallback (update without is_demo_sub_admin filter) on first try, then setting the flag — correct defensive design for legacy data, well-handled.",
+    "Frontend DemoAccountsPage.jsx PasswordCell uses password.slice(0,3) for testid suffix — works but is brittle (see action_items #2).",
+    "Cookie banner now correctly responsive: bottom-4 right-4 with left-4 sm:left-auto for mobile, max-w-sm caps desktop width — verified bbox 373px on 1920 viewport (19%) and 358px on 390 viewport (full width on mobile as designed)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_demo_accounts.py (NEW)"
+  ],
+  "success_rate": {"backend": "100% (19/19)", "frontend": "100% (all critical flows verified)"},
+  "test_credentials": "Super: admin@propmanage.io / 1!nasov01ADMIN (worked). Demo: testing.admin/Test!Demo2026Strong, frontend.admin/Front!Demo2026Strong, backend.admin/Back!Demo2026Strong, security.admin/Sec!Demo2026Strong, marketing.admin/Mkt!Demo2026Strong — all 5 verified via /api/auth/login (200). NOTE: /app/memory/test_credentials.md still shows the OLD admin password Admin123! and does NOT list the 5 new demo accounts — should be updated.",
+  "seed_data_creation": "Tests reset all 5 demo accounts to their default passwords (idempotent) via /api/admin/demo-accounts/reset-password before assertions. After test_set_custom_password_and_old_default_revoked, frontend.admin is restored to default. No leftover state.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 3 demo-accounts endpoints + full UI + cookie banner compaction + documentation update + sidebar entry verified. Master code is '0108' (4 digits). Reset returns new_password in response body so super-admin can copy directly. Custom set-password endpoint properly invalidates old default password. Cookie banner is now positioned correctly (bottom-4 right-4, max-w-sm) — does NOT overlap any action button on /admin/demo-accounts. Sidebar group 'IT COLLABORATORS HUB' is collapsible (badge '5') — must be expanded to see the Demo Accounts Manager link, which is by design. Recommendation: update /app/memory/test_credentials.md to include the 5 demo sub-admin accounts and correct super-admin password (1!nasov01ADMIN, not Admin123!)."
+}

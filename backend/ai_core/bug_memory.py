@@ -8,10 +8,8 @@ Aggregates errors/findings from:
 Provides a single search interface so when a new bug appears, the assistant
 can answer "have we seen this before?" by similarity scoring.
 """
-import re
 import logging
 from collections import Counter
-from typing import Optional
 
 from db import db
 from ai_core.memory import _tokenize, _score

@@ -1,26 +1,19 @@
 """PropManage router: design."""
-import os
-import asyncio
-import json
 import logging
 import uuid
-from typing import Optional, List, Literal, Dict
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException
 
 from db import db
-from core_utils import serialize_doc, effective_role
-from deps import get_current_user, require_role
-from services import send_email, notify, send_web_push, log_event
+from deps import require_role
+from services import notify
 from models import (
     DesignConceptIn, DesignPhaseAcceptIn, DesignPhaseQuoteIn,
     DESIGN_CONCEPT_PRICE_PER_ROOM, DESIGN_MAX_TOKEN_DISCOUNT_PCT,
 )
 from email_service import (
-    send_template, tpl_welcome, tpl_dispute_opened, tpl_dispute_resolved,
-    tpl_design_phase_quote, tpl_specialist_verified, tpl_escrow_funded,
+    send_template, tpl_design_phase_quote,
 )
 
 logger = logging.getLogger(__name__)

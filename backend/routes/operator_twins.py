@@ -1,23 +1,14 @@
 """PropManage router: operator_twins."""
-import os
-import asyncio
-import json
 import logging
-from typing import Optional, List, Literal, Dict
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException
 
 from db import db
-from core_utils import serialize_doc, effective_role
+from core_utils import serialize_doc
 from deps import get_current_user, require_role
-from services import send_email, notify, send_web_push, log_event
+from services import notify, log_event
 from models import TwinUpsertIn, TwinValidateIn
-from email_service import (
-    send_template, tpl_welcome, tpl_dispute_opened, tpl_dispute_resolved,
-    tpl_design_phase_quote, tpl_specialist_verified, tpl_escrow_funded,
-)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["operator_twins"])
@@ -101,6 +92,99 @@ async def get_my_property_twin(prop_id: str, user: dict = Depends(get_current_us
         "notes": twin.get("notes"),
         "requested_at": twin.get("requested_at"),
         "validated_at": twin.get("validated_at"),
+    }
+
+
+@router.get("/properties/{prop_id}/spaces")
+async def get_property_spaces(prop_id: str, user: dict = Depends(get_current_user)):
+    """P1 — Room/Space ca ancoră canonică cross-system.
+
+    Camerele NU se dublează: sursa e `twins.rooms[]` (uuid stabil + geometrie). Acest endpoint
+    doar EXPUNE camerele existente ca „spaces" referențiabile de documente / modele / active / pini,
+    fără colecție nouă și fără migrare. Autorizare identică cu vizualizarea twin-ului.
+    """
+    prop = await db.properties.find_one({"_id": ObjectId(prop_id)})
+    if not prop:
+        raise HTTPException(404, "Property not found")
+    is_authorized = (
+        prop.get("owner_id") == user["id"]
+        or user.get("role") in ("admin", "operator")
+    )
+    if not is_authorized and user.get("role") == "specialist":
+        spec_request = await db.requests.find_one({"property_id": prop_id, "specialist_id": user["id"]})
+        is_authorized = bool(spec_request)
+    if not is_authorized:
+        raise HTTPException(403, "Not allowed")
+    twin = await db.twins.find_one({"property_id": prop_id})
+    rooms = (twin.get("rooms") or []) if twin else []
+    spaces = [
+        {
+            "space_id": r.get("id"),
+            "name": r.get("name"),
+            "type": r.get("type"),
+            "area": r.get("area"),
+            "source": "twin_2d",
+        }
+        for r in rooms if r.get("id")
+    ]
+    return {"property_id": prop_id, "count": len(spaces), "spaces": spaces}
+
+
+@router.get("/properties/{prop_id}/digital-twin")
+async def get_property_digital_twin(prop_id: str, user: dict = Depends(get_current_user)):
+    """P1 — UNIFIED PROPERTY DIGITAL TWIN overview.
+
+    Contractul „aceeași proprietate, două straturi": 2D (`twins`: camere/active) + 3D
+    (`digital_twin_projects`/`models` ancorate de property_id în P0). Read-only, non-breaking.
+    Autorizare identică cu vizualizarea twin-ului (owner/admin/operator/specialist asignat).
+    """
+    prop = await db.properties.find_one({"_id": ObjectId(prop_id)})
+    if not prop:
+        raise HTTPException(404, "Property not found")
+    is_authorized = (
+        prop.get("owner_id") == user["id"]
+        or user.get("role") in ("admin", "operator")
+    )
+    if not is_authorized and user.get("role") == "specialist":
+        spec_request = await db.requests.find_one({"property_id": prop_id, "specialist_id": user["id"]})
+        is_authorized = bool(spec_request)
+    if not is_authorized:
+        raise HTTPException(403, "Not allowed")
+
+    twin = await db.twins.find_one({"property_id": prop_id})
+    rooms = (twin.get("rooms") or []) if twin else []
+    assets = (twin.get("assets") or []) if twin else []
+    twin_2d = {
+        "exists": bool(twin),
+        "status": (twin.get("status") if twin else "not_requested"),
+        "rooms_count": len(rooms),
+        "assets_count": len(assets),
+        "project_id": (twin.get("project_id") if twin else None),
+    }
+
+    projects = []
+    async for p in db.digital_twin_projects.find({"property_id": prop_id}).sort("updated_at", -1).limit(50):
+        models_count = await db.digital_twin_models.count_documents({"project_id": p["id"], "kind": {"$ne": "source"}})
+        projects.append({
+            "id": p["id"],
+            "name": p.get("name"),
+            "model_url": p.get("model_url"),
+            "models_count": models_count,
+            "property_link_status": p.get("property_link_status"),
+            "updated_at": p.get("updated_at"),
+        })
+    has_model = any(pr.get("model_url") or pr.get("models_count") for pr in projects)
+    twin_3d = {
+        "exists": bool(projects),
+        "has_model": has_model,
+        "projects": projects,
+    }
+
+    return {
+        "property_id": prop_id,
+        "property_name": prop.get("name") or prop.get("address"),
+        "twin_2d": twin_2d,
+        "twin_3d": twin_3d,
     }
 
 
@@ -332,7 +416,7 @@ async def operator_validate_twin(prop_id: str, data: TwinValidateIn, user: dict 
     if data.action == "approve":
         await db.properties.update_one(
             {"_id": ObjectId(prop_id)},
-            {"$set": {"twin_unlocked": True, "structure_health": 95}}
+            {"$set": {"twin_unlocked": True}}
         )
     # Notify property owner
     prop = await db.properties.find_one({"_id": ObjectId(prop_id)})

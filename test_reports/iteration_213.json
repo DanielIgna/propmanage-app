@@ -1,0 +1,20 @@
+{
+  "summary": "Frontend E2E of the PropManage commercial funnel instrumentation (VISITOR→CLIENT→PROPERTY→REQUEST→SPECIALIST→CONTINUATION). All requested flows PASS: (1) Client login → /client renders data-testid=client-dashboard-v2 (emits client_flow_opened). (2) Click v2-desktop-cta with an existing property opens the wizard (client_property_selected + request_started). (3) Wizard step1 category zugravit → step2 title/desc → step3 budget 1500 → submit produced v2-wizard-done and a real POST /api/requests writing db.requests (title TEST_FUNNEL_1787926655, id 6a91988028d4851d65f0616c). (4) Specialist login → /specialist renders (specialist_flow_opened), the new lead visible under Oportunități, accept-<id> opens ScheduleProposalModal, schedule-submit performs POST /api/requests/{id}/accept and jobs count went 27→28 with TEST_FUNNEL_1787926655 present in Lucrările mele (specialist_action_taken). (5) Admin /admin/analytics-growth → ag-tab-commercial renders ag-commercial-funnel with all 4 KPI cards (ag-cf-opened=1, ag-cf-started=1, ag-cf-created=1, ag-cf-conversion=100%), horizontal funnel chart ag-cf-chart showing all 7 stages (Client pe /client 1, Proprietate aleasă 1, Cerere începută 1, Cerere creată 1, Specialist deschide leads, Specialist acceptă 1, Flux finalizat 0), and ag-cf-backend-check with ag-cf-real-created=1 and Semnal request_created=1 (Diferență semnal − real = 0 — perfect cross-check with db.requests SSOT). Regression on Client Beta and Specialist Beta dashboards is fine (loaded, wizard functional, jobs list functional, accept functional).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "100%"},
+  "test_credentials": "client@propmanage.io / Client123! · specialist@propmanage.io / Spec123! · admin@propmanage.io / 1!nasov01ADMIN — all worked",
+  "seed_data_creation": "Created ONE real request via UI wizard: title=TEST_FUNNEL_1787926655, id=6a91988028d4851d65f0616c, category=zugravit, budget=1500 RON. It was then accepted by specialist@propmanage.io (default schedule, 4h estimate, 45 RON lead fee). This is a permanent db.requests write (per instructions the flow is real).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Commercial funnel feature is fully working end-to-end. Test-created request TEST_FUNNEL_1787926655 remains in db.requests as 'accepted' by specialist Mihai Ionescu. If re-testing the funnel counts, create a new request (title should still start with TEST_) — the KPI cards reflect UNIQUE analytics_sessions with each intent flag over the selected period (default 7z), so counts are cumulative across sessions but the specific stage flags reset per browser session.",
+  "rca of the issue": "N/A — no bug. All 7 commercial-funnel intent events (client_flow_opened, client_property_selected, request_started, request_created, offer_requested, specialist_flow_opened, specialist_action_taken) fire from the real UI buttons, the real POST /api/requests writes db.requests, and the admin 'Funnel comercial' tab renders KPI cards, horizontal funnel chart and backend cross-check (db.requests SSOT) with matching values (real=1, signal=1, diff=0)."
+}

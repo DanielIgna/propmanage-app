@@ -1,14 +1,14 @@
-"""Seed 4 sub-admin demo accounts (idempotent, called from server startup).
+"""Seed 5 demo sub-admin accounts (idempotent, called from server startup).
 
-Accounts created:
-  - testing.admin@propmanage.io   / TestAdmin123!  — scope: testing
-  - frontend.admin@propmanage.io  / FrontAdmin123! — scope: frontend
-  - backend.admin@propmanage.io   / BackAdmin123!  — scope: backend
-  - security.admin@propmanage.io  / SecAdmin123!   — scope: security
+Accounts created (all `is_demo_sub_admin: True`):
+  - testing.admin@propmanage.io    / Test!Demo2026Strong   — scope: testing
+  - frontend.admin@propmanage.io   / Front!Demo2026Strong  — scope: frontend
+  - backend.admin@propmanage.io    / Back!Demo2026Strong   — scope: backend
+  - security.admin@propmanage.io   / Sec!Demo2026Strong    — scope: security
+  - marketing.admin@propmanage.io  / Mkt!Demo2026Strong    — scope: marketing (role: marketing_manager)
 
-All start as ``admin_seniority="senior"`` so they can be used as reference
-implementations for approval workflows. Super admin (admin@propmanage.io)
-remains the only one with scope="general".
+Super admin (admin@propmanage.io) can reset/change passwords via /api/admin/demo-accounts
+using master code 0108.
 """
 import logging
 from datetime import datetime, timezone
@@ -19,36 +19,69 @@ from db import db
 
 logger = logging.getLogger("propmanage.sub_admin_seed")
 
+# Default credentials (visible to super_admin in UI). Change here = changes the
+# "reset to default" target. Keep these strong but memorable for demo recipients.
 SUB_ADMINS = [
     {
         "email": "testing.admin@propmanage.io",
-        "password": "TestAdmin123!",
+        "password": "Test!Demo2026Strong",
         "name": "Testing Admin",
+        "role": "admin",
         "admin_scope": "testing",
         "admin_seniority": "senior",
     },
     {
         "email": "frontend.admin@propmanage.io",
-        "password": "FrontAdmin123!",
+        "password": "Front!Demo2026Strong",
         "name": "Frontend Admin",
+        "role": "admin",
         "admin_scope": "frontend",
         "admin_seniority": "senior",
     },
     {
         "email": "backend.admin@propmanage.io",
-        "password": "BackAdmin123!",
+        "password": "Back!Demo2026Strong",
         "name": "Backend Admin",
+        "role": "admin",
         "admin_scope": "backend",
         "admin_seniority": "senior",
     },
     {
         "email": "security.admin@propmanage.io",
-        "password": "SecAdmin123!",
+        "password": "Sec!Demo2026Strong",
         "name": "Security Admin",
+        "role": "admin",
         "admin_scope": "security",
         "admin_seniority": "senior",
     },
+    {
+        "email": "general.admin@propmanage.io",
+        "password": "Gen!Demo2026Strong",
+        "name": "General Admin",
+        "role": "admin",
+        "admin_scope": "general",
+        "admin_seniority": "senior",
+    },
+    {
+        "email": "marketing.admin@propmanage.io",
+        "password": "Mkt!Demo2026Strong",
+        "name": "Marketing Admin",
+        "role": "marketing_manager",
+        "admin_scope": "marketing",
+        "admin_seniority": "senior",
+    },
 ]
+
+
+def get_default_password(email: str) -> str | None:
+    for spec in SUB_ADMINS:
+        if spec["email"] == email:
+            return spec["password"]
+    return None
+
+
+def list_demo_emails() -> list[str]:
+    return [s["email"] for s in SUB_ADMINS]
 
 
 async def seed_sub_admins() -> dict:
@@ -62,7 +95,7 @@ async def seed_sub_admins() -> dict:
                 doc = {
                     "email": spec["email"],
                     "name": spec["name"],
-                    "role": "admin",
+                    "role": spec["role"],
                     "admin_scope": spec["admin_scope"],
                     "admin_seniority": spec["admin_seniority"],
                     "password_hash": pw_hash,
@@ -85,8 +118,8 @@ async def seed_sub_admins() -> dict:
             else:
                 # Idempotent update: only patch scope/seniority/role; leave password alone
                 patch = {}
-                if existing.get("role") != "admin":
-                    patch["role"] = "admin"
+                if existing.get("role") != spec["role"]:
+                    patch["role"] = spec["role"]
                 if existing.get("admin_scope") != spec["admin_scope"]:
                     patch["admin_scope"] = spec["admin_scope"]
                 if existing.get("admin_seniority") != spec["admin_seniority"]:
@@ -94,7 +127,7 @@ async def seed_sub_admins() -> dict:
                 if not existing.get("is_demo_sub_admin"):
                     patch["is_demo_sub_admin"] = True
                 if existing.get("is_active") is False:
-                    patch["is_active"] = True  # demo accounts always reactivated
+                    patch["is_active"] = True
                 if patch:
                     patch["updated_at"] = datetime.now(timezone.utc).isoformat()
                     await db.users.update_one({"_id": existing["_id"]}, {"$set": patch})
@@ -104,7 +137,7 @@ async def seed_sub_admins() -> dict:
         except Exception as e:  # noqa: BLE001
             logger.warning(f"[sub_admin_seed] failed for {spec['email']}: {e}")
 
-    # Backfill: existing admin@propmanage.io gets admin_scope="general"
+    # Backfill super admin scope
     try:
         super_admin = await db.users.find_one({"email": "admin@propmanage.io"})
         if super_admin and not super_admin.get("admin_scope"):

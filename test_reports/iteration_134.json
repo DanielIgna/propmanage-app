@@ -1,0 +1,40 @@
+{
+  "summary": "Sprint CX-2 (Property DNA & Document Vault) — iter 134 validated. Backend: 12/12 pytest (100%) — upload happy-path with provenance/first_upload/completeness, validation errors (400 for invalid category, .exe, empty), list+facets+filters (category/q=Enel/warranty=active), detail with history, file bytes + download header, PATCH history (immutable, changes old/new), versioning (v2 supersedes v1, prev in previous_versions), soft-delete, completeness structure, cross-client 403 + anonymous 401, DNA capabilities.documents.data.{populated,count,by_category} + timeline events document_uploaded & warranty_registered. Frontend: full CX-2 flow verified end-to-end on a NEW account (mobile 390x844) — prop creation via v2-prop-empty-cta → prop-name/prop-address/prop-save works; vault-card + vault-add-btn render on Property tab (initial score 0%); upload act_proprietate PNG → MemoryCelebration appears with EXACT text 'Casa ta are acum memorie.' + score badge '10% documentată' + celebration-continue works; after continue vault-score=10%, vault-recent visible, vault-next-step visible with '+12%' (Digital Twin validat); VaultSheet opens via vault-open-all with vault-search working (query 'upload_test' returns 1 doc); DocSheet has vault-doc-trust ('Declarat de proprietar / Neverificat / Declarat'), vault-doc-download, vault-doc-edit-btn → vault-edit-title → vault-edit-save all work. HeroDoc (v2-hero-doc) confirmed rendering on Home after reload with texts 'Pasul 2 din 3 · 30 secunde' and CTA 'Adaugă primul document' — see minor issue.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/properties/{id}/dna", "issue": "Response shape has capabilities.documents.data.{count,by_category} (nested under .data). EO CX-2 wording suggested capabilities.documents.count directly. Consistent with rest of DNA shape so likely by design, but confirm with spec."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "HomeV2 widgets (hero)", "issue": "Immediately after property creation, navigating to Home shows NO hero (v2-hero-doc, v2-hero-a, v2-hero-b, v2-hero-c ALL false). A full page reload correctly shows v2-hero-doc with 'Pasul 2 din 3'. Likely `properties` state is not refreshed after prop-save in the same session; HomeV2 widgets skip render because `prop` is undefined or Layout Builder cache. Impact: first-time user completing onboarding pas 1 may not see the pas-2 nudge until they reload the app.", "selector": "[data-testid='v2-hero-doc']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_cx2_document_vault_iter134.py",
+    "/app/test_reports/pytest/iter134_cx2.xml"
+  ],
+  "action_items": [
+    "MEDIUM: In clientv2/HomeV2.jsx (or the useClientData hook), refresh `properties` list after prop-save so that widgets.hero can compute correctly without a full reload. Currently after creating first property, hero area is empty until F5.",
+    "OPTIONAL: verify DNA capabilities.documents shape against EO CX-2 spec — currently nested as `capabilities.documents.data.{count,by_category}` with `populated` at root."
+  ],
+  "critical_code_review_comments": [
+    "storage_client.py imports `requests` (sync) and blocks — routes correctly wrap put/get_object via asyncio.to_thread. OK.",
+    "property_documents.py new_version copies ALL fields from prev doc including history (line 323-329) then overwrites history — old history is not preserved in the v2 doc. Consider merging or leaving old history only on prev doc (which is superseded). Currently the new doc has only the 'versiune nouă' entry which is fine, but if the old doc had edit history that context is only available by walking prev_version_id chain.",
+    "DocumentVaultCard fetches /completeness and /documents on mount; a single /documents call returning both compl + docs would reduce load. Non-blocking.",
+    "DocSheet uses `defaultValue` on inputs — if the user opens edit mode a second time on the same doc, the input keeps stale defaults. Consider controlled `value` synced from data."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_cx2_document_vault_iter134.py (new)"
+  ],
+  "success_rate": {"backend": "100% (12/12)", "frontend": "95% (full CX-2 acceptance verified; 1 medium UX regression on hero-after-prop-create requiring reload)"},
+  "test_credentials": "New CX-2 users created for testing: cx2.ui.d<ts>@test.io / CxUi2026!, cx2.hero.e<ts>@test.io / CxUi2026!. Each has 'Test Casa CX2 UI' or 'Hero Test Casa' property. Existing client client@propmanage.io / Client123! used as cross-tenant 403 subject.",
+  "seed_data_creation": "Multiple TEST_ documents uploaded via API in pytest fixture (module-scoped): factura Enel with warranty 2027-06-01, a v2 of same doc, and one soft-deleted 'To Delete'. On UI side: 1 act_proprietate PNG uploaded (title Editat to 'Titlu Editat Test').",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 10 backend acceptance points + all main frontend flows PASS. Only known issue is a hero widget refresh problem in HomeV2.jsx after prop creation (requires manual reload for HeroDoc to appear). MemoryCelebration flow works perfectly with exact copy 'Casa ta are acum memorie.'. Property creation uses testids prop-name / prop-address / prop-save (NOT prop-name-input / prop-name-save as one might guess). Emergent Object Storage upload confirmed working with PNG bytes. Cross-client 403 confirmed for list endpoint; anonymous 401 confirmed.",
+  "rca of the issue": "HeroDoc missing after prop creation RCA: HomeV2 renders `widgets.hero` based on `properties.length === 0 → HeroA` else... The onSaveProperty handler likely updates local UI but doesn't invalidate/refetch the shared `properties` array in the parent context, so `properties.length` remains 0 (=> HeroA path) OR `prop` is undefined causing all conditional branches to fail (empty div). Full reload triggers a fresh fetch => docsCount fetch => HeroDoc renders correctly with 'Pasul 2 din 3 · 30 secunde' + 'Adaugă primul document'. Mitigation: after successful prop-save, dispatch a reload of the client data / call the parent's refresh callback before closing the property-modal."
+}

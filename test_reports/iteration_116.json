@@ -1,0 +1,41 @@
+{
+  "summary": "Iter 116 backend+frontend regression for Tenant Val 3 (franchise_admin role + tenant scoping + nurture sequence). 28/28 pytest cases PASSED; 5/5 frontend flows verified via Playwright. Franchise admin CRUD (201/409/404/400/403), scoping (franchise_admin sees only cluj, HQ admin sees multi-tenants + ?tenant=cluj filter, /auth/me exposes tenant_id), X-Tenant-ID resolution (cluj → cluj, missing → main, invalid → main fallback), nurture sequence config (nurture_enabled=false, nurture_delay_hours=168, nurture_subject present), POST /run?sequence=nurture_7d&dry_run=true → ran:true, sequence:'nurture_7d', log entries include sequence field. Frontend: unauthenticated /franciza → /login, franciza login → /franchise_admin dashboard with 'PropManage Cluj', stats visible (total/hot/warm/nurture), leads scoped to cluj (Lead Cluj Test seeded lead visible), /franciza also renders dashboard, logout works (200 + Navigate /login), HQ admin @ /franciza → /admin.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter116_franchise_admin_val3.py",
+    "/app/test_reports/pytest/iter116_val3.xml"
+  ],
+  "action_items": [
+    "(no action) Resend 'domain not verified' at real nurture run is EXPECTED — DNS still pending per user note.",
+    "(consideration) Same T1 tenancy insert gap noted in iter115 still applies (public /demo-request, /services/*/leads bypasses no longer — service_hub does set tenant_id correctly per test evidence). demo-request path still inserts without tenant_id — see iter115 minor issue."
+  ],
+  "critical_code_review_comments": [
+    "routes/tenants.py franchise-admin endpoints: proper validation order (tenant exists → main forbidden → email format → duplicate → hash+insert). Idempotent + 4 distinct 4xx codes (400/404/409). Good.",
+    "tenancy.tenant_scope_for: admin (HQ) → None (global), franchise_admin/others → their tenant_id or 'main'. Clean pattern.",
+    "routes/leads.py: scoping via `scope or tenant` — franchise_admin cannot bypass with ?tenant=other because scope is set to their tenant_id (truthy). Correct.",
+    "service_hub.py POST /services/{slug}/leads: correctly uses `resolve_tenant_slug(request)` — invalid slug or inactive tenant falls back to 'main' as expected.",
+    "lead_followup.py _run_sequence generic: 2 sequences share code, `sent_field` / `attempts_field` parameterized (followup.sent_at vs followup.nurture_sent_at) to avoid state collisions. Nice refactor.",
+    "FranchiseDashboard.jsx: guard chain user===undefined/null(loading) → user===false(→ /login) → role !== franchise_admin(→ /{role}) is correct. Uses withCredentials=true consistently.",
+    "MINOR: FranchiseDashboard renders 'user.role !== franchise_admin' as Navigate to `/${user.role}` — assumes valid role slug exists; for role=specialist and admin, routes exist; for future roles this could 404. Low risk.",
+    "MINOR: X-Tenant-ID resolution in tenancy.py: header !== DEFAULT_TENANT gate means if someone passes 'main' explicitly, code falls through to user.tenant_id — for anonymous request that's default 'main' anyway, so functionally correct. Just slightly confusing branch order."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter116_franchise_admin_val3.py (NEW)",
+    "/app/test_reports/pytest/iter116_val3.xml (NEW)"
+  ],
+  "success_rate": {"backend": "100% (28/28)", "frontend": "100% (5/5 flows: /franciza-unauth→login, franchise-login→dashboard, dashboard-content, /franciza-as-franchise, logout, admin@/franciza→/admin)"},
+  "test_credentials": "HQ Admin: admin@propmanage.io / 1!nasov01ADMIN; Franchise Admin (cluj): franciza.cluj@propmanage.io / Franciza123!; Client: client@propmanage.io / Client123! — from /app/memory/test_credentials.md",
+  "seed_data_creation": "Ephemeral: (a) TEST_fa_<hex>@example.com franchise admin created via POST /admin/tenants/cluj/admins → deleted in cleanup; (b) 3 TEST_xtenant_<tag>_<hex>@example.com public leads via POST /services/arhitectura/leads → deleted in cleanup. Semi-permanent seeds preserved: tenant 'cluj', franciza.cluj@propmanage.io user, lead_cluj_test@example.com lead. Verified via post-run mongo query.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Test file /app/backend/tests/test_iter116_franchise_admin_val3.py is regression-ready. CRITICAL: emails are LOWERCASED server-side both on create_franchise_admin and sync_lead — always compare with .lower() and query mongo with lowercased email. Cleanup uses case-insensitive regex ($options:'i') since prior version left residue in DB (visible in dashboard screenshot). The public POST /services/{slug}/leads correctly resolves X-Tenant-ID via tenancy.resolve_tenant_slug and both service_leads + unified `leads` collections receive tenant_id. Franchise dashboard tenant name comes from GET /api/public/tenant-context (with X-Tenant-ID header echo). The 5 frontend flows are: unauth-redirect, login→dashboard, /franciza-alias, logout, admin-guard.",
+  "rca of the issue": "No bugs found in Val 3 implementation. Initial test failures (4/28) were TEST-side issues: (1) case-sensitive email comparison — server lowercases emails; (2) mongo lookup used original-case email while stored value is lowercase. Both fixed by using .lower() in test assertions and queries. Second script-side artifact: initial cleanup regex was case-sensitive (^TEST_) so ~6 leads persisted in DB after first run — cleaned externally and cleanup regex updated to case-insensitive."
+}

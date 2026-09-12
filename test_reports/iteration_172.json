@@ -1,0 +1,46 @@
+{
+  "summary": "SH-001 Subscription Health & House Value Journey — FRONTEND ONLY testing completed successfully. All 12 review-request checkpoints pass on Desktop (1920px) + Mobile (390x844) + Admin config. Journey widget renders below Copilot and above hero, Level 1/7 · Casa înregistrată with Readiness=15, all 5 readiness dimensions with exact missing docs, all 7 stepper levels with correct badges (L1 Gata, L2-L4 În lucru, L5-L7 Lipsește), doc_verificata expansion + CTA, L6 transparency note ('Publicarea NU e blocată...'), next-hint, copilot-explain with chain (Impact casă), pb-pulse regression OK. Admin config persistence: mincomp 60→55→save→reload verified→60 restored.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_172.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Minor discrepancy: review-request mentions config tab data-testid 'pbadmin-config' but actual is 'pbadmin-tab-config'. Not a bug — journey config section 'pbadmin-journey-config' works correctly. Consider aligning naming for clarity.",
+    "HouseJourneyCard.jsx is well-scoped (148 lines), composed (no rewrite), all data-testids present. Good."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "100%"},
+  "test_credentials": "client@propmanage.io / Client123! ; admin@propmanage.io / 1!nasov01ADMIN — both working",
+  "seed_data_creation": "None. Admin completitudine minimă restored to 60 after test.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "SH-001 fully validated on FE. Journey widget renders after ~1-2s post GET /api/journey/house. All data-testids match spec. Client demo state: L1 done, L2-L4 in_progress, L5-L7 missing, Readiness=15. Cookie banner uses [data-testid=cookie-reject-optional] (Refuz button — beware 'Refuz' text appears on 2 elements, use testid). Login inputs: login-email/login-password. Admin config tab id is pbadmin-tab-config.",
+  "detailed_verification": {
+    "desktop": {
+      "widget_position": "journey below copilot AND above hero (copilotTop=143, journeyTop=1328, heroTop=1796) — PASS",
+      "header": "Nivel 1/7 · Casa înregistrată — PASS, Readiness=15 — PASS",
+      "readiness_dimensions": "administrare 0%, mentenanta 50%, audit 25%, finantare 0%, vanzare 0% — with exact missing docs — PASS",
+      "steps": "casa_creata Gata, cartea_casei/digital_twin/house_health În lucru, doc_verificata/imobil_verificat/publicat Lipsește — PASS",
+      "doc_verificata_detail": "Contains 'Completitudine Cartea Casei ≥ 60% (acum 30%)', 'Act de proprietate', 'Cadastru / Carte funciară', 'Certificat energetic' + CTA visible — PASS",
+      "L6_transparency_note": "Publicarea NU e blocată de un scor mic — PropManage certifică doar că informațiile sunt autentice și transparente. Nivelul proprietății ți-l asumi tu — PASS",
+      "next_hint": "Cartea Casei începută · Îți lipsește: Minim 1 document încărcat — PASS",
+      "copilot_regression": "copilot-widget visible, copilot-explain-toggle opens panel with De ce/Ce câștigi/Ce deblochezi/Cât durează/Impact casă (chain of effects) — PASS",
+      "pb_pulse": "visible — PASS"
+    },
+    "mobile_390": {
+      "no_horizontal_overflow": "scrollWidth=clientWidth=390 — PASS",
+      "widget_below_copilot": "PASS",
+      "step_expansion": "PASS (doc_verificata expands correctly)"
+    },
+    "admin": {
+      "path": "/admin/prop-benefits → tab Niveluri & Config",
+      "journey_section_visible": "pbadmin-journey-config PASS",
+      "initial_values": "mincomp=60, cats='act_proprietate, cadastru, certificat_energetic'",
+      "persistence_test": "60 → 55 → save (saved indicator) → reload → 55 confirmed → restored to 60 → save → reload → 60 confirmed — PASS"
+    }
+  }
+}

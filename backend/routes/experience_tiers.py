@@ -40,7 +40,7 @@ Feature flag matrix (used by frontend `<TierGate>` component):
 """
 import logging
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Optional
 
 from bson import ObjectId

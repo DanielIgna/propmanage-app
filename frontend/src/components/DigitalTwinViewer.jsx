@@ -6,13 +6,18 @@ import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import axios from "axios";
 import {
-  Eye, EyeOff, Layers, RotateCcw, Box as BoxIcon,
+  Eye, EyeOff, Layers, RotateCcw, Box as BoxIcon, Sparkles, Wand2, Loader2, Palette, ShieldCheck, GitCompare,
 } from "lucide-react";
 import { API } from "../pages/DashShared";
 import { FACE_STYLES, TOOLS, SECTION_AXES } from "./viewer/constants";
 import { DemoHouse, ModelWithEvents, ResetCamera, MultiLayerScene } from "./viewer/ViewerScene";
 import { MeasureMarkers } from "./viewer/MeasureSection";
 import { PinMarker, PinDraftModal, PinThreadModal } from "./viewer/PinSystem";
+import DigitalTwinQAPanel from "./DigitalTwinQAPanel";
+import DesignConceptStudio from "./DesignConceptStudio";
+import ModelValidationPanel from "./ModelValidationPanel";
+import ConceptComparison from "./ConceptComparison";
+import ViewerErrorBoundary from "./ViewerErrorBoundary";
 
 // Captures the WebGL canvas to a PNG data URL on demand.
 const CanvasCapture = ({ captureFnRef }) => {
@@ -66,6 +71,45 @@ export const DigitalTwinViewer = ({ projectId, modelUrl, projectName, onClose, o
   const [pinOpen, setPinOpen] = useState(null);
   // Phase I — Canvas screenshot capture
   const captureFnRef = useRef(null);
+
+  // Q&A on evidence + AI-3D orientative generation
+  const [qaOpen, setQaOpen] = useState(false);
+  const [designOpen, setDesignOpen] = useState(false);
+  const [validationOpen, setValidationOpen] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [isPro, setIsPro] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiMsg, setAiMsg] = useState(null);
+  const [viewerResetKey, setViewerResetKey] = useState(0);
+
+  useEffect(() => {
+    if (!projectId) return;
+    axios.get(`${API}/auth/me`).then((r) => {
+      setIsPro(["admin", "operator"].includes(r.data?.role));
+    }).catch(() => {});
+  }, [projectId]);
+
+  const reloadLayers = () => {
+    if (!projectId) return;
+    axios.get(`${API}/digital-twin/projects/${projectId}/models`)
+      .then(r => setProjectLayers(r.data.models || []))
+      .catch(() => {});
+  };
+
+  const handleAiGenerate = async () => {
+    if (!projectId || aiBusy) return;
+    setAiBusy(true); setAiMsg(null);
+    try {
+      await axios.post(`${API}/digital-twin/projects/${projectId}/ai-generate`);
+      setAiMsg({ kind: "ok", text: "Model AI orientativ generat (inferred, neverificat)." });
+      reloadLayers();
+    } catch (e) {
+      setAiMsg({ kind: "err", text: e?.response?.data?.detail || e.message || "Generarea AI a eșuat." });
+    } finally {
+      setAiBusy(false);
+      setTimeout(() => setAiMsg(null), 5000);
+    }
+  };
 
   // Hide the dev-only React Error Overlay iframe while viewer is open.
   useEffect(() => {
@@ -438,6 +482,54 @@ export const DigitalTwinViewer = ({ projectId, modelUrl, projectName, onClose, o
           )}
         </div>
 
+        {projectId && (
+          <div className="px-4 py-3 border-t border-white/10 space-y-2" data-testid="dt-ai-actions">
+            <button
+              onClick={() => setQaOpen(true)}
+              className="w-full px-3 py-2 text-xs rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 flex items-center justify-center gap-1.5"
+              data-testid="dt-open-qa"
+            >
+              <Sparkles className="w-3.5 h-3.5" /> Întreabă AI (pe dovezi)
+            </button>
+            <button
+              onClick={() => setDesignOpen(true)}
+              className="w-full px-3 py-2 text-xs rounded-lg bg-violet-500/15 hover:bg-violet-500/25 text-violet-200 flex items-center justify-center gap-1.5"
+              data-testid="dt-open-design"
+            >
+              <Palette className="w-3.5 h-3.5" /> Concept AI Design
+            </button>
+            <button
+              onClick={() => setCompareOpen(true)}
+              className="w-full px-3 py-2 text-xs rounded-lg bg-white/5 hover:bg-white/10 text-stone-200 flex items-center justify-center gap-1.5"
+              data-testid="dt-open-compare"
+            >
+              <GitCompare className="w-3.5 h-3.5" /> Compară concepte
+            </button>
+            <button
+              onClick={() => setValidationOpen(true)}
+              className="w-full px-3 py-2 text-xs rounded-lg bg-white/5 hover:bg-white/10 text-stone-200 flex items-center justify-center gap-1.5"
+              data-testid="dt-open-validation"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" /> Validare modele
+            </button>
+            <button
+              onClick={handleAiGenerate}
+              disabled={aiBusy}
+              className="w-full px-3 py-2 text-xs rounded-lg border border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 text-violet-200 disabled:opacity-50 flex items-center justify-center gap-1.5"
+              data-testid="dt-viewer-ai-generate"
+              title="Generează un model 3D orientativ (AI, inferred). Nu suprascrie modelele documentate."
+            >
+              {aiBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+              {aiBusy ? "Se generează…" : "Generează AI 3D (orientativ)"}
+            </button>
+            {aiMsg && (
+              <div className={`text-[11px] rounded-lg p-2 ${aiMsg.kind === "ok" ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "bg-red-500/10 text-red-300 border border-red-500/20"}`} data-testid="dt-ai-msg">
+                {aiMsg.text}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="px-4 py-3 border-t border-white/10 flex gap-2 flex-wrap">
           <button
             onClick={() => setResetTick((t) => t + 1)}
@@ -511,6 +603,10 @@ export const DigitalTwinViewer = ({ projectId, modelUrl, projectName, onClose, o
             </div>
           </div>
         ) : (
+        <ViewerErrorBoundary
+          resetKey={viewerResetKey}
+          onRetry={() => { reloadLayers(); setViewerResetKey((k) => k + 1); }}
+        >
         <Canvas
           camera={{ position: [12, 9, 14], fov: 50, near: 0.1, far: 2000 }}
           gl={{ antialias: true, localClippingEnabled: true, preserveDrawingBuffer: true }}
@@ -566,6 +662,7 @@ export const DigitalTwinViewer = ({ projectId, modelUrl, projectName, onClose, o
           <ResetCamera resetTrigger={resetTick} />
           <CanvasCapture captureFnRef={captureFnRef} />
         </Canvas>
+        </ViewerErrorBoundary>
         )}
         {viewMode === "three" && (
           <ViewerOverlay
@@ -574,6 +671,54 @@ export const DigitalTwinViewer = ({ projectId, modelUrl, projectName, onClose, o
             layersTotal={layers.length}
             tool={tool}
             pinCount={pins.length}
+          />
+        )}
+
+        {/* Floating "Ask AI" launcher (mobile-friendly) */}
+        {projectId && !qaOpen && (
+          <button
+            onClick={() => setQaOpen(true)}
+            className="absolute top-3 left-3 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/90 hover:bg-emerald-500 text-white text-[11px] font-medium shadow-lg backdrop-blur"
+            data-testid="dt-qa-launch"
+          >
+            <Sparkles className="w-3.5 h-3.5" /> Întreabă AI
+          </button>
+        )}
+
+        {qaOpen && projectId && (
+          <DigitalTwinQAPanel
+            projectId={projectId}
+            projectName={projectName}
+            onClose={() => setQaOpen(false)}
+          />
+        )}
+
+        {designOpen && projectId && (
+          <DesignConceptStudio
+            projectId={projectId}
+            projectName={projectName}
+            onClose={() => setDesignOpen(false)}
+            onModelChanged={reloadLayers}
+            onOpenCompare={() => { setDesignOpen(false); setCompareOpen(true); }}
+          />
+        )}
+
+        {compareOpen && projectId && (
+          <ConceptComparison
+            projectId={projectId}
+            projectName={projectName}
+            onClose={() => setCompareOpen(false)}
+            onChanged={reloadLayers}
+          />
+        )}
+
+        {validationOpen && projectId && (
+          <ModelValidationPanel
+            projectId={projectId}
+            projectName={projectName}
+            isProfessional={isPro}
+            onClose={() => setValidationOpen(false)}
+            onChanged={reloadLayers}
           />
         )}
       </div>

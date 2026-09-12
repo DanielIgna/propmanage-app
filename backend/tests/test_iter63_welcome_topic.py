@@ -34,13 +34,12 @@ def _register_specialist(api, email=None, name="Test Specialist Iter63"):
     payload = {
         "email": email,
         "password": "Test123!",
+        "terms_accepted": True, "privacy_policy_accepted": True,
         "name": name,
         "role": "specialist",
         "phone": "+40712345678",
         "service_categories": ["hvac"],
         "coverage_zones": ["Bucuresti"],
-        "terms_accepted": True,
-        "privacy_policy_accepted": True,
         "marketing_consent": False,
     }
     r = api.post(f"{BASE_URL}/api/auth/register", json=payload)
@@ -52,12 +51,11 @@ def _register_client(api, email=None, name="Test Client Iter63"):
     payload = {
         "email": email,
         "password": "Test123!",
+        "terms_accepted": True, "privacy_policy_accepted": True,
         "name": name,
         "role": "client",
         "phone": "+40712345678",
         "zone": "Bucuresti",
-        "terms_accepted": True,
-        "privacy_policy_accepted": True,
         "marketing_consent": False,
     }
     r = api.post(f"{BASE_URL}/api/auth/register", json=payload)
@@ -113,12 +111,11 @@ class TestSpecialistWelcomeTopic:
         payload = {
             "email": email,
             "password": "Test123!",
+            "terms_accepted": True, "privacy_policy_accepted": True,
             "name": name,
             "role": "specialist",
             "phone": "+40712345678",
             "service_categories": ["hvac"],
-            "terms_accepted": True,
-            "privacy_policy_accepted": True,
         }
         r2 = api_client.post(f"{BASE_URL}/api/auth/register", json=payload)
         assert r2.status_code in (400, 409), f"duplicate should fail, got {r2.status_code}"

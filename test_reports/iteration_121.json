@@ -1,0 +1,27 @@
+{
+  "summary": "Sprint GI-2 (Intent & Lead Intelligence Engine) validat cu succes. Backend: 17/17 pytest PASS pentru /api/track (public, cu intent + identity upsert), /api/admin/lead-intel/{stats,leads,run}, securitate 401/403, evenimente activity_events (lead.scan_completed + lead.hot_detected), Command Center hot_leads warning, Revenue Hunter lead_boost, și regresie growth-intel/ceo/analytics. Frontend: pagina /admin/lead-intel randează cu KPI, semnale, rulează scoring, listează lead-uri (test visitor cu 82/hot cu request_abandoned derivat), filtrele funcționează; identify() setează pm_uid la login; tracking-ul trimite POST /api/track (12 request-uri capturate în timpul flow-ului client); admin-nav-lead_intel prezent după expandarea grupului 'Statistici & KPI'; regresie /admin/growth-intel și /admin/command-center OK (cc-warning-hot_leads afișat).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_lead_intel_iter121.py",
+    "/app/test_reports/pytest/iter121_lead_intel.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "lead_intelligence.run_lead_scan iterează toate sesiunile din ultimele 30 zile în memorie (sessions_by_visitor, paths_by_visitor_session). Va scala prost peste ~50k sesiuni; ia în calcul agregări MongoDB când volumul crește.",
+    "TrackBatch.events e limitat la 50 în model dar bucla iterează totuși batch.events[:50] (defensiv OK, dublă limitare). Neimportant.",
+    "TIER thresholds (60/40/20) sunt hard-coded; deja marcat model_validation='ai_hypothesis' — bine, dar mută în settings pentru calibrare A/B viitoare (Board GI-4)."
+  ],
+  "updated_files": ["/app/backend/tests/test_lead_intel_iter121.py"],
+  "success_rate": {"backend": "100% (17/17)", "frontend": "100%"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN și client@propmanage.io / Client123! (din /app/memory/test_credentials.md).",
+  "seed_data_creation": "Creat vizitatori de test cu prefix 'testvisitor_iter121_' (ingest intent + hot signals). Test visitor hot cu 82/hot și request_abandoned derivat. Seed lead_scores hot pentru client demo pentru validarea lead_boost în Revenue Hunter. Nu s-a atins date reale (analytics_sessions/events existente).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "GI-2 (Intent Score + lead-intel admin page + Revenue Hunter boost + Command Center warning) 100% verde. testvisitor_iter121_hot_* există în lead_scores cu tier=hot (scor 82). Data-testid 'admin-nav-lead_intel' există dar e vizibil doar când grupul 'Statistici & KPI' e expandat în sidebar (comportament corect). Track ingest public funcționează cu user_id upsert în visitor_identities. Cron lead_intel 06:50 nu a fost testat direct — POST /run e validat manual.",
+  "rca of the issue": "N/A — nu au fost bug-uri. Un singur ajustaj minor la tests: activity_events folosește câmpul 'event_type' (nu 'type') — actualizat în test."
+}

@@ -9,7 +9,6 @@ NO LLM credits are spent on detection — only on legitimate replies.
 All blocking events are persisted in `security_events` AND mirrored to
 `admin_ai_findings` so the Admin Investigator surfaces them automatically.
 """
-import os
 import re
 import logging
 from datetime import datetime, timezone, timedelta
@@ -18,7 +17,7 @@ from typing import Optional
 from fastapi import APIRouter, Request, HTTPException, Depends, Body, Query
 
 from db import db
-from deps import require_role, get_current_user
+from deps import get_current_user
 from sub_admin_deps import require_admin_scope
 
 logger = logging.getLogger("propmanage.security_guard")
@@ -39,18 +38,18 @@ DEFAULT_CONFIG = {
 
 
 async def _get_config() -> dict:
-    doc = await db.security_config.find_one({"_id": "global"})
-    if not doc:
-        return dict(DEFAULT_CONFIG)
+    from settings_store import get_settings
+    doc = await get_settings("security")
     merged = dict(DEFAULT_CONFIG)
     merged.update({k: v for k, v in doc.items() if k != "_id"})
     return merged
 
 
 async def _save_config(updates: dict, actor_id: str):
+    from settings_store import patch_settings
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
     updates["updated_by"] = actor_id
-    await db.security_config.update_one({"_id": "global"}, {"$set": updates}, upsert=True)
+    await patch_settings("security", updates, who=actor_id)
 
 
 # ============= HEURISTICS =============

@@ -35,16 +35,20 @@ def _now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
-_SYSTEM = """You are the Digital Twin AI assistant for PropManage — a Romanian property management platform.
-You answer in Romanian. You have access to structured data about a specific 3D Digital Twin project
-(uploaded models, 2D floor plans, room dimensions, equipment pins, finish materials, comments).
+_SYSTEM = """You are the Property & Digital Twin AI assistant for PropManage — a Romanian property platform. Answer in Romanian.
+You receive structured EVIDENCE about a property and its Digital Twin: 2D rooms, 3D models, equipment pins,
+plus property identity, House Health, documents, completed works and AI-generated (orientative) models.
 
-Rules:
-- Be concise and factual. If the answer is in the provided context, state it directly with measurements.
-- If the context does NOT contain the answer, say "Această informație nu este în Digital Twin-ul curent.
-  Adaugă un pin pe modelul 3D pentru această întrebare."
-- For room areas, sum the area_m2 fields when relevant. For equipment, mention pin label + room + type.
-- Never invent numbers, materials, or brands. Use ONLY what is in the context."""
+CRITICAL — evidence & trust rules:
+- Ground EVERY claim in the provided evidence. NEVER invent numbers, materials, brands, dimensions or routes.
+- Each evidence block is labelled with its trust type — always reflect the trust level in your answer:
+  · DECLARAT de proprietar (owner-declared) → "conform declarației proprietarului".
+  · DOCUMENTAT (documents) → "conform documentelor".
+  · REZULTAT LUCRĂRI (from works) → "rezultat din lucrări".
+  · MOTOR/DERIVAT (House Health) → "scor derivat de motorul House Health".
+  · INFERAT (AI-generated) → spune clar "estimare orientativă (AI), neverificată".
+- If the evidence does NOT contain the answer, reply EXACTLY: "Această informație nu există în datele proprietății (necunoscut)." Do not guess.
+- Be concise and factual. Sum room areas (area_m2) when relevant. For equipment mention pin label + room + type."""
 
 
 async def _build_context(project_id: str) -> str:
@@ -87,6 +91,41 @@ async def _build_context(project_id: str) -> str:
             room = p.get("room_name") or "?"
             details = p.get("description") or p.get("notes") or ""
             parts.append(f"- [{ptype}] {label} (camera: {room}) {details[:120]}")
+
+    # Property-level EVIDENCE (only when the project is anchored to a property) — Q&A pe dovezi.
+    prop_id = project.get("property_id")
+    if prop_id:
+        try:
+            from bson import ObjectId as _OID
+            prop = await db.properties.find_one({"_id": _OID(prop_id)})
+        except Exception:  # noqa: BLE001
+            prop = None
+        if prop:
+            parts.append("\n## Proprietate — identitate (DECLARAT de proprietar)")
+            parts.append(f"- Nume: {prop.get('name','?')}; adresă: {prop.get('address','?')}; tip: {prop.get('type','?')}; suprafață: {prop.get('surface','?')} m²; camere: {prop.get('rooms','?')}")
+            hs = prop.get("health_score")
+            if hs is not None:
+                parts.append(f"\n## House Health (MOTOR/DERIVAT)\n- Scor sănătate: {hs}/100")
+        docs = await db.property_documents.find({"property_id": prop_id}, {"title": 1, "category": 1, "_id": 0}).to_list(length=40)
+        if docs:
+            parts.append("\n## Documente proprietate (DOCUMENTAT)")
+            for d in docs:
+                parts.append(f"- {d.get('title','document')} · categorie={d.get('category','?')}")
+        works = await db.requests.find(
+            {"property_id": prop_id, "status": {"$in": ["completed", "closed", "confirmed", "done"]}},
+            {"title": 1, "category": 1, "status": 1, "_id": 0},
+        ).to_list(length=40)
+        if works:
+            parts.append("\n## Lucrări finalizate (REZULTAT LUCRĂRI)")
+            for w in works:
+                parts.append(f"- {w.get('title') or w.get('category','lucrare')} · status={w.get('status')}")
+        ai_models = await db.digital_twin_models.find(
+            {"property_id": prop_id, "source": "ai_generated"}, {"filename": 1, "confidence": 1, "_id": 0},
+        ).to_list(length=10)
+        if ai_models:
+            parts.append("\n## Modele 3D generate de AI (INFERAT — orientativ, neverificat)")
+            for m in ai_models:
+                parts.append(f"- {m.get('filename','model AI')} · confidence={m.get('confidence')}")
 
     return "\n".join(parts)
 
@@ -166,6 +205,70 @@ async def ask(payload: AskIn, user: dict = Depends(get_current_user)):
         pass
 
     return {"answer": answer, "context_size": len(context), "session_id": sid, "provider": result.get("provider"), "model": result.get("model")}
+
+
+@router.get("/suggestions")
+async def suggestions(project_id: str = Query(min_length=3), user: dict = Depends(get_current_user)):
+    """Întrebări sugerate DERIVATE din dovezile REALE ale proprietății (nu generice, nu decorative).
+
+    Fiecare sugestie apare DOAR dacă evidența corespunzătoare există (camere, documente, lucrări,
+    House Health, modele AI, pin-uri). Se trimit prin același pipeline Q&A pe dovezi."""
+    project = await db.digital_twin_projects.find_one({"id": project_id})
+    if not project:
+        raise HTTPException(404, "Project not found")
+    owner_ok = str(project.get("owner_id")) == str(user.get("id"))
+    member_ok = user.get("id") in (project.get("members") or [])
+    admin_ok = user.get("role") in ("admin", "operator")
+    if not (owner_ok or member_ok or admin_ok):
+        raise HTTPException(403, "Access denied")
+
+    out = []
+
+    # Evidence: 2D plans / rooms
+    plan = await db.digital_twin_plans.find_one({"project_id": project_id, "rooms.0": {"$exists": True}})
+    has_plan_rooms = bool(plan)
+
+    # Evidence: uploaded models + AI models
+    models_n = await db.digital_twin_models.count_documents({"project_id": project_id})
+    pins_n = await db.digital_twin_pins.count_documents({"project_id": project_id})
+
+    prop_id = project.get("property_id")
+    prop = None
+    twin_rooms = 0
+    docs_n = works_n = 0
+    ai_n = 0
+    if prop_id:
+        try:
+            from bson import ObjectId as _OID
+            prop = await db.properties.find_one({"_id": _OID(prop_id)})
+        except Exception:  # noqa: BLE001
+            prop = None
+        twin = await db.twins.find_one({"property_id": prop_id}, {"rooms": 1})
+        twin_rooms = len((twin or {}).get("rooms") or [])
+        docs_n = await db.property_documents.count_documents({"property_id": prop_id})
+        works_n = await db.requests.count_documents(
+            {"property_id": prop_id, "status": {"$in": ["completed", "closed", "confirmed", "done"]}})
+        ai_n = await db.digital_twin_models.count_documents({"property_id": prop_id, "source": "ai_generated"})
+
+    if prop and (prop.get("surface") or prop.get("type")):
+        out.append({"text": "Care este suprafața și tipul proprietății?", "based_on": "identitate proprietate"})
+    if has_plan_rooms or twin_rooms:
+        out.append({"text": "Câte camere sunt și ce tip are fiecare?", "based_on": "camere (plan 2D / twin)"})
+        out.append({"text": "Ce suprafață totală însumează camerele?", "based_on": "arii camere"})
+    if docs_n:
+        out.append({"text": f"Ce documente există pentru proprietate? ({docs_n})", "based_on": "documente"})
+    if works_n:
+        out.append({"text": "Ce lucrări au fost finalizate până acum?", "based_on": "lucrări finalizate"})
+    if prop and prop.get("health_score") is not None:
+        out.append({"text": "Care este scorul House Health și ce îl influențează?", "based_on": "House Health"})
+    if pins_n:
+        out.append({"text": "Ce echipamente/anotări sunt marcate în model?", "based_on": f"{pins_n} pin-uri"})
+    if ai_n:
+        out.append({"text": "Ce modele 3D orientative (AI) există și cât sunt de complete?", "based_on": "modele AI (inferat)"})
+    if models_n and not (has_plan_rooms or twin_rooms):
+        out.append({"text": "Ce modele 3D au fost încărcate în proiect?", "based_on": "modele încărcate"})
+
+    return {"suggestions": out[:6], "count": min(len(out), 6), "grounded": True}
 
 
 @router.get("/history")

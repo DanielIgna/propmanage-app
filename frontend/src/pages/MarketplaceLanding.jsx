@@ -69,6 +69,7 @@ export const MarketplaceLanding = () => {
   const parsed = parseLandingSlug(slug);
   const [specialists, setSpecialists] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [gate, setGate] = useState(null);
 
   useEffect(() => {
     if (!parsed) {
@@ -85,6 +86,15 @@ export const MarketplaceLanding = () => {
       .finally(() => setLoading(false));
   }, [parsed?.categorySlug, parsed?.citySlug]);
 
+  // Indexability Gate (server-side SSOT) — thin service×city pages get noindex + canonical→parent.
+  useEffect(() => {
+    if (!parsed) { setGate(null); return; }
+    const path = `/marketplace/${parsed.categorySlug}${parsed.citySlug ? "-" + parsed.citySlug : ""}`;
+    axios.get(`${API}/public/seo/gate?path=${encodeURIComponent(path)}`)
+      .then(r => setGate(r.data))
+      .catch(() => setGate(null));
+  }, [parsed?.categorySlug, parsed?.citySlug]);
+
   // SEO computed BEFORE early return — must run hook unconditionally
   const seoData = (() => {
     if (!parsed) return { title: "Pagină negăsită", description: "" };
@@ -98,43 +108,48 @@ export const MarketplaceLanding = () => {
 
     const jsonLd = {
       "@context": "https://schema.org",
-      "@type": "Service",
-      "serviceType": parsed.categoryLabel,
-      "name": `${parsed.categoryPlural}${cityPart2}`,
-      "description": description,
-      "provider": {
-        "@type": "Organization",
-        "name": "PropManage",
-        "url": SITE_URL,
-      },
-      "areaServed": parsed.cityLabel
-        ? { "@type": "City", "name": parsed.cityLabel, "containedInPlace": { "@type": "Country", "name": "România" } }
-        : { "@type": "Country", "name": "România" },
-      "offers": { "@type": "Offer", "priceCurrency": "RON", "availability": "https://schema.org/InStock" },
-      "breadcrumb": {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Acasă", "item": `${SITE_URL}/` },
-          { "@type": "ListItem", "position": 2, "name": "Marketplace", "item": `${SITE_URL}/marketplace` },
-          { "@type": "ListItem", "position": 3, "name": parsed.categoryLabel, "item": `${SITE_URL}/marketplace/${parsed.categorySlug}` },
-          ...(parsed.cityLabel ? [{
-            "@type": "ListItem", "position": 4,
-            "name": parsed.cityLabel,
-            "item": `${SITE_URL}/marketplace/${parsed.categorySlug}-${parsed.citySlug}`,
-          }] : []),
-        ],
-      },
+      "@graph": [
+        {
+          "@type": "Service",
+          "serviceType": parsed.categoryLabel,
+          "name": `${parsed.categoryPlural}${cityPart2}`,
+          "description": description,
+          "provider": {
+            "@type": "Organization",
+            "name": "PropManage",
+            "url": SITE_URL,
+          },
+          "areaServed": parsed.cityLabel
+            ? { "@type": "City", "name": parsed.cityLabel, "containedInPlace": { "@type": "Country", "name": "România" } }
+            : { "@type": "Country", "name": "România" },
+          "offers": { "@type": "Offer", "priceCurrency": "RON", "availability": "https://schema.org/InStock" },
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Acasă", "item": `${SITE_URL}/` },
+            { "@type": "ListItem", "position": 2, "name": "Marketplace", "item": `${SITE_URL}/marketplace` },
+            { "@type": "ListItem", "position": 3, "name": parsed.categoryLabel, "item": `${SITE_URL}/marketplace/${parsed.categorySlug}` },
+            ...(parsed.cityLabel ? [{
+              "@type": "ListItem", "position": 4,
+              "name": parsed.cityLabel,
+              "item": `${SITE_URL}/marketplace/${parsed.categorySlug}-${parsed.citySlug}`,
+            }] : []),
+          ],
+        },
+      ],
     };
 
     return { title, description, canonical, jsonLd };
   })();
 
+  const gated = !!(gate && gate.index === false);
   useSEO({
     title: seoData.title,
     description: seoData.description,
-    canonical: seoData.canonical,
+    canonical: gated && gate.canonical ? gate.canonical : seoData.canonical,
     jsonLd: seoData.jsonLd,
-    noindex: !parsed,
+    noindex: !parsed || gated,
   });
 
   if (!parsed) return <NotFoundLanding slug={slug} />;
@@ -344,7 +359,7 @@ export const MarketplaceLanding = () => {
 
       {/* Footer */}
       <footer className="border-t border-white/5 mt-16 py-8 px-6 text-center text-xs text-stone-500">
-        © {new Date().getFullYear()} PropManage · <Link to="/terms" className="hover:text-stone-300">Termeni</Link> · <Link to="/privacy" className="hover:text-stone-300">Confidențialitate</Link> · <Link to="/status" className="hover:text-stone-300">Status</Link>
+        © {new Date().getFullYear()} PropManage · operat de Vintage Furniture S.R.L. (CUI 35250247) · <Link to="/terms" className="hover:text-stone-300">Termeni</Link> · <Link to="/privacy" className="hover:text-stone-300">Confidențialitate</Link> · <Link to="/status" className="hover:text-stone-300">Status</Link>
       </footer>
     </div>
   );

@@ -210,9 +210,6 @@ export const RoleTour = ({ forceStart = false }) => {
 
   useEffect(() => {
     if (!user || user === false) return;
-    if (user.tutorial_seen !== true && !forceStart) return; // wait until modal intro is done
-    if (user.dashboard_tour_completed === true && !forceStart) return;
-    if (startedRef.current) return;
 
     const role = user.active_view || user.role;
     const steps = ROLE_STEPS[role] || [];
@@ -279,31 +276,29 @@ export const RoleTour = ({ forceStart = false }) => {
       }
     };
 
-    // Give the dashboard a moment to do its initial fetches before first attempt
-    timer = setTimeout(tryLaunch, 1200);
+    // PPOS P3a-M1: never auto-start — launch only on explicit user request
+    const onStart = () => {
+      if (startedRef.current) return;
+      attempts = 0;
+      timer = setTimeout(tryLaunch, 300);
+    };
+    window.addEventListener("pm-start-roletour", onStart);
+    if (forceStart) timer = setTimeout(tryLaunch, 1200);
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
+      window.removeEventListener("pm-start-roletour", onStart);
     };
   }, [user, forceStart, refreshUser]);
 
   return null;
 };
 
-// Lightweight button to manually replay the tour (resets the flag and reloads)
+// Lightweight button to manually replay the tour (opens the on-demand guide)
 export const ReplayTourButton = () => {
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   if (!user || user === false) return null;
-  const handleReplay = async () => {
-    try {
-      await axios.post(`${API}/auth/tutorial-reset`);
-      if (refreshUser) await refreshUser();
-      // After flag cleared, the RoleTour effect will fire on next render
-      window.location.reload();
-    } catch {
-      /* best-effort */
-    }
-  };
+  const handleReplay = () => window.dispatchEvent(new Event("pm-open-tour"));
   return (
     <button
       type="button"

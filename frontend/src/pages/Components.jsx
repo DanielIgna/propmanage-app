@@ -62,12 +62,17 @@ export const ReviewModal = ({ requestId, specialistName, onClose, onSubmitted })
   const [rating, setRating] = useState(5);
   const [hover, setHover] = useState(0);
   const [comment, setComment] = useState("");
+  const [hireAgain, setHireAgain] = useState(null);
+  const [recommend, setRecommend] = useState(null);
   const [loading, setLoading] = useState(false);
   
   const submit = async () => {
     setLoading(true);
     try {
-      await axios.post(`${API}/requests/${requestId}/review`, { job_id: requestId, rating, comment });
+      await axios.post(`${API}/requests/${requestId}/review`, {
+        job_id: requestId, rating, comment,
+        would_hire_again: hireAgain, would_recommend: recommend,
+      });
       onSubmitted?.();
       onClose();
     } catch (e) { alert(formatApiError(e)); }
@@ -89,18 +94,38 @@ export const ReviewModal = ({ requestId, specialistName, onClose, onSubmitted })
               onMouseLeave={() => setHover(0)}
               data-testid={`star-${n}`}
               className="transition-transform hover:scale-110">
-              <Star className={`w-12 h-12 transition ${
+              <Star className={`w-10 h-10 transition ${
                 n <= (hover || rating) ? "fill-amber-400 text-amber-400" : "text-stone-700"
               }`} />
             </button>
           ))}
+        </div>
+
+        {/* GBOS P0.3 — Rebook > stele */}
+        <div className="mb-4">
+          <div className="text-xs font-bold text-stone-300 mb-2">Ai angaja din nou acest specialist?</div>
+          <div className="flex gap-2">
+            {[["yes", "Da"], ["no", "Nu"], ["not_sure", "Nu sunt sigur"]].map(([v, l]) => (
+              <button key={v} type="button" onClick={() => setHireAgain(v)} data-testid={`review-hire-${v}`}
+                className={`flex-1 py-2 rounded-full text-xs font-bold border transition-colors ${hireAgain === v ? "bg-[#d4ff3a] text-black border-[#d4ff3a]" : "bg-white/5 border-white/10 text-stone-300"}`}>{l}</button>
+            ))}
+          </div>
+        </div>
+        <div className="mb-5">
+          <div className="text-xs font-bold text-stone-300 mb-2">L-ai recomanda altui proprietar?</div>
+          <div className="flex gap-2">
+            {[[true, "Da"], [false, "Nu"]].map(([v, l]) => (
+              <button key={String(v)} type="button" onClick={() => setRecommend(v)} data-testid={`review-recommend-${v ? "yes" : "no"}`}
+                className={`flex-1 py-2 rounded-full text-xs font-bold border transition-colors ${recommend === v ? "bg-[#d4ff3a] text-black border-[#d4ff3a]" : "bg-white/5 border-white/10 text-stone-300"}`}>{l}</button>
+            ))}
+          </div>
         </div>
         
         <textarea
           value={comment}
           onChange={e => setComment(e.target.value)}
           placeholder="Comentariu opțional - cum a fost experiența ta?"
-          rows={4}
+          rows={3}
           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#d4ff3a]/50 resize-none mb-6"
           data-testid="review-comment"
         />
@@ -120,7 +145,7 @@ export const ReviewModal = ({ requestId, specialistName, onClose, onSubmitted })
 export const PropertyManagerModal = ({ properties, onClose, onChange, onOpenTwin }) => {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ name: "", address: "", type: "apartment", surface: 50, rooms: 2 });
-  const [showAdd, setShowAdd] = useState(false);
+  const [showAdd, setShowAdd] = useState((properties || []).length === 0);
   const [twinIndex, setTwinIndex] = useState({}); // { property_id: { status, dt_project_id, model_url } }
 
   // Batch-load DT status across all owned properties so each row can show a colored
@@ -156,6 +181,7 @@ export const PropertyManagerModal = ({ properties, onClose, onChange, onOpenTwin
   
   const save = async () => {
     try {
+      const isFirst = !editing && (properties || []).length === 0;
       if (editing) {
         await axios.put(`${API}/properties/${editing}`, form);
       } else {
@@ -164,6 +190,7 @@ export const PropertyManagerModal = ({ properties, onClose, onChange, onOpenTwin
       await refresh();
       setEditing(null); setShowAdd(false);
       setForm({ name: "", address: "", type: "apartment", surface: 50, rooms: 2 });
+      if (isFirst) onClose();
     } catch (e) { alert(formatApiError(e)); }
   };
   

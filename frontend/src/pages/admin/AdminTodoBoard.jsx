@@ -225,6 +225,8 @@ export const AdminTodoBoard = () => {
   const [promptText, setPromptText] = useState("");
   const [promptLoading, setPromptLoading] = useState(false);
   const [promptError, setPromptError] = useState(null);
+  const focusId = useMemo(() => new URLSearchParams(window.location.search).get("focus"), []);
+  const [focusMissing, setFocusMissing] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -239,6 +241,21 @@ export const AdminTodoBoard = () => {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Deep-link: /admin/todo?focus=<id> → arată + evidențiază task-ul exact (fără fallback la homepage)
+  useEffect(() => {
+    if (!focusId || loading) return;
+    const exists = customTodos.some(t => t.id === focusId);
+    setFocusMissing(!exists);
+    if (exists) {
+      setFilterDone("all");
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`todo-${focusId}`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [focusId, loading, customTodos]);
 
   // Build documented todos from TOPICS (read-only items extracted from manual)
   const documentedTodos = useMemo(() => {
@@ -487,16 +504,23 @@ export const AdminTodoBoard = () => {
           </div>
         )}
 
+        {focusMissing && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-sm text-amber-300 mb-4 flex items-center gap-2" data-testid="todo-focus-missing">
+            <AlertCircle className="w-4 h-4" /> Task indisponibil (a fost șters sau nu mai există).
+          </div>
+        )}
+
         <div className="space-y-2 mt-2" data-testid="todo-list">
           {filteredTodos.map(t => (
-            <TodoRow
-              key={t.id}
-              todo={t}
-              onToggle={toggleTodo}
-              onDelete={t.kind === "manual" ? deleteTodo : null}
-              onChangePriority={t.kind === "manual" ? changePriority : null}
-              onGeneratePrompt={generatePromptForTodo}
-            />
+            <div key={t.id} id={`todo-${t.id}`} className={focusId === t.id ? "ring-2 ring-[#d4ff3a] rounded-2xl transition-all" : ""}>
+              <TodoRow
+                todo={t}
+                onToggle={toggleTodo}
+                onDelete={t.kind === "manual" ? deleteTodo : null}
+                onChangePriority={t.kind === "manual" ? changePriority : null}
+                onGeneratePrompt={generatePromptForTodo}
+              />
+            </div>
           ))}
         </div>
 

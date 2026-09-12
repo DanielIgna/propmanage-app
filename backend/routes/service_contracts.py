@@ -14,7 +14,6 @@ Collection: service_contracts
 import uuid
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -33,7 +32,7 @@ def _now() -> str:
 # Default Romanian template — clauze de bază, nu act notarial, intention-letter style.
 DEFAULT_TEMPLATE = """
 <h1 style="text-align:center;font-family:serif;">CONTRACT DE PRESTĂRI SERVICII</h1>
-<p style="text-align:center;color:#666;font-size:13px;">Mediat de PropManage Tech SRL · Document electronic non-notarial</p>
+<p style="text-align:center;color:#666;font-size:13px;">Mediat prin platforma PropManage, operată de VINTAGE FURNITURE S.R.L. (CUI 35250247, Nr. Reg. Com. J12/3534/2015) · Document electronic non-notarial</p>
 
 <h3>1. PĂRȚILE CONTRACTANTE</h3>
 <p><strong>CLIENT:</strong> {{client_name}}, email: {{client_email}}, telefon: {{client_phone}}<br>

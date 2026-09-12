@@ -1,0 +1,33 @@
+{
+  "summary": "Task 5 (Basic Upgrade Nudges) — backend + frontend regression pass. Backend: 8/8 pytest passed on /app/backend/tests/test_task5_regression_iter187.py covering /api/me/entitlements contract (tier + lifecycle + notice), FREE→402 on POST /api/digital-twin/projects with detail.feature exposed, admin_bypass lifecycle, /api/me/subscription/cancel 404 for FREE, premium client not gated on DT POST, and no 5xx on /api/house-health/checkout-session. Frontend: (1) Manual dispatch of pm:entitlement_denied {feature:'house_health_basic'} shows Sonner toast with correct Romanian copy 'Documentează istoricul casei tale' + description 'Această funcție face parte din PropManage Basic.' + CTA 'Activează Basic — 9 €/lună'. (2) Rate limiting works: 3 rapid identical dispatches produce a SINGLE toast (sessionStorage dedup 3s). (3) Different features (digital_twin_advanced) bypass dedup and show separate toast with 'Vezi planurile PropManage' CTA. (4) Analytics extension point: window CustomEvents pm:upgrade_nudge fired with correct {nudge_id, event:'view'|'click', timestamp, path} shape (verified toast.house_health_basic + toast.digital_twin_advanced views). (5) Task 3 regression: /digital-twin LockedScreen for FREE user renders 'Digital Twin Advanced' + 'PLANUL TĂU: GRATUIT · FUNCȚIE BLOCATĂ' + CTA 'Vezi planurile PropManage'. (6) Task 2 regression: /pricing shows FREE (Gratuit 0€) + Basic 9€/lună + CTAs. (7) Admin user (admin@propmanage.io) on /client: locked-sub count = 0 (bypass). (8) Premium client on /client: locked-sub count = 0 (has access). (9) Mobile 390x844: toast renders 358px wide (16px margin), no horizontal scroll, CTA fully visible. (10) Zero technical error leaks ('HTTP 402', 'entitlement_required', 'feature=') on FREE user pages.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_task5_regression_iter187.py",
+    "/app/test_reports/pytest/iter187_task5.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "upgradeNudge.js: NUDGE_COPY centralization is clean; DEFAULT_COPY fallback prevents crashes on unknown featureId — good defensive design. trackNudge wrapped in try/catch so analytics never breaks UI.",
+    "EntitlementToast.jsx: sessionStorage dedup key `pm_ent_toast_${feature}` with 3s window is per-feature (not global), so different features can still stack — verified in test (DT + HH toasts coexist). Correct UX.",
+    "auth.js:11-27 axios interceptor: reads both detail.feature and detail.required_feature — flexible against backend contract variations. Non-fatal on missing feature (silent no-op).",
+    "LockedFeature.jsx:36-40 fires 'view' event via useEffect with hasFeature dep — potential extra fires if hasFeature identity changes on each render (not memoized in useEntitlements). Minor: could result in duplicate view events per session. Non-blocking.",
+    "HouseHealthCard.jsx HouseHealthNudge uses window.location.href for navigation instead of useNavigate — this causes a full page reload to /pricing (SPA loses state). Recommend using useNavigate for consistency with other nudges (LockedFeature.jsx:53 uses navigate correctly). Minor UX issue.",
+    "EntitlementToast: no cleanup of sessionStorage keys on logout/user switch — a user who logs out and logs in as different tier could see suppressed toasts for 3s. Very minor.",
+    "Axios interceptor is registered as a module side-effect at import time (auth.js:11) — will only run once per bundle, safe. No leak risk."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_task5_regression_iter187.py (new)"
+  ],
+  "success_rate": {"backend": "100% (8/8)", "frontend": "100% (all Task 5 UX behaviors + Task 1-4 regressions verified)"},
+  "test_credentials": "client@propmanage.io / Client123! (premium), admin@propmanage.io / 1!nasov01ADMIN. Dynamic FREE users: nudge{ts}{a-c}@example.com — TestPass123!. Cleanup: match ^nudge\\d+.*@example.com$.",
+  "seed_data_creation": "3 FREE users via POST /api/auth/register (with terms/privacy accepted). Left in DB — recommend main agent cleanup on next iter or via regex ^nudge\\d+.*@example\\.com$.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Task 5 clean pass. Central copy source: /app/frontend/src/lib/upgradeNudge.js NUDGE_COPY. Toast dedup: sessionStorage pm_ent_toast_${feature} with 3s window. Axios interceptor emits pm:entitlement_denied on 402 (auth.js:11-27), listener in EntitlementToast.jsx shows Sonner toast. Note: fetch() calls do NOT trigger the axios interceptor by design — only axios.* calls do. house-health-card-locked-sub testid only renders when user has DT + no subscription; FREE user without DT sees house-health-card-locked-twin instead (different Task 5 nudge path, uses legacy dark card — code path 48-73). All manual dispatch tests + Task 1-4 regressions pass. Interceptor E2E was verified indirectly (code review + manual event dispatch achieves same toast). Analytics events shape confirmed: {type:'nudge', nudge_id, event, timestamp, path} on pm:upgrade_nudge; {feature, message?, current_tier?} on pm:entitlement_denied.",
+  "rca of the issue": "N/A — no bugs found. Minor observation: HouseHealthNudge.goPricing uses window.location.href (full reload) instead of useNavigate; LockedFeature.jsx does it correctly. Suggest unifying to useNavigate for SPA-consistent UX. Non-blocking."
+}

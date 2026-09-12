@@ -1,23 +1,16 @@
 """PropManage router: requests."""
-import os
-import asyncio
-import json
 import logging
-from typing import Optional, List, Literal, Dict
-from datetime import datetime, timezone, timedelta
+from typing import Optional
+from datetime import datetime, timezone
 from bson import ObjectId
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from db import db
-from core_utils import serialize_doc, effective_role
+from core_utils import serialize_doc
 from deps import get_current_user, require_role
-from services import send_email, notify, send_web_push, log_event
-from models import *
-from email_service import (
-    send_template, tpl_welcome, tpl_dispute_opened, tpl_dispute_resolved,
-    tpl_design_phase_quote, tpl_specialist_verified, tpl_escrow_funded,
-)
+from services import notify, log_event
+from models import RequestIn, ReviewIn
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["requests"])
@@ -29,6 +22,7 @@ async def create_request(data: RequestIn, background_tasks: BackgroundTasks, use
     if not prop: raise HTTPException(404, "Property not found")
     doc = {
         **data.model_dump(),
+        "county": data.county or prop.get("county") or prop.get("zone") or prop.get("city"),
         "client_id": user["id"],
         "client_name": user["name"],
         "property_name": prop["name"],
@@ -93,8 +87,11 @@ async def list_requests(
         if user.get("active_view") == "client" and user.get("dual_role_enabled"):
             query = {"client_id": user["id"]}
         else:
-            # show open requests + assigned to this specialist
-            query = {"$or": [{"status": "open"}, {"specialist_id": user["id"]}]}
+            # show open requests (publice sau directe către mine) + assigned to this specialist
+            query = {"$or": [
+                {"status": "open", "direct_specialist_id": {"$in": [None, user["id"]]}},
+                {"specialist_id": user["id"]},
+            ]}
     else:  # admin/operator
         query = {}
     
@@ -138,8 +135,10 @@ async def list_requests(
         async for e in db.activity_events.aggregate(pipeline):
             last_events[e["_id"]] = {
                 "event_type": e["event_type"],
-                "actor_name": e["actor_name"],
-                "actor_role": e["actor_role"],
+                # Legacy/system-generated events may lack actor fields — default
+                # to "system" so the API contract stays stable for clients.
+                "actor_name": e.get("actor_name") or "Sistem",
+                "actor_role": e.get("actor_role") or "system",
                 "payload": e.get("payload") or {},
                 "created_at": e["created_at"],
             }
@@ -149,9 +148,26 @@ async def list_requests(
 
 @router.get("/requests/{req_id}")
 async def get_request(req_id: str, user: dict = Depends(get_current_user)):
+    if not ObjectId.is_valid(req_id):
+        raise HTTPException(404, "Request not found")
     doc = await db.requests.find_one({"_id": ObjectId(req_id)})
     if not doc: raise HTTPException(404, "Request not found")
     return serialize_doc(doc)
+
+@router.get("/requests/{req_id}/concept-render")
+async def request_concept_render(req_id: str, user: dict = Depends(get_current_user)):
+    """Serve the AI design-concept render attached to a request (Ofertă cu Poze).
+    Visible to any authenticated user who can see the request (client + specialists in the lead)."""
+    if not ObjectId.is_valid(req_id):
+        raise HTTPException(404, "Request not found")
+    doc = await db.requests.find_one({"_id": ObjectId(req_id)})
+    if not doc or not doc.get("dt_concept_render_path"):
+        raise HTTPException(404, "Fără render")
+    import asyncio
+    from storage_client import get_object
+    data, ct = await asyncio.to_thread(get_object, doc["dt_concept_render_path"])
+    return Response(content=data, media_type=doc.get("dt_concept_render_mime") or ct or "image/png",
+                    headers={"Cache-Control": "private, max-age=3600"})
 
 # ============= SPECIALISTS / MARKETPLACE =============
 @router.get("/specialists")
@@ -175,16 +191,21 @@ async def accept_request(req_id: str, data: Optional[AcceptRequestIn] = None, us
     if req.get("status") != "open":
         raise HTTPException(400, "Request not available")
 
-    LEAD_FEE = 45.0
+    direct_id = req.get("direct_specialist_id")
+    if direct_id and direct_id != user["id"]:
+        raise HTTPException(403, "Cerere directă adresată altui specialist")
+    fee_waived = bool(direct_id == user["id"] and req.get("lead_fee_waived"))
+    LEAD_FEE = 0.0 if fee_waived else 45.0
     specialist = await db.users.find_one({"_id": ObjectId(user["id"])})
     if (specialist.get("wallet_balance") or 0) < LEAD_FEE:
         raise HTTPException(400, f"Insufficient balance. Need {LEAD_FEE} RON")
 
-    # Deduct lead fee
-    await db.users.update_one(
-        {"_id": ObjectId(user["id"])},
-        {"$inc": {"wallet_balance": -LEAD_FEE}}
-    )
+    # Deduct lead fee (0 pentru rebooking direct — recompensă de loialitate)
+    if LEAD_FEE > 0:
+        await db.users.update_one(
+            {"_id": ObjectId(user["id"])},
+            {"$inc": {"wallet_balance": -LEAD_FEE}}
+        )
     update = {
         "status": "assigned",
         "specialist_id": user["id"],
@@ -207,13 +228,14 @@ async def accept_request(req_id: str, data: Optional[AcceptRequestIn] = None, us
         update["schedule_proposal"] = proposed
     await db.requests.update_one({"_id": ObjectId(req_id)}, {"$set": update})
     # Log transaction
-    await db.transactions.insert_one({
-        "user_id": user["id"],
-        "type": "lead_fee",
-        "amount": -LEAD_FEE,
-        "request_id": req_id,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
+    if LEAD_FEE > 0:
+        await db.transactions.insert_one({
+            "user_id": user["id"],
+            "type": "lead_fee",
+            "amount": -LEAD_FEE,
+            "request_id": req_id,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
     # Notify client
     schedule_msg = ""
     if proposed.get("start_date"):
@@ -330,16 +352,18 @@ async def confirm_complete(req_id: str, user: dict = Depends(require_role("clien
         except Exception as e:
             logging.warning(f"Referral bonus failed: {e}")
 
-    # Update property health (+5%)
-    await db.properties.update_one(
-        {"_id": ObjectId(req["property_id"])},
-        {"$inc": {"health_score": 5, "utilities_health": 3}}
-    )
-    
     await db.requests.update_one(
         {"_id": ObjectId(req_id)},
         {"$set": {"status": "confirmed", "escrow_status": "released", "confirmed_at": datetime.now(timezone.utc).isoformat()}}
     )
+    # Value Loop (Board Decision 002 / Legea 8): închiderea lucrării îmbogățește Digital Twin —
+    # garanție automată + sănătate actualizată (bounded) + documentare + PVI re-scoring
+    value_loop_result = {}
+    try:
+        from value_loop import enrich_on_closure
+        value_loop_result = await enrich_on_closure(req, user)
+    except Exception as e:
+        logging.warning(f"Value Loop enrichment failed: {e}")
     await log_event(req_id, "work.confirmed", actor=user, payload={"tokens_awarded": 100, "amount_released": specialist_amount})
     # Notify specialist about payment
     if req.get("specialist_id"):
@@ -363,7 +387,9 @@ async def confirm_complete(req_id: str, user: dict = Depends(require_role("clien
             await check_tier_milestones(req["client_id"])
         except Exception:
             pass
-    return {"ok": True, "tokens_earned": 100}
+    return {"ok": True, "tokens_earned": 100,
+            "value_loop": {"pvi": (value_loop_result.get("pvi") or {}).get("score"),
+                           "warranty_months": value_loop_result.get("warranty_months")}}
 
 @router.post("/requests/{req_id}/review")
 async def review_specialist(req_id: str, data: ReviewIn, user: dict = Depends(require_role("client"))):
@@ -379,6 +405,8 @@ async def review_specialist(req_id: str, data: ReviewIn, user: dict = Depends(re
         "specialist_id": req["specialist_id"],
         "rating": data.rating,
         "comment": data.comment,
+        "would_hire_again": data.would_hire_again,
+        "would_recommend": data.would_recommend,
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     

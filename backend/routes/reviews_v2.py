@@ -28,7 +28,7 @@ The user.rating field (legacy) = average of all client→specialist dimension av
 """
 import logging
 from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, List
+from typing import Optional, Literal
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -73,6 +73,9 @@ class ScoresS2C(BaseModel):
 class ReviewC2SIn(BaseModel):
     scores: ScoresC2S
     comment: Optional[str] = None
+    # GBOS P0.3 — Trust Marketplace
+    would_hire_again: Optional[Literal["yes", "no", "not_sure"]] = None
+    would_recommend: Optional[bool] = None
 
 
 class ReviewS2CIn(BaseModel):
@@ -135,6 +138,8 @@ async def submit_review_c2s(req_id: str, data: ReviewC2SIn, user: dict = Depends
         "rating": dim_avg,    # also store as legacy avg
         "dimension_avg": dim_avg,
         "comment": (data.comment or "").strip()[:2000],
+        "would_hire_again": data.would_hire_again,
+        "would_recommend": data.would_recommend,
         "created_at": now.isoformat(),
         "hidden_until": hidden_until,    # double-blind window
         "revealed_via": None,

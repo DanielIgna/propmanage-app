@@ -1,0 +1,22 @@
+{
+  "summary": "Frontend-only test of Knowledge Center V2 Artifact Type UI on /admin/knowledge-center as founder danieligna1@gmail.com. All 15 specified test cases PASS. Header artifact_type_counts wired to backend (Documents:276, others:0), 7 filter pills visible with counts, every doc row shows kc-artifact-badge-DOCUMENT (276/276), tooltip title attribute contains contract text, REGISTRY filter shows empty state with exact copy 'No Registry artifacts available yet. / Infrastructure ready.', DOCUMENT filter shows 276 docs, ALL resets, search parser handles artifact:REGISTRY (0 results, filtrat pe REGISTRY indicator), artifact:DOCUMENT (276 with badges), sprint+artifact:DOCUMENT (50 filtered), plain 'sprint' regression works (no filter indicator). Inspector pane shows artifact badge next to StatusBadge. Tab regression OK (map renders RegistryGraph SVG, review renders kc-review, filter row hidden outside docs tab). Category × artifact filter combines correctly. Backend contract untouched — only existing endpoints hit: /tree, /artifact-types, /doc, /search, /review, /registry (registry from map tab, pre-existing).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "KnowledgeCenter.jsx at ~470 lines is approaching the 700-line split threshold but still acceptable. Consider extracting ArtifactBadge, InspectorPane, ReviewPane into separate files in future iterations.",
+    "In the search results panel, the '_artifact_scope' indicator uses ArtifactBadge which also renders a kc-artifact-badge-XXX testid, so total badge count in results = docs + 1. Cosmetic; not a bug."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "100%"},
+  "test_credentials": "founder: danieligna1@gmail.com / Founder2026!kc (login testids: login-email, login-password, login-submit)",
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Knowledge Center V2 Artifact Type UI fully validated. All data-testids listed in the spec are present and functional. Login testids are login-email/login-password/login-submit (NOT the '-input' / '-button' suffixed variants). Founder-only route enforced — admin@propmanage.io returns 403 (expected)."
+}

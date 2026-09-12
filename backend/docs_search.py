@@ -1,6 +1,5 @@
 """Markdown rendering + full-text search across the docs registry."""
 from __future__ import annotations
-import re
 from typing import Optional
 from docs_content import DOCS_CONTENT, get_doc
 

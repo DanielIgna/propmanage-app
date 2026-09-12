@@ -17,7 +17,7 @@ export const PremiumProfileEditorPage = () => {
 
   const load = () => {
     setLoading(true);
-    axios.get(`${API}/api/me/premium-profile`).then(r => setState(r.data)).finally(() => setLoading(false));
+    axios.get(`${API}/api/me/premium-profile`).then(r => setState(r.data)).catch(() => setMsg("Nu am putut încărca profilul. Reîncearcă.")).finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
 

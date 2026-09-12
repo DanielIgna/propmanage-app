@@ -5,6 +5,7 @@ import os
 import io
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://phased-document.preview.emergentagent.com").rstrip("/")
 
@@ -29,7 +30,7 @@ def _login(email, password):
 
 @pytest.fixture(scope="module")
 def admin_session():
-    return _login("admin@propmanage.io", "Admin123!")
+    return _login("admin@propmanage.io", OWNER_ADMIN_PASSWORD)
 
 
 @pytest.fixture(scope="module")
@@ -41,7 +42,7 @@ def client_session():
 def specialist_session():
     # Grant DT Pro to specialist via admin so we can test the non-owner perms scenarios
     s = _login("specialist@propmanage.io", "Spec123!")
-    admin = _login("admin@propmanage.io", "Admin123!")
+    admin = _login("admin@propmanage.io", OWNER_ADMIN_PASSWORD)
     me = s.get(f"{BASE_URL}/api/auth/me", timeout=10).json()
     spec_uid = me.get("id") or me.get("_id") or me.get("user", {}).get("id")
     if spec_uid:

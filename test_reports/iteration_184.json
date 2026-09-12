@@ -1,0 +1,33 @@
+{
+  "summary": "Task 2 (PropManage Basic 9€ commercial flow) — end-to-end tested. Backend: 9/9 pytest passed on new /app/backend/tests/test_pricing_basic_iter184.py covering plan existence, checkout-session (basic slug + unknown 404), checkout-status (valid + 404), simulated activation via hh_subscriptions upsert triggering CLIENT_BASIC tier + house_health_basic feature, dashboard no longer locked=no_subscription after activation, and regression on client@ (CLIENT_PREMIUM, bypass=false) + admin@ (CLIENT_PREMIUM, bypass=true) + unauthenticated checkout (401). Frontend: /pricing renders publicly (unauth) with all required data-testids, FREE marked as current for anonymous visitor, CTA click while unauth → /login?next=/pricing, premium user sees 'Ai deja acces · PropManage Premium' badge and CTA hidden. Backend integration with Stripe checkout returns real cs_test_... session ID + checkout.stripe.com URL.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_pricing_basic_iter184.py",
+    "/app/test_reports/pytest/iter184_pricing.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PricingPage.jsx clears entitlement cache BEFORE Stripe redirect and useEffect refresh on session_id return — good UX. Consistent with HouseHealthUpgradePage success handler which also calls clearEntitlementCache().",
+    "PricingPage treats CLIENT_PRO / CLIENT_PREMIUM as 'already basic' via isBasic array — correct (higher tiers implicitly include basic).",
+    "Register endpoint uses field name `terms_accepted` (not `accept_terms` as noted in review request context) — informative for any future test writer.",
+    "hh_subscriptions.expires_at is compared as ISO string (not BSON date) in entitlements._fetch_active_subscription — any manual DB seed must use ISO string, not datetime object."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_pricing_basic_iter184.py (new)"
+  ],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% (all critical checks pass)"},
+  "test_credentials": "client@propmanage.io / Client123! (premium), admin@propmanage.io / 1!nasov01ADMIN. FREE users created dynamically as free{ts}{hex}@example.com / FreePass123! and cleaned up after run.",
+  "seed_data_creation": "Fresh FREE user created via /api/auth/register (with terms_accepted=true, privacy_policy_accepted=true) during pytest fixture 'free_user'. hh_subscriptions doc upserted directly in Mongo to simulate paid activation. All test-created data cleaned in fixture teardown.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Register API expects `terms_accepted` (not accept_terms). Users have MongoDB _id serialized as `id` via serialize_doc — hh_subscriptions.user_id = str(user._id). Entitlements query compares expires_at as ISO string — never use datetime objects when seeding hh_subscriptions manually.",
+  "rca of the issue": "No production issues. Two test-setup issues encountered and fixed during test authoring: (1) register field name mismatch accept_terms→terms_accepted, (2) hh_subscriptions.expires_at must be ISO string for entitlements query to match."
+}

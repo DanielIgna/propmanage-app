@@ -1,0 +1,21 @@
+{
+  "summary": "GI-5P Sprint 2 — frontend-only validation on live preview URL. All 4 flows PASS + Sprint 1 regression holds. Flow 1 (Riscuri & Recomandări): risks-card renders with risks-count=1, category badge 'Întreținere', 'Estimat' badge, 'risc 50/100', probability+impact line 'Probabilitate medie · Impact: necunoscut fără verificare', dovadă 'Fără audit tehnic în ultimele 24 de luni', CTA button data-testid='risk-mitigate-maint_audit' visible and clickable → opens Request Wizard (Pasul 1 din 3: Ce serviciu ai nevoie?) — valid documented behavior, no errors. Flow 2 (DNA v2): dna-attributes-card shows all 5 rows (year_built, structure_type, insulation_type, roof_type, heating_type) with dna-attr-source selector. Filled year_built=1998 → save button appeared → PATCH 200 → after reload value persists as '1998' with confidence badge 'Declarat de proprietar' (dna-attr-conf-year_built). Also saved structure_type='Cărămidă' — persisted with 'Declarat de proprietar' badge. Flow 3 (validation error): year_built=1500 → dialog 'Anul construcției: în afara intervalului 1800–2100' + backend 400 → value NOT persisted (still shows 1998 after reload). Flow 4 (CEO): tile ceo-vl-maturity subtitle shows '130 proprietăți evaluate · 130 riscuri active' — property_risks integration OK. Regression: maturity-card (L3 Activă, 6-step ladder), assets-card (4 slots, 12-15 / 25-30 / 30-50 / 20-30 ani), dna-card (PVI 90/100) all render correctly on tab Proprietate.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_gi5p_sprint2_iter125.py",
+    "/app/backend/tests/test_property_intelligence_iter124.py"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "DNA validation range (1800-2100) enforced server-side (400) and surfaced via alert() dialog — works but a toast/inline error would be nicer UX than window.alert.",
+    "Mitigate CTA correctly reuses existing Request Wizard flow instead of creating a bespoke modal — consistent with the Audit First rule."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested this iter (per request, 29/29 already green)", "frontend": "100% (4/4 flows + regression)"},
+  "test_credentials": "client@propmanage.io / Client123! and admin@propmanage.io / 1!nasov01ADMIN — both worked.",
+  "seed_data_creation": "Persisted DNA attrs on client property 6a11d70e600be19667009c93: year_built=1998 (self_declared), structure_type=caramida (self_declared). Valid demo data per main agent note.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Sprint GI-5P Sprint 2 fully validated. DNA attributes persisted (year_built=1998, structure_type=caramida). The demo property already has both a centrala_termica asset (2012, from iter124) and DNA attrs — if retesting, either use different asset slots (tablou_electric/acoperis/termopane still empty) or PATCH existing DNA fields. Mitigate CTA on maint_audit risk routes into Request Wizard Step 1 (service picker) — this is the documented valid path."
+}

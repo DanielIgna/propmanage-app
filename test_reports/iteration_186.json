@@ -1,0 +1,27 @@
+{
+  "summary": "Task 4 iter186 — Subscription lifecycle handling. Backend: 14/14 pytest passed on /app/backend/tests/test_subscription_lifecycle_iter186.py. Covers all 5 lifecycle states (never_subscribed | active | cancelled_grace | expired | admin_bypass), self-cancel endpoint (grace-period access retention, idempotent on cancelled/expired, 404 when no subscription doc), regression on paid features (POST /house-health/documents and POST /digital-twin/projects → 402 for expired user), and data-integrity regression (GET /properties/{id}, /properties/{id}/documents, /properties/{id}/technical-record all 200 for expired user with existing property). Frontend: SubscriptionNotice banner renders correctly on /client for expired user (data-testid='subscription-notice-subscription_expired') with correct Romanian message and CTA that navigates to /pricing; dismiss button sets sessionStorage.pm_notice_dismissed=1 and hides banner; never_subscribed user sees NO banner (component returns null). Cleanup performed on test users matching ^(exp|lifecycle|free)\\d+.*@example.com$ + orphan hh_subscriptions.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_subscription_lifecycle_iter186.py",
+    "/app/test_reports/pytest/iter186_lifecycle.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "entitlements.py _fetch_active_subscription now accepts status='cancelled' in the active list — semantically correct: cancelled subscriptions retain access until expires_at. _compute_lifecycle correctly maps status=='cancelled' + future expiry → 'cancelled_grace'.",
+    "entitlements_api.py cancel_my_subscription: idempotent branch (line 42-44) returns snapshot when status not in {active,trial,grace} — verified test_cancel_idempotent_on_cancelled passes on both cancelled and expired states. No 500 leaks.",
+    "entitlements.py:198 uses (sub_last or {}).get('plan','').lower() — safe if plan is None (defaults to '' before .lower()), no AttributeError risk. Verified with test_expired_lifecycle_free_tier_with_notice.",
+    "SubscriptionNotice.jsx: sessionStorage read is guarded with try/catch (line 33) — safe against Safari private-mode. Dismiss also try/catch on write (line 48). Good defensive coding.",
+    "SubscriptionNotice.jsx returns null when entitlements.notice is null → correctly hides for never_subscribed/active/admin_bypass — verified in frontend test.",
+    "MINOR (non-blocking): cancel endpoint queries hh_subscriptions.find_one({user_id}) without ordering. If a user ever ended up with multiple docs (shouldn't happen — upsert on user_id), the first arbitrary one wins. Consider adding sort=[('updated_at',-1)] for defensive read.",
+    "MINOR (non-blocking): cancel endpoint at /me/subscription/cancel does not restrict role — admin/operator hitting it would 404 (no hh_subscriptions doc), which is acceptable but could return a friendlier 400 'not applicable for admin role'."
+  ],
+  "updated_files": ["/app/backend/tests/test_subscription_lifecycle_iter186.py (new)"],
+  "success_rate": {"backend": "100% (14/14)", "frontend": "100% (banner render + CTA nav + dismiss + never_subscribed hidden all pass)"},
+  "test_credentials": "client@propmanage.io / Client123! (premium active), admin@propmanage.io / 1!nasov01ADMIN. Dynamic test users: exp{ts}{hex}@example.com and lifecycle{ts}{hex}@example.com — password TestPass123!, cleaned up via mongo fixture teardown + manual cleanup.",
+  "seed_data_creation": "Fresh users via POST /api/auth/register (terms_accepted+privacy_policy_accepted). hh_subscriptions manipulated directly via mongo upsert (plan basic|pro, status active|cancelled) and aging (expires_at→past). Property created via POST /api/properties with rooms=3 required field. All test data cleaned up in module teardown.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Task 4 clean pass. Lifecycle field is now part of /api/me/entitlements contract with 5 states. POST /api/me/subscription/cancel is the only new endpoint — self-cancel, non-destructive, idempotent, 404 when no sub. cancelled + expires_at future = cancelled_grace (still has features). status can be 'cancelled' OR 'active' with past expires_at → both resolve to lifecycle='expired' + tier=FREE. property/documents/technical-record GETs are NOT gated → data integrity preserved after expiry. Frontend SubscriptionNotice reads /api/me/entitlements.notice, uses sessionStorage 'pm_notice_dismissed' for dismiss state (per-session). Data-testids: subscription-notice-{kind}, subscription-notice-cta, subscription-notice-dismiss.",
+  "rca of the issue": "N/A — no bugs found. Two test-authoring adjustments during development: (1) POST /house-health/documents requires multipart Form fields (twin_project_id, category) — switched from json= to data=; (2) PropertyIn requires 'rooms' field — added rooms=3 to payload. Neither is a product bug."
+}

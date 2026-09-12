@@ -6,14 +6,14 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { useDynamicSEO } from "@/lib/useDynamicSEO";
+import { EcosystemFlow } from "@/components/ecosystem/EcosystemFlow";
+import { ServiceDetailModal } from "@/components/ecosystem/ServiceDetailModal";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
-const PackageCard = ({ id, title, price, features, badge, selected, onSelect }) => (
-  <button
-    type="button"
-    onClick={() => onSelect(id)}
-    className={`text-left p-6 rounded-3xl border-2 transition-all w-full ${
+const PackageCard = ({ id, title, price, features, badge, selected, onSelect, detailsLabel, onDetails }) => (
+  <div
+    className={`text-left p-6 rounded-3xl border-2 transition-all w-full flex flex-col ${
       selected
         ? "border-[#d4ff3a] bg-[#d4ff3a]/5"
         : "border-white/10 bg-[#0e0e10] hover:border-white/30"
@@ -21,7 +21,7 @@ const PackageCard = ({ id, title, price, features, badge, selected, onSelect }) 
     data-testid={`pkg-${id}`}
   >
     {badge && (
-      <div className="inline-block text-[10px] font-bold tracking-wider text-black bg-[#d4ff3a] px-2.5 py-1 rounded-full mb-3">
+      <div className="self-start text-[10px] font-bold tracking-wider text-black bg-[#d4ff3a] px-2.5 py-1 rounded-full mb-3">
         {badge}
       </div>
     )}
@@ -29,7 +29,7 @@ const PackageCard = ({ id, title, price, features, badge, selected, onSelect }) 
     <div className="font-serif text-3xl mb-4 text-[#d4ff3a]">
       {Number(price).toLocaleString("ro-RO")} <span className="text-sm text-stone-400">RON</span>
     </div>
-    <ul className="space-y-2">
+    <ul className="space-y-2 mb-5">
       {features.map((f, i) => (
         <li key={i} className="text-sm text-stone-300 flex items-start gap-2">
           <CheckCircle2 className="w-4 h-4 text-[#d4ff3a] mt-0.5 shrink-0" />
@@ -37,7 +37,29 @@ const PackageCard = ({ id, title, price, features, badge, selected, onSelect }) 
         </li>
       ))}
     </ul>
-  </button>
+    <div className="mt-auto space-y-2">
+      <button
+        type="button"
+        onClick={() => onSelect(id)}
+        className={`w-full py-2.5 rounded-full text-sm font-bold transition-colors ${
+          selected ? "bg-[#d4ff3a] text-black" : "bg-white/10 text-white hover:bg-white/20"
+        }`}
+        data-testid={`pkg-select-${id}`}
+      >
+        {selected ? "✓ Pachet selectat" : "Alege pachetul"}
+      </button>
+      {onDetails && (
+        <button
+          type="button"
+          onClick={onDetails}
+          className="w-full py-2.5 rounded-full text-sm font-bold border border-white/15 text-stone-300 hover:border-[#d4ff3a]/60 hover:text-white transition-colors"
+          data-testid={`pkg-details-${id}`}
+        >
+          {detailsLabel}
+        </button>
+      )}
+    </div>
+  </div>
 );
 
 export const SellMyProperty = () => {
@@ -54,6 +76,7 @@ export const SellMyProperty = () => {
   });
   const [submitting, setSubmitting] = useState(false);
   const [paymentResult, setPaymentResult] = useState(null);
+  const [detailKind, setDetailKind] = useState(null);
 
   useEffect(() => {
     axios.get(`${API}/api/verified-estate/pricing`).then(r => setPricing(r.data)).catch(() => {});
@@ -145,6 +168,9 @@ export const SellMyProperty = () => {
         <div className="max-w-5xl mx-auto">
           {step === 1 && (
             <div data-testid="step-1-content">
+              <div className="bg-[#0e0e10] border border-white/10 rounded-3xl p-6 mb-8" data-testid="sell-ecosystem-flow">
+                <EcosystemFlow dark activeKey="audit" />
+              </div>
               <h2 className="font-serif text-2xl md:text-3xl mb-6">1. Alege pachetul potrivit</h2>
               <div className="grid md:grid-cols-3 gap-4 mb-8">
                 <PackageCard
@@ -154,23 +180,29 @@ export const SellMyProperty = () => {
                   features={["Inspecție completă imobil", "Raport tehnic PDF", "Recomandări personalizate", "Estimare cost reparații"]}
                   selected={selectedPackage === "audit"}
                   onSelect={setSelectedPackage}
+                  detailsLabel="Află tot ce include Auditul"
+                  onDetails={() => setDetailKind("audit")}
                 />
                 <PackageCard
                   id="bundle"
                   title="Audit + Digital Twin"
                   price={pricing.bundle_ron}
-                  badge="RECOMANDAT"
-                  features={["Tot din pachetul Audit", "Tur 3D interactiv complet", "Mapare sisteme (HVAC, etc)", "Eligibil pentru listare publică"]}
+                  badge="PROCESUL COMPLET · RECOMANDAT"
+                  features={["Auditul descoperă — diagnoza completă", "Digital Twin memorează — copia digitală vie", "Un singur proces, nu două produse", "Eligibil pentru listare publică"]}
                   selected={selectedPackage === "bundle"}
                   onSelect={setSelectedPackage}
+                  detailsLabel="Vezi toate cele 17 etape"
+                  onDetails={() => setDetailKind("process")}
                 />
                 <PackageCard
                   id="twin"
                   title="Doar Digital Twin"
                   price={pricing.twin_ron}
-                  features={["Pentru imobile cu audit deja făcut", "Modelare 3D + mapare", "Vizualizare in browser", "Embed pe orice site"]}
+                  features={["Pentru imobile cu audit deja făcut", "Modelare 3D + mapare instalații", "Vizualizare in browser", "Embed pe orice site"]}
                   selected={selectedPackage === "twin"}
                   onSelect={setSelectedPackage}
+                  detailsLabel="Vezi tot ce conține"
+                  onDetails={() => setDetailKind("twin")}
                 />
               </div>
               <div className="bg-[#d4ff3a]/8 border border-[#d4ff3a]/30 rounded-2xl p-5 flex items-start gap-3 mb-8" data-testid="commission-info">
@@ -290,6 +322,21 @@ export const SellMyProperty = () => {
           )}
         </div>
       </section>
+
+      {detailKind && (
+        <ServiceDetailModal
+          kind={detailKind}
+          dark
+          onClose={() => setDetailKind(null)}
+          primaryCta={{
+            label: detailKind === "audit" ? "Solicită Audit" : detailKind === "twin" ? "Solicită Digital Twin" : "Începe procesul complet",
+            onClick: () => {
+              setSelectedPackage(detailKind === "process" ? "bundle" : detailKind === "twin" ? "twin" : "audit");
+              setStep(1);
+            },
+          }}
+        />
+      )}
     </div>
   );
 };

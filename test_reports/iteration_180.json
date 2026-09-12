@@ -1,0 +1,36 @@
+{
+  "summary": "Backend-only testing for iter180 Analytics Growth extension: extended presets (day/week/month/60d/90d/6m/12m/ytd/custom), granularity field, YoY comparison, campaign-markers endpoint, campaigns/compare endpoint, and other analytics endpoints (pages/insights/export.csv/export.pdf) with new presets. Auth guard verified. 43/44 tests passed. One minor granularity boundary mismatch discovered on `6m` preset.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/admin/analytics/overview?period=6m",
+        "issue": "Response returns granularity='month' instead of 'week' as documented in spec ('week pentru 90z-6L'). Root cause: `_period_range('6m')` uses `today - timedelta(days=181)` → interval length = 182 days, but `_auto_granularity` returns 'week' only when `days <= 180`, so 6m falls through to 'month'. Fix: raise threshold in `_auto_granularity` from `days <= 180` to `days <= 183` (or align 6m preset to 179 days). All KPI/series data still returned correctly; only the granularity label is off. 90d correctly returns 'week', 12m/ytd correctly return 'month'."
+      }
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_analytics_growth_iter180.py",
+    "/app/test_reports/pytest/iter180_results.xml"
+  ],
+  "action_items": [
+    "Adjust `_auto_granularity` threshold in /app/backend/routes/analytics_growth.py so `6m` (182 days) maps to 'week' as spec'd (e.g., `if days <= 183: return 'week'`)."
+  ],
+  "critical_code_review_comments": [
+    "Boundary values in `_auto_granularity` are one day short of covering the 6m preset (182 days). Consider constants for boundaries.",
+    "Overview endpoint dependency in `analytics_insights` calls `analytics_overview(...)` directly with positional args including `user` — works but couples internals; safe as-is.",
+    "campaign-markers loops per-campaign with per-campaign `find_one` (N+1) — acceptable at current scale (500 cap) but worth noting for future scaling.",
+    "compare_campaigns silently drops invalid ids after filter; correct per spec. Consider surfacing an 'invalid_ids' array in response for observability (nice-to-have)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_analytics_growth_iter180.py (new)"
+  ],
+  "success_rate": {"backend": "97.7%", "frontend": "not tested (backend-only per request)"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Test fixture creates a TEST_iter180_compare campaign only if fewer than 2 campaigns exist; deleted in fixture teardown. In this run, an existing campaign was already present so no new campaign was created (only 1 existed → 1 new was created and cleaned up).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "iter180 analytics-growth extension is production-ready. Only outstanding item is the 6m→week granularity boundary tweak (single-line fix). Test suite `test_analytics_growth_iter180.py` covers all 9 presets, YoY structure/shift, markers, compare (2-3 ids, <2 → 400, >3 truncated), and pass-through to pages/insights/export.csv/export.pdf.",
+  "rca of the issue": "6m preset defined as today - 181 days → 182-day window. `_auto_granularity` uses `days <= 180 → week`, else month. Two off-by-one boundaries collide, causing 6m to report 'month' instead of the spec'd 'week'. Fix: change threshold to `days <= 183` or set 6m preset to `today - 179 days`."
+}

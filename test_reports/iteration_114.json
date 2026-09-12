@@ -1,0 +1,24 @@
+{
+  "summary": "P1 review (Service Hub design-exterior/arhitectura + Theme Manager) tested end-to-end. Backend 18/18 pytest passed (content, leads with dual-write+triage score, admin CRUD, auth guards, unified leads, experience-profile PUT/restore, site menu). Frontend E2E: both /design-exterior and /arhitectura pages render fully (7 journey chips, 3 phases with 9/10 steps respectively, 8 highlight items, 6 ecosystem links, 5 FAQ, 4 SEO articles). Lead form submits successfully and shows sh-form-success. Public menu Servicii dropdown correctly navigates to /design-exterior and /arhitectura (no stale /marketplace?categorie links). Theme Manager E2E validated: PUT default_theme=light for client → clean-context client login auto-applies light (data-theme=light, no dark class); manual toggle sets pm_theme_source=user and flips to dark; reload keeps user choice (not overridden by role profile). default_theme='system' restored for client role at the end. /design-interior regression PASSED.",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "backend/routes/site_menu.py DEFAULT_MENU", "issue": "DEFAULT_MENU still contains stale /marketplace?categorie=design-exterior and /marketplace?categorie=arhitectura hrefs. DB is correctly updated with /design-exterior and /arhitectura, but an admin 'reset menu' action would revert to the stale URLs. Update DEFAULT_MENU lines 25-26 to match the new hrefs."}
+  ]},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_iter114_service_hub_theme.py", "/app/test_reports/pytest/iter114_service_hub_theme.xml"],
+  "action_items": [
+    "(minor) Update site_menu.py DEFAULT_MENU (lines 25-26) to use /design-exterior and /arhitectura so that admin reset-menu preserves the new routes."
+  ],
+  "critical_code_review_comments": [
+    "service_hub.py is well-scoped (~100 lines, generic slug-based, allowed-keys allowlist on PUT, dual-write into unified leads). Good.",
+    "ServiceHubLanding.jsx is a single 295-line generic component reused by both slugs — good DRY.",
+    "ThemeContext.applyRoleTheme correctly guards against overriding user choice via pm_theme_source=user localStorage flag. RoleThemeApplier only applies non-'system' themes. Clean implementation.",
+    "site_menu.py DEFAULT_MENU is out of sync with persisted DB values (stale marketplace URLs) — see minor issue."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter114_service_hub_theme.py"],
+  "success_rate": {"backend": "100% (18/18)", "frontend": "100% (all critical flows)"},
+  "test_credentials": "Admin: admin@propmanage.io / 1!nasov01ADMIN; Client: client@propmanage.io / Client123! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Test leads persisted with TEST_ prefix in service_leads + unified leads collection (source=design_exterior/arhitectura, score=45/warm, 20/nurture). Restored default_theme='system' for client role.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "The Service Hub uses a generic slug-based pattern (SERVICES = {'design-exterior': EXTERIOR, 'arhitectura': ARHITECTURA}). Frontend uses one component ServiceHubLanding.jsx wired via <Route path='/design-exterior' element={<ServiceHubLanding slug='design-exterior' />}. Theme Manager E2E requires clearing cookies AND localStorage before client login to observe applyRoleTheme in effect. Response for /api/admin/leads uses key 'leads' (not 'items'). Tour overlay appears on client dashboard and can intercept clicks — use Escape or 'Sari peste' to dismiss before UI interactions."
+}

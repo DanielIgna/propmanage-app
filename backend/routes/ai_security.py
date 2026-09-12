@@ -1,7 +1,6 @@
 """AI Security Center router — read-only security analytics + AI recommendations."""
 import logging
 from fastapi import APIRouter, Depends, Query
-from typing import Optional
 
 from deps import require_role
 from ai_core.security_guardian import overview, ai_recommendations, log_ai_security_run

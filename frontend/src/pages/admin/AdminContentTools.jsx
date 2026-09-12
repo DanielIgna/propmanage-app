@@ -15,7 +15,7 @@ export const AdminCMS = () => {
   const [loaded, setLoaded] = useState(false);
   const [showEn, setShowEn] = useState(false); // bilingual edit mode
 
-  const load = () => axios.get(`${API}/admin/cms`).then(r => { setItems(r.data); setLoaded(true); });
+  const load = () => axios.get(`${API}/admin/cms`).then(r => { setItems(r.data); setLoaded(true); }).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const save = async (key) => {
@@ -203,7 +203,7 @@ export const AdminEmailTemplates = () => {
   const [edit, setEdit] = useState({ subject: "", html: "" });
   const [saving, setSaving] = useState(false);
 
-  const load = () => axios.get(`${API}/admin/email-templates`).then(r => setItems(r.data));
+  const load = () => axios.get(`${API}/admin/email-templates`).then(r => setItems(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const open = (it) => { setActive(it); setEdit({ subject: it.subject, html: it.html }); };
@@ -283,7 +283,7 @@ export const AdminZones = () => {
   const [form, setForm] = useState({ country: "România", city: "", zone: "" });
   const [adding, setAdding] = useState(false);
 
-  const load = () => axios.get(`${API}/admin/zones`).then(r => setZones(r.data));
+  const load = () => axios.get(`${API}/admin/zones`).then(r => setZones(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const add = async () => {
