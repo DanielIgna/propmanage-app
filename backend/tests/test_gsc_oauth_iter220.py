@@ -44,6 +44,9 @@ def test_gsc_oauth_start_builds_valid_consent_url(admin):
     assert q["prompt"] == "consent"
     assert q["redirect_uri"].endswith("/api/admin/seo/gsc/oauth/callback")
     assert d["authorization_url"].startswith("https://accounts.google.com/")
+    # PKCE must be present in the auth request (and the matching verifier is sent at exchange)
+    assert q.get("code_challenge_method") == "S256"
+    assert len(q.get("code_challenge", "")) >= 20
 
 
 def test_gsc_report_disconnected_returns_empty_not_fake(admin):

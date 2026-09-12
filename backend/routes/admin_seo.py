@@ -1078,20 +1078,35 @@ async def seo_gsc_oauth_start(property: str = "sc-domain:propmanage.ro",
         return {"ok": False, "error": "GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET nu sunt configurate în backend."}
     if not _JWT_SECRET:
         return {"ok": False, "error": "JWT_SECRET indisponibil pentru semnarea state-ului OAuth."}
-    from google_auth_oauthlib.flow import Flow
+    cid = _os.environ.get("GOOGLE_CLIENT_ID")
+    import hashlib as _hashlib
+    import base64 as _base64
+    from urllib.parse import urlencode as _urlencode
+    # PKCE: generate verifier + S256 challenge. The verifier is carried in the SIGNED
+    # state JWT (tamper-proof) so the callback can send it back at token exchange.
+    # Without this, Google returns invalid_grant (PKCE required once a challenge is sent).
+    code_verifier = _secrets.token_urlsafe(64)
+    challenge = _base64.urlsafe_b64encode(
+        _hashlib.sha256(code_verifier.encode()).digest()
+    ).rstrip(b"=").decode()
     state = _jwt.encode(
         {"p": property, "n": _secrets.token_urlsafe(8), "typ": "gsc_oauth",
-         "by": user.get("email"),
+         "by": user.get("email"), "cv": code_verifier,
          "exp": datetime.now(timezone.utc) + timedelta(minutes=15)},
         _JWT_SECRET, algorithm="HS256",
     )
-    flow = Flow.from_client_config(client_config, scopes=GSC_SCOPES, state=state)
-    flow.redirect_uri = _gsc_redirect_uri()
-    # No include_granted_scopes: GSC is a standalone read grant, not incremental auth —
-    # this avoids Google merging the account's login scopes into the GSC grant.
-    auth_url, _ = flow.authorization_url(
-        access_type="offline", prompt="consent", state=state,
-    )
+    params = {
+        "response_type": "code",
+        "client_id": cid,
+        "redirect_uri": _gsc_redirect_uri(),
+        "scope": " ".join(GSC_SCOPES),
+        "access_type": "offline",
+        "prompt": "consent",
+        "state": state,
+        "code_challenge": challenge,
+        "code_challenge_method": "S256",
+    }
+    auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + _urlencode(params)
     return {"ok": True, "authorization_url": auth_url, "redirect_uri": _gsc_redirect_uri()}
 
 
@@ -1136,6 +1151,7 @@ async def seo_gsc_oauth_callback(request: Request):
                 "client_secret": csec,
                 "redirect_uri": _gsc_redirect_uri(),
                 "grant_type": "authorization_code",
+                "code_verifier": data.get("cv") or "",
             })
     except Exception as exc:  # noqa: BLE001  — network/SSL/timeout reaching Google
         logger.warning(f"[gsc] oauth token exchange network error: {type(exc).__name__}")
