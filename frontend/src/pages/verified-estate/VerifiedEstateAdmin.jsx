@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   ShieldCheck, Box, FileText, AlertTriangle, CheckCircle2, Archive,
-  Eye, Sparkles, Building2, Loader2, ExternalLink, Mail, RefreshCcw
+  Eye, Sparkles, Building2, Loader2, ExternalLink, Mail, RefreshCcw, Banknote, Trophy
 } from "lucide-react";
 import axios from "axios";
 
@@ -12,6 +12,7 @@ const STAGES = [
   { key: "draft", label: "Draft", color: "stone", desc: "În pregătire" },
   { key: "pending_review", label: "Pending Review", color: "amber", desc: "Așteaptă aprobare" },
   { key: "published", label: "Published", color: "lime", desc: "LIVE pentru public" },
+  { key: "sold", label: "Sold", color: "cyan", desc: "Vândut · comision încasat" },
   { key: "archived", label: "Archived", color: "red", desc: "Retras / inactiv" },
 ];
 
@@ -22,7 +23,7 @@ const GateChip = ({ ok, label }) => (
   </span>
 );
 
-const ListingCard = ({ item, onPublish, onArchive, busy }) => {
+const ListingCard = ({ item, onPublish, onArchive, onMarkSold, busy }) => {
   const gates = item.gates_status || {};
   const canPublish = Object.values(gates).every(g => g?.ok);
   return (
@@ -46,17 +47,28 @@ const ListingCard = ({ item, onPublish, onArchive, busy }) => {
         <GateChip ok={gates.gate_2_twin?.ok} label="Twin" />
         <GateChip ok={gates.gate_3_recommendations?.ok} label={`Reco ${item.recommendations_pct || 0}%`} />
       </div>
+      {item.status === "sold" && item.sale_price_ron != null && (
+        <div className="text-[11px] text-cyan-300 mb-2" data-testid={`kanban-sale-info-${item.id}`}>
+          🏆 Vândut: {Number(item.sale_price_ron).toLocaleString("ro-RO")} RON · Comision net: {Number(item.commission_net_ron || 0).toLocaleString("ro-RO")} RON
+        </div>
+      )}
       <div className="flex gap-1.5">
         <Link to={`/imobile-verificate/${item.id}`} target="_blank" className="pm-btn pm-btn-ghost pm-btn-sm" data-testid={`kanban-view-${item.id}`}>
           <Eye className="w-3.5 h-3.5" /> Vezi
         </Link>
-        {item.status !== "published" && (
+        {["draft", "pending_review"].includes(item.status) && (
           <button onClick={() => onPublish(item.id)} disabled={!canPublish || busy === item.id} className="pm-btn pm-btn-success pm-btn-sm" data-testid={`kanban-publish-${item.id}`} title={canPublish ? "" : "Toate Gate-urile trebuie validate"}>
             {busy === item.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
             Publish
           </button>
         )}
-        {item.status !== "archived" && (
+        {item.status === "published" && (
+          <button onClick={() => onMarkSold(item)} disabled={busy === item.id} className="pm-btn pm-btn-success pm-btn-sm" data-testid={`kanban-sold-${item.id}`}>
+            {busy === item.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Banknote className="w-3.5 h-3.5" />}
+            Vândut
+          </button>
+        )}
+        {!["archived", "sold"].includes(item.status) && (
           <button onClick={() => onArchive(item.id)} disabled={busy === item.id} className="pm-btn pm-btn-danger pm-btn-sm" data-testid={`kanban-archive-${item.id}`}>
             <Archive className="w-3.5 h-3.5" /> Archive
           </button>
@@ -134,6 +146,24 @@ export const VerifiedEstateAdmin = () => {
     }
   };
 
+  const markSold = async (item) => {
+    const price = window.prompt(`Preț final de vânzare (RON) pentru:\n${item.title}`, item.price_ron);
+    if (price == null) return;
+    const v = parseFloat(price);
+    if (!v || v <= 0) { alert("Preț invalid."); return; }
+    if (!window.confirm(`Confirmi vânzarea la ${v.toLocaleString("ro-RO")} RON? Se calculează comisionul și listingul devine SOLD.`)) return;
+    setBusy(item.id);
+    try {
+      await axios.post(`${API}/api/verified-estate/admin/listings/${item.id}/mark-sold`, { sale_price_ron: v }, { withCredentials: true });
+      await load();
+    } catch (err) {
+      const data = err?.response?.data?.detail;
+      alert(typeof data === "string" ? data : JSON.stringify(data, null, 2));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   if (loading) {
     return <div className="min-h-screen bg-[#0a0a0b] flex items-center justify-center text-stone-400"><Loader2 className="w-6 h-6 animate-spin mr-2" /> Se încarcă...</div>;
   }
@@ -158,10 +188,12 @@ export const VerifiedEstateAdmin = () => {
 
         {/* Stats row */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-8">
             <StatCard icon={Building2} color="violet" value={stats.listings_total} label="Total listings" />
             <StatCard icon={CheckCircle2} color="emerald" value={stats.listings_published} label="Publicate" />
             <StatCard icon={FileText} color="amber" value={stats.listings_draft} label="Draft" />
+            <StatCard icon={Trophy} color="cyan" value={stats.listings_sold || 0} label="Vândute" />
+            <StatCard icon={Banknote} color="lime" value={`${Number(stats.commission_net_total_ron || 0).toLocaleString("ro-RO")}`} label="Comision net (RON)" />
             <StatCard icon={Mail} color="cyan" value={stats.inquiries_new} label="Cereri noi" />
             <StatCard icon={ExternalLink} color="pink" value={stats.external_requests_new} label="Audit extern" />
             <StatCard icon={Sparkles} color="lime" value={orders.filter(o => o.status === "paid").length} label="Plăți" />
@@ -184,7 +216,7 @@ export const VerifiedEstateAdmin = () => {
 
         {/* Kanban Board */}
         {tab === "kanban" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
             {STAGES.map(stage => {
               const stageItems = listings.filter(l => l.status === stage.key);
               return (
@@ -200,7 +232,7 @@ export const VerifiedEstateAdmin = () => {
                   {stageItems.length === 0 ? (
                     <div className="text-center text-xs text-stone-600 py-8">Niciun listing</div>
                   ) : (
-                    stageItems.map(it => <ListingCard key={it.id} item={it} onPublish={publish} onArchive={archive} busy={busy} />)
+                    stageItems.map(it => <ListingCard key={it.id} item={it} onPublish={publish} onArchive={archive} onMarkSold={markSold} busy={busy} />)
                   )}
                 </div>
               );

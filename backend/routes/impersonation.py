@@ -15,7 +15,9 @@ Audit log:
 - Visible to data subject (the target user) at /api/me/access-history (GDPR data-subject access).
 """
 import os
+import secrets
 import jwt
+import bcrypt
 from datetime import datetime, timezone
 from typing import Optional
 from bson import ObjectId
@@ -46,6 +48,88 @@ _COOKIE_SECURE = (os.environ.get("COOKIE_SECURE") or "true").lower() != "false" 
 class ImpersonateIn(BaseModel):
     user_id: str
     reason: str = Field(..., min_length=10, max_length=500)
+
+
+# ------------------------------------------------------------------
+# Conturi DEMO pentru quick-switch ("Schimbă profilul" din admin).
+# ALLOWLIST server-side — SINGURA sursă validă pentru "Intră rapid ca".
+# Incident producție 24 Aug 2026: frontend-ul avea fallback pe PRIMUL user cu
+# rolul respectiv când emailul demo lipsea din DB → admin a intrat în contul
+# unui CLIENT REAL. Fallback-ul a fost eliminat; conturile se creează
+# idempotent aici, marcate is_demo_account=True.
+# ------------------------------------------------------------------
+DEMO_IMPERSONATION_ACCOUNTS = {
+    "client@propmanage.io":          {"name": "Andrei Popescu",               "role": "client",     "tier": "VERIFIED"},
+    "client.beta@propmanage.io":     {"name": "Ana Beta (Client)",            "role": "client",     "tier": None},
+    "specialist@propmanage.io":      {"name": "Mihai Ionescu",                "role": "specialist", "tier": "VERIFIED", "specialty": "hvac"},
+    "spec.beta@propmanage.io":       {"name": "Radu Beta (Specialist)",       "role": "specialist", "tier": None,       "specialty": "hvac"},
+    "operator@propmanage.io":        {"name": "Lucian Stan",                  "role": "operator",   "tier": None},
+    "client.junior@propmanage.io":   {"name": "Andrei Junior (Client nou)",   "role": "client",     "tier": "JUNIOR"},
+    "client.verified@propmanage.io": {"name": "Vlad Verified (Client)",       "role": "client",     "tier": "VERIFIED"},
+    "client.premium@propmanage.io":  {"name": "Paul Premium (Client)",        "role": "client",     "tier": "PREMIUM"},
+    "spec.entry@propmanage.io":      {"name": "Emil Entry (Specialist)",      "role": "specialist", "tier": "ENTRY",    "specialty": "electric"},
+    "spec.junior@propmanage.io":     {"name": "Ion Junior (Specialist)",      "role": "specialist", "tier": "JUNIOR",   "specialty": "plumbing"},
+    "spec.verified@propmanage.io":   {"name": "Vasile Verified (Specialist)", "role": "specialist", "tier": "VERIFIED", "specialty": "hvac"},
+    "spec.advanced@propmanage.io":   {"name": "Adrian Advanced (Specialist)", "role": "specialist", "tier": "ADVANCED", "specialty": "renovation"},
+    "spec.premium@propmanage.io":    {"name": "Petre Premium (Specialist)",   "role": "specialist", "tier": "PREMIUM",  "specialty": "hvac"},
+    "spec.top@propmanage.io":        {"name": "Tudor Top (Specialist)",       "role": "specialist", "tier": "TOP",      "specialty": "renovation"},
+}
+
+
+class EnsureDemoIn(BaseModel):
+    email: str
+
+
+@router.post("/admin/impersonation/ensure-demo-target")
+async def ensure_demo_target(data: EnsureDemoIn, admin: dict = Depends(require_role("admin"))):
+    """Rezolvă STRICT (și creează idempotent dacă lipsește) un cont demo de
+    quick-switch. Refuză orice email din afara allowlist-ului — NICIODATĂ
+    fallback pe utilizatori reali."""
+    email = (data.email or "").strip().lower()
+    spec = DEMO_IMPERSONATION_ACCOUNTS.get(email)
+    if not spec:
+        raise HTTPException(400, "Emailul nu este pe lista conturilor demo de impersonare.")
+
+    existing = await db.users.find_one({"email": email})
+    if existing:
+        if existing.get("role") != spec["role"]:
+            raise HTTPException(409, f"Contul {email} există dar are rolul '{existing.get('role')}' "
+                                     f"(așteptat: {spec['role']}). Impersonare refuzată.")
+        return {"ok": True, "created": False,
+                "user": {"id": str(existing["_id"]), "email": email,
+                         "name": existing.get("name"), "role": existing.get("role")}}
+
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "email": email,
+        "name": spec["name"],
+        "role": spec["role"],
+        "tier": spec.get("tier"),
+        "phone": "+40 712 000 000",
+        # parolă aleatoare, ne-comunicată — contul e folosit DOAR prin impersonare
+        "password_hash": bcrypt.hashpw(secrets.token_urlsafe(24).encode(), bcrypt.gensalt()).decode(),
+        "email_verified": True,
+        "is_active": True,
+        "is_demo_account": True,
+        "created_at": now,
+        "updated_at": now,
+    }
+    if spec.get("specialty"):
+        doc["specialty"] = spec["specialty"]
+    res = await db.users.insert_one(doc)
+    try:
+        await db.admin_audit_log.insert_one({
+            "action": "impersonation.demo_account_created",
+            "actor_id": admin.get("id"), "actor_email": admin.get("email"),
+            "target": {"type": "user", "id": str(res.inserted_id), "label": email},
+            "after": {"role": spec["role"], "tier": spec.get("tier"), "is_demo_account": True},
+            "created_at": now,
+        })
+    except Exception:
+        pass
+    return {"ok": True, "created": True,
+            "user": {"id": str(res.inserted_id), "email": email,
+                     "name": spec["name"], "role": spec["role"]}}
 
 
 def _client_ip(request: Request) -> str:

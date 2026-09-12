@@ -13,10 +13,10 @@ Covers:
 - In-app notification of type 'dt_report_reminder' delivered to recipient (if known user)
 """
 import os
-import io
 import time
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 try:
     from pypdf import PdfWriter
@@ -44,7 +44,7 @@ def _extract_token(url):
 # ---------- fixtures ----------
 @pytest.fixture(scope="module")
 def admin_session():
-    return _login("admin@propmanage.io", "Admin123!")
+    return _login("admin@propmanage.io", OWNER_ADMIN_PASSWORD)
 
 
 @pytest.fixture(scope="module")

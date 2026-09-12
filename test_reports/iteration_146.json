@@ -1,0 +1,42 @@
+{
+  "summary": "PM-002 Community Maintenance Engine (Buildings + Group Campaigns) validated end-to-end. Backend: 23/23 pytest scenarios PASS (buildings CRUD, duplicate 409, search, join 404, mine w/ opportunities, campaign create 409/403, join dedup, specialist sees campaign, offer replace not duplicate, accept-offer creates assigned direct requests with lead_fee_waived=true, no lead-fee txns, auto-detection tick idempotent). Frontend: F1 (empty state → create bloc via bh-create-*), F2 (opportunity bh-opp-hvac → bh-start-campaign-hvac → bh-campaign card 'Deschisă'), F3 (specialist spec-campaigns-section + camp-offer-price + camp-offer-submit → 'Oferta ta 320 RON/apartament'), F4 (bh-offer + bh-accept-offer → campaign 'Programată' + Asignat job in Lucrări) all PASS. One backend bug found: unescaped regex in create_building.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/buildings",
+        "issue": "Unescaped regex injection in duplicate check — building names containing regex metacharacters ([, ], -, *, ., +, ?, (, ), etc.) cause pymongo OperationFailure (500 Internal Server Error) instead of graceful 400/409. Example: name '[TEST] Bloc' → 500 'Regular expression is invalid: range out of order in character class'. Fix: use re.escape(data.name) and re.escape(data.address) before wrapping in ^...$ regex, or better use case-insensitive collation / $eq with normalized string.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_community_buildings_iter146.py",
+    "/app/test_reports/pytest/iter146_results.xml"
+  ],
+  "action_items": [
+    "Escape regex metacharacters in POST /api/buildings duplicate-check (community_buildings.py:116-117). This is a P1 security/robustness bug — any Romanian address containing '.' or '-' could 500 in production."
+  ],
+  "critical_code_review_comments": [
+    "community_buildings.py:116-117: raw f-string in $regex is a regex-injection bug (see backend_issues.critical above).",
+    "community_buildings.py:243-245: fallback query when specialist has no specialty is very broad (`status: open`) — could leak all campaigns to unspecialized specialists. Consider excluding or requiring specialty.",
+    "community_buildings.py:187-204: _notify_campaign_audience iterates all owners and specialists inside a request handler — for large buildings/many trusted specialists this could slow down create_campaign response. Consider background task.",
+    "community_buildings.py: no rate limit / cap on number of buildings a single client can create — allows abuse.",
+    "community_buildings.py:334-343: request docs written directly to db.requests without going through the standard request-creation service — risks missing fields (e.g., created_at parseable, twin sync, analytics events). Verified fields are present but keeping in a single service would be safer."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_community_buildings_iter146.py (new pytest regression suite)"
+  ],
+  "success_rate": {"backend": "100% (23/23, 1 intentional skip)", "frontend": "100% (F1-F4 flows verified)"},
+  "test_credentials": "client@propmanage.io/Client123!, specialist@propmanage.io/Spec123!, admin@propmanage.io/1!nasov01ADMIN — all working (cookie session).",
+  "seed_data_creation": "Test data (TESTITER146 building, 2 hvac maintenance tasks on first 2 client properties, campaign, 1 assigned request, 10 notifications) was created during E2E flow and CLEANED at end. building_id was unset on properties, campaigns/requests deleted, notifications purged.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Reusable regression suite: /app/backend/tests/test_community_buildings_iter146.py. Requires that previous runs clean up (STATE.cleanup fixture removes maintenance_tasks; buildings/campaigns/requests must be cleaned manually if a run aborts mid-way — see cleanup snippet in this report). Frontend testids verified: bh-section, bh-empty-cta, bh-connect-sheet, bh-search, bh-create-toggle, bh-create-name/address/city, bh-create-submit, bh-building-{id}, bh-opp-{cat}, bh-start-campaign-{cat}, bh-campaign-{id}, bh-offer-{id}, bh-accept-offer-{id}, spec-campaigns-section, spec-campaign-{id}, camp-offer-price-{id}, camp-offer-submit-{id}, camp-my-offer-{id}. Login button text: 'Conectează-te' (not 'Autentifică-te').",
+  "rca of the issue": "POST /api/buildings 500 on names with regex metachars: create_building builds a MongoDB $regex from user input without escaping. The `[` in `[TEST]` opens a character class; the parser then interprets the trailing `-` (`-ITER146]`) as a range operator and MongoDB throws code 51091 'range out of order'. Reproduction: `curl -X POST /api/buildings -d '{\"name\":\"[TEST] Bloc\",\"address\":\"x\"}' -H 'Cookie: sid=...'` → 500. Mitigation: `import re; regex_name = f'^{re.escape(data.name)}$'; regex_addr = f'^{re.escape(data.address)}$'`."
+}

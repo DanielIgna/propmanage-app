@@ -17,6 +17,7 @@ import pytest
 import requests
 from pymongo import MongoClient
 from bson import ObjectId
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://phased-document.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
@@ -141,6 +142,7 @@ class TestRegisterWithReferrer:
         r = requests.post(
             f"{API}/auth/register",
             json={
+                "terms_accepted": True, "privacy_policy_accepted": True,
                 "email": email,
                 "password": "Pass1234!",
                 "name": "Invalid Ref Test",
@@ -163,6 +165,7 @@ class TestRegisterWithReferrer:
         r = requests.post(
             f"{API}/auth/register",
             json={
+                "terms_accepted": True, "privacy_policy_accepted": True,
                 "email": email,
                 "password": "Pass1234!",
                 "name": "Valid Ref Test",
@@ -193,6 +196,7 @@ class TestReferralEndToEnd:
         r = sess.post(
             f"{API}/auth/register",
             json={
+                "terms_accepted": True, "privacy_policy_accepted": True,
                 "email": email,
                 "password": password,
                 "name": "Referred E2E",
@@ -351,7 +355,7 @@ class TestContactForm:
 class TestRegressionSmoke:
     def test_demo_logins_work(self):
         for email, pw in [(CLIENT_EMAIL, CLIENT_PASS), (SPECIALIST_EMAIL, SPECIALIST_PASS),
-                          ("admin@propmanage.io", "Admin123!"), ("operator@propmanage.io", "Op123!")]:
+                          ("admin@propmanage.io", OWNER_ADMIN_PASSWORD), ("operator@propmanage.io", "Op123!")]:
             s = requests.Session()
             r = s.post(f"{API}/auth/login", json={"email": email, "password": pw})
             assert r.status_code == 200, f"{email} login: {r.status_code} {r.text}"

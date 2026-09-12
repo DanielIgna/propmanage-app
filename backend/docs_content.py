@@ -24,7 +24,6 @@ Structure per doc:
     faq: [{q: str, a: str}, ...]
 """
 from __future__ import annotations
-from datetime import datetime, timezone
 
 UPDATED = "2026-06-23"
 
@@ -756,7 +755,7 @@ ADMIN_DOC = {
         {
             "heading": "15. Comenzi rapide & shortcut-uri",
             "body": [
-                {"type": "code", "text": "# Login admin\ncurl -c /tmp/cookies.txt -X POST $API_URL/api/auth/login -d '{\"email\":\"admin@propmanage.io\",\"password\":\"1!nasov01ADMIN\"}'\n\n# Status global\ncurl -b /tmp/cookies.txt $API_URL/api/admin/healthcheck/run\n\n# Force backup\ncurl -b /tmp/cookies.txt -X POST $API_URL/api/admin/backups/run\n\n# Auto-Tune one-click (urcă tier-ul la self-driving)\ncurl -b /tmp/cookies.txt -X POST $API_URL/api/admin/autonomy/auto-tune\n\n# Trimite Founders' Digest acum\ncurl -b /tmp/cookies.txt -X POST $API_URL/api/admin/autonomy/founder-digest/send-now\n\n# Snapshot Autonomy\ncurl -b /tmp/cookies.txt -X POST $API_URL/api/admin/autonomy/snapshot\n\n# Twin ask\ncurl -b /tmp/cookies.txt -X POST $API_URL/api/admin/twin/ask -d '{\"question\":\"care e tier-ul?\"}'\n\n# Search docs\ncurl -b /tmp/cookies.txt \"$API_URL/api/admin/docs/admin/search?q=autonomy\""},
+                {"type": "code", "text": "# Login admin\ncurl -c /tmp/cookies.txt -X POST $API_URL/api/auth/login -d '{\"email\":\"admin@propmanage.io\",\"password\":\"$SEED_ADMIN_PASSWORD\"}'\n\n# Status global\ncurl -b /tmp/cookies.txt $API_URL/api/admin/healthcheck/run\n\n# Force backup\ncurl -b /tmp/cookies.txt -X POST $API_URL/api/admin/backups/run\n\n# Auto-Tune one-click (urcă tier-ul la self-driving)\ncurl -b /tmp/cookies.txt -X POST $API_URL/api/admin/autonomy/auto-tune\n\n# Trimite Founders' Digest acum\ncurl -b /tmp/cookies.txt -X POST $API_URL/api/admin/autonomy/founder-digest/send-now\n\n# Snapshot Autonomy\ncurl -b /tmp/cookies.txt -X POST $API_URL/api/admin/autonomy/snapshot\n\n# Twin ask\ncurl -b /tmp/cookies.txt -X POST $API_URL/api/admin/twin/ask -d '{\"question\":\"care e tier-ul?\"}'\n\n# Search docs\ncurl -b /tmp/cookies.txt \"$API_URL/api/admin/docs/admin/search?q=autonomy\""},
                 {"type": "h3", "text": "Hotkeys UI"},
                 {"type": "list", "items": [
                     "**⌘K / Ctrl+K** în Admin → Docs — search instant",

@@ -1,0 +1,25 @@
+{
+  "summary": "PM-PILOT-001 + PM-ADMIN-001 (Administrator Workspace + Building Health Score + Announcements + Invite flow) fully validated. 17/17 backend pytest cases PASS covering P1-P7 (create with administrator_id, PATCH permissions/validation, portfolio + totals, health score 5 weighted components with detail strings, dashboard access matrix, announcements + notifications, preview no-sensitive-data, /buildings/mine is_admin + announcements). Frontend F1-F4 fully validated with Playwright: /administrator portfolio (aw-totals, aw-building-{id}, aw-dot-{id}, /100 score) → click card → BuildingDetail (aw-health-score, aw-health-breakdown with 5 bars, aw-apartments, aw-invite-link containing /register?binvite=, aw-invite-copy, aw-invite-wa, aw-announce form + live insertion into aw-announcements). BuildingHub on /client shows bh-share-{id}, bh-admin-link-{id} pointing to /administrator, bh-announcements-{id}. F4 invite flow: created secondary test client account, logged in as invitee, navigated to /client?binvite={bid} → bh-invite-banner visible with building name → click bh-invite-accept → banner disappears and bh-building-{id} card appears in portfolio. All test data cleaned (5 test buildings, 2 test invitee accounts, all announcements/notifications/campaigns removed).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_pm_pilot_admin_iter147.py",
+    "/app/test_reports/pytest/iter147_pilot.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "compute_building_health does two DB round-trips for the same building doc when called from portfolio (b passed in) vs dashboard — already optimized by passing b. Good.",
+    "AdministratorWorkspace.jsx uses setSelected as effect dep with axios.get — re-fetches portfolio on every drill-in/back. Minor: could refresh only on back. Non-blocking.",
+    "In building_dashboard the ObjectId conversion for owners uses ObjectId.is_valid check — good defensive coding.",
+    "Preview endpoint correctly excludes administrator_id/apartments_total/floors/construction_year (verified explicitly in P6 test)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_pm_pilot_admin_iter147.py (new)"
+  ],
+  "success_rate": {"backend": "100% (17/17)", "frontend": "100% (F1, F2, F3, F4 all pass)"},
+  "test_credentials": "client@propmanage.io / Client123! ; specialist@propmanage.io / Spec123! ; ephemeral testinvitee_*@example.com / TestPass123! (cleaned up)",
+  "seed_data_creation": "During UI test: 1 test building + 1 secondary invitee client + 1 property; cleaned via /tmp/cleanup_iter147.py at end (5 residual [TEST] buildings from prior runs plus 2 invitee accounts also purged).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Health Score components (coverage/punctuality/responsiveness/activation/community) weights sum to exactly 100. Preview endpoint intentionally minimal — do not expand it with sensitive fields. Invite flow relies on localStorage 'pm_building_invite' key set by RegisterPage or ClientDashboardV2 when ?binvite= present; BuildingHub reads it and calls /buildings/{id}/preview. Cleanup script at /tmp/cleanup_iter147.py."
+}

@@ -1,0 +1,561 @@
+{
+  "passes": 34,
+  "total": 38,
+  "results": [
+    {
+      "label": "public /",
+      "path": "/",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "public /login",
+      "path": "/login",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "public /register",
+      "path": "/register",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "public /marketplace",
+      "path": "/marketplace",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "public /pricing",
+      "path": "/pricing",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "public /about",
+      "path": "/about",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "public /privacy",
+      "path": "/privacy",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "public /terms",
+      "path": "/terms",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "trick /adminpasda",
+      "path": "/adminpasda",
+      "expected_visible": true,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": false
+    },
+    {
+      "label": "trick /administrare",
+      "path": "/administrare",
+      "expected_visible": true,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": false
+    },
+    {
+      "label": "specialist /dashboard",
+      "path": "/dashboard",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "specialist /marketplace",
+      "path": "/marketplace",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "specialist /profile",
+      "path": "/profile",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "specialist /wallet",
+      "path": "/wallet",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "specialist /jobs",
+      "path": "/jobs",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "specialist /requests",
+      "path": "/requests",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "client /dashboard",
+      "path": "/dashboard",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "client /properties",
+      "path": "/properties",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "client /requests",
+      "path": "/requests",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "client /wallet",
+      "path": "/wallet",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "client /profile",
+      "path": "/profile",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "client /marketplace",
+      "path": "/marketplace",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "operator /dashboard",
+      "path": "/dashboard",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "operator /operator",
+      "path": "/operator",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "operator /profile",
+      "path": "/profile",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    },
+    {
+      "label": "partner login",
+      "PASS": false
+    },
+    {
+      "label": "super-admin /admin",
+      "path": "/admin",
+      "expected_visible": true,
+      "actual": {
+        "exists": true,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 178,
+        "height": 40,
+        "visible_on_screen": true
+      },
+      "PASS": true
+    },
+    {
+      "label": "super-admin /admin/marketing",
+      "path": "/admin/marketing",
+      "expected_visible": true,
+      "actual": {
+        "exists": true,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 178,
+        "height": 40,
+        "visible_on_screen": true
+      },
+      "PASS": true
+    },
+    {
+      "label": "super-admin /admin/demo-accounts",
+      "path": "/admin/demo-accounts",
+      "expected_visible": true,
+      "actual": {
+        "exists": true,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 178,
+        "height": 40,
+        "visible_on_screen": true
+      },
+      "PASS": true
+    },
+    {
+      "label": "super-admin /admin/demo-activity",
+      "path": "/admin/demo-activity",
+      "expected_visible": true,
+      "actual": {
+        "exists": true,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 178,
+        "height": 40,
+        "visible_on_screen": true
+      },
+      "PASS": true
+    },
+    {
+      "label": "super-admin /admin/admin-accounts",
+      "path": "/admin/admin-accounts",
+      "expected_visible": true,
+      "actual": {
+        "exists": true,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 178,
+        "height": 40,
+        "visible_on_screen": true
+      },
+      "PASS": true
+    },
+    {
+      "label": "SPA pushState / hide",
+      "PASS": true,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      }
+    },
+    {
+      "label": "SPA pushState /admin show",
+      "PASS": false,
+      "actual": {
+        "exists": true,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 178,
+        "height": 40,
+        "visible_on_screen": true
+      }
+    },
+    {
+      "label": "testing.admin /admin",
+      "path": "/admin",
+      "expected_visible": true,
+      "actual": {
+        "exists": true,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 178,
+        "height": 40,
+        "visible_on_screen": true
+      },
+      "PASS": true
+    },
+    {
+      "label": "testing.admin /admin/demo-activity",
+      "path": "/admin/demo-activity",
+      "expected_visible": true,
+      "actual": {
+        "exists": true,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 178,
+        "height": 40,
+        "visible_on_screen": true
+      },
+      "PASS": true
+    },
+    {
+      "label": "marketing.admin /admin/marketing",
+      "path": "/admin/marketing",
+      "expected_visible": true,
+      "actual": {
+        "exists": true,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 178,
+        "height": 40,
+        "visible_on_screen": true
+      },
+      "PASS": true
+    },
+    {
+      "label": "marketing.admin /admin",
+      "path": "/admin",
+      "expected_visible": true,
+      "actual": {
+        "exists": true,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1",
+        "width": 178,
+        "height": 40,
+        "visible_on_screen": true
+      },
+      "PASS": true
+    },
+    {
+      "label": "mobile client /dashboard",
+      "path": "/dashboard",
+      "expected_visible": false,
+      "actual": {
+        "exists": true,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "0.85",
+        "width": 0,
+        "height": 0,
+        "visible_on_screen": false
+      },
+      "PASS": true
+    }
+  ]
+}

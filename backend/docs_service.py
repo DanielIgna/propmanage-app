@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import os
 import io
-import uuid
 import logging
 import secrets
 from datetime import datetime, timezone, timedelta
@@ -26,12 +25,12 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle,
+    SimpleDocTemplate, Paragraph, Spacer, PageBreak,
 )
 from reportlab.lib.enums import TA_LEFT
 
 from db import db
-from docs_content import DOCS_CONTENT, get_doc, all_doc_meta
+from docs_content import get_doc, all_doc_meta
 
 logger = logging.getLogger("propmanage.docs")
 

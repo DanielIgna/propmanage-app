@@ -12,7 +12,6 @@ import logging
 import math
 from collections import Counter
 from datetime import datetime, timezone, timedelta
-from typing import Optional
 
 from db import db
 from ai_core.provider import call_llm, ecosystem_enabled
@@ -134,6 +133,35 @@ Skip generic chitchat. Skip already-obvious info. Skip sensitive data (CNP, IBAN
 If nothing memorable, return {"facts": []}."""
 
 
+def _parse_facts(text: str) -> list:
+    """Parse the LLM response (strict JSON, possibly fenced in markdown) into a
+    list of fact strings. Returns [] on any parse failure."""
+    import json
+    try:
+        t = text.strip()
+        if t.startswith("```"):
+            t = t.split("```", 2)[1] if t.count("```") >= 2 else t[3:]
+            if t.startswith("json"):
+                t = t[4:]
+            t = t.rsplit("```", 1)[0].strip()
+        parsed = json.loads(t)
+        return parsed.get("facts") or []
+    except Exception:
+        return []
+
+
+async def _store_facts(facts: list, *, user_id, scope, source) -> int:
+    """Persist up to 5 extracted facts as memories. Returns stored count."""
+    n = 0
+    for f in facts[:5]:
+        if not f or not isinstance(f, str):
+            continue
+        ok = await remember(user_id=user_id, scope=scope, content=f, summary=f[:200], source=source)
+        if ok:
+            n += 1
+    return n
+
+
 async def extract_and_remember(*, user_id, scope, conversation_text, source=None):
     if not await ecosystem_enabled():
         return 0
@@ -147,26 +175,10 @@ async def extract_and_remember(*, user_id, scope, conversation_text, source=None
     text = res.get("text") or ""
     if res.get("error") or not text:
         return 0
-    import json
-    try:
-        t = text.strip()
-        if t.startswith("```"):
-            t = t.split("```", 2)[1] if t.count("```") >= 2 else t[3:]
-            if t.startswith("json"):
-                t = t[4:]
-            t = t.rsplit("```", 1)[0].strip()
-        parsed = json.loads(t)
-        facts = parsed.get("facts") or []
-    except Exception:
+    facts = _parse_facts(text)
+    if not facts:
         return 0
-    n = 0
-    for f in facts[:5]:
-        if not f or not isinstance(f, str):
-            continue
-        ok = await remember(user_id=user_id, scope=scope, content=f, summary=f[:200], source=source)
-        if ok:
-            n += 1
-    return n
+    return await _store_facts(facts, user_id=user_id, scope=scope, source=source)
 
 
 async def list_user_memories(user_id, limit=50):

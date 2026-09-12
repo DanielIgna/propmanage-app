@@ -5,7 +5,6 @@ new collection, no new logic, just an HTTP wrapper + a "recent unified" feed.
 """
 import logging
 from typing import Optional
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query
 

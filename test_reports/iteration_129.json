@@ -1,0 +1,26 @@
+{
+  "summary": "Enterprise Health Engine (D122) + Formula Registry (D151) tested end-to-end. Backend: 13/13 pytest passed covering summary payload, 11 domains sorted asc, alert correctness (score<80, severity critical<60, cause/impact/1-3 actions/estimated_effect), history snapshot, formulas list (11 active, v>=1, no _id), explain (calc_steps with value/subscore/weight/contribution_pts, pos/neg contributors, confidence), PATCH validations (missing reason 400, unknown metric 400, negative weight 400, warn<=critical 400, zero-sum weights 400), edit->version bump->audit entry->rollback->weights restored, regression /api/admin/operations + /api/admin/business-health still 200. Frontend: /admin/enterprise-health renders overall score (59 Critical), all 11 domain cards sorted asc (9..94), 9 alert cards, expanding knowledge shows explain (3 calc-step rows) + editor (3 weights + warn + reason + save). Registry left CLEAN — every PATCH was rolled back.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_enterprise_health_iter129.py",
+    "/app/test_reports/pytest/iter129_enterprise_health.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "enterprise_health.py: _collect_metrics() gates review_freshness at 100 if any 30d review exists else 40 — binary jump; consider proportional scoring to reflect target=100.",
+    "PATCH weights loop iterates over payload.get('weights') AFTER already looping over f['inputs'] to build new_inputs — validation of unknown metric happens after inputs are built (works, but could short-circuit earlier for clarity).",
+    "In _get_formulas() the seed writes doc without _id but reads doc from mongo which will include _id; the list_formulas endpoint correctly excludes it, but internal callers get raw docs with ObjectId — not currently serialized, safe today but fragile.",
+    "Frontend EnterpriseHealthPage.jsx swallows errors silently (console.error only) with no user-visible error state — if API returns 5xx the page stays on 'Se calculează…' spinner forever."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_enterprise_health_iter129.py"
+  ],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "100%"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN — worked via /api/auth/login (200)",
+  "seed_data_creation": "None. Registry was mutated during edit/rollback test but restored — 'knowledge' formula is now at version 3 (originally v1) with original weights 0.4/0.3/0.3 intact, expected behavior per D151 (version increments never rewind).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 11 domains render sorted asc. Overall score currently 59 (Critical). 9 domains below warning threshold (80) triggering alerts. Domain 'knowledge' is at v3 in the registry due to iter129 tests + prior iter128/129 self-tests — weights are restored to originals. Every future test that PATCHes must POST /rollback. History collection only has today's snapshot, so trend_30d is null on domains (expected).",
+  "rca of the issue": "N/A — no issues found."
+}

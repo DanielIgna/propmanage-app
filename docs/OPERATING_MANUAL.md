@@ -558,11 +558,64 @@ if (hasFeature("bulk_operations")) { ... }
 2. Cere-mi: `Adaugă admin@nume.com ca admin secundar. Vreau să poată vedea Governance dar NU să schimbe deprecations.`
 3. Eu implementez fine-grained permissions (după FG-3 Enforcement layer e gata)
 
-### Scenariu 8: "Cum testez UI-ul pentru clienți Junior?"
-1. Creează un cont client test
-2. (după implementare progressive disclosure) admin override: `POST /api/admin/users/{id}/set-tier {"tier": "junior"}`
-3. Loghează-te cu acel cont → vezi UI simplu
-4. Revino în admin → schimbă tier la "verified" → loghează-te din nou → vezi UI complet
+---
+
+## 🔑 Demo Accounts Manager (`/admin/demo-accounts`)
+
+**Scop:** 6 conturi destinate colaboratorilor externi care explorează platforma pe zona lor de expertiză. Tu controlezi parolele cu codul master **0108**.
+
+**Cele 6 conturi pre-seedate:**
+| Email | Parola implicită | Scope | Rol |
+|---|---|---|---|
+| `testing.admin@propmanage.io`   | `Test!Demo2026Strong`  | testing   | admin |
+| `frontend.admin@propmanage.io`  | `Front!Demo2026Strong` | frontend  | admin |
+| `backend.admin@propmanage.io`   | `Back!Demo2026Strong`  | backend   | admin |
+| `security.admin@propmanage.io`  | `Sec!Demo2026Strong`   | security  | admin |
+| `general.admin@propmanage.io`   | `Gen!Demo2026Strong`   | general   | admin |
+| `marketing.admin@propmanage.io` | `Mkt!Demo2026Strong`   | marketing | marketing_manager |
+
+**Acțiuni disponibile (super-admin only):**
+- **Vezi parola** — click pe iconița ochi în UI.
+- **Copy parola** — click iconița clipboard. Trimit-o prin email/Signal colaboratorului.
+- **Reset implicit** — readuce parola la valoarea hardcoded (din `/app/backend/sub_admin_seed.py`). Util dacă un colaborator a schimbat-o.
+- **Schimbă parola** — setezi una custom (min 8 caractere, litere + cifre).
+
+**Cod master:** `0108` (hardcoded în `/app/backend/routes/demo_accounts.py` constant `MASTER_CODE`). Schimbă-l direct în fișier dacă vrei să-l rotești.
+
+**Audit:** fiecare reset/schimbare e logată în `/var/log/supervisor/backend.*.log` cu email-ul super-adminului care a făcut acțiunea.
+
+---
+
+## 🛡️ Admin Accounts Manager (`/admin/admin-accounts`)
+
+**Scop:** control complet asupra TUTUROR conturilor cu rol admin (inclusiv demo, operatori, marketing manager, conturi externe ca `carlospacu@gmail.com` și `danieligna1@gmail.com`).
+
+**Ce poți face:**
+- **Listă completă** — toți admin/super_admin/marketing_manager/operator cu filtru pe rol + search după email/nume.
+- **Blochează / Activează** un cont — flag `is_active`. Userii blocați NU se pot loga (utile când apare ceva suspect).
+- **Schimbă rolul + scope** — promovezi/demotezi între `admin`, `marketing_manager`, `operator`, `specialist`, `client` cu scope opțional (general/testing/frontend/backend/security/marketing/ops/ai/finance/legal/growth).
+- **Schimbă parola** — direct pentru orice admin (inclusiv super-admin propriu pentru rotation).
+
+**Cont PROTEJAT:** `admin@propmanage.io` (tu) — nu poate fi blocat sau demotat. Poate doar avea parola schimbată (de tine).
+
+**Cod master:** `0108` pentru toate operațiile de scriere.
+
+### Scenariu 9: "Vreau să verific accesul unui admin extern"
+1. `/admin/admin-accounts` → search după email (ex: `carlospacu`)
+2. Vezi rol curent, scope, ultimul login, status activ
+3. Decizie:
+   - Suspect → click **Ban** (rosu) → cod 0108 → blocat instant
+   - Schimbă scope/rol → click **UserCog** (violet) → alege rol + scope + cod 0108
+   - Rotire parolă → click **KeyRound** (fuchsia) → parolă nouă + cod 0108
+
+### Scenariu 10: "Am blocat din greșeală un admin"
+1. `/admin/admin-accounts` → filter "BLOCAT" sau scroll
+2. Click iconița **Play** (verde) → cod 0108 → cont activat din nou
+
+### Scenariu 11: "Vreau să schimb parola super-admin (propriul cont)"
+1. `/admin/admin-accounts` → găsește rândul `admin@propmanage.io` (badge PROTECT)
+2. Click **KeyRound** → parolă nouă min 8 chars + cod 0108
+3. ATENȚIE: salvează parola într-un password manager înainte de submit. Dacă o uiți, recuperarea cere intervenție directă în DB.
 
 ---
 
@@ -575,4 +628,84 @@ if (hasFeature("bulk_operations")) { ... }
 
 ---
 
-*Manual versiune 1.0 — Feb 12, 2026. Re-citește când platforma evoluează semnificativ.*
+*Manual versiune 1.1 — Feb 26, 2026. Re-citește când platforma evoluează semnificativ.*
+
+---
+
+# PARTEA II — Modulele din Iunie 2026 (Command Center, Autonomie, Design)
+
+> ⚠️ **CONFIDENȚIAL — doar pentru owner (danieligna1@gmail.com).** Din 11 Iunie 2026 acest manual este vizibil DOAR pentru tine. Ceilalți admini primesc 403.
+
+## 14. 🧠 AI Command Center (`/admin/command-center`)
+**Ce face**: centrul tău de comandă zilnic. Feed cu cifrele de azi + alerte (cereri >48h, escrow neconfirmat, specialiști incompleți, dispute) + Top 5 recomandări AI generate de Claude pe datele reale.
+**Cum operezi**: dimineața primești automat EMAIL cu digestul (cron 07:00). În pagină: apasă «Generează» pentru recomandări proaspete → fiecare are buton «Deschide» (te duce direct la modul) și cerc de bifare «rezolvat». Alertele HEALTH vin automat din Business Health (departament ROȘU = alertă aici).
+**Dacă greșești**: nimic ireversibil — recomandările se regenerează, bifările se pot debifa.
+
+## 15. 📊 Business Health (`/admin/business-health`)
+**Ce face**: 8 scoruri pe departamente (Marketing/Marketplace/Escrow/Specialiști/Suport/Conversii/SEO/Financiar), VERDE ≥80 / GALBEN ≥60 / ROȘU <60, formule deterministe pe datele din DB.
+**Cum operezi**: doar citești. Snapshot-ul se salvează singur zilnic → sparkline-urile arată trendul. Roșu = apare automat în Command Center + Notification Center.
+
+## 16. 🗺 Roadmap · Evoluție (`/admin/roadmap`)
+**Ce face**: board-ul tău de evoluție — 21+ module cu «✓ construit / ○ de construit», ROȘU urgent / GALBEN prioritar / VERDE îmbunătățire, progres %.
+**Cum operezi**: expandează un modul → poți schimba prioritatea/statusul/progresul cu butoanele. «Analizează cu AI» → Claude îți spune ce să construiești săptămâna asta. Board-ul e sursa de adevăr — eu (agentul) îl actualizez după fiecare sesiune.
+
+## 17. 📡 Marketplace Intelligence (`/admin/marketplace-intel`)
+**Ce face**: cerere vs capacitate per categorie (capacitate = specialiști × 4 lucrări/lună) cu % DEFICIT/SUPRAOFERTĂ + City Analytics pe județe + Radar trenduri ±% 30 zile.
+**Cum operezi**: «Recomandă» → AI îți spune unde recrutezi și unde promovezi. Categoriile 🔥 hot (creștere ≥30%) sunt oportunități de campanie.
+
+## 18. 💰 Financial Cockpit (`/admin/financial-cockpit`)
+**Ce face**: Revenue 30z cu growth, Escrow complet (blocat/înghețat/eliberat), MRR/ARR din abonamente, TVA estimat 21%, Cash Flow 30 zile, AI Insights financiare.
+**Cum operezi**: citești + «Generează insights» pentru analiza AI a cifrelor.
+
+## 19. ⚙️ Automation Center (`/admin/automation`)
+**Ce face**: reguli Dacă→Atunci cu executor REAL: reminder cereri blocate (notifică adminii), badge ⚡ Fast Response, reactivare clienți inactivi (coadă email).
+**Cum operezi**: activează regula cu switch-ul → **scheduler-ul le rulează SINGUR** (orar, max 1×/interval — implicit 24h). Poți schimba parametrul (ore/minute/zile) direct în card. «Rulează acum» = execuție manuală imediată. Istoricul execuțiilor e jos.
+**⚠️ Important**: regulă DEZACTIVATĂ = dependență de om = scade scorul HDI (vezi §22).
+
+## 20. 👑 CEO Dashboard (`/admin/ceo`) — DOAR TU
+**Ce face**: vederea ta strategică: Business Score, Revenue ▲%, Cash Flow OK/ATENȚIE, Escrow, MRR/ARR, «AI spune: prioritățile tale azi» (top 3 nerezolvate), puls departamente.
+**Acces**: doar super-admin general. Sub-adminii scoped primesc 403.
+
+## 21. 🔔 Notification Center (`/admin/notification-center`)
+**Ce face**: «Ai N lucruri importante» — TOT ce cere atenție, într-un singur loc: alerte operaționale + Business Health roșu + recomandări AI nerezolvate + anomalii Audit Sentinel. Sortate pe severitate, cu buton «Rezolvă» (link direct).
+**Cum operezi**: bifezi cercul = ascuns până mâine (ack per zi). Item-ele se regenerează zilnic.
+
+## 22. 🤖 Human Dependency Index — a 5-a axă Autonomy Engine (`/admin` → AI Lab → Autonomy)
+**Ce face**: O SINGURĂ CIFRĂ care îți arată cât de aproape e platforma de a funcționa singură. 100 = zero intervenții umane pendinte. Formula: penalizează cereri blocate >48h, escrow neconfirmat, dispute deschise, reguli de automatizare OPRITE, recomandări AI nebifate, anomalii de audit.
+**Cum îl crești**: activează regulile din Automation, triază disputele, confirmă escrow-urile, bifează recomandările rezolvate.
+
+## 23. 🔍 AI Search (`/admin/ai-search`)
+**Ce face**: vorbești cu datele. Exemple: «cereri peste 20.000 lei», «specialiști fără portofoliu», «cereri din Cluj», «plăți peste 500 lei». Claude traduce în filtre sigure (doar câmpuri whitelisted) → tabel cu rezultate.
+
+## 24. 🕐 User Timeline (`/admin/user-timeline`)
+**Ce face**: cronologia completă a oricărui utilizator: cont → verificare → cereri → asignări → escrow → plăți → review-uri. Cauți după email/nume, selectezi, vezi tot.
+
+## 25. 🛡 Audit Sentinel (rulează singur, orar)
+**Ce face**: detectează anomalii în loguri: >200 request-uri/oră per user, ≥10 erori 4xx în fereastră scurtă, ≥5 acțiuni admin refuzate/oră (tentative out-of-scope). Anomaliile noi → notificare in-app + apar în Notification Center.
+**Cum operezi**: nimic — e autonom. Verifici anomaliile în Notification Center; se pot rezolva via API sau se rezolvă natural (dedupe pe zi).
+
+## 26. 🎨 Design Studio + Design Intelligence (`/admin/design-studio`, `/admin/design-intelligence`)
+**Ce face**: Design Studio = tokens, teme, presets, Palette Cascade (5 culori → 20 tokens). Design Intelligence = Layout/Component Optimizer AI cu Impact Score per propunere + Evolution Engine (Propus→Testare→Aprobat→Aplicat LIVE, cu rollback).
+**Regula de aur**: NIMIC nu se aplică pe platformă fără aprobarea ta. Orice aplicare de tokens are snapshot → «Rollback» readuce exact starea anterioară.
+
+## 27. ⏰ Ce rulează SINGUR (cron-uri relevante pentru tine)
+| Când | Ce | Efect |
+|---|---|---|
+| 07:00 zilnic | Command Center morning | Feed + recomandări regenerate + **EMAIL către tine** + semnal orchestrator (alerte HEALTH) |
+| Orar (min :12) | Automation rules tick | Rulează regulile ACTIVE al căror interval a expirat |
+| Orar (min :40) | Audit Sentinel scan | Detectează anomalii în loguri |
+| 03:15 zilnic | Autonomy snapshot | Istoric scoruri (inclusiv HDI) |
+| La primul GET/zi | Business Health snapshot | Alimentează sparkline-urile |
+| 05:10 zilnic | Marketplace Medic | Suspendă specialiști cu ≥dispute prag |
+| Luni 09:30 | Founder Digest | Email KPI săptămânal |
+
+## 28. 🏛 Viziunea XOS (Experience OS) — pe board, de construit
+Direcția aprobată: «platforma care construiește alte platforme» — Layout Builder, Widget Manager, Role Experience, Franchise/White-Label per oraș, Visibility Engine, Content Manager. Stadiul real: Design Tokens ✓, Theme Manager ✓, Component Library ✓, AI Experience Optimizer ✓ (= Design Intelligence). Restul sunt pe `/admin/roadmap` grupate sub «Experience OS».
+
+## 29. 🆘 Cheat-sheet rapid
+- **«Ce fac azi?»** → CEO Dashboard sau emailul de la 07:00.
+- **«De ce a scăzut scorul general de autonomie?»** → Autonomy Engine → axa Human — vezi exact ce așteaptă om.
+- **«Vreau să găsesc ceva în date»** → AI Search, scrii în română.
+- **«Ce s-a întâmplat cu utilizatorul X?»** → User Timeline.
+- **«Ce a făcut platforma singură?»** → Orchestrator → Ledger + Automation → Istoric execuții.
+- **«Vreau altă culoare/temă»** → Design Studio (nu cere cod).

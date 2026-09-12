@@ -9,10 +9,8 @@ import {
   Heart, Check, Loader2, Sparkles, AlertCircle, ChevronLeft, CreditCard,
 } from "lucide-react";
 import { API } from "./DashShared";
-
-// ============================================================================
-// /house-health/upgrade → plan picker
-// ============================================================================
+import { EcosystemFlow } from "../components/ecosystem/EcosystemFlow";
+import { NextStep } from "../components/ecosystem/NextStep";
 const HouseHealthUpgradePage = () => {
   const navigate = useNavigate();
   const [plans, setPlans] = useState([]);
@@ -20,10 +18,16 @@ const HouseHealthUpgradePage = () => {
   const [busySlug, setBusySlug] = useState(null);
   const [error, setError] = useState("");
 
+  const [authRequired, setAuthRequired] = useState(false);
+
   useEffect(() => {
     axios
       .get(`${API}/house-health/plans`)
       .then((r) => setPlans(r.data?.items || []))
+      .catch((e) => {
+        setPlans([]);
+        if (e?.response?.status === 401) setAuthRequired(true);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -73,6 +77,10 @@ const HouseHealthUpgradePage = () => {
           evaluări tehnice de la specialiști verificați, scor de sănătate al proprietății, recomandări personalizate
           și automatizare lead-uri în marketplace cu comision redus.
         </p>
+        <div className="mb-8 p-5 rounded-3xl bg-white/[0.03] border border-white/10" data-testid="hh-ecosystem-flow">
+          <EcosystemFlow dark compact activeKey="house_health" />
+          <p className="text-xs text-stone-500 mt-3">House Health este ultima etapă a procesului PropManage: după audit, Digital Twin și implementare, locuința intră în întreținere monitorizată.</p>
+        </div>
 
         {error && (
           <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/40 text-rose-300 text-sm flex items-center gap-2" data-testid="hh-upgrade-error">
@@ -85,7 +93,18 @@ const HouseHealthUpgradePage = () => {
             <Loader2 className="w-4 h-4 animate-spin" /> Se încarcă planurile...
           </div>
         ) : plans.length === 0 ? (
-          <div className="text-stone-500 italic">Niciun plan disponibil momentan.</div>
+          authRequired ? (
+            <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/10 text-center" data-testid="hh-auth-required">
+              <p className="text-stone-300 font-semibold mb-1">Planurile House Health sunt disponibile după autentificare.</p>
+              <p className="text-sm text-stone-500 mb-5">Creează-ți cont gratuit sau conectează-te pentru a-ți activa monitorizarea locuinței.</p>
+              <div className="flex justify-center gap-3">
+                <a href="/auth" className="px-6 py-2.5 rounded-full bg-emerald-500 text-white text-sm font-bold hover:bg-emerald-400 transition-colors" data-testid="hh-login-cta">Conectează-te</a>
+                <a href="/register" className="px-6 py-2.5 rounded-full border border-white/15 text-stone-300 text-sm font-bold hover:border-emerald-400/60 hover:text-white transition-colors" data-testid="hh-register-cta">Creează cont</a>
+              </div>
+            </div>
+          ) : (
+            <div className="text-stone-500 italic">Niciun plan disponibil momentan.</div>
+          )
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5" data-testid="hh-upgrade-plans">
             {plans.map((p) => (
@@ -106,6 +125,17 @@ const HouseHealthUpgradePage = () => {
             Plata este procesată prin Stripe. Datele cardului tău nu trec niciodată prin serverele PropManage.
             Poți anula oricând — accesul rămâne activ până la sfârșitul perioadei plătite.
           </p>
+        </div>
+
+        <div className="mt-8">
+          <NextStep
+            dark
+            label="Nu ai încă audit sau Digital Twin?"
+            title="Începe procesul de la primul pas"
+            desc="House Health funcționează cel mai bine pe o locuință auditată, cu Digital Twin — monitorizarea pornește de la date reale."
+            to="/imobile-verificate/sell"
+            cta="Solicită Audit + Digital Twin"
+          />
         </div>
       </div>
     </div>
@@ -198,6 +228,11 @@ export const HouseHealthUpgradeSuccess = () => {
         setDetails(data);
         if (data.payment_status === "paid") {
           setState({ phase: "success", message: "Plată confirmată! Abonament activat." });
+          // Invalidează cache-ul entitlements ca la revenirea în UI să reflecte tier-ul nou
+          try {
+            const mod = await import("../hooks/useEntitlements");
+            mod.clearEntitlementCache?.();
+          } catch { /* silent */ }
           return;
         }
         if (data.status === "expired") {

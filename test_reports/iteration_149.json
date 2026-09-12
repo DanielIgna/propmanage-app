@@ -1,0 +1,32 @@
+{
+  "summary": "PM-AI-REPAIR-001 Health Repair Engine tested end-to-end. Backend (9/9 pytest passed): auth guards on all 3 endpoints (401/403), GET /status returns all 11 domains with score/warning_threshold/has_engine/last_repair + last_run + runs_total, GET /runs?limit=5 returns history with at least one full 11-domain run, POST /run validates invalid/empty domains (400), POST /run with {domains:['technical_debt']} returns {started:true} and a new manual:... run appears in <90s with technical_debt result containing problems/actions/score_before/score_after/delta. Orchestrator ledger contains playbook_id=health_repair_engine entry. Frontend: /admin/repair-center loads, grid renders all 11 domain cards (data-testid='repair-domain-<key>'), repair-last-run visible, clicking repair-run-technical_debt shows '⏳ Ciclul rulează în fundal' then '✅ Ciclu finalizat...' in repair-message within ~5s, 'Enterprise Health' link (repair-to-health) navigates to /admin/enterprise-health without 404, and regression /admin/orchestrator still renders governance-snapshot.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin/repair-center", "issues": ["Because /status computes last_repair from ONLY the most recent run's results, after a per-domain run (e.g. technical_debt) all other domain cards display 'Nicio reparație încă' — losing visibility on the earlier full-run repairs. Consider aggregating last_repair per domain across all recent runs so cards keep showing their most recent detect/repair result."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_repair_center_iter149.py",
+    "/app/test_reports/pytest/repair_center_iter149.xml"
+  ],
+  "action_items": [
+    "(Optional UX) In routes/repair_center.py::repair_status, build last_by_domain from the latest run PER domain (not only from the single most-recent run) so per-domain cards keep showing their last repair after a targeted run."
+  ],
+  "critical_code_review_comments": [
+    "repair_center.py POST /run: asyncio.create_task on run_repair_cycle is fire-and-forget without exception logging — a failing background cycle would silently disappear. Wrap in a task that logs exceptions.",
+    "GET /status is expensive (~10-20s live metrics collection); consider caching or ETag/If-None-Match to avoid repeated heavy work when UI polls.",
+    "No rate-limit / lock on POST /run — a user could spawn many concurrent cycles. Consider a Mongo lock (e.g. running flag) to serialize."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_repair_center_iter149.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (button label is 'Conectează-te' not 'Autentificare')",
+  "seed_data_creation": "None. Triggered one live technical_debt repair run.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Repair Engine fully green. Domain card 'last_repair' only reflects the single latest run — flagged as UX improvement, not a bug. Endpoint /status is slow (~10-20s), use timeout>=30s. Login button in RO UI is 'Conectează-te'."
+}

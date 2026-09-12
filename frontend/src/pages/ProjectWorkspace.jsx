@@ -945,7 +945,7 @@ const AddMemberModal = ({ project, onClose, onAdded }) => {
   const [specialty, setSpecialty] = useState("parchet");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    axios.get(`${API}/marketplace/specialists?verified_only=true&sort=rating`).then(r => setSpecialists(r.data || []));
+    axios.get(`${API}/marketplace/specialists?verified_only=true&sort=rating`).then(r => setSpecialists(r.data || [])).catch(() => setSpecialists([]));
   }, []);
   const existing = new Set([
     project.designer_id, project.client_id,
@@ -1022,7 +1022,7 @@ const TaskDetailModal = ({ task, project, onClose, onUpdate, currentUser }) => {
   const canEditStatus = isDesigner || isAssignee;
 
   useEffect(() => {
-    axios.get(`${API}/tasks/${task.id}/comments`).then(r => setComments(r.data || []));
+    axios.get(`${API}/tasks/${task.id}/comments`).then(r => setComments(r.data || [])).catch(() => setComments([]));
   }, [task.id]);
 
   const setStatus = async (status) => {

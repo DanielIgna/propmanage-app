@@ -1,23 +1,11 @@
 """PropManage router: property_timeline."""
-import os
-import asyncio
-import json
 import logging
-from typing import Optional, List, Literal, Dict
-from datetime import datetime, timezone, timedelta
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException
 
 from db import db
-from core_utils import serialize_doc, effective_role
-from deps import get_current_user, require_role
-from services import send_email, notify, send_web_push, log_event
-from models import *
-from email_service import (
-    send_template, tpl_welcome, tpl_dispute_opened, tpl_dispute_resolved,
-    tpl_design_phase_quote, tpl_specialist_verified, tpl_escrow_funded,
-)
+from core_utils import serialize_doc
+from deps import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["property_timeline"])
@@ -68,6 +56,25 @@ async def property_timeline(prop_id: str, user: dict = Depends(get_current_user)
                 "request_id": str(r["_id"]),
             })
     
+    # Documents (CX-2 — Cartea Casei: fiecare document = eveniment în memorie)
+    doc_rows = await db.property_documents.find({"property_id": prop_id, "deleted": {"$ne": True}}).to_list(300)
+    for d in doc_rows:
+        events.append({
+            "type": "document_uploaded",
+            "title": f"Document: {d.get('title', '')}",
+            "description": f"{d.get('category', '')}" + (f" · {d.get('company')}" if d.get("company") else ""),
+            "timestamp": d.get("uploaded_at"),
+            "doc_id": str(d["_id"]),
+        })
+        if d.get("warranty_end"):
+            events.append({
+                "type": "warranty_registered",
+                "title": f"Garanție înregistrată: {d.get('title', '')}",
+                "description": f"Valabilă până la {d.get('warranty_end')}",
+                "timestamp": d.get("uploaded_at"),
+                "doc_id": str(d["_id"]),
+            })
+
     # Sort newest first
     events.sort(key=lambda e: e.get("timestamp", ""), reverse=True)
     return {

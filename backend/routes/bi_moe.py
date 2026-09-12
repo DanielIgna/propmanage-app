@@ -18,7 +18,6 @@ ML-ready: pipelines emit consistent shape that can feed sklearn/pytorch later.
 """
 import logging
 from datetime import datetime, timezone, timedelta
-from typing import Optional, List, Dict, Any
 
 from fastapi import APIRouter, Depends, Query
 
@@ -194,10 +193,10 @@ async def specialist_performance(limit: int = Query(20, le=100), _: dict = Depen
         completed = await db.requests.count_documents({"$or": [{"specialist_id": uid}, {"accepted_by": uid}], "status": {"$in": ["completed", "closed"]}, "updated_at": {"$gte": since}})
         win_rate = round((won / max(1, applied)) * 100, 1) if applied else 0.0
         # Composite: rating (40%) + win_rate (30%) + completed_normalized (30%)
-        score = (u.get("rating", 0) / 5) * 0.4 + (win_rate / 100) * 0.3 + min(completed / 20, 1) * 0.3
+        score = ((u.get("rating") or 0) / 5) * 0.4 + (win_rate / 100) * 0.3 + min(completed / 20, 1) * 0.3
         items.append({
-            "specialist_id": uid, "name": u.get("name", ""), "tier": u.get("tier", "ENTRY"),
-            "rating": u.get("rating", 0), "reviews_count": u.get("reviews_count", 0),
+            "specialist_id": uid, "name": u.get("name", ""), "tier": u.get("tier") or "ENTRY",
+            "rating": u.get("rating") or 0, "reviews_count": u.get("reviews_count") or 0,
             "applied_90d": applied, "won_90d": won, "completed_90d": completed,
             "win_rate_pct": win_rate, "low_rating_flag": bool(u.get("tier_warning_low_rating")),
             "performance_score": round(score, 3),

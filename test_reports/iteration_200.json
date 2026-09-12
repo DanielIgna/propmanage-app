@@ -1,0 +1,37 @@
+{
+  "summary": "iter200 — Digital Twin P1 consolidation regression (backend-only). 13/13 pytest PASS on /app/backend/tests/test_dt_p1_consolidation_iter200.py. Verified: (1) FREE (non-PREMIUM) can create DT project (no 402), upload .glb, list own models, serve/download file (object-storage restore-aware), and is STILL blocked with 402 entitlement_required on pin create; (2) PREMIUM client full flow: upload two .glb models, PATCH with version=2 + version_label + supersedes marks OLD model status='superseded' + superseded_by set (NON-DESTRUCTIVE — old model remains in /models list); visibility=public/internal accepted, visibility='world' rejected with 400; (3) GET /api/properties/{id}/spaces returns canonical rooms with space_id + source='twin_2d'; (4) Document upload with related_model_id + related_room_id persists & is readable via GET /api/documents/{id}; (5) 2D plan PDF upload + serve returns 200 (Emergent Object Storage flake on first attempt, passed on second — not a regression); (6) Operator approve twin sets twin_unlocked=true and does NOT force property structure_health=95 (preserves prior value); (7) Regression: PREMIUM pin CRUD + comment work.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/digital-twin/projects/{id}/plans", "issue": "Observed one transient 500 from Emergent Object Storage backend when writing to 'propmanage/digital_twin/{project_id}/plans/{stored_as}'. Re-run passed. The 500 bubbles up as HTTPException(500, 'Upload failed: ...'). Consider a short retry (1-2 attempts) around storage_service.store_dt_bytes for plan uploads OR wrap in a 503 with a friendlier message so the frontend can retry."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_dt_p1_consolidation_iter200.py",
+    "/app/test_reports/pytest/iter200_dt_p1.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: add retry/backoff around storage_service.store_dt_bytes for transient upstream 500s from Emergent Object Storage (observed once for plan upload, once passed on retry).",
+    "OPTIONAL: on iter185 the test file test_digital_twin_gate_iter185.py may still assert the OLD 'PRO/FREE upload gated' behavior — this is an EXPECTED behavior change (upload gate relaxed per Founder decision #2). Consider marking the specific old-gate assertions as expected fail or update them; do NOT treat as a regression."
+  ],
+  "critical_code_review_comments": [
+    "digital_twin.py:_ensure_dt_ingest_access only checks authenticated user — correctly relaxed for ingest per P1. Advanced ops (_ensure_dt_access) still gate via entitlements: F_DIGITAL_TWIN_ADVANCED. Semantics consistent (402 vs 401).",
+    "digital_twin.py upload_model builds full ProfessionalModel metadata: property_id/source/version=1/status/visibility='internal'/change_reason/supersedes=None/superseded_by=None/object_path. GOOD.",
+    "digital_twin.py update_model_layer PATCH: supersedes validation ensures same project_id and not self-referencing; sets superseded target's status='superseded' + superseded_by pointer — NON-DESTRUCTIVE and idempotent. GOOD.",
+    "operator_twins.py operator_validate_twin approve path writes only {status,'validated_at','validated_by','validation_notes','twin_unlocked'} — NO structure_health mutation. Matches P1 decision #1. Verified.",
+    "property_documents.py: DOC_FIELDS + EDITABLE both include related_model_id + related_room_id; upload_document accepts them via Form(). Confirmed persistence + read-back.",
+    "storage_service.dt_object_path uses 'plans/' subfolder for plan kind; ensure_dt_local and restore_dt_file both correctly route to plans/ subfolder. Serve endpoint uses restore_dt_file (plans) vs ensure_dt_local (models) — both work in practice but slight inconsistency; could unify to ensure_dt_local for both.",
+    "storage_client.put_object has NO retry on 5xx (only re-inits key on 403). A one-shot retry on 502/503/504/500 would prevent user-visible failures on transient upstream flakes."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_dt_p1_consolidation_iter200.py (new)"
+  ],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "n/a (backend-only run)"},
+  "test_credentials": "client@propmanage.io / Client123! (PREMIUM), admin@propmanage.io / 1!nasov01ADMIN, operator@propmanage.io / Op123!. FREE users dynamically registered via /api/auth/register.",
+  "seed_data_creation": "Fresh FREE user (free{ts}{hex}@example.com); PREMIUM DT project 'PREMIUM iter200 project' with two .glb models + one PDF plan + one pin (pin cleaned up in-test). Doc uploaded to first client property with related_model_id + related_room_id (not cleaned — carries TEST_related_ids title for future cleanup).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All P1 DT consolidation behaviors verified: ingest gate relaxed (FREE upload OK), advanced gate intact (FREE pin 402), version supersedes non-destructive, visibility enum enforced, operator approve preserves structure_health, /spaces reads twin_2d rooms as canonical, doc uploads carry related_model_id/related_room_id. Object storage plan upload had ONE transient 500 that passed on retry — flag as minor.",
+  "rca of the issue": "N/A — no bugs. One transient upstream Emergent Object Storage 500 on plan upload path; suggest adding a retry inside storage_client.put_object for 5xx from upstream."
+}

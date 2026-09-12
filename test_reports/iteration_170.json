@@ -1,0 +1,23 @@
+{
+  "summary": "ST-001 Storage & Media Audit — frontend E2E testing completed successfully. Admin Storage page (/admin/storage) loads with all data-testid landmarks: storage-admin-page, st-kpis (4 KPI cards showing 3.8 KB personal, 191.0 MB DT, 84 files, 9 users), tab Utilizare with all 4 modules (document_vault=618 B/9 files, house_health documents=29B/2 files + evaluari=168B/14 files, digital_twin=191.0MB/39 files, docs_ai=3.0KB/20 files) and st-top-users list. Configurare tab: per-file limit document_vault input starts at 25, changed to 30, saved (st-config-msg='Configurația a fost salvată'), persisted after page reload, restored to 25. Migrare & Audit tab: st-migrate-status='done', counters visible (Docs HH=1, Evaluări HH=1, Modele DT=0, Planuri DT=0, Mutati=0.0 MB), st-recompute-btn triggered without error. Sidebar Storage entry with ST-001 badge present in DOM (rendered below fold). Client (client@propmanage.io) dashboard V2 → Proprietăți → Cartea casei displays DocumentVaultCard (vault-card) with StorageUsageCard beneath it: storage-tier-label='House Health', storage-usage-text='29 B din 5.0 GB · 0% · 2 fișiere', storage-dt-section shows '190.9 MB din 20.0 GB · Cotă separată — nu consumă spațiul tău personal'. vault-add-btn opens vault-upload-sheet with category chips and file input. Backend not tested (per request; already 13/13 pytest local).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "StorageUsageCard shows storage-usage-bar element but with visible=False attribute — likely because it's a progress indicator with 0% width (29 B out of 5 GB). Consider min-width or aria attribute so screen readers/tests can detect presence.",
+    "Regression flow for upload event refresh (propmanage:doc-uploaded → widget usage update) could NOT be end-to-end validated because the upload form validates category/denumire before POST; test agent submitted without selecting a category. Recommend main agent verify manually or add a lighter completion path. Not a bug — expected form validation."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN, client@propmanage.io / Client123!",
+  "seed_data_creation": "None. Config value was temporarily set to 30 and restored to 25 as instructed.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "ST-001 UI is fully wired and passing. All data-testid attributes are present. Admin /admin/storage tabs (Utilizare/Configurare/Migrare & Audit) all functional. Client StorageUsageCard mounts under DocumentVaultCard in Proprietăți → Cartea casei sub-tab (client dashboard V2 uses a left secondary nav inside Property view). To reach vault: login as client → click 'Proprietăți' primary tab → click 'Cartea casei' in left sub-nav. Cookie banner may or may not appear; safe to attempt Refuz then proceed. Migration status is 'done' — do NOT rerun st-migrate-btn.",
+  "rca of the issue": "No issues found."
+}

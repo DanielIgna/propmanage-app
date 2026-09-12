@@ -1,0 +1,33 @@
+{
+  "summary": "iter202 — P1 UNIFIED PROPERTY DIGITAL TWIN e2e (backend + frontend). Backend: 6/6 pytest PASS on /app/backend/tests/test_dt_p1_unified_iter202.py — GET /api/properties/6a11d70e600be19667009c93/digital-twin returns twin_2d {exists:true,status:'approved',rooms_count:5,assets_count:4} and twin_3d {exists:true,has_model:true,projects:2 both property_link_status='linked' with model_url}; 403 for foreign freshly-registered FREE client; 404 for bogus property id; /api/digital-twin/projects?property_id filter returns only that property's 2 linked projects (response key is 'items'); no-filter list returns caller's full list (backward compatible); regression GET /properties/{id}/twin (5 rooms/4 assets) and /properties/{id}/spaces (count=5, source='twin_2d') still work. Frontend (client@propmanage.io): /client?tab=settings shows dt-card, dt-others-toggle expands, clicking dt-other-6a11d70e600be19667009c93 (Skyline Loft A4) opens UNIFIED property-twin-modal with header 'Digital Twin · Proprietate', subtitle 'Două reprezentări ale aceleiași proprietăți...', tabs twin-tab-2d + twin-tab-3d, twin-2d-panel + twin-svg render 5 rooms, twin-3d-panel shows Deschide viewer imersiv button.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "DigitalTwinViewer (Three.js/drei GLTFLoader)", "issue": "When 'Deschide viewer imersiv' (open-3d-viewer) is clicked for a project whose model_url returns a placeholder (non-binary) GLB, GLTFLoader throws 'Unexpected token g, glb is not valid JSON' and the drei Suspense error bubbles to a top-level runtime error overlay (Uncaught runtime errors) that visually replaces the unified modal. Root cause is INVALID SEED DATA: /api/digital-twin/files/66a3f190.../bff7c8d17d94.glb returns 3 bytes literal 'glb'; the second project returns 13 bytes 'glTF-anc...' — neither is a valid glTF Binary. This is not a P1 code regression, but Founder acceptance says 'existing viewers work' — the viewer needs an ErrorBoundary that keeps the unified modal alive and shows a graceful 'Model 3D indisponibil (fișier corupt/placeholder)' state instead of crashing.", "selector": "[data-testid='open-3d-viewer']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_dt_p1_unified_iter202.py",
+    "/app/test_reports/pytest/iter202_dt_p1_unified.xml"
+  ],
+  "action_items": [
+    "Seed: replace placeholder .glb bytes for property 6a11d70e600be19667009c93 projects (66a3f19...bff7c8d17d94.glb and 4721aede...a93874c3f374.glb) with a minimal valid GLB (glTF magic + JSON chunk + BIN chunk) so DigitalTwinViewer regression can complete end-to-end. Currently servers return 3-byte 'glb' and 13-byte 'glTF-anc...' respectively.",
+    "OPTIONAL: wrap DigitalTwinViewer's <Canvas>/<Suspense> in an ErrorBoundary that renders an inline error card ('Modelul 3D nu poate fi încărcat') and preserves the parent property-twin-modal instead of surfacing the runtime error overlay when a model file is corrupt/placeholder."
+  ],
+  "critical_code_review_comments": [
+    "backend/routes/operator_twins.py get_property_digital_twin: shape is clean, single-shot Mongo reads; authz correctly mirrors /twin and /spaces (owner OR admin/operator OR assigned specialist). No _id leak (uses stored 'id' field on projects; property is only used for .get() locally, not returned). GOOD.",
+    "backend list_projects contract exposes 'items' (not 'projects') as the array key — tests + frontend must use body.items. Minor doc inconsistency with reviewer notes referencing 'projects[]'; consider aliasing or documenting.",
+    "frontend/src/pages/ClientTwinViewer.jsx PropertyTwinModal: subtitle + tabs + testids all in place; primary3d resolution prefers first project with model_url — correct. However, when project.model_url exists but the underlying file is not a valid GLB, the viewer crashes — no ErrorBoundary around DigitalTwinViewer. Add a component-level ErrorBoundary in PropertyTwinModal (or inside DigitalTwinViewer) so the unified modal survives.",
+    "frontend SettingsPanel.jsx DigitalTwinCard: onView(primary) and onView(t) both now open <PropertyTwinModal> — the either/or (viewer-vs-floorplan) branch is fully removed. Good non-breaking migration."
+  ],
+  "updated_files": ["/app/backend/tests/test_dt_p1_unified_iter202.py (new)"],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "P1 UX contract 100% (modal, subtitle, both tabs, 2D SVG, 3D panel + open-3d-viewer button all render). 3D immersive viewer canvas verification blocked by placeholder GLB seed — not a P1 regression."},
+  "test_credentials": "client@propmanage.io / Client123! (PREMIUM, owns Skyline Loft A4 6a11d70e600be19667009c93). Fresh FREE client for 403 test dynamically registered as iter202free_{ts}_{hex}@example.com / TestPass123!.",
+  "seed_data_creation": "One fresh FREE user per test run for authz check (iter202free_*@example.com — recommend cleanup regex ^iter202free_.*@example\\.com$). No mutation on the Skyline Loft twin/models per main-agent instructions.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "P1 unified DT is fully wired. Frontend selectors: dt-card / dt-view-btn / dt-others-toggle / dt-other-{prop_id} / property-twin-modal / twin-tab-2d / twin-tab-3d / twin-2d-panel / twin-svg / twin-2d-empty / twin-3d-panel / open-3d-viewer / twin-3d-empty / close-property-twin. Backend contract: GET /api/properties/{id}/digital-twin returns {property_id, property_name, twin_2d:{exists,status,rooms_count,assets_count,project_id}, twin_3d:{exists,has_model,projects:[{id,name,model_url,models_count,property_link_status,updated_at}]}}. list_projects filter uses ?property_id and returns {items:[...]}. To fully test the immersive viewer, first replace the two Skyline Loft placeholder GLBs with a real minimal binary glTF.",
+  "rca of the issue": "Frontend runtime-error overlay when opening 3D viewer for Skyline Loft: RCA = server returns 200 with model/gltf-binary content-type but a 3-byte 'glb' placeholder payload; three-drei GLTFLoader parses first byte as JSON and throws 'Unexpected token g'. Fix: replace seed with valid GLB and/or add ErrorBoundary around <Canvas> in DigitalTwinViewer so the parent unified modal is preserved. This is pre-existing seed / viewer robustness, NOT introduced by the P1 unified-experience change."
+}

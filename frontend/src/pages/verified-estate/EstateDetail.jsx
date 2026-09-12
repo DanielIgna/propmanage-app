@@ -157,17 +157,38 @@ export const EstateDetail = () => {
                     <h3 className="font-serif text-xl">Tur virtual 3D interactiv</h3>
                   </div>
                 </div>
-                <div className="inline-flex items-center gap-2 bg-emerald-500/10 px-3 py-1.5 rounded-full">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs text-emerald-400">DISPONIBIL</span>
-                </div>
+                {listing.digital_twin_id ? (
+                  <div className="inline-flex items-center gap-2 bg-emerald-500/10 px-3 py-1.5 rounded-full">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-xs text-emerald-400">DISPONIBIL</span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-2 bg-amber-500/10 px-3 py-1.5 rounded-full">
+                    <div className="w-2 h-2 rounded-full bg-amber-400" />
+                    <span className="text-xs text-amber-400">ÎN PREGĂTIRE</span>
+                  </div>
+                )}
               </div>
               <div className="aspect-video rounded-2xl bg-gradient-to-br from-cyan-500/10 via-purple-500/5 to-emerald-500/10 border border-white/10 flex items-center justify-center relative overflow-hidden">
                 <Box className="w-24 h-24 text-white/20" strokeWidth={0.8} />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Link to="/demo" target="_blank" className="btn-accent px-5 py-2.5 rounded-full font-medium inline-flex items-center gap-2 text-sm" data-testid="detail-open-twin">
-                    <Box className="w-4 h-4" /> Deschide Digital Twin
-                  </Link>
+                  {String(listing.digital_twin_id || "").startsWith("demo-") ? (
+                    <Link to="/demo" target="_blank" className="btn-accent px-5 py-2.5 rounded-full font-medium inline-flex items-center gap-2 text-sm" data-testid="detail-open-twin">
+                      <Box className="w-4 h-4" /> Deschide Digital Twin
+                    </Link>
+                  ) : listing.digital_twin_id ? (
+                    <button
+                      onClick={() => document.getElementById("inquiry-card")?.scrollIntoView({ behavior: "smooth" })}
+                      className="btn-accent px-5 py-2.5 rounded-full font-medium inline-flex items-center gap-2 text-sm"
+                      data-testid="detail-request-twin"
+                    >
+                      <Box className="w-4 h-4" /> Solicită tur 3D ghidat
+                    </button>
+                  ) : (
+                    <div className="text-xs text-stone-300 bg-black/50 px-4 py-2 rounded-full" data-testid="detail-twin-pending">
+                      Digital Twin în curs de creare pentru acest imobil
+                    </div>
+                  )}
                 </div>
               </div>
               <p className="text-xs text-stone-400 mt-3">Explorează imobilul în 3D din orice unghi. Vezi sistemele tehnice mapate. Evită vizionări inutile.</p>
@@ -212,7 +233,7 @@ export const EstateDetail = () => {
           </div>
 
           {/* Right: Sticky info card + inquiry */}
-          <div className="lg:sticky lg:top-28 h-fit space-y-4">
+          <div id="inquiry-card" className="lg:sticky lg:top-28 h-fit space-y-4">
             <div className="bg-[#0e0e10] rounded-3xl border border-white/10 p-6">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#d4ff3a]/15 border border-[#d4ff3a]/40 text-[#d4ff3a] text-[10px] font-semibold mb-3">
                 <ShieldCheck className="w-3 h-3" /> VERIFIED TWIN

@@ -26,7 +26,8 @@ const Layout = ({ icon: Icon, title, subtitle, children, testid }) => (
 
 export const PrivacyPage = () => (
   <Layout icon={Shield} title="Politică de confidențialitate" subtitle="Ultima actualizare: februarie 2026" testid="privacy-page">
-    <p><strong>PropManage SRL</strong> (&quot;noi&quot;, &quot;platforma&quot;) respectă confidențialitatea utilizatorilor și se conformează regulamentului GDPR (Regulamentul UE 2016/679) și legislației române privind protecția datelor personale.</p>
+    <p><strong>VINTAGE FURNITURE S.R.L.</strong> — operatorul platformei <strong>PropManage</strong> (&quot;noi&quot;, &quot;platforma&quot;) — respectă confidențialitatea utilizatorilor și se conformează regulamentului GDPR (Regulamentul UE 2016/679) și legislației române privind protecția datelor personale.</p>
+    <p className="text-sm">Operator de date: VINTAGE FURNITURE S.R.L. · CUI 35250247 · Nr. Reg. Com. J12/3534/2015 · Sediu: Aleea Negoiu nr. 8D, Ap. 25, Cluj-Napoca, jud. Cluj, 400676, România.</p>
 
     <h2>1. Ce date colectăm</h2>
     <ul>
@@ -95,7 +96,7 @@ export const TermsPage = () => (
     <p>Prin utilizarea platformei <strong>PropManage</strong> (&quot;Platforma&quot;), accepți acești Termeni. Dacă nu ești de acord, te rugăm să nu folosești serviciile.</p>
 
     <h2>1. Cine este responsabil</h2>
-    <p>Operator: <strong>PropManage SRL</strong>, sediu social în România. Contact: <a href="mailto:contact@propmanage.ro">contact@propmanage.ro</a>.</p>
+    <p>Operator: <strong>VINTAGE FURNITURE S.R.L.</strong> (brandul comercial <strong>PropManage</strong>) · CUI 35250247 · Nr. Reg. Com. J12/3534/2015 · Sediu: Aleea Negoiu nr. 8D, Ap. 25, Cluj-Napoca, jud. Cluj, 400676, România. Contact: <a href="mailto:contact@propmanage.ro">contact@propmanage.ro</a>.</p>
 
     <h2>2. Cont utilizator</h2>
     <ul>
@@ -155,14 +156,14 @@ export const TermsPage = () => (
 
 
 export const CookiePolicyPage = () => (
-  <Layout icon={Cookie} title="Politică de cookies" subtitle="Ultima actualizare: februarie 2026" testid="cookies-page">
+  <Layout icon={Cookie} title="Politică de cookies" subtitle="Ultima actualizare: iunie 2026" testid="cookies-page">
     <p>Această pagină explică în detaliu cum folosește <strong>PropManage</strong> cookies-uri și tehnologii similare. Politica este conformă cu <strong>GDPR</strong>, <strong>Directiva ePrivacy</strong> și legea română 506/2004.</p>
 
     <h2>1. Ce sunt cookies-urile</h2>
-    <p>Cookies-urile sunt fișiere text mici stocate de browser pe dispozitivul tău. Le folosim pentru a-ți păstra sesiunea de autentificare, preferințele de interfață și pentru a îmbunătăți securitatea contului.</p>
+    <p>Cookies-urile sunt fișiere text mici stocate de browser pe dispozitivul tău. Le folosim pentru a-ți păstra sesiunea de autentificare, preferințele de interfață, pentru securitate și — <strong>doar cu consimțământul tău</strong> — pentru statistici de utilizare și măsurarea campaniilor de marketing.</p>
 
     <h2>2. Ce cookies folosim</h2>
-    <p>PropManage folosește exclusiv cookies-uri <strong>strict necesare</strong>. Nu setăm cookies de tracking publicitar, de profilare comportamentală sau de re-marketing.</p>
+    <p>Folosim cookies <strong>strict necesare</strong> și <strong>funcționale</strong> (fără consimțământ, esențiale pentru funcționare), precum și cookies <strong>opționale</strong> de <strong>statistică</strong> și de <strong>marketing</strong> care se activează <strong>numai după ce le accepți</strong> din bannerul de consimțământ. Până la acceptare, cookies-urile opționale rămân dezactivate (Google Consent Mode v2 pornește implicit pe „denied").</p>
 
     <table style={{width:'100%', borderCollapse:'collapse', margin:'16px 0', fontSize:'13px'}}>
       <thead>
@@ -204,20 +205,33 @@ export const CookiePolicyPage = () => (
           <td style={{padding:'8px 10px'}}>1 an</td>
           <td style={{padding:'8px 10px'}}>Funcțional</td>
         </tr>
+        <tr style={{borderBottom:'1px solid #ffffff10'}}>
+          <td style={{padding:'8px 10px'}}><code>ph_*_posthog</code></td>
+          <td style={{padding:'8px 10px'}}>Statistici de utilizare (PostHog) — cum sunt folosite paginile, pentru a îmbunătăți produsul. Se activează doar după consimțământ „Statistice".</td>
+          <td style={{padding:'8px 10px'}}>~1 an</td>
+          <td style={{padding:'8px 10px'}}>Opțional · Statistică</td>
+        </tr>
+        <tr>
+          <td style={{padding:'8px 10px'}}><code>_gcl_au</code> (Google Ads)</td>
+          <td style={{padding:'8px 10px'}}>Măsurarea conversiilor și remarketing pentru campaniile Google Ads. Se activează doar după consimțământ „Marketing".</td>
+          <td style={{padding:'8px 10px'}}>~90 zile</td>
+          <td style={{padding:'8px 10px'}}>Opțional · Marketing</td>
+        </tr>
       </tbody>
     </table>
 
     <h2>3. Cookies de la terți</h2>
-    <p>Folosim un set <strong>limitat și auditat</strong> de servicii terțe, fiecare cu rol esențial:</p>
+    <p>Folosim un set <strong>limitat și auditat</strong> de servicii terțe:</p>
     <ul>
-      <li><strong>Stripe</strong> (<code>__stripe_mid</code>, <code>__stripe_sid</code>) — anti-fraudă pentru plățile escrow. Stripe nu primește datele tale personale dincolo de ce e necesar pentru a procesa o plată.</li>
-      <li><strong>Cloudflare</strong> (<code>__cf_bm</code>, <code>cf_clearance</code>) — protecție anti-bot și CDN. Nu folosit pentru profilare.</li>
+      <li><strong>Stripe</strong> (<code>__stripe_mid</code>, <code>__stripe_sid</code>) — anti-fraudă pentru plățile escrow. Strict necesar. Stripe nu primește datele tale personale dincolo de ce e necesar pentru a procesa o plată.</li>
+      <li><strong>Cloudflare</strong> (<code>__cf_bm</code>, <code>cf_clearance</code>) — protecție anti-bot și CDN. Strict necesar. Nu folosit pentru profilare.</li>
+      <li><strong>PostHog</strong> — statistici de utilizare a produsului (first-party analytics). <strong>Opțional</strong>, se activează doar după consimțământul „Statistice".</li>
+      <li><strong>Google Ads</strong> (<code>AW-18423416296</code>, via <code>googletagmanager.com</code>) — măsurarea conversiilor și remarketing. <strong>Opțional</strong>, se activează doar după consimțământul „Marketing", prin Google Consent Mode v2.</li>
     </ul>
-    <p>Niciun cookie de la <strong>Google Analytics</strong>, <strong>Facebook Pixel</strong>, <strong>LinkedIn Insight</strong> sau alte platforme de reclamă behaviorală.</p>
 
-    <h2>4. De ce nu există banner de consimțământ?</h2>
-    <p>Conform Directivei ePrivacy și art. 5(3) PECR, <strong>cookies-urile strict necesare</strong> și cele <strong>funcționale solicitate explicit de utilizator</strong> (cum ar fi „ține-mă logat&quot;) nu necesită consimțământ prealabil. Deoarece NU folosim cookies de tracking publicitar, nu există obligativitate de cookie banner.</p>
-    <p>Dacă vom introduce vreodată cookies non-essentials, vom afișa un banner cu opțiuni granulare (acceptă / refuză / personalizează) ÎNAINTE de a le seta.</p>
+    <h2>4. Consimțământ și bannerul de cookies</h2>
+    <p>La prima vizită îți afișăm un <strong>banner de consimțământ</strong> cu opțiuni granulare — <strong>Accept toate</strong>, <strong>Refuz</strong> (opționalele) și <strong>Personalizează</strong> (Statistice / Marketing separat), ÎNAINTE de a seta cookies-urile opționale. Cookies-urile strict necesare și funcționale solicitate explicit (ex: „ține-mă logat") nu necesită consimțământ conform art. 5(3) ePrivacy.</p>
+    <p>Pentru cookies-urile de marketing (Google Ads) folosim <strong>Google Consent Mode v2</strong>: implicit pe „denied", activate doar când accepți „Marketing". Îți poți schimba oricând alegerea din butonul cu iconița de cookie (stânga-jos).</p>
 
     <h2>5. Cum controlezi cookies-urile</h2>
     <ul>

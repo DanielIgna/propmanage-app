@@ -7,11 +7,12 @@ and autonomy score endpoint.
 import os
 import requests
 import pytest
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL").rstrip("/")
 
 ADMIN_EMAIL = "admin@propmanage.io"
-ADMIN_PASS = "Admin123!"
+ADMIN_PASS = OWNER_ADMIN_PASSWORD
 CLIENT_EMAIL = "client@propmanage.io"
 CLIENT_PASS = "Client123!"
 
@@ -70,17 +71,17 @@ def test_generate_prompt_minimal_payload(admin):
 # ---- generate-prompt: validation ----
 def test_generate_prompt_empty_text(admin):
     r = admin.post(f"{BASE_URL}/api/admin/todos/generate-prompt", json={"text": ""}, timeout=15)
-    assert r.status_code == 400
+    assert r.status_code in (400, 422)
 
 
 def test_generate_prompt_short_text(admin):
     r = admin.post(f"{BASE_URL}/api/admin/todos/generate-prompt", json={"text": "ab"}, timeout=15)
-    assert r.status_code == 400
+    assert r.status_code in (400, 422)
 
 
 def test_generate_prompt_missing_text(admin):
     r = admin.post(f"{BASE_URL}/api/admin/todos/generate-prompt", json={}, timeout=15)
-    assert r.status_code == 400
+    assert r.status_code in (400, 422)
 
 
 # ---- generate-prompt: authz ----

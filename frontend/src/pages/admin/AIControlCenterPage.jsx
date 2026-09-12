@@ -6,6 +6,7 @@ import {
   AlertCircle, CheckCircle2, RefreshCcw, Trash2, Search, Activity,
   Settings, Zap, ChevronRight, X, ShieldCheck
 } from "lucide-react";
+import { AIInsightCard } from "../../design-system";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const ax = axios.create({ baseURL: API, withCredentials: true });
@@ -379,6 +380,7 @@ const KGSection = ({ stats }) => {
 // ========================= MAIN PAGE =========================
 export const AIControlCenterPage = () => {
   const [overview, setOverview] = useState(null);
+  const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -392,7 +394,10 @@ export const AIControlCenterPage = () => {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    ax.get("/api/admin/insights/rule?module=ai_control").then(r => setInsights(r.data)).catch(() => {});
+  }, []);
 
   const updateConfig = async (form) => {
     const { data } = await ax.put("/api/admin/ai-control/config", form);
@@ -422,6 +427,15 @@ export const AIControlCenterPage = () => {
           <Card icon={Database} title="Amintiri salvate" value={overview.memory.total} sub={`${Object.values(overview.memory.by_scope).filter(v => v > 0).length} scope-uri active`} color="violet" testid="ai-stat-memories" />
           <Card icon={Bug} title="Bug-uri în istoric" value={overview.bugs.total} sub={`QA: ${overview.bugs.qa_findings} · AI: ${overview.bugs.ai_investigator_findings}`} color="red" testid="ai-stat-bugs" />
           <Card icon={Activity} title="Agenți activi" value={overview.agents.filter(a => a.status === "active").length} sub={`din ${overview.agents.length} total`} color="cyan" testid="ai-stat-agents" />
+        </div>
+
+        {/* AI Insights v2 — rule-based + LLM (Claude) */}
+        <div className="mt-5">
+          <AIInsightCard
+            bullets={insights?.bullets || []} alerts={insights?.alerts || []}
+            recommendations={insights?.recommendations || []}
+            loading={!insights} llmModule="ai_control" testid="ai-control-insights"
+          />
         </div>
 
         <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-5 mt-6">

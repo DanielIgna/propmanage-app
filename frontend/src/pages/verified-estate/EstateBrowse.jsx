@@ -8,6 +8,9 @@ import {
 import axios from "axios";
 import { EstateMapView } from "./EstateMapView";
 import { useDynamicSEO } from "@/lib/useDynamicSEO";
+import { EcosystemFlow } from "@/components/ecosystem/EcosystemFlow";
+import { ServiceDetailModal } from "@/components/ecosystem/ServiceDetailModal";
+import { NextStep } from "@/components/ecosystem/NextStep";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -152,7 +155,7 @@ const ListingCard = ({ item }) => (
       <div className="flex items-center justify-between text-xs text-stone-400 mb-4">
         <span className="flex items-center gap-1"><Bed className="w-3.5 h-3.5" /> {item.rooms} cam.</span>
         <span className="flex items-center gap-1"><Maximize2 className="w-3.5 h-3.5" /> {item.surface_sqm} m²</span>
-        <span className="flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" /> {item.recommendations_pct}% reco</span>
+        <span className="flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" /> recomandări {item.recommendations_pct}%</span>
       </div>
       <div className="flex items-center justify-between pt-4 border-t border-white/5">
         <div>
@@ -168,7 +171,11 @@ const ListingCard = ({ item }) => (
 );
 
 export const EstateBrowse = () => {
-  useDynamicSEO("estate", { title: "Imobile Verificate · PropManage" });
+  useDynamicSEO("estate", {
+    title: "Imobile Verificate — Case și Apartamente Verificate cu Audit Tehnic | PropManage",
+    description: "Imobile verificate cu audit tehnic complet și Digital Twin: case de vânzare verificate și apartamente verificate, anunțuri imobiliare cu audit tehnic și proprietăți verificate digital twin. Cumperi cu încredere, vinzi cu credibilitate.",
+  });
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterCity, setFilterCity] = useState("");
@@ -176,6 +183,7 @@ export const EstateBrowse = () => {
   const [filterPriceMax, setFilterPriceMax] = useState("");
   const [filterTransaction, setFilterTransaction] = useState("");
   const [showExtModal, setShowExtModal] = useState(false);
+  const [detailKind, setDetailKind] = useState(null);
   const [viewMode, setViewMode] = useState("grid"); // grid | map
 
   useEffect(() => {
@@ -213,12 +221,20 @@ export const EstateBrowse = () => {
             Imobile <span className="italic gradient-text">Verificate</span>.<br />
             Zero surprize.
           </h1>
-          <p className="text-lg text-stone-400 max-w-2xl mb-10">
-            Fiecare imobil listat aici a trecut prin <strong className="text-white">audit tehnic complet</strong>,
+          <p className="text-lg text-stone-400 max-w-2xl mb-6">
+            <strong className="text-white">Case de vânzare verificate</strong> și <strong className="text-white">apartamente verificate</strong>: fiecare imobil listat aici a trecut prin <strong className="text-white">audit tehnic complet</strong>,
             are <strong className="text-white">Digital Twin</strong> propriu și a obținut minimum
             <strong className="text-white"> 90% recomandări acceptate</strong> de proprietar.
-            Cumperi cu încredere. Vinzi cu credibilitate.
+            Anunțuri imobiliare cu audit tehnic și proprietăți verificate digital twin — cumperi cu încredere, vinzi cu credibilitate.
           </p>
+          <div className="flex flex-wrap gap-2 mb-8 text-xs">
+            <button onClick={() => setDetailKind("audit")} className="px-3.5 py-1.5 rounded-full border border-white/15 text-stone-300 hover:border-[#d4ff3a]/60 hover:text-white font-bold transition-colors" data-testid="estate-audit-details">
+              Ce înseamnă auditul? →
+            </button>
+            <button onClick={() => setDetailKind("twin")} className="px-3.5 py-1.5 rounded-full border border-white/15 text-stone-300 hover:border-[#d4ff3a]/60 hover:text-white font-bold transition-colors" data-testid="estate-twin-details">
+              Ce conține Digital Twin? →
+            </button>
+          </div>
           <div className="flex flex-col sm:flex-row gap-3">
             <Link to="/imobile-verificate/sell" className="btn-accent px-8 py-3.5 rounded-full font-medium inline-flex items-center justify-center gap-2" data-testid="estate-sell-cta">
               <Building2 className="w-4 h-4" /> Vinde-ți imobilul cu noi
@@ -226,6 +242,9 @@ export const EstateBrowse = () => {
             <button onClick={() => setShowExtModal(true)} className="glass px-8 py-3.5 rounded-full font-medium inline-flex items-center justify-center gap-2 hover:bg-white/10 transition-colors" data-testid="estate-external-cta">
               <ExternalLink className="w-4 h-4" /> Audit pentru imobil din altă platformă
             </button>
+          </div>
+          <div className="mt-10 p-5 rounded-3xl bg-white/[0.03] border border-white/10" data-testid="estate-ecosystem-flow">
+            <EcosystemFlow dark compact activeKey="twin_update" />
           </div>
         </div>
       </section>
@@ -349,7 +368,28 @@ export const EstateBrowse = () => {
         </div>
       </section>
 
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-16">
+        <NextStep
+          dark
+          title="Ai o proprietate? Transform-o în Imobil Verificat"
+          desc="Audit tehnic + Digital Twin = credibilitate maximă la vânzare și preț corect, susținut de date."
+          to="/imobile-verificate/sell"
+          cta="Începe procesul"
+        />
+      </section>
+
       <ExternalAuditModal open={showExtModal} onClose={() => setShowExtModal(false)} />
+      {detailKind && (
+        <ServiceDetailModal
+          kind={detailKind}
+          dark
+          onClose={() => setDetailKind(null)}
+          primaryCta={{
+            label: detailKind === "audit" ? "Solicită Audit" : "Solicită Digital Twin",
+            onClick: () => navigate("/imobile-verificate/sell"),
+          }}
+        />
+      )}
     </div>
   );
 };

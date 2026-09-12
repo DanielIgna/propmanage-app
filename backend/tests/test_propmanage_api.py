@@ -3,6 +3,7 @@ import os
 import pytest
 import requests
 import uuid
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://phased-document.preview.emergentagent.com').rstrip('/')
 API = f"{BASE_URL}/api"
@@ -10,7 +11,7 @@ API = f"{BASE_URL}/api"
 CLIENT = {"email": "client@propmanage.io", "password": "Client123!"}
 SPEC = {"email": "specialist@propmanage.io", "password": "Spec123!"}
 SPEC2 = {"email": "specialist2@propmanage.io", "password": "Spec123!"}
-ADMIN = {"email": "admin@propmanage.io", "password": "Admin123!"}
+ADMIN = {"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD}
 OPERATOR = {"email": "operator@propmanage.io", "password": "Op123!"}
 
 
@@ -92,7 +93,8 @@ class TestAuth:
         s = requests.Session()
         email = f"test_{uuid.uuid4().hex[:8]}@propmanage.io"
         r = s.post(f"{API}/auth/register", json={
-            "email": email, "password": "Test1234!", "name": "Test User", "role": "client"
+            "email": email, "password": "Test1234!", "name": "Test User", "role": "client",
+            "terms_accepted": True, "privacy_policy_accepted": True, "phone": "+40712000100",
         })
         assert r.status_code == 200
         d = r.json()
@@ -333,6 +335,7 @@ class TestAdmin:
         r = s.post(f"{API}/auth/register", json={
             "email": email, "password": "Test1234!", "name": "New Spec", "role": "specialist",
             "service_categories": ["handyman"], "coverage_zones": ["bucuresti-sector1"],
+            "terms_accepted": True, "privacy_policy_accepted": True, "phone": "+40712000101",
         })
         assert r.status_code == 200
         spec_id = r.json()["id"]

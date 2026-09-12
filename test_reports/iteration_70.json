@@ -1,0 +1,42 @@
+{
+  "summary": "Iteration 70 full-stack testing of the Strategic City Partnership Program (V1). Backend pytest: 25/25 pass — partner CRUD (create/list/get/patch/duplicate-409/invalid-status-400), 7-step onboarding wizard with auto-promotion to active at step 7, admin lead CRUD with auto conversion_date on stage=converted, partner portal /api/partner/me /leads /stats with source='partner_portal' default, RBAC (sub-admin blocked 403 on /api/admin/city-partners/*, client blocked 403 on /api/partner/*, partner1 cannot see partner2's leads), legal status correctly returns city_partner-only doc (not polluted with the 6 IT docs) for city_partner role and dev1@team.com (IT collaborator) continues to see only 6 IT docs (no city_partner pollution). Frontend smoke: /admin/city-partners page renders with all testids (city-partners-page, filter-all/lead/onboarding/active/paused, add-partner, partner-form-modal); 3 partner rows render with view/edit/archive icons; direct nav to /admin/city-partners/{id} renders detail with city-partner-detail, onboarding-wizard, onboarding-step-1..7, add-lead; sidebar 10th section nav-section-city_partners exists and after expanding reveals admin-nav-city_partners_list; partner login (ion@blocadmin.ro / owKT6oOYMIyOSM!1A) correctly redirects to /partner/dashboard with partner-dashboard + partner-add-lead testids; lead-add modal exposes partner-lead-name + partner-lead-email.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin/city-partners (list)", "issues": ["Cookie consent banner (when not yet dismissed) overlays the bottom of the page and can intercept first click on view/edit/archive icons in the last visible row. Once 'Accept toate' is clicked once per session, clicks work normally. Consider auto-dismissing for super-admins or raising banner z-index handling. Not blocking."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_city_partners.py",
+    "/app/test_reports/pytest/iter70_city_partners.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes/city_partners.py (562 lines, single file — acceptable scope but approaching the 700-line guideline; could be split into admin/portal/models/serializers if it grows further). Clean RBAC via _require_super(); ObjectId properly excluded from responses via _serialize/_serialize_lead; partner_id stored as STRING on the users record (per spec) so /auth/login serialize_doc does not choke.",
+    "create-login endpoint correctly returns temp_password ONLY when a brand-new user is created; on re-call for an existing linked account it returns {already_exists:true} without password. Frontend correctly hides the 'Creează cont CITY_PARTNER' button once linked_user_id exists (shows 'Cont activ' badge instead) — verified visually.",
+    "Onboarding step PATCH range [0, 7]: step 7 sets onboarding_complete=true AND auto-promotes status onboarding→active (verified end-to-end). Step 0 acts as reset (Pydantic Field(ge=0, le=7)).",
+    "Lead stage=converted handler correctly auto-fills conversion_date when not supplied; revenue_generated persists.",
+    "_require_partner helper handles partner_id as either ObjectId or string, raises 403 for terminated partner — clean defensive coding.",
+    "legal.py: /me/status short-circuits for city_partner role audience filter — confirmed by test_partner_legal_status & test_it_collaborator_still_sees_it_docs (zero pollution either direction).",
+    "Pydantic min_length validators on PartnerCreate (company/contact_name min=2, city min=2) return 422 — test had to use realistic values (e.g., 'Bucuresti' not 'X'). Consider documenting min lengths in API docs.",
+    "Frontend CityPartnerDetailPage uses optimistic onboarding step click → PATCH; lead-stage-{id} <select> wired to PATCH /api/admin/city-partners/leads/{lead_id} on change — both verified."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_city_partners.py"
+  ],
+  "success_rate": {
+    "backend": "100% (25/25 pytest)",
+    "frontend": "100% (all required data-testids verified across list page, detail page direct nav, sidebar 10th section, partner portal dashboard, partner add-lead modal)"
+  },
+  "test_credentials": "Super admin: admin@propmanage.io / 1!nasov01ADMIN. Existing partner: ion@blocadmin.ro / owKT6oOYMIyOSM!1A. Sub-admin: testing.admin@propmanage.io / TestAdmin123!. Client: client@propmanage.io / Client123!. IT contributor (regression): dev1@team.com / Dev1Pass!. NOTE: /app/memory/test_credentials.md is out of date — it lists admin password as 'Admin123!' which no longer works; recommend updating to '1!nasov01ADMIN'.",
+  "seed_data_creation": "Created 2 fresh test partners (TEST_Partner_4a5fcbc8 and TEST_Partner_178d3f6b in city_partners collection, both Cluj-Napoca, status=active after wizard completion). Each has a linked city_partner user account created via /create-login. Created several TEST_*Lead entries in city_partner_leads (TEST_LeadA converted with 500 RON, TEST_PortalLead created via partner portal). These can be cleaned up by archiving via PATCH status=terminated or directly purging via Mongo.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Regression file: /app/backend/tests/test_city_partners.py — run with `cd /app/backend && python -m pytest tests/test_city_partners.py -v`. Auth uses httpOnly cookies; the test helpers create requests.Session objects from /api/auth/login and pass them around as 'admin_token', 'partner1_token' etc — the session carries cookies automatically. The frontend cookie banner overlays the bottom — dismiss via 'Accept toate' before clicking any action buttons in the last visible row. Detail page route works via direct URL navigation. For RBAC retest of 'partner cannot see other partner's leads', the test creates a fresh partner per run (uuid-based email) so no manual setup needed. test_create_partner_invalid_status and test_create_partner_duplicate_email use realistic field values (Bucuresti city, multi-char names) because Pydantic Field(min_length=2) on company/contact_name/city otherwise returns 422 before the 400/409 business-logic check.",
+  "rca of the issue": "No code-level issues found. Two minor observations for main agent: (1) /app/memory/test_credentials.md needs an update — admin password is '1!nasov01ADMIN' not 'Admin123!'. (2) Cookie consent banner can intercept clicks on the lowest visible row's action icons until dismissed — first-click reliability could be improved by adding pointer-events:none on banner sides or raising it inside a fixed-position container that doesn't span full width."
+}

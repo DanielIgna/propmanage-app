@@ -37,6 +37,7 @@ async def demo_request(payload: dict = Body(...)):
         "role": role,
         "message": message,
         "whatsapp": whatsapp,
+        "tenant_id": "main",
         "status": "new",  # new, contacted, scheduled, closed_won, closed_lost
         "created_at": datetime.now(timezone.utc).isoformat(),
         "source": "landing_book_demo",
@@ -46,8 +47,12 @@ async def demo_request(payload: dict = Body(...)):
     existing = await db.demo_leads.find_one({"email": email, "created_at": {"$regex": f"^{day}"}})
     if existing:
         await db.demo_leads.update_one({"_id": existing["_id"]}, {"$set": {"name": name, "company": company, "message": message, "role": role, "whatsapp": whatsapp, "updated_at": doc["created_at"]}})
+        from leads_store import sync_lead
+        await sync_lead("demo", {**existing, "name": name, "company": company, "message": message})
         return {"ok": True, "deduped": True}
-    await db.demo_leads.insert_one(doc)
+    ins = await db.demo_leads.insert_one(doc)
+    from leads_store import sync_lead
+    await sync_lead("demo", {**doc, "_id": ins.inserted_id})
 
     # Notify admins via existing email service (console fallback when key missing).
     try:
@@ -84,6 +89,120 @@ async def demo_request(payload: dict = Body(...)):
         await _send_email(admin_emails, f"[PropManage] Cerere demo: {name} · {company or email}", html)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"[DemoLead] email notify failed: {e}")
+
+    return {"ok": True, "deduped": False}
+
+
+# ============================================================================
+# FRANCHISE APPLICATION — canal public de achiziție franchisees
+# ============================================================================
+# POST /api/public/franchise-application — capturează aplicația din pagina
+# "Devino francizat PropManage" și o sincronizează în leads unificate cu
+# source=franchise_application, segment triaged pe capacitate investițională.
+INVESTMENT_TIERS = {
+    "10-25k":  15000,
+    "25-50k":  35000,
+    "50-100k": 75000,
+    "100k+":   150000,
+}
+
+
+@router.post("/public/franchise-application")
+async def franchise_application(payload: dict = Body(...)):
+    """Public — no auth. Aplicație francizat → franchise_applications + unified leads."""
+    name = (payload.get("name") or "").strip()[:120]
+    email = (payload.get("email") or "").strip().lower()[:160]
+    phone = (payload.get("phone") or "").strip()[:32]
+    city = (payload.get("city") or "").strip()[:80]
+    occupation = (payload.get("occupation") or "").strip()[:160]
+    investment = (payload.get("investment") or "").strip()[:32]  # tier key
+    experience = (payload.get("experience") or "").strip()[:1200]
+    message = (payload.get("message") or "").strip()[:1500]
+    consent = bool(payload.get("consent"))
+
+    if not name or not EMAIL_RX.match(email):
+        raise HTTPException(400, "Nume și email valid sunt obligatorii.")
+    if not phone or len(re.sub(r"\D", "", phone)) < 9:
+        raise HTTPException(400, "Număr de telefon valid este obligatoriu.")
+    if not city:
+        raise HTTPException(400, "Orașul de interes este obligatoriu.")
+    if not consent:
+        raise HTTPException(400, "Consimțământul GDPR este obligatoriu.")
+
+    estimated_value = INVESTMENT_TIERS.get(investment, 5000)
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "city": city,
+        "occupation": occupation,
+        "investment_tier": investment or "unknown",
+        "estimated_value": estimated_value,
+        "experience": experience,
+        "message": message,
+        "consent": consent,
+        "status": "new",
+        "tenant_id": "main",  # HQ owns franchisee acquisition
+        "created_at": now_iso,
+        "source": "franchise_application",
+    }
+
+    # Idempotent on (email + day)
+    day = now_iso[:10]
+    existing = await db.franchise_applications.find_one(
+        {"email": email, "created_at": {"$regex": f"^{day}"}}
+    )
+    if existing:
+        await db.franchise_applications.update_one(
+            {"_id": existing["_id"]},
+            {"$set": {**{k: v for k, v in doc.items() if k not in ("created_at",)},
+                      "updated_at": now_iso}},
+        )
+        from leads_store import sync_lead
+        await sync_lead("franchise_application", {**existing, **doc, "id": str(existing["_id"])})
+        return {"ok": True, "deduped": True}
+
+    ins = await db.franchise_applications.insert_one(doc)
+    from leads_store import sync_lead
+    await sync_lead("franchise_application", {**doc, "id": str(ins.inserted_id)})
+
+    # Notify HQ admins
+    try:
+        from email_service import _layout, send_email as _send_email  # type: ignore
+        admin_emails = []
+        async for u in db.users.find({"role": "admin"}, {"email": 1}):
+            if u.get("email"):
+                admin_emails.append(u["email"])
+        if not admin_emails:
+            admin_emails = [os.environ.get("ADMIN_EMAIL", "admin@propmanage.io")]
+        wa_html = ""
+        digits = re.sub(r"\D", "", phone)
+        if len(digits) >= 9:
+            wa_html = f'<tr><td><b>WhatsApp:</b></td><td><a href="https://wa.me/{digits}" style="color:#25d366;">{phone} →</a></td></tr>'
+        html = _layout(
+            title="🏢 Aplicație nouă de francizat",
+            preheader=f"{name} din {city} vrea să deschidă o franciză PropManage",
+            body_html=f"""
+              <p>O nouă aplicație pentru francizare PropManage a fost primită:</p>
+              <table style="width:100%; background:#1a1a1f; border-radius:12px; padding:14px; margin:12px 0; color:#fff;">
+                <tr><td><b>Nume:</b></td><td>{name}</td></tr>
+                <tr><td><b>Email:</b></td><td><a href="mailto:{email}" style="color:#d4ff3a;">{email}</a></td></tr>
+                <tr><td><b>Telefon:</b></td><td>{phone}</td></tr>
+                {wa_html}
+                <tr><td><b>Oraș:</b></td><td>{city}</td></tr>
+                <tr><td><b>Ocupație curentă:</b></td><td>{occupation or '—'}</td></tr>
+                <tr><td><b>Buget investiție:</b></td><td>{investment or '—'} EUR</td></tr>
+                <tr><td valign="top"><b>Experiență:</b></td><td>{(experience or '—').replace(chr(10), '<br/>')}</td></tr>
+                <tr><td valign="top"><b>Mesaj:</b></td><td>{(message or '—').replace(chr(10), '<br/>')}</td></tr>
+              </table>
+              <p style="color:#a8a8b0; font-size:13px;">Lead-ul apare automat în <b>Admin → Unified Leads</b> cu segment auto (hot/warm/nurture).</p>
+            """,
+        )
+        await _send_email(admin_emails, f"[PropManage · Franciză] {name} din {city}", html)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[FranchiseApp] notify failed: {e}")
 
     return {"ok": True, "deduped": False}
 
@@ -333,92 +452,205 @@ async def delete_demo_lead(lead_id: str, user: dict = Depends(require_role("admi
 
 
 # ============================================================================
-# SEO — Dynamic sitemap.xml
+# SEO — Sitemap-index + Indexability Gate
 # ============================================================================
-# Listed in robots.txt as the canonical sitemap. Includes:
-#  - Static public pages (landing, marketplace, login, register, privacy, terms, status)
-#  - Public profile of every VERIFIED specialist (non-deleted)
-# Google/Bing re-fetch it weekly; freshness is guaranteed because we hit Mongo
-# on every request (response is small — < 50KB even at 1000 specialists).
+# Two layers:
+#  - Root https://propmanage.ro/sitemap.xml → SITEMAP-INDEX referencing 4 child
+#    sitemaps (static, content, marketplace, specialists). Listed in robots.txt.
+#  - /api/public/sitemap.xml → full flat urlset (all gate-passing URLs in one).
+# Only gate-passing URLs are emitted (thin service×city / thin profiles excluded).
+# The same gate powers GET /api/public/seo/gate, which the client-rendered SPA
+# calls to set server-truth robots (index/noindex) + canonical on public templates.
 
 from fastapi.responses import Response as FastResponse  # noqa: E402
+from pathlib import Path as _Path  # noqa: E402
+
+from seo_slugs import (  # noqa: E402
+    SEO_CATEGORY_MAP as _CAT_MAP,
+    CITY_DB_TO_SLUG as _CITY_DB_TO_SLUG,
+    parse_landing_slug as _parse_landing_slug,
+)
+from seo_gate import (  # noqa: E402
+    gate_service_city,
+    specialist_is_indexable,
+    decision as _gate_decision,
+)
+from seo_guides import GUIDE_SLUGS  # noqa: E402
+from seo_problems import PROBLEM_SLUGS  # noqa: E402
+from seo_design import (  # noqa: E402
+    DESIGN_PAGES, DESIGN_STYLES, DESIGN_LOCAL_CITIES, DESIGN_PAGE_SLUGS,
+)
 
 _SITE_URL = os.environ.get("APP_PUBLIC_URL", "https://propmanage.ro").rstrip("/")
+_SITEMAP_DIR = _Path(__file__).resolve().parents[2] / "frontend" / "public"
+_CHILD_SITEMAPS = [
+    "sitemap-static.xml",
+    "sitemap-content.xml",
+    "sitemap-marketplace.xml",
+    "sitemap-specialists.xml",
+    "sitemap-design.xml",
+]
+_CITY_SLUG_TO_DB = {v: k for k, v in _CITY_DB_TO_SLUG.items()}
 
 
-@router.get("/public/sitemap.xml")
-async def public_sitemap():
-    """Dynamic XML sitemap — included in robots.txt."""
-    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+def _url_xml(path: str, lastmod: str, changefreq: str, priority: str) -> str:
+    return (
+        f"  <url>\n"
+        f"    <loc>{_SITE_URL}{path}</loc>\n"
+        f"    <lastmod>{lastmod}</lastmod>\n"
+        f"    <changefreq>{changefreq}</changefreq>\n"
+        f"    <priority>{priority}</priority>\n"
+        f"  </url>"
+    )
 
-    static_pages = [
-        ("/",                "1.0", "weekly"),
-        ("/marketplace",     "0.9", "daily"),
-        ("/ghiduri",         "0.85", "weekly"),
-        ("/digital-twin",    "0.7", "monthly"),
-        ("/login",           "0.4", "monthly"),
-        ("/register",        "0.5", "monthly"),
-        ("/privacy",         "0.3", "yearly"),
-        ("/privacy/notices", "0.3", "yearly"),
-        ("/terms",           "0.3", "yearly"),
-        ("/status",          "0.3", "weekly"),
-    ]
 
-    # Guide articles (mirror of frontend/src/data/ghiduri.js — keep in sync)
-    guide_slugs = [
-        ("cost-renovare-apartament-2-camere", "2026-02-29"),
-        ("cum-alegi-designer-interior",        "2026-02-29"),
-        ("cum-verifici-instalator",            "2026-02-29"),
-        ("cost-instalatie-electrica-apartament", "2026-02-29"),
-        ("cum-functioneaza-escrow-lucrari",    "2026-02-29"),
-        ("cum-alegi-zugrav-bun",               "2026-02-29"),
-    ]
+def _wrap_urlset(entries: list) -> str:
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + "\n".join(entries)
+        + "\n</urlset>\n"
+    )
 
-    urls_xml = []
-    for path, prio, freq in static_pages:
-        urls_xml.append(
-            f"  <url>\n"
-            f"    <loc>{_SITE_URL}{path}</loc>\n"
-            f"    <lastmod>{now_iso}</lastmod>\n"
-            f"    <changefreq>{freq}</changefreq>\n"
-            f"    <priority>{prio}</priority>\n"
-            f"  </url>"
-        )
 
-    # Guide articles — Article + FAQPage schema, high SEO value
-    for gslug, gmod in guide_slugs:
-        urls_xml.append(
-            f"  <url>\n"
-            f"    <loc>{_SITE_URL}/ghiduri/{gslug}</loc>\n"
-            f"    <lastmod>{gmod}</lastmod>\n"
-            f"    <changefreq>monthly</changefreq>\n"
-            f"    <priority>0.75</priority>\n"
-            f"  </url>"
-        )
+# ---------------------------------------------------------------------------
+# Indexability Gate — server-side single source of truth
+# ---------------------------------------------------------------------------
+async def _count_verified_specialists(category_db: str, city_db=None, zones_cache=None) -> int:
+    """Count VERIFIED, non-deleted specialists matching a service (optionally a city)."""
+    q = {
+        "role": "specialist", "verified": True, "deleted": {"$ne": True},
+        "$or": [{"specialty": category_db}, {"service_categories": category_db}],
+    }
+    if city_db:
+        if zones_cache is not None:
+            zones = zones_cache.get(city_db) or []
+        else:
+            zones = await db.regions.distinct("zone", {"city": city_db})
+        if not zones:
+            return 0
+        q["coverage_zones"] = {"$in": zones}
+    return await db.users.count_documents(q)
 
-    # SEO category-landing pages (e.g. /marketplace/electrician,
-    # /marketplace/electrician-bucuresti) — drives long-tail local search traffic.
-    from seo_slugs import all_landing_slugs
-    for slug in all_landing_slugs():
-        # Slugs without a city are higher priority (parent pages)
-        is_with_city = "-" in slug and not slug.startswith("design-interior") or slug.count("-") >= (2 if slug.startswith("design-interior") else 1)
-        # Simpler: split into parts and check if more than 1
-        is_with_city = slug not in ("electrician", "instalator", "hvac", "design-interior", "tamplar", "zugrav", "firma-curatenie", "service-electrocasnice", "gradinar")
-        urls_xml.append(
-            f"  <url>\n"
-            f"    <loc>{_SITE_URL}/marketplace/{slug}</loc>\n"
-            f"    <lastmod>{now_iso}</lastmod>\n"
-            f"    <changefreq>weekly</changefreq>\n"
-            f"    <priority>{'0.7' if is_with_city else '0.85'}</priority>\n"
-            f"  </url>"
-        )
 
-    # Public specialist profiles — only verified & non-deleted ones
+async def compute_marketplace_gate(slug: str) -> dict:
+    """Indexability decision for a /marketplace/{slug} page (parent or service×city)."""
+    parsed = _parse_landing_slug(slug)
+    if not parsed:
+        return _gate_decision(False, canonical=f"{_SITE_URL}/marketplace", reason="slug necunoscut")
+    cat_slug = parsed["category_slug"]
+    cat_db = parsed["category_db"]
+    if parsed["city_db"]:
+        count = await _count_verified_specialists(cat_db, parsed["city_db"])
+        return gate_service_city(count, canonical_parent=f"{_SITE_URL}/marketplace/{cat_slug}")
+    count = await _count_verified_specialists(cat_db)
+    return gate_service_city(count, canonical_parent=f"{_SITE_URL}/marketplace")
+
+
+async def compute_design_gate(slug: str) -> dict:
+    """Indexability for a single-segment /design-interior/{slug} page.
+    Content pages = always index (unique content). City pages = gated by the SAME
+    SSOT (verified `interior_design` specialists per city ≥ threshold)."""
+    if slug in DESIGN_PAGE_SLUGS:
+        return _gate_decision(True, reason="pagină editorială/comercială design")
+    city_db = _CITY_SLUG_TO_DB.get(slug)
+    if city_db and slug in DESIGN_LOCAL_CITIES:
+        count = await _count_verified_specialists("interior_design", city_db)
+        return gate_service_city(count, canonical_parent=f"{_SITE_URL}/design-interior")
+    return _gate_decision(True, reason="pagină design")
+
+
+@router.get("/public/seo/gate")
+async def public_seo_gate(path: str = ""):
+    """Server-truth indexability for a public path — the SPA calls this to set
+    robots (index/noindex) + canonical on client-rendered templates.
+    Returns {index, canonical, reason}. Non-marketplace paths index by default."""
+    p = (path or "").strip()
+    m = re.match(r"^/?marketplace/([a-z0-9\-]+)/?$", p)
+    if m:
+        d = await compute_marketplace_gate(m.group(1))
+        return {"path": p, **d}
+    dm = re.match(r"^/?design-interior/([a-z0-9\-]+)/?$", p)
+    if dm:
+        d = await compute_design_gate(dm.group(1))
+        return {"path": p, **d}
+    return {"path": p, "index": True, "canonical": None, "reason": "editorial/necontrolat"}
+
+
+# ---------------------------------------------------------------------------
+# Sitemap builders (each returns a list of <url> entries; gate-filtered)
+# ---------------------------------------------------------------------------
+_STATIC_PAGES = [
+    ("/",                    "1.0",  "weekly"),
+    ("/design-interior",     "0.95", "weekly"),
+    ("/devino-francizat",    "0.9",  "weekly"),
+    ("/marketplace",         "0.9",  "daily"),
+    ("/ghiduri",             "0.85", "weekly"),
+    ("/probleme-casa",       "0.85", "weekly"),
+    ("/preturi",             "0.85", "weekly"),
+    ("/scorul-casei",        "0.9",  "weekly"),
+    ("/checklist-cumparare", "0.9",  "weekly"),
+    ("/imobile-verificate",  "0.9",  "daily"),
+    ("/digital-twin",        "0.7",  "monthly"),
+    ("/login",               "0.4",  "monthly"),
+    ("/register",            "0.5",  "monthly"),
+    ("/privacy",             "0.3",  "yearly"),
+    ("/privacy/notices",     "0.3",  "yearly"),
+    ("/terms",               "0.3",  "yearly"),
+    ("/status",              "0.3",  "weekly"),
+]
+
+
+def _static_entries(now_iso: str) -> list:
+    return [_url_xml(path, now_iso, freq, prio) for path, prio, freq in _STATIC_PAGES]
+
+
+def _content_entries(now_iso: str) -> list:
+    """Editorial detail pages (always indexable): guides, problem cluster, prices."""
+    entries = []
+    for gslug, gmod in GUIDE_SLUGS:
+        entries.append(_url_xml(f"/ghiduri/{gslug}", gmod, "monthly", "0.75"))
+    for pslug, pmod in PROBLEM_SLUGS:
+        entries.append(_url_xml(f"/probleme-casa/{pslug}", pmod, "monthly", "0.75"))
+    from construction.price_seo import PRICE_SEO
+    for pslug in PRICE_SEO:
+        entries.append(_url_xml(f"/preturi/{pslug}", now_iso, "weekly", "0.8"))
+    return entries
+
+
+async def _marketplace_entries(now_iso: str) -> list:
+    """Only service (national) + service×city pages that PASS the Indexability Gate."""
+    entries = []
+    zones_by_city = {}
+    async for r in db.regions.find({}, {"city": 1, "zone": 1}):
+        city = r.get("city")
+        zone = r.get("zone")
+        if city and zone:
+            zones_by_city.setdefault(city, []).append(zone)
+    for cat_slug, (cat_db, _label, _plural) in _CAT_MAP.items():
+        nat = await _count_verified_specialists(cat_db)
+        if not gate_service_city(nat)["index"]:
+            continue  # thin national category → excluded from sitemap
+        entries.append(_url_xml(f"/marketplace/{cat_slug}", now_iso, "weekly", "0.85"))
+        for city_db, city_slug in _CITY_DB_TO_SLUG.items():
+            cnt = await _count_verified_specialists(cat_db, city_db, zones_cache=zones_by_city)
+            if gate_service_city(cnt)["index"]:
+                entries.append(_url_xml(f"/marketplace/{cat_slug}-{city_slug}", now_iso, "weekly", "0.7"))
+    return entries
+
+
+async def _specialist_entries(now_iso: str) -> list:
+    """Only verified, non-deleted profiles that pass the profile gate (specialty + trust signal)."""
+    entries = []
     cursor = db.users.find(
         {"role": "specialist", "verified": True, "deleted": {"$ne": True}},
-        {"_id": 1, "updated_at": 1, "created_at": 1},
+        {"_id": 1, "updated_at": 1, "created_at": 1, "specialty": 1, "specialties": 1,
+         "services": 1, "service_categories": 1, "reviews_count": 1, "review_count": 1,
+         "rating": 1, "bio": 1, "about": 1, "portfolio": 1, "verified": 1, "deleted": 1},
     ).limit(5000)
     async for u in cursor:
+        if not specialist_is_indexable(u):
+            continue
         spec_id = str(u["_id"])
         lastmod = u.get("updated_at") or u.get("created_at")
         if isinstance(lastmod, datetime):
@@ -427,19 +659,118 @@ async def public_sitemap():
             lastmod_str = lastmod[:10]
         else:
             lastmod_str = now_iso
-        urls_xml.append(
-            f"  <url>\n"
-            f"    <loc>{_SITE_URL}/specialists/{spec_id}</loc>\n"
-            f"    <lastmod>{lastmod_str}</lastmod>\n"
-            f"    <changefreq>weekly</changefreq>\n"
-            f"    <priority>0.7</priority>\n"
-            f"  </url>"
-        )
+        entries.append(_url_xml(f"/specialists/{spec_id}", lastmod_str, "weekly", "0.7"))
+    return entries
 
-    body = (
+
+async def _design_entries(now_iso: str) -> list:
+    """Design Interior cluster: content + style pages (always index) + GATED local city pages."""
+    entries = []
+    for slug, mod in DESIGN_PAGES:
+        entries.append(_url_xml(f"/design-interior/{slug}", mod, "monthly", "0.8"))
+    for slug, mod in DESIGN_STYLES:
+        entries.append(_url_xml(f"/design-interior/stil/{slug}", mod, "monthly", "0.7"))
+    for city_slug in DESIGN_LOCAL_CITIES:
+        city_db = _CITY_SLUG_TO_DB.get(city_slug)
+        if not city_db:
+            continue
+        cnt = await _count_verified_specialists("interior_design", city_db)
+        if gate_service_city(cnt)["index"]:
+            entries.append(_url_xml(f"/design-interior/{city_slug}", now_iso, "weekly", "0.75"))
+    return entries
+
+
+async def build_sitemap_xml() -> str:
+    """Flat urlset with ALL gate-passing URLs (served at /api/public/sitemap.xml)."""
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    entries = []
+    entries += _static_entries(now_iso)
+    entries += _content_entries(now_iso)
+    entries += await _marketplace_entries(now_iso)
+    entries += await _specialist_entries(now_iso)
+    entries += await _design_entries(now_iso)
+    return _wrap_urlset(entries)
+
+
+def build_sitemap_index_xml() -> str:
+    """Sitemap-index served at the clean root https://propmanage.ro/sitemap.xml."""
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    items = [
+        f"  <sitemap>\n    <loc>{_SITE_URL}/{name}</loc>\n    <lastmod>{now_iso}</lastmod>\n  </sitemap>"
+        for name in _CHILD_SITEMAPS
+    ]
+    return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + "\n".join(urls_xml)
-        + "\n</urlset>\n"
+        '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + "\n".join(items)
+        + "\n</sitemapindex>\n"
     )
-    return FastResponse(content=body, media_type="application/xml")
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+@router.get("/public/sitemap.xml")
+async def public_sitemap():
+    """Flat urlset with all gate-passing URLs. Root /sitemap.xml is the sitemap-index."""
+    return FastResponse(content=await build_sitemap_xml(), media_type="application/xml")
+
+
+@router.get("/public/sitemap-index.xml")
+async def public_sitemap_index():
+    return FastResponse(content=build_sitemap_index_xml(), media_type="application/xml")
+
+
+@router.get("/public/sitemap-static.xml")
+async def public_sitemap_static():
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return FastResponse(content=_wrap_urlset(_static_entries(now_iso)), media_type="application/xml")
+
+
+@router.get("/public/sitemap-content.xml")
+async def public_sitemap_content():
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return FastResponse(content=_wrap_urlset(_content_entries(now_iso)), media_type="application/xml")
+
+
+@router.get("/public/sitemap-marketplace.xml")
+async def public_sitemap_marketplace():
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return FastResponse(content=_wrap_urlset(await _marketplace_entries(now_iso)), media_type="application/xml")
+
+
+@router.get("/public/sitemap-specialists.xml")
+async def public_sitemap_specialists():
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return FastResponse(content=_wrap_urlset(await _specialist_entries(now_iso)), media_type="application/xml")
+
+
+@router.get("/public/sitemap-design.xml")
+async def public_sitemap_design():
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return FastResponse(content=_wrap_urlset(await _design_entries(now_iso)), media_type="application/xml")
+
+
+# ---------------------------------------------------------------------------
+# Static files at the domain root (ingress routes non-/api paths to frontend).
+# Root /sitemap.xml = index; children = urlsets. Regenerated at startup + daily.
+# ---------------------------------------------------------------------------
+async def write_sitemap_file() -> str:
+    """Write the sitemap-index + all child sitemaps into frontend/public/."""
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    files = {
+        "sitemap.xml": build_sitemap_index_xml(),
+        "sitemap-static.xml": _wrap_urlset(_static_entries(now_iso)),
+        "sitemap-content.xml": _wrap_urlset(_content_entries(now_iso)),
+        "sitemap-marketplace.xml": _wrap_urlset(await _marketplace_entries(now_iso)),
+        "sitemap-specialists.xml": _wrap_urlset(await _specialist_entries(now_iso)),
+        "sitemap-design.xml": _wrap_urlset(await _design_entries(now_iso)),
+    }
+    try:
+        _SITEMAP_DIR.mkdir(parents=True, exist_ok=True)
+        for name, xml in files.items():
+            (_SITEMAP_DIR / name).write_text(xml, encoding="utf-8")
+        logger.info(f"sitemap-index + {len(files) - 1} child sitemaps scrise → {_SITEMAP_DIR}")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Nu am putut scrie fișierele sitemap: {e}")
+    return files["sitemap.xml"]

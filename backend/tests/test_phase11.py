@@ -5,6 +5,7 @@ GDPR export/delete, and role-aware list_properties/list_requests behavior.
 import os
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
 if not BASE_URL:
@@ -21,7 +22,7 @@ ADMIN_EMAIL = "admin@propmanage.io"
 OP_EMAIL = "operator@propmanage.io"
 SPEC_PWD = "Spec123!"
 CLIENT_PWD = "Client123!"
-ADMIN_PWD = "Admin123!"
+ADMIN_PWD = OWNER_ADMIN_PASSWORD
 OP_PWD = "Op123!"
 
 

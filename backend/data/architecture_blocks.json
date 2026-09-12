@@ -1,0 +1,99 @@
+{
+  "version": "1.0",
+  "principle": "Architecture Navigator (EXECUTION ORDER 002). Fiecare bloc = fișiere reale din repo. Truth Engine: zero arhitectură fabricată.",
+  "layers": ["Guvernanță", "Inteligență", "Execuție", "Produs", "Client"],
+  "blocks": [
+    {
+      "id": "system_zero", "name": "SYSTEM ZERO — Prime Directive", "layer": "Guvernanță",
+      "description": "Supreme system prompt: ierarhia Mission→Truth→Trust→Value→Health→Knowledge→Automation→Revenue→Features.",
+      "purpose": "Toate deciziile AI se filtrează prin Prime Directive.",
+      "files": ["memory/prompts/SYSTEM_ZERO.md"], "routes": [], "api": [], "database": [],
+      "kc_doc": "memory/prompts/SYSTEM_ZERO.md", "registry_node": "doc:system_zero", "next": ["master_executive_prompt"]
+    },
+    {
+      "id": "master_executive_prompt", "name": "Master Executive Prompt v3", "layer": "Guvernanță",
+      "description": "Persona permanentă: Executive Intelligence — nu asistent, nu chatbot.",
+      "purpose": "Definește cum gândește și comunică inteligența executivă.",
+      "files": ["memory/prompts/MASTER_EXECUTIVE_PROMPT.md"], "routes": [], "api": [], "database": [],
+      "kc_doc": "memory/prompts/MASTER_EXECUTIVE_PROMPT.md", "registry_node": "doc:master_executive_prompt", "next": ["ceo_mode"]
+    },
+    {
+      "id": "ceo_mode", "name": "Enterprise CEO Mode", "layer": "Guvernanță",
+      "description": "CEO Loop orar: Observe→Measure→Rank→Execute ONE→Learn. Founder Filter + Autonomy Rule.",
+      "purpose": "Transformă guvernanța în ritm operațional zilnic.",
+      "files": ["memory/prompts/ENTERPRISE_CEO_MODE.md"], "routes": [], "api": [], "database": [],
+      "kc_doc": "memory/prompts/ENTERPRISE_CEO_MODE.md", "registry_node": "doc:ceo_mode", "next": ["enterprise_health"]
+    },
+    {
+      "id": "enterprise_health", "name": "Enterprise Health Engine", "layer": "Inteligență",
+      "description": "Calculează domeniile de sănătate din date live, după Formula Registry D151 (D122).",
+      "purpose": "Un adevăr numeric unic despre starea companiei.",
+      "files": ["backend/routes/enterprise_health.py", "frontend/src/pages/admin/EnterpriseHealthPage.jsx"],
+      "routes": ["/admin/enterprise-health"], "api": ["GET /api/admin/enterprise-health"],
+      "database": ["enterprise_health_history"],
+      "kc_doc": "memory/board/directives/BOARD_DIRECTIVE_122_ENTERPRISE_HEALTH_ENGINE.md",
+      "registry_node": "engine:enterprise_health", "next": ["enterprise_score"]
+    },
+    {
+      "id": "enterprise_score", "name": "Enterprise Score", "layer": "Inteligență",
+      "description": "Scorul agregat al întreprinderii — formula Board (compute_enterprise_score).",
+      "purpose": "Măsura oficială a progresului; orice execuție autonomă trebuie să o miște.",
+      "files": ["backend/routes/enterprise_health.py"], "routes": [], "api": ["GET /api/admin/enterprise-health"],
+      "database": ["enterprise_health_history"],
+      "kc_doc": "memory/metrics/ENTERPRISE_SCORE.md", "registry_node": "metric:enterprise_score", "next": ["ceo_briefing"]
+    },
+    {
+      "id": "ceo_briefing", "name": "CEO Briefing Engine", "layer": "Inteligență",
+      "description": "Briefing-ul zilnic de o pagină (D152): status, One Thing, execuție autonomă 24h, snapshot, riscuri.",
+      "purpose": "Founder-ul înțelege compania în 2 minute pe zi.",
+      "files": ["backend/routes/ceo_briefing.py", "frontend/src/pages/admin/CeoBriefingPage.jsx"],
+      "routes": ["/admin/ceo-briefing"], "api": ["GET /api/admin/ceo-briefing"],
+      "database": ["ceo_briefings"],
+      "kc_doc": "memory/board/directives/BOARD_DIRECTIVE_152_CEO_BRIEFING_ENGINE.md",
+      "registry_node": "engine:ceo_briefing", "next": ["operations_center"]
+    },
+    {
+      "id": "operations_center", "name": "Operations Center", "layer": "Execuție",
+      "description": "Pipeline lead-uri, plăți manuale, gaps de specialiști + panoul autonomiei L2.",
+      "purpose": "Locul unde inteligența devine execuție comercială zilnică.",
+      "files": ["backend/routes/operations_center.py", "backend/lead_followup.py", "frontend/src/pages/admin/OperationsCenter.jsx"],
+      "routes": ["/admin/operations"], "api": ["GET /api/admin/operations", "GET /api/admin/leads/followup/status"],
+      "database": ["leads", "lead_followup_log", "lead_followup_runs"],
+      "kc_doc": "memory/board/EXECUTION_ORDER_001.md",
+      "registry_node": "engine:operations_center", "next": ["marketplace", "crm_growth"]
+    },
+    {
+      "id": "marketplace", "name": "Marketplace", "layer": "Produs",
+      "description": "Potrivirea cereri↔specialiști: oferte, parteneri, marketplace premium.",
+      "purpose": "Motorul tranzacțional — unde se întâlnesc clienții cu specialiștii.",
+      "files": ["backend/routes/marketplace.py", "backend/routes/marketplace_offers.py", "backend/routes/premium_marketplace.py", "backend/routes/marketplace_intel.py"],
+      "routes": [], "api": [], "database": [],
+      "kc_doc": null, "registry_node": null, "next": ["digital_twin"]
+    },
+    {
+      "id": "crm_growth", "name": "CRM & Growth (Lead Intelligence)", "layer": "Produs",
+      "description": "Captură, segmentare și follow-up autonom pe lead-uri.",
+      "purpose": "Transformă vizitatorii în clienți plătitori.",
+      "files": ["backend/routes/leads.py", "backend/routes/lead_intelligence.py", "backend/lead_followup.py", "frontend/src/pages/admin/LeadIntelligencePage.jsx"],
+      "routes": [], "api": ["GET /api/admin/leads/followup/status"], "database": ["leads"],
+      "kc_doc": "memory/board/directives/BOARD_DIRECTIVE_156_AUTONOMOUS_EXECUTION_ENGINE.md",
+      "registry_node": "engine:lead_followup", "next": ["digital_twin"]
+    },
+    {
+      "id": "digital_twin", "name": "Digital Twin", "layer": "Produs",
+      "description": "Geamănul digital al proprietății: date, documente, istoricul intervențiilor.",
+      "purpose": "Activul diferențiator — cunoașterea compusă a fiecărei proprietăți.",
+      "files": ["backend/routes/digital_twin.py", "backend/routes/twin.py", "backend/routes/twin_orchestrator.py", "frontend/src/pages/DigitalTwinPage.jsx"],
+      "routes": [], "api": [], "database": [],
+      "kc_doc": null, "registry_node": null, "next": ["client"]
+    },
+    {
+      "id": "client", "name": "Client (Experiența finală)", "layer": "Client",
+      "description": "Dashboard-ul clientului: proprietăți, cereri, oferte, twin viewer.",
+      "purpose": "Tot ce construim se validează aici: valoare reală pentru client.",
+      "files": ["frontend/src/pages/ClientDashboard.jsx", "frontend/src/pages/ClientTwinViewer.jsx"],
+      "routes": [], "api": [], "database": [],
+      "kc_doc": null, "registry_node": null, "next": []
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "summary": "EO-026 Go-Live/Public Beta Gate validated end-to-end. Backend: 24/24 pytest PASS covering passport tracking (view/leave/share/cta_click/invalid_400/nonexistent_404/bot_skipped), owner analytics (all 14 fields present + device=mobile/browser=Safari derived from iPhone UA + 401 unauth + 403/404 non-owner blocked), register→conversion attribution (attributed + dedupe already:true), Beta Cockpit overview (6-step owner_funnel, 5-step specialist_funnel, 4 gates with target/actual/passed, passports rollup, VoC, TTFV, support, RBAC 403 for client), VoC (submit ok / empty 400 / admin list / dedupe same-day / client-forbidden), Purge demo (dry_run counts / wrong_code_400 / client_403), OG share preserves ?src=wa (browser 307 redirect + bot HTML with og:tags), QR PNG 200. Rate limit verified locally on /api/track/config: exactly 120x200 then 10x429 with Retry-After:60. Frontend: (1) Public /p/gbegxfyz9m renders with passport-name/scores/badges + POST .../track fires automatically (view + leave observed on network). (2) Client PassportCard shows passport-stats-toggle → panel with all 6 stats (views/visitors/qr/shares/registers/time) + sources line. (3) Admin /admin/beta-cockpit renders beta-cockpit-page + all 11 required testids (KPIs, funnels, gates, rollup, VoC, day selector). (4) BetaFeedbackWidget: visible on /client (bottom-left), open panel + submit + close all work; NOT rendered on public /p/... (verified). Data left intact per instructions (passport stays enabled, no purge, no destructive ops).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "PassportCard.jsx (client PropertyHub)",
+        "issue": "Stray `)}` renders as literal visible text inside the passport card (visible under 'Scorurile casei'/'Dezactivează pașaportul public'). Root cause: JSX conditional wrapper `{showPrivacy && (` was removed from line ~96 but the matching `)}` on line 108 was left behind. Consequences: (a) literal `)}` text bleeds into UI, (b) privacy checklist + 'Dezactivează pașaportul public' button are ALWAYS visible instead of toggling with passport-privacy-toggle (regression vs iteration_135 which noted 'passport-disable-btn is rendered only when privacy panel is open').",
+        "selector": "/app/frontend/src/pages/clientv2/PassportCard.jsx L96-108",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_eo026_beta_gate_iter136.py",
+    "/app/test_reports/pytest/eo026_iter136.xml"
+  ],
+  "action_items": [
+    "PassportCard.jsx L96-108: restore wrapping `{showPrivacy && ( ... )}` around the `.mt-2 space-y-1.5` div (data-testid=passport-privacy-list) so the privacy checklist toggles correctly and the stray `)}` text disappears."
+  ],
+  "critical_code_review_comments": [
+    "passport_analytics.py: clean, GDPR-safe (only truncated SHA-256 IP hash, best-effort country via header/GeoIP async). UA parsing works and is verified (iPhone UA → mobile/Safari present in analytics.devices/browsers).",
+    "beta_cockpit.py INTERNAL_RE=r'@propmanage\\.io$|@example\\.|danieligna1@gmail.com|test|demo' — regex correctly excludes internal accounts from real-user funnel; verified with a fresh @gmail.com registration that appeared in `registrations.owners` count.",
+    "purge-demo endpoint is well-guarded: (1) requires admin role, (2) requires MASTER_CODE=0108, (3) dry_run defaults to True, (4) always excludes admin@propmanage.io. Client role gets 403, wrong master code gets 400 — both verified.",
+    "Rate limit: 120 req/min on /api/public|/api/p|/api/track|/api/go returned exactly 120x200 + 10x429 with Retry-After:60 header — spec compliant.",
+    "OG endpoint /api/p/{slug}: browser UA gets 307 redirect that preserves ?src=wa in Location header (regression CX-3 verified); bot UA (facebookexternalhit) still returns 200 HTML with og:* tags.",
+    "Track endpoint correctly rejects bot UA with {ok:true, skipped:'bot'} and does NOT insert an event — verified analytics view count did not increase after bot POST."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_eo026_beta_gate_iter136.py"
+  ],
+  "success_rate": {"backend": "100% (24/24)", "frontend": "95% (1 minor UI bug — stray text + toggle regression on PassportCard privacy panel)"},
+  "test_credentials": "client@propmanage.io / Client123! ; admin@propmanage.io / 1!nasov01ADMIN ; TEST_ fresh @gmail.com accounts created dynamically for conversion + stranger-owner tests",
+  "seed_data_creation": "Created 2 fresh @gmail.com test users (test.eo026.<hex>@gmail.com and test.stranger.<hex>@gmail.com) via /api/auth/register for conversion attribution and cross-owner authorization tests. Also inserted several passport_events on slug=gbegxfyz9m (view qr from iPhone UA, leave 42s, share wa, cta_click) and one beta_feedback row for client@propmanage.io (dedupe-updated on 2nd submit). No destructive operations. Passport gbegxfyz9m remains ACTIVE as instructed.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "EO-026 backend regression file at /app/backend/tests/test_eo026_beta_gate_iter136.py — reuse as full regression for passport analytics + beta cockpit + VoC + purge dry-run + OG/QR. All 24 tests pass on preview URL. IMPORTANT: never run purge-demo with dry_run:false (would delete demo accounts). PassportCard.jsx has a JSX-wrapper regression (stray `)}` visible + always-open privacy panel) — main agent should fix by adding `{showPrivacy && (` before the privacy-list div on ~L96. All other flows healthy. Rate limit test was run against localhost:8001 so preview external ratelimit bucket remains unaffected.",
+  "rca_of_the_issue": "PassportCard.jsx L96-108: the JSX opening `{showPrivacy && (` was accidentally dropped in a recent edit but the matching `)}` on L108 was preserved. React renders bare `)}` as literal DOM text (only `{` and `<` are special in JSX), so the browser shows `)}` under the passport card. Simultaneously, without the conditional guard the entire privacy-list div (checkboxes + Dezactivează button) renders unconditionally, breaking the passport-privacy-toggle UX. Fix: wrap L96-107 with `{showPrivacy && (` prefix and keep `)}` on L108."
+}

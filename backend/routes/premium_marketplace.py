@@ -27,7 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from db import db
-from deps import get_current_user, require_role
+from deps import require_role
 
 logger = logging.getLogger("propmanage.premium_marketplace")
 

@@ -6,6 +6,7 @@ import base64
 import pytest
 import requests
 import pyotp
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 def _load_base_url():
     url = os.environ.get("REACT_APP_BACKEND_URL", "").strip()
@@ -28,7 +29,7 @@ assert BASE_URL, "REACT_APP_BACKEND_URL not set"
 
 CLIENT = {"email": "client@propmanage.io", "password": "Client123!"}
 SPEC = {"email": "specialist@propmanage.io", "password": "Spec123!"}
-ADMIN = {"email": "admin@propmanage.io", "password": "Admin123!"}
+ADMIN = {"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD}
 
 
 def _login(creds, totp_code=None):

@@ -1,0 +1,12 @@
+# UX AUDIT TEMPLATE (per pagină)
+- Pagina / ruta / starea contului testată:
+- Scop · User primar · Obiectiv business:
+- CTA primar (unul!) · CTA-uri secundare:
+- Sarcină cognitivă (elemente concurente numărate):
+- Probleme UX / Probleme IA:
+- Oportunități de venit:
+- Probleme mobil (390px, thumb-zone, suprapuneri):
+- Probleme accesibilitate:
+- Componente de ELIMINAT / CONTOPIT / ASCUNS (cu justificare per componentă):
+- Scoruri (0-100): Claritate · Simplitate · Încredere · Venit · Mobil · A11y · Perf · CogLoad → FINAL
+- Trece testul de 10 secunde? (Unde sunt? Ce e asta? Ce fac acum?)

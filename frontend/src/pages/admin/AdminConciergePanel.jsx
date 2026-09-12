@@ -22,7 +22,7 @@ const SecurityConfigCard = () => {
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  const load = () => axios.get(`${API}/admin/security/config`).then(r => { setCfg(r.data); setDraft(r.data); });
+  const load = () => axios.get(`${API}/admin/security/config`).then(r => { setCfg(r.data); setDraft(r.data); }).catch(() => {});
   useEffect(() => { load(); }, []);
 
   const save = async () => {
@@ -333,7 +333,7 @@ const ConciergeSettingsCard = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    axios.get(`${API}/admin/concierge/settings`).then(r => { setS(r.data); setDraft(r.data); });
+    axios.get(`${API}/admin/concierge/settings`).then(r => { setS(r.data); setDraft(r.data); }).catch(() => {});
   }, []);
 
   if (!s || !draft) return null;

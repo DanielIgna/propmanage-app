@@ -6,9 +6,9 @@ Also covers two bug fixes:
 """
 import os
 import io
-import base64
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 try:
     from pypdf import PdfWriter
@@ -43,7 +43,7 @@ def _make_multipage_pdf(pages: int = 3) -> bytes:
 
 @pytest.fixture(scope="module")
 def admin_session():
-    return _login("admin@propmanage.io", "Admin123!")
+    return _login("admin@propmanage.io", OWNER_ADMIN_PASSWORD)
 
 
 @pytest.fixture(scope="module")
@@ -54,7 +54,7 @@ def client_session():
 @pytest.fixture(scope="module")
 def specialist_session():
     s = _login("specialist@propmanage.io", "Spec123!")
-    admin = _login("admin@propmanage.io", "Admin123!")
+    admin = _login("admin@propmanage.io", OWNER_ADMIN_PASSWORD)
     me = s.get(f"{BASE_URL}/api/auth/me", timeout=10).json()
     uid = me.get("id") or me.get("_id") or (me.get("user") or {}).get("id")
     if uid:
@@ -70,7 +70,7 @@ def specialist_session():
 @pytest.fixture(scope="module")
 def specialist2_session():
     s = _login("specialist2@propmanage.io", "Spec123!")
-    admin = _login("admin@propmanage.io", "Admin123!")
+    admin = _login("admin@propmanage.io", OWNER_ADMIN_PASSWORD)
     me = s.get(f"{BASE_URL}/api/auth/me", timeout=10).json()
     uid = me.get("id") or me.get("_id") or (me.get("user") or {}).get("id")
     if uid:

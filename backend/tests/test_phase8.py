@@ -9,6 +9,7 @@ import time
 import uuid
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 
 def _load_base_url():
@@ -32,7 +33,7 @@ assert BASE_URL, "REACT_APP_BACKEND_URL not set"
 
 CLIENT = {"email": "client@propmanage.io", "password": "Client123!"}
 SPEC = {"email": "specialist@propmanage.io", "password": "Spec123!"}
-ADMIN = {"email": "admin@propmanage.io", "password": "Admin123!"}
+ADMIN = {"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD}
 OPERATOR = {"email": "operator@propmanage.io", "password": "Op123!"}
 
 
@@ -143,6 +144,7 @@ class TestRegisterValidation:
         payload = {
             "email": email,
             "password": "TestPass123!",
+            "terms_accepted": True, "privacy_policy_accepted": True, "phone": "+40712000999",
             "name": "Bad Spec",
             "role": "specialist",
             "specialty": "hvac",
@@ -159,6 +161,7 @@ class TestRegisterValidation:
         payload = {
             "email": email,
             "password": "TestPass123!",
+            "terms_accepted": True, "privacy_policy_accepted": True, "phone": "+40712000999",
             "name": "OK Spec",
             "role": "specialist",
             "specialty": "hvac",
@@ -179,6 +182,7 @@ class TestRegisterValidation:
         payload = {
             "email": email,
             "password": "TestPass123!",
+            "terms_accepted": True, "privacy_policy_accepted": True, "phone": "+40712000999",
             "name": "Mixed",
             "role": "specialist",
             "specialty": "hvac",

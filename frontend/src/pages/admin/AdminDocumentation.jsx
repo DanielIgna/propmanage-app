@@ -5,13 +5,113 @@ import {
   BookOpen, ChevronRight, Building2, ShieldCheck, Box, CreditCard, Mail,
   Settings, Search, Sparkles, Facebook, BarChart3, MapPin, FileText, Award,
   Lightbulb, Rocket, Users, Calendar, Layers, Server, MailPlus, History, Brain,
-  Send, Loader2, Copy, CheckCircle2, Gauge, Zap, Activity, Clock
+  Send, Loader2, Copy, CheckCircle2, Gauge, Zap, Activity, Clock,
+  Megaphone, KeyRound
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL;
 const ax = axios.create({ baseURL: API, withCredentials: true });
 
 const TOPICS = [
+  {
+    id: "marketing-department",
+    icon: Megaphone,
+    title: "AI Marketing & Growth Department · Faza 1-2",
+    summary: "Departament intern de marketing 24/7 cu BI Engine, Auto-Trigger, Campaign Generator, Performance Loop",
+    status: {
+      created: [
+        "Executive Dashboard cu KPI real-time (users/clients/specialists/financial/marketplace funnel)",
+        "AI Business Intelligence Engine — Claude analizează datele și generează 6-10 insights automate",
+        "AI Recommendation Engine — recomandări marketing + business cu budget RON estimat",
+        "Customer Segmentation (RFM): VIP / Premium / Activi 30d / Risc abandon / Inactivi",
+        "AI Predictive Analytics — linear regression forecast 30 zile",
+        "Growth Engine — județe sub-deservite + categorii cu creștere accelerată",
+        "AI Marketing Copilot — chat conversațional pe datele reale",
+        "AI Campaign Generator — Claude + Gemini Nano Banana (2 imagini fotorealiste per campanie)",
+        "Auto-Campaign Trigger — detector ≥30% growth MoM × județ → draft automat",
+        "Marketing Performance Loop — închide bucla: log rezultate reale → Claude învățăminte → calibrare auto-injectată în viitoarele drafts",
+        "Rol nou: marketing_manager (acces doar la modulul de marketing)",
+      ],
+      todo: [
+        "AI Content Calendar (Faza 2): calendar editorial lunar cu workflow aprobare",
+        "AI Automation Center (Faza 2): emails auto welcome/review/reactivare/onboarding",
+        "SEO AI Engine (Faza 2): articole + meta tags + FAQ schema + pagini locale",
+        "Meta Ads API (Faza 3): OAuth + tracking real CPC/CPM/ROAS",
+        "Google Ads + Analytics + GTM (Faza 3): OAuth dashboard unificat",
+        "Social Connectors (Faza 3): FB/IG/LinkedIn/TikTok/YouTube — publicare automată",
+        "Cron auto-trigger zilnic 09:00 (vs manual button acum)",
+        "Rate limiting pe /campaigns/generate (cost ~0.10-0.20$/call cu imagini)",
+        "Migrare imagini base64 → S3/GCS la > 100 campanii",
+      ],
+    },
+    content: [
+      { h: "Acces", p: "Buton 'AI Marketing Department' în sidebar admin → secțiunea 'Marketing & Growth'. Disponibil pentru: super_admin, marketing_manager, admin scope=ai. Pagina principală: /admin/marketing." },
+      { h: "Cum folosești Dashboard-ul Executiv", p: "Vezi KPI-uri în timp real (total users / new 30d cu growth %, total revenue + monthly growth MoM, occupancy specialiști, conversion/abandonment marketplace). Top venit pe categorie și județ — folosește datele să decizi unde să investești marketing." },
+      { h: "Cum generezi insights cu AI", p: "Tab 'AI Insights' → buton 'Generează cu AI'. Claude analizează demand 30d vs prev, geografia, specialiști per categorie, abandonment. Returnează 6-10 insights cu severity (critical/warning/info) și categoria (demand/geo/specialists/clients). Re-rulează săptămânal pentru a urmări evoluții." },
+      { h: "Auto-Trigger Scan", p: "Tab 'Campanii' → buton 'Auto-Trigger Scan'. Detectează categoriile×județe cu creștere ≥30% MoM (min 5 cereri în perioada anterioară). Pentru fiecare oportunitate generează automat un draft Claude (fără imagini, ca să economisească tokens). Idempotent: skip dacă există draft în ultimele 7 zile pentru același pair." },
+      { h: "Generator manual de campanie", p: "Tab 'Campanii' → 'Campanie nouă'. Alegi: obiectiv (leads/awareness/conversions/retention/engagement), serviciu (12 quick chips disponibile), județ (10 chips), buget RON. Skip-images checkbox → ~10s text only. Cu imagini → ~30-45s Claude + 2× Nano Banana. Rezultat: avatar client + audiență țintă + 3 variante text reclamă + CTA + 2 imagini fotorealiste + KPI estimați + rațional AI." },
+      { h: "Workflow aprobare", p: "Click pe card → detail modal cu imagini + texte. Butoane Aprobă / Respinge. Imagini pot fi regenerate individual (hover pe imagine → refresh icon). După aprobare, exporți creative-ul către Meta/Google Ads manual." },
+      { h: "Performance Loop (închiderea buclei AI)", p: "Pentru campaniile aprobate: în detail modal apare secțiunea 'Performance Loop' cu buton 'Loghează rezultate'. Introduci impresii reale, clicks, leads, conversii, RON cheltuit. Sistemul calculează automat deltas % vs predicted KPIs. După ≥3 loguri, tab 'Performance Loop' permite 'Generează învățăminte' — Claude analizează istoricul și produce ajustări de calibrare care vor fi auto-injectate în system prompt-ul viitoarelor drafts. Vezi badge 'KPI calibrate' pe draft-urile generate post-învățăminte." },
+      { h: "Marketing Copilot", p: "Tab 'Copilot AI' — chat conversațional unde poți întreba 'Ce categorii să promovez?', 'În ce județe să investesc?', 'De ce a crescut abandonul?'. Răspunsuri STRICT pe baza datelor reale + cifre concrete. Sesiunile sunt persistate." },
+    ],
+  },
+  {
+    id: "strategic-partners",
+    icon: Award,
+    title: "Strategic Partners Dashboard + AI Cross-Reference Engine",
+    summary: "Vedere unificată City Partners + Marketplace Partners + AI matching între ecosisteme",
+    status: {
+      created: [
+        "Ecosystem cards side-by-side: City Partners (total/active/onboarding/leads/converted/conv-rate) vs Marketplace Partners",
+        "Acoperire geografică pe oraș cu badges FULL/PARȚIAL",
+        "AI Cross-Reference Engine — Claude Sonnet 4.5 împerechează city partner leads cu top 3 marketplace partners relevanți",
+        "Draft email Romanian generat automat pentru fiecare introducere",
+        "Audit complet în collection strategic_cross_refs (generated_by, generated_at)",
+        "Idempotency: lead marcat cross_ref_done=true după prima rulare",
+      ],
+      todo: [
+        "Pipeline View: tracking stage-uri per match (introdus → contact → propunere → semnat) cu ROI agregat",
+        "Notificare automată City Partner când AI găsește match relevant",
+        "Filtrare cross-ref pe scor minim configurabil (acum max 3 returnate fără filtru)",
+        "Export CSV cu toate cross-refs pentru raportare lunară",
+      ],
+    },
+    content: [
+      { h: "Acces", p: "Sidebar 'Parteneri Strategici' → 'Strategic Dashboard' (badge AI XREF). Doar super_admin. URL: /admin/strategic-partners." },
+      { h: "Cum citești dashboard-ul", p: "4 KPI cards globale (parteneri / leads / conversii / revenue) + 2 ecosystem cards (City vs Marketplace) cu conversion rates + tabel cu acoperirea geografică (orașe unde ai city partners dar nu marketplace partners, sau invers)." },
+      { h: "Cross-Reference Engine", p: "Panel 'Cross-Reference Engine' listează lead-urile City Partner needeservite (max 5). Click 'Conectează' pe oricare → Claude rulează ~10-14s și returnează top 3 marketplace partners cu relevance_score 0-100, reason și un draft de email cu subject + body în română. Butonul 'Copy email' duplică draftul în clipboard." },
+      { h: "Best practice", p: "Rulează cross-ref când un City Partner aduce un lead în Cluj-Napoca pentru HVAC: AI găsește toți marketplace partners HVAC din Cluj cu rating bun și sugerează triada perfectă. Astfel partenerii tăi marketplace primesc lead-uri calificate fără efort de prospecție." },
+    ],
+  },
+  {
+    id: "demo-accounts",
+    icon: KeyRound,
+    title: "Demo Accounts Manager · 5 conturi protejate cu cod 0108",
+    summary: "Gestionare parole pentru conturile demo destinate colaboratorilor externi",
+    status: {
+      created: [
+        "5 conturi pre-seedate: testing.admin / frontend.admin / backend.admin / security.admin / marketing.admin",
+        "Backend endpoint /api/admin/demo-accounts cu RBAC strict super_admin",
+        "Reset la parolă implicită (cu cod 0108)",
+        "Setare parolă personalizată (cu cod 0108, min 8 caractere, litere + cifre)",
+        "UI dedicat la /admin/demo-accounts cu butoane Reset implicit / Schimbă parola",
+        "Show/hide + copy-to-clipboard pe fiecare parolă",
+        "Audit log automat (cine a făcut acțiunea, când)",
+      ],
+      todo: [
+        "Generare automată parolă random securizată (16 caractere)",
+        "Istoric ultimele 10 schimbări per cont",
+        "Auto-rotation parolă la N zile",
+        "Trimitere parolă pe email colaboratorului direct din UI",
+      ],
+    },
+    content: [
+      { h: "Cele 5 conturi demo", p: "testing.admin@propmanage.io (scope testing), frontend.admin@propmanage.io (scope frontend), backend.admin@propmanage.io (scope backend), security.admin@propmanage.io (scope security), marketing.admin@propmanage.io (rol marketing_manager). Toate au admin_seniority=senior. Sunt destinate colaboratorilor externi care explorează platforma pe zona lor de expertiză." },
+      { h: "Parolele implicite", p: "Vezi-le în pagina /admin/demo-accounts (doar super_admin). Format: <Prefix>!Demo2026Strong (ex: Test!Demo2026Strong, Front!Demo2026Strong, Back!Demo2026Strong, Sec!Demo2026Strong, Mkt!Demo2026Strong). Sunt hardcoded în /app/backend/sub_admin_seed.py. La modificarea seed-ului, restart backend recreează parolele implicite (dar nu modifică parolele existente — folosește reset)." },
+      { h: "Cod master 0108", p: "Toate operațiile de scriere (reset + set custom) necesită codul de 4 cifre 0108. Stocat în /app/backend/routes/demo_accounts.py. Schimbă-l acolo dacă vrei să-l rotești. La fiecare apel cu cod greșit → 403 + log warning." },
+      { h: "Cum împărtășești parola unui colaborator", p: "Logezi la /admin/demo-accounts, identifici contul (ex: frontend.admin), click Eye-icon ca să vezi parola, copy. Trimiți email colaboratorului cu emailul + parola. Când colaboratorul termină perioada de demo, click 'Schimbă parola' (cod 0108, set custom random) ca să blochezi accesul vechi." },
+    ],
+  },
   {
     id: "button-guide",
     icon: Layers,

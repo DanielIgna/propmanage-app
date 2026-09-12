@@ -9,14 +9,23 @@ Tests cover:
 - Permissions: client (no DT access) → 403, specialist → 403 on /trimble
 """
 import os
+import shutil
 import time
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
+
+# Blender conversion requires the blender binary on the host — skip the whole
+# module in environments (e.g. preview pods) where it is not installed.
+pytestmark = pytest.mark.skipif(
+    shutil.which("blender") is None,
+    reason="Blender binary not installed in this environment",
+)
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
 assert BASE_URL, "REACT_APP_BACKEND_URL must be set"
 
-ADMIN = {"email": "admin@propmanage.io", "password": "Admin123!"}
+ADMIN = {"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD}
 CLIENT = {"email": "client@propmanage.io", "password": "Client123!"}
 SPECIALIST = {"email": "specialist@propmanage.io", "password": "Spec123!"}
 OPERATOR = {"email": "operator@propmanage.io", "password": "Op123!"}

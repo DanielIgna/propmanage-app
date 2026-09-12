@@ -16,6 +16,7 @@ Or as standalone script (no pytest needed):
 import asyncio
 import os
 import sys
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 # Read env or fall back to preview URL
 BASE_URL = os.environ.get(
@@ -23,7 +24,7 @@ BASE_URL = os.environ.get(
     "https://phased-document.preview.emergentagent.com",
 )
 ADMIN_EMAIL = os.environ.get("SMOKE_ADMIN_EMAIL", "admin@propmanage.io")
-ADMIN_PASSWORD = os.environ.get("SMOKE_ADMIN_PASSWORD", "Admin123!")
+ADMIN_PASSWORD = os.environ.get("SMOKE_ADMIN_PASSWORD", OWNER_ADMIN_PASSWORD)
 
 # Profiles to validate — must mirror ROLE_PROFILES in AdminLayoutMetronic.jsx
 PROFILES = [

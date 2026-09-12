@@ -1,0 +1,36 @@
+{
+  "summary": "CX-3 Property Passport E2E validation completed. 21/21 backend tests PASS (owner CRUD, public payload, privacy enforcement, security 401/403, trust score integrity, OG social preview for FB/WhatsApp/LinkedIn bots + browser 307 redirect, /og-passport.jpg fallback, invalid slug 404). Frontend public page /p/gbegxfyz9m verified on desktop 1920 + mobile 390: all 10 required data-testids present (passport-name/facts/qr/scores/trust-toggle/badges/timeline/viral/viral-cta-top/print), trust toggle aria-expanded flips false→true, images all have alt attributes, canonical + JSON-LD injected in head, page title = 'Skyline Loft A4 — Pașaportul Casei | PropManage'. Invalid slug /p/xxxinvalid_zzz_404 shows passport-not-found screen with CTA. Viral CTA links to /register. Owner flow validated after login (client@propmanage.io): PassportCard visible in Property Hub with all 8 testids + 5 privacy checkboxes (passport-priv-show_address/photo/documents/timeline/scores), passport-disable-btn shown inside privacy panel. Regression: v2-prop-selector still functional. No visible 'white rectangle' bug in top-right at 1920px — mini-nav (logo + print + CTA) renders correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/auth/login", "issue": "Review request specifies cookie name 'token' but backend sets 'access_token' + 'refresh_token'. Docs mismatch, not a functional bug — auth works via cookies as expected."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_cx3_passport_iter135.py",
+    "/app/test_reports/pytest/cx3_iter135.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: Update review-request/docs to note the auth cookie is named 'access_token' (not 'token'). Purely documentation."
+  ],
+  "critical_code_review_comments": [
+    "property_passport.py — trust score & privacy enforcement logic is clean, no PII/secret leakage detected in public payload (verified programmatically: no propmanage.io/email/user_id/wallet/phone/price/_id in raw JSON).",
+    "OG endpoint /api/p/{slug} correctly discriminates bots via UA regex and returns 307 for real browsers; HTML template escapes property name via html.escape — safe.",
+    "PassportCard.jsx: passport-disable-btn is rendered only when privacy panel is open (inside showPrivacy block). This is fine UX but worth noting for main agent."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_cx3_passport_iter135.py"
+  ],
+  "success_rate": {"backend": "100% (21/21)", "frontend": "100% (all testids + flows verified)"},
+  "test_credentials": "client@propmanage.io / Client123! (used); secondary test client registered fresh with TEST_ prefix",
+  "seed_data_creation": "None. Used existing Skyline Loft A4 (prop id 6a11d70e600be19667009c93, slug gbegxfyz9m). Passport left ENABLED at end of tests (per instructions). Privacy show_address toggled off→on→off during tests, final state = defaults (show_address=false).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "CX-3 sprint fully validated. Passport slug=gbegxfyz9m for property Skyline Loft A4 remains enabled. Backend test file at /app/backend/tests/test_cx3_passport_iter135.py can be reused as regression. All quality gates for CX-3 met: security 100% (owner endpoints require auth, cross-owner blocked, no PII in public payload), OG social preview works for all 3 major bots + browser redirect, trust score sums correctly and caps at 100, all 8 privacy states enforced end-to-end.",
+  "rca_of_the_issue": "N/A — no defects found."
+}

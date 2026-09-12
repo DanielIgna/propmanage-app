@@ -1,0 +1,30 @@
+{
+  "summary": "Sprint GI-3 (Marketing Intelligence+ / Board 007) validat FULL. Backend: 20/20 pytest PASS — /run generează scan cu recomandări executive (motiv+încredere+impact+KPI+categorie confirmate pe TOATE cele 6 recomandări din date reale: hvac +475%, electric 14 dispute, /login 35.8% ieșiri), /latest persistă, /opportunity-queue sortat desc după priority cu 30 items × 45.000 RON și hot leads=urgency high, /playbook generează Claude-personalizat (441c pe request_abandoned real), /playbook/{id}/decision sent|edited|ignored → 200, invalid → 400, inexistent → 404, /playbooks listează, securitate 401/403 pentru client, regresie lead-intel/growth-intel/command-center/ceo OK. Mongo verificat: marketing_insights(_id=latest) + marketing_insights_history=2 + activity_events marketing.scan_completed=2 + playbook.decision=2, contact_playbooks=2, ai_decision_ledger cu status='decided'/action='edited'/approved_by=admin@propmanage.io/result='pending_outcome'. Zero cod send_email/send_whatsapp/twilio/smtp în decision path — nimic nu se trimite automat (grep confirmat). Frontend: /admin/marketing-intel randează toate testid-urile (mi-root, mi-kpi-queue=30, mi-kpi-value=45.000 lei, mi-kpi-recos=6, mi-kpi-conv=0%, mi-whatsapp-text executiv + badge validare, mi-reco-0..5 cu badge încredere + categorie + KPI + Impact, mi-com-revenue/converting/promote/losing cu răspunsuri directe reale, mi-queue-item-0 cu 70% + testvisitor + Digital Twin + 1.500 lei + URGENT). Playbook flow full: click mi-playbook-btn-0 → mi-playbook-panel deschis → Claude generat în ~9s (441c personalizat pe semnale reale 'A început o cerere · A explorat Digital Twin') → mi-playbook-edit → mi-playbook-textarea → mi-playbook-send → mi-playbook-decided 'EDITAT & TRIMIS' memorat în Ledger. Regresie /admin/lead-intel (li-root) și /admin/growth-intel (gi-root) încarcă OK.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_marketing_intel_iter122.py",
+    "/app/test_reports/pytest/iter122_marketing_intel.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "commercial_intelligence() apelează ObjectId(d.get('request_id') or '0'*24) în cascadă per fiecare dispute — la >1k dispute devine N+1 query. Consideră $lookup MongoDB aggregation.",
+    "build_opportunity_queue încarcă până la 120 oportunități + 50 leaduri în memorie și face lookup lead per opp (N+1). OK la scara actuală, dar planifică $lookup pipeline pentru >5k active.",
+    "generate_playbook nu are rate-limit — un admin poate declanșa Claude în buclă (cost). Sugerează un debounce simplu per (admin, ref_id) la nivel de rută sau un TTL în ai_decision_ledger.",
+    "PlaybookIn nu validează formatul ref_id (uuid vs visitor_id) — dependent de tipul target_type. Poate trece un ref_id gol dacă frontend îl transmite null. Adaugă min_length=1 în Pydantic.",
+    "În frontend PlaybookPanel, dacă `decide()` eșuează (catch e silent), utilizatorul nu vede eroarea — adaugă toast/error state pentru mai bună observabilitate.",
+    "mi-run-btn nu afișează feedback după rularea manuală (setRunning revine, dar niciun toast); minor UX."
+  ],
+  "updated_files": ["/app/backend/tests/test_marketing_intel_iter122.py"],
+  "success_rate": {"backend": "100% (20/20)", "frontend": "100%"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN; client@propmanage.io / Client123!",
+  "seed_data_creation": "Doar 1 scan nou + 1 playbook nou (edited status='edited', final_message='test editat iter122'). Nu s-au atins date reale de analytics/opportunities.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "GI-3 100% verde. Data-testid 'admin-nav-marketing_intel' există în cod (superAdminOnly) dar e vizibil doar când grupul 'Marketing & Growth' e expandat în sidebar (comportament corect, identic cu admin-nav-lead_intel din GI-2). Cron marketing_intelligence_daily 06:55 nu a fost testat direct — /run manual e validat. Playbook Claude durează 5-15s pe date reale; testul așteaptă cu poll până la 45s. ai_decision_ledger conține 2 intrări type='contact_playbook' status='decided' — fundația GI-4 Learning Engine e populată.",
+  "rca of the issue": "N/A — niciun bug."
+}

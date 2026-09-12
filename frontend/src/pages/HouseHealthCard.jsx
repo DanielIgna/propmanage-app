@@ -2,8 +2,9 @@
 // Renders nothing when feature flag is OFF (graceful degradation).
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Heart, Lock, ChevronRight, Calendar, FileText, BadgeCheck, AlertCircle } from "lucide-react";
+import { Heart, Lock, ChevronRight, Calendar, FileText, BadgeCheck, AlertCircle, Sparkles } from "lucide-react";
 import { API } from "./DashShared";
+import { getNudgeCopy, trackNudge } from "../lib/upgradeNudge";
 
 const CLASSIFICATION_THEME = {
   Excellent: { label: "Excellent", bg: "bg-emerald-500/15", text: "text-emerald-300", ring: "ring-emerald-400/40" },
@@ -71,35 +72,10 @@ const HouseHealthCard = () => {
     );
   }
 
-  // Locked state — no subscription (but DT exists)
+  // Locked state — no subscription (but DT exists) · Task 5 nudge Basic
   if (data.locked && data.lock_reason === "no_subscription") {
-    return (
-      <div
-        className="rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-cyan-500/5 p-5 mb-4"
-        data-testid="house-health-card-locked-sub"
-      >
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/30">
-            <Heart className="w-5 h-5 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs uppercase tracking-wider text-emerald-300 font-bold">House Health · Premium</div>
-            <div className="text-base font-bold text-stone-100 mt-0.5">{data.twin?.name || "Proprietatea ta"}</div>
-            <div className="text-xs text-stone-400 mt-1.5">{data.lock_message}</div>
-            <div className="text-[11px] text-stone-500 mt-2">
-              ✓ Audit anual al sănătății casei · ✓ Documentație tehnică completă · ✓ Scor proprietate live
-            </div>
-            <button
-              className="mt-3 px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-xs font-semibold shadow inline-flex items-center gap-1.5"
-              data-testid="house-health-cta-subscribe"
-              onClick={() => { window.location.href = "/house-health/upgrade"; }}
-            >
-              <BadgeCheck className="w-3.5 h-3.5" /> Activează abonament
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    const copy = getNudgeCopy("house_health_basic");
+    return <HouseHealthNudge data={data} copy={copy} />;
   }
 
   // Active state — full card
@@ -185,3 +161,46 @@ const HouseHealthCard = () => {
 
 export default HouseHealthCard;
 export { HouseHealthCard };
+
+/**
+ * Task 5: nudge consistent Basic (dark card, aliniat cu design existent HH).
+ * Copy central din upgradeNudge.js, CTA → /pricing, tracking pe view + click.
+ */
+const HouseHealthNudge = ({ data, copy }) => {
+  useEffect(() => { trackNudge("dashboard.house_health", "view"); }, []);
+  const goPricing = () => {
+    trackNudge("dashboard.house_health", "click");
+    window.location.href = copy.cta_href;
+  };
+  return (
+    <div
+      className="rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-cyan-500/5 p-5 mb-4"
+      data-testid="house-health-card-locked-sub"
+    >
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/30">
+          <Heart className="w-5 h-5 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs uppercase tracking-wider text-emerald-300 font-bold">
+            House Health · {copy.tier_label}
+          </div>
+          <div className="text-base font-bold text-stone-100 mt-0.5">{copy.title}</div>
+          <div className="text-xs text-stone-400 mt-1.5">{copy.short_reason}</div>
+          <div className="text-[11px] text-stone-500 mt-2 leading-relaxed">
+            <BadgeCheck className="w-3 h-3 inline mr-1 text-emerald-400" />
+            Documentație tehnică · recomandări · istoric intervenții
+          </div>
+          <button
+            className="mt-3 px-4 py-2 rounded-full font-black text-black text-xs shadow inline-flex items-center gap-1.5 max-w-full"
+            style={{ background: "#d4ff3a" }}
+            data-testid="house-health-cta-subscribe"
+            onClick={goPricing}
+          >
+            <Sparkles className="w-3.5 h-3.5 shrink-0" /> {copy.cta_label}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

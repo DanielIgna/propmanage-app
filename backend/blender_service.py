@@ -12,7 +12,6 @@ import asyncio
 import os
 import shutil
 from pathlib import Path
-from typing import Optional
 
 BLENDER_BIN = shutil.which("blender") or "/usr/bin/blender"
 SCRIPT = Path(__file__).parent / "blender_convert.py"

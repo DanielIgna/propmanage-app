@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend-only end-to-end review of PropManage Digital Twin Next Stage II — Features 1, 2, 3, 4 + regression. Features 1 (Admin Catalog Materiale), 2 (Alegere Câștigătoare) and 3 (Concept în Pașaport toggle) fully PASS. Feature 4 (lead thumbnail) UI code is correct but could not be visually verified because no existing offer request in DB has a concept_render_url populated (the earlier offer-requested lead for verified concept 8b85e83… was created before/without a render). Regression: /admin/city-partners loads cleanly, no console errors.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Feature 4 – Lead thumbnail with concept render",
+        "issue": "SpecialistDashboard code renders [data-testid=lead-concept-render-<id>] gated on r.concept_render_url. GET /api/requests returned 49 items for the specialist, ZERO with a concept_render_url field populated. Cannot visually confirm the thumbnail UI on live data. Backend team notes this was verified via curl, but a fresh end-to-end (generate concept WITH render → validate as operator → prefer+request offer) is needed to produce a lead containing r.concept_render_url so the UI thumbnail can be seen. Code path is correct.",
+        "affected_selectors": ["lead-concept-render-<requestId>"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "For visual Feature 4 verification, run the cross-account flow end-to-end with a concept generated WHILE design-render-toggle is ON (so a render exists), then operator validates it, then client hits 'Alege și cere ofertă' — this will populate concept_render_url on the new offer request and the specialist card thumbnail will render."
+  ],
+  "critical_code_review_comments": [
+    "CityPartnerProductsPage.jsx uses window.confirm() for delete confirmation. This works but is inconsistent with the rest of the app which uses styled modals — consider a shadcn AlertDialog for consistency (minor).",
+    "SpecialistDashboard.jsx line 320: image src is built as `${REACT_APP_BACKEND_URL}${r.concept_render_url}`. If the backend ever returns an absolute URL in concept_render_url, this will double-prefix. Fine for now since /api/requests/{id}/concept-render is a relative path, but defensive URL handling is safer.",
+    "PassportCard.jsx renders toggles dynamically from data.privacy_labels so any future keys will auto-appear — good pattern."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "n/a (frontend-only)", "frontend": "Feature 1 100%, Feature 2 100%, Feature 3 100%, Feature 4 code-only (no live data), Regression 100%" },
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN ; client@propmanage.io / Client123! ; specialist@propmanage.io / Spec123!",
+  "seed_data_creation": "Feature 1: created/edited/deleted one TEST_ product ('TEST_Parchet stratificat stejar', mp, 90–140 → 95–140, tags: parchet/stejar/lemn); DELETED cleanly at end so catalog remains empty as expected. Feature 3: toggled passport-priv-show_design_concept ON for property 6a11d70e600be19667009c93 (Skyline Loft A4) — left ON at end of test (PATCH 200 confirmed persistence). Feature 2: marked concept 0de3138ff2d1… as preferred in project b786fc0845f14aaa9ea6dee529637fe7 (single-winner enforced — badge moved from prior verified concept 8b85e83… to this one).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Feature 1 (/admin/city-partner-products): FULL PASS. Page, empty state, add-product-btn, product-form-modal, all form testids (name/price-min/price-max/unit/tags/partner), product-save, product-row-<id>, product-edit-<id>, product-delete-<id> (via window.confirm accept-dialog), product-search filter with Enter — all working. Sidebar entry 'Catalog Materiale' exists in AdminLayoutMetronic.jsx line 177 under 'Marketplace & Parteneri' group (may need group expand to see it, but it's present). Feature 2 (ConceptComparison): FULL PASS. dt-open-compare opens overlay concept-comparison with 2 compare-col-* columns. prefer-btn on each column; clicking on UNVERIFIED first column toggled it to 'Preferat' (star+badge), 2nd column stayed 'Alege ca preferat' — single winner enforced (server moved preference from previously verified concept). Toast 'Concept marcat ca preferat.' shown. For unverified concept: offer-locked message 'Oferta se poate cere doar dintr-un concept validat profesional.' present. For verified concept: offer-requested state 'Ofertă cerută. Specialiștii verificați au fost notificați.' present (already-requested from prior iterations). The combined 'Alege și cere ofertă' label was not observable live because the verified concept already has an offer requested — the code path is correct: combined=!!projectId and projectId IS passed from DigitalTwinViewer. Feature 3 (Passport toggle): FULL PASS. Located in /client → v2-desktop-nav-property → 'Pașaport & Partajare' section → passport-privacy-toggle expands passport-privacy-list. NEW toggle passport-priv-show_design_concept labeled 'Conceptul de design (validat)' present. Default OFF. Toggling triggers PATCH /api/properties/<id>/passport with status 200; persists across reload. Public passport /p/<slug> tested for slug /p/gbegxfyz9m (Skyline Loft A4) — passport-design-concept section did NOT render because this property has NO verified concept linked (property 6a11d70e… ≠ project b786fc0845f14aaa9ea6dee529637fe7 client's other property). UI code correctly gates on data.design_concept presence. Feature 4 (SpecialistDashboard lead thumbnail): CODE PASS, DATA GAP. /specialist page loaded, /api/requests returned 49 items for specialist@propmanage.io, ZERO have concept_render_url populated (verified via fetch). The one 'TEST_QA Spec Rec' open lead is not from a concept. Existing offer for verified concept 8b85e83… was created in prior iterations without a render attachment. Regression: /admin/city-partners loads cleanly, no console errors.",
+  "rca of the issue": "N/A — no bugs found."
+}

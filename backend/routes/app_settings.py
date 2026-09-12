@@ -153,7 +153,6 @@ class AppSettingsUpdate(BaseModel):
     seo: Optional[SEOSettings] = None
     founder_contact: Optional[FounderContact] = None
     enable_founder_gate: Optional[bool] = None  # Founder Approval Gate feature flag (default OFF)
-    enable_twin_orchestrator: Optional[bool] = None  # Twin Orchestrator AI insights flag (default OFF)
 
 
 # ---------- Public (read-only safe subset) ----------
@@ -194,6 +193,12 @@ async def update_settings(body: AppSettingsUpdate, user: dict = Depends(require_
     update["updated_by"] = str(user.get("id") or user.get("email"))
     await db.app_settings.update_one({"_id": "app_settings"}, {"$set": update}, upsert=True)
     doc = await db.app_settings.find_one({"_id": "app_settings"})
+    # settings_store sync (2.2): oglindim în registrul unificat `settings`
+    try:
+        from settings_store import put_settings
+        await put_settings("app", {k: v for k, v in doc.items() if k != "_id"}, who=update["updated_by"])
+    except Exception as e:  # noqa: BLE001
+        logging.getLogger("propmanage.app_settings").warning(f"settings_store sync fail: {e}")
     return serialize_doc(doc)
 
 

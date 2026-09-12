@@ -1,0 +1,57 @@
+{
+  "summary": "Iteration 175 — Direct Google OAuth migration testing. Verified backend endpoints (POST /api/auth/google/callback direct + POST /api/auth/google/session legacy), Auth.jsx Google button redirect logic, AuthCallback.jsx dual-flow handling, and email/password regression. 8/8 backend tests PASS. 6/6 frontend flows PASS. Found ONE gap: direct-flow FAILURES are not recorded in db.oauth_health (only SUCCESS branch inserts). Google button correctly redirects to accounts.google.com (not auth.emergentagent.com) with all required params. AuthCallback correctly discriminates ?code=... (direct) vs #session_id=... (emergent) vs ?error=... (no backend call) vs empty (redirect /login).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/auth/google/callback", "issue": "Direct-flow FAILURE branches (401 on token exchange failure, 400 on missing email, etc.) do NOT insert into db.oauth_health. Only the success path (line 1173) writes flow='direct' events. Review request explicitly asked for tracking on 'eșec/succes'. Verified with pymongo: after triggering multiple failed callbacks with fake codes, db.oauth_health.find({flow:'direct'}) returns 0 documents."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_google_oauth_direct_iter175.py",
+    "/app/test_reports/pytest/iter175_results.xml"
+  ],
+  "action_items": [
+    "OPTIONAL/LOW: In /app/backend/routes/auth.py google_direct_callback, also insert oauth_health events for the failure branches (token 4xx, userinfo failures, timeouts) with outcome='failure' and flow='direct' — currently only success path is tracked. Wrap the raise HTTPException with a helper similar to _record_oauth_health used by the Emergent flow."
+  ],
+  "critical_code_review_comments": [
+    "auth.py:1109-1119 — HTTPException raised before any oauth_health.insert_one for the direct flow. The Emergent flow has _record_oauth_health helper (line 1342) that covers all branches. The direct-flow endpoint should reuse it for consistency and admin dashboard visibility.",
+    "auth.py:1170 — set_auth_cookies called before oauth_health insert. If oauth_health insert throws (line 1183 catches BLE001), user is still logged in — good. But note the try/except swallows the exception silently without logging (unlike _record_oauth_health at line 1348).",
+    "AuthCallback.jsx:29 — `error` param parsing is correct. Consider also surfacing `error_description` from Google (also returned) for richer messaging.",
+    "Auth.jsx:167 — Emergent fallback URL is hardcoded (`https://auth.emergentagent.com/?redirect=...`). This is acceptable given the REMINDER comment at line 143."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_google_oauth_direct_iter175.py (new)"
+  ],
+  "success_rate": {"backend": "100% (8/8)", "frontend": "100% (6/6 flows)"},
+  "test_credentials": "Client: client@propmanage.io / Client123! ; Admin: admin@propmanage.io / 1!nasov01ADMIN",
+  "seed_data_creation": "Created + deleted one TEST_iter175_<uuid>@example.com user via /api/auth/register + admin cleanup (best-effort).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "The E2E Google OAuth click-through via accounts.google.com cannot be automated (Google consent required + preview URI not whitelisted → redirect_uri_mismatch). All local pieces (button URL, callback exchange, backend endpoint, flow discrimination) are verified. If Google Cloud Console whitelists the preview URI, redo the full E2E with a real Google account. The oauth_health tracking gap for direct-flow FAILURES is a documented minor issue — non-blocking.",
+  "detailed_test_results": {
+    "backend": {
+      "test_invalid_code_returns_401_with_romanian_detail": "PASS — 401 with detail containing 'redirect_uri', 'whitelisted', 'Google Cloud Console'",
+      "test_missing_fields_returns_422": "PASS",
+      "test_missing_redirect_uri_returns_422": "PASS",
+      "test_legacy_session_endpoint_exists_and_responds": "PASS (400/401 without session, not 404)",
+      "test_direct_flow_failure_does_not_crash": "PASS (endpoint reachable) — but note: oauth_health NOT written on failure",
+      "test_login_client_success": "PASS",
+      "test_login_invalid_password": "PASS",
+      "test_register_and_login_temp_user": "PASS (requires terms_accepted+privacy_policy_accepted=True)"
+    },
+    "frontend": {
+      "google_button_redirect_to_accounts_google_com": "PASS — URL contains client_id=563332033077-..., response_type=code, scope=openid+email+profile, redirect_uri=<origin>/auth/callback, prompt=select_account. auth.emergentagent.com NOT in URL.",
+      "auth_callback_error_access_denied_no_backend_call": "PASS — 0 calls to /api/auth/google/{callback,session}, error visible in oauth-error-detail",
+      "auth_callback_with_code_calls_direct_backend": "PASS — /api/auth/google/callback called (401 as expected with fake code), /api/auth/google/session NOT called",
+      "auth_callback_with_session_id_calls_emergent": "PASS — /api/auth/google/session called, /api/auth/google/callback NOT called",
+      "auth_callback_empty_redirects_to_login": "PASS",
+      "email_password_login_regression": "PASS — client@propmanage.io redirects to /client"
+    }
+  }
+}

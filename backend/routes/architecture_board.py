@@ -19,7 +19,7 @@ import re
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from db import db

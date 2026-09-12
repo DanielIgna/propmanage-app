@@ -16,12 +16,11 @@ import io
 import re
 import uuid
 import logging
-import base64
 from collections import Counter
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel, Field
 
 from deps import get_current_user, require_role
@@ -35,7 +34,7 @@ logger = logging.getLogger("propmanage.docs_ai")
 router = APIRouter(prefix="/api/ai-docs", tags=["ai-docs"])
 
 CHUNK_SIZE = 800
-MAX_FILE_SIZE_MB = 10
+import storage_service  # noqa: E402 — ST-001: limită dinamică din storage_configs
 SUPPORTED_TYPES = {
     "application/pdf": "pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
@@ -118,8 +117,10 @@ async def upload_doc(
         raise HTTPException(400, f"Unsupported type {ctype}. Allowed: PDF, DOCX, TXT, MD")
 
     content = await file.read()
-    if len(content) > MAX_FILE_SIZE_MB * 1024 * 1024:
-        raise HTTPException(413, f"File too large ({len(content) // 1024 // 1024} MB > {MAX_FILE_SIZE_MB} MB max)")
+    limit = await storage_service.file_limit_bytes("docs_ai")
+    if len(content) > limit:
+        raise HTTPException(413, f"File too large ({len(content) // 1024 // 1024} MB > {limit // 1024 // 1024} MB max)")
+    await storage_service.check_quota(user.get("id"), len(content), "personal")
 
     text = _extract_text(content, kind)
     if not text or len(text.strip()) < 20:
@@ -141,6 +142,7 @@ async def upload_doc(
         "created_at": _now_iso(),
     }
     await db.ai_documents.insert_one(doc_meta)
+    await storage_service.add_usage(user.get("id"), len(content), "personal")
 
     # Index chunks
     chunk_docs = []
@@ -183,6 +185,7 @@ async def delete_doc(doc_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(403, "Access denied")
     await db.ai_doc_chunks.delete_many({"doc_id": doc_id})
     await db.ai_documents.delete_one({"id": doc_id})
+    await storage_service.add_usage(doc.get("owner_user_id"), -(doc.get("size_bytes") or 0), "personal")
     return {"deleted": True}
 
 

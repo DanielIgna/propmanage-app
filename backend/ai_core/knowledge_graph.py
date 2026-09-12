@@ -3,7 +3,6 @@
 Builds nodes + edges from existing collections WITHOUT mutating data.
 Used by the Admin AI Control Center to visualize who-knows-whom.
 """
-from typing import Optional
 from db import db
 
 

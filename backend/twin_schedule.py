@@ -15,9 +15,8 @@ Only super-admins can schedule. Max 20 active schedules per user.
 """
 import logging
 import re
-import uuid
 from datetime import datetime, timezone, timedelta
-from typing import Optional, Tuple
+from typing import Optional
 
 import pytz
 from apscheduler.triggers.cron import CronTrigger

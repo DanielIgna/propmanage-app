@@ -1,0 +1,46 @@
+{
+  "summary": "Iteration 108 — XOS (Layout Builder + UI Rules + Content Manager + Menu Tracking) tested backend + frontend. Backend: 20/20 tests pass covering all XOS endpoints, ui-rules eval (hide/show_if, eq/gte, role/account_age_days), site-content banner persistence, and menu track+analytics. Frontend: admin XOS Builder (5 widgets, toggle+save+reset) OK; UI Rules add+save+delete OK; Content Manager banner activate → banner appears on homepage with correct text OK; client V2 dashboard renders v2-actions + v2-discover by default AND correctly hides v2-discover when admin disables the widget + restores after reset; menu click tracking increments analytics (5→8) and design_interior shows in top. REGRESSION FOUND: Business Health page (/admin/business-health) crashes on load with 'menuStats is not defined' — page completely broken, cannot render bh-menu-clicks card OR any other health department.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/xos/layout/{surface}", "issue": "No auth required — anyone can read the widget layout. Acceptable per spec (public GET) but exposes internal widget ids to competitors."},
+      {"endpoint": "PUT /api/admin/ui-rules", "issue": "Sanitizer silently drops invalid conditions/rules (e.g. unknown field or op) with no feedback to admin. Consider returning validation errors so admin knows a bad condition was ignored."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "BusinessHealthPage.jsx", "issue": "ReferenceError: menuStats is not defined. Line 106/110/111/112 reference `menuStats` but the variable/state is NEVER declared and no fetch to /api/admin/site-menu/analytics is made in load(). ENTIRE page crashes (React error boundary shows 'Ceva nu a mers cum trebuie · menuStats is not defined'). bh-menu-clicks card cannot render. All 8 department scores also blocked because the whole tree throws.", "selector": "[data-testid=business-health-root]", "priority": "CRITICAL"}
+    ],
+    "integration_issues": [
+      {"flow": "Business Health menu analytics", "issue": "Menu analytics data (fetched from /api/admin/site-menu/analytics — backend returns correct data) is not wired into the page state; missing useState + fetch call.", "affected_selectors": ["[data-testid=bh-menu-clicks]", "[data-testid^=bh-menu-row-]"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_xos_iter108.py",
+    "/app/test_reports/pytest/iter108_xos.xml"
+  ],
+  "action_items": [
+    "URGENT — Fix BusinessHealthPage.jsx: add `const [menuStats, setMenuStats] = useState(null);` and inside `load()` fetch `ax.get('/admin/site-menu/analytics?days=30')` in the Promise.all and setMenuStats(res.data). Currently the whole /admin/business-health page is unusable (React error boundary).",
+    "(Optional) UI Rules — validation feedback: return sanitizer warnings when rules have invalid conditions/ops/fields."
+  ],
+  "critical_code_review_comments": [
+    "BusinessHealthPage.jsx: `menuStats` referenced but never declared/fetched — clear developer oversight, would have been caught by a lint step (no-undef) or a simple render test.",
+    "xos.py `_cond_match`: `verified` field converts value to bool but not actual (line 122-123). Works if `actual` is already bool. Consider normalizing both sides.",
+    "xos.py `_user_ctx`: `age_days = 0` fallback used when created_at parse fails — silently. OK for now but log a warning.",
+    "xos.py `admin_put_layout` rejects empty layouts with 400 — good defense.",
+    "SiteNav.jsx line 79: track fires but doesn't `await` — fire-and-forget. If backend track endpoint fails silently, no user-visible issue but analytics loses events. Acceptable trade-off.",
+    "AnnouncementBanner uses sessionStorage `pm_announce_dismissed` — good UX; per-tab session so admins testing get fresh banner each new tab.",
+    "ContentManagerPage.jsx `banner-preview` reactively shows text — good for admin UX."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_xos_iter108.py (new)"
+  ],
+  "success_rate": {"backend": "100% (20/20 pytest)", "frontend": "83% (5/6 admin+client flows). Failure: /admin/business-health page crashes."},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (from backend env SEED_ADMIN_PASSWORD). client@propmanage.io / Client123!. /app/memory/test_credentials.md still lists STALE Admin123!.",
+  "seed_data_creation": "None persisted. Test data (banner text, UI rule, disabled discover widget, TEST_ entries) all restored to defaults via API cleanups. Verified rules=[], banner.active=False, xos layout=default after tests. Some TEST_ items remain in menu_clicks analytics counters (harmless, will age out after 30 days) — TEST_analytics_hit + TEST_design_interior appear in admin analytics top.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend XOS layer is solid — 20 pytest cases cover layout CRUD, ui-rules eval (role eq, show_if, gte age), site-content banner persist, menu track+analytics. Frontend admin pages (XOS Builder testid xos-builder-page, UI Rules testid ui-rules-page, Content Manager testid content-manager-page) all render and save correctly. Client V2 HomeV2 correctly renders per layout config (verified via API-driven layout mutation + client reload). Menu tracking works end-to-end. The ONE remaining bug: BusinessHealthPage.jsx missing menuStats state — after main agent fixes, verify by loading /admin/business-health, assert business-health-root visible + bh-menu-clicks card + bh-menu-row-design_interior row shows some clicks. IMPORTANT: use `page.context.request.post` for API calls that need auth swap (login as admin/client alternately) — this shares cookies with `page`. AnnouncementBanner uses sessionStorage pm_announce_dismissed — fresh page context bypasses. Client V2 requires localStorage.setItem('pm_client_ui','v2') to force V2 UI.",
+  "rca of the issue": "BusinessHealthPage.jsx — main agent added the bh-menu-clicks JSX block referencing `menuStats` but forgot the state declaration + fetch. Repro: as admin GET /admin/business-health → React error boundary triggers with 'menuStats is not defined' (visible in DOM as inline error). Backend endpoint /api/admin/site-menu/analytics works fine (verified separately returns total_clicks=8 + top=[design_interior,...]). Fix (2 lines): (1) add `const [menuStats, setMenuStats] = useState(null);` near line 44. (2) In load(), extend Promise.all to include `ax.get('/admin/site-menu/analytics?days=30')` and destructure result into setMenuStats(m.data). No backend change needed."
+}

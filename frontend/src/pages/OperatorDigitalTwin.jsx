@@ -1,4 +1,10 @@
 // Operator Digital Twin onboarding & file uploads for clients.
+//
+// PROPERTY TWIN · STRATUL 3D (decizie Fondator, 27 Aug 2026): această suprafață operează pe
+// `digital_twin_projects` + `digital_twin_models` (model arhitectural/BIM/SketchUp + layere + Trimble)
+// = stratul 3D profesional. NU e duplicat cu OperatorTwin.jsx — acela e stratul 2D (`twins`).
+// Ambele = suprafețe operator ale ACELUIAȘI Property Twin (2D + 3D), tab-uri în OperatorDashboard.
+// Consolidare = clarificare non-breaking, FĂRĂ ștergere.
 // User flow:
 // 1. Operator sees list of clients with digital_twin_pro flag (grouped by status: needs_setup / in_progress / delivered)
 // 2. For clients without flag → "Acordă acces" button (uses operator grant endpoint)
@@ -10,7 +16,7 @@ import axios from "axios";
 import {
   Box, Upload, FileText, CheckCircle2, Clock, AlertCircle, Loader2, X,
   Plus, Search, Mail, MapPin, User as UserIcon, Layers, Eye, ShieldCheck, Edit3,
-  RefreshCw, Wand2,
+  RefreshCw, Wand2, Link2, Unlink,
 } from "lucide-react";
 import { API } from "./DashShared";
 
@@ -32,19 +38,23 @@ const GrantAccessModal = ({ onClose, onGranted }) => {
   const [email, setEmail] = useState("");
   const [results, setResults] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [searching, setSearching] = useState(false);
   const [err, setErr] = useState(null);
 
   const search = async (q) => {
     setEmail(q);
-    if (q.length < 2) { setResults([]); return; }
+    setErr(null);
+    if (q.trim().length < 2) { setResults([]); return; }
+    setSearching(true);
     try {
-      // /admin/users requires admin role — operator uses /admin/search? No, search endpoint exists
-      // Actually the operator can't list users. Use a public search? Simplest: operator already has admin/users
-      // For now use /admin/users (gives 403 to operator). Better: fall back to client lookup by email.
-      const r = await axios.get(`${API}/admin/search`, { params: { q } });
-      setResults((r.data?.users || []).filter(u => u.role === "client").slice(0, 8));
-    } catch (_) {
+      // Operator-scoped client search (role=client only). Case-insensitive, name + email.
+      const r = await axios.get(`${API}/operator/digital-twin/search-clients`, { params: { q: q.trim() } });
+      setResults(r.data?.items || []);
+    } catch (e) {
       setResults([]);
+      setErr(e?.response?.data?.detail || "Eroare la căutare. Încearcă din nou.");
+    } finally {
+      setSearching(false);
     }
   };
 
@@ -60,6 +70,9 @@ const GrantAccessModal = ({ onClose, onGranted }) => {
       setBusy(false);
     }
   };
+
+  // Client already has DT Pro → don't create a second relation, just refresh + close.
+  const alreadyGranted = () => { onGranted?.(); onClose(); };
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
@@ -86,17 +99,27 @@ const GrantAccessModal = ({ onClose, onGranted }) => {
         </div>
 
         <div className="space-y-1 max-h-72 overflow-y-auto">
-          {email.length >= 2 && results.length === 0 && <div className="text-xs text-stone-500 text-center py-3">Niciun client găsit.</div>}
+          {searching && <div className="text-xs text-stone-500 text-center py-3" data-testid="grant-search-loading">Se caută…</div>}
+          {!searching && !err && email.trim().length >= 2 && results.length === 0 && <div className="text-xs text-stone-500 text-center py-3" data-testid="grant-no-results">Niciun client găsit.</div>}
           {results.map(u => (
             <button
               key={u.id}
-              onClick={() => grant(u.id)}
+              onClick={() => (u.digital_twin_pro ? alreadyGranted() : grant(u.id))}
               disabled={busy}
               className="w-full text-left bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg p-2.5 disabled:opacity-50"
               data-testid={`grant-target-${u.id}`}
             >
-              <div className="text-sm text-white font-medium">{u.name}</div>
-              <div className="text-[11px] text-stone-400">{u.email}</div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-sm text-white font-medium truncate">{u.name}</div>
+                  <div className="text-[11px] text-stone-400 truncate">{u.email}</div>
+                </div>
+                {u.digital_twin_pro && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 shrink-0" data-testid={`already-granted-${u.id}`}>
+                    Acces deja acordat
+                  </span>
+                )}
+              </div>
             </button>
           ))}
         </div>
@@ -112,14 +135,38 @@ const CreateProjectModal = ({ client, onClose, onCreated }) => {
   const [name, setName] = useState(`Digital Twin — ${client.client_name || "Client"}`);
   const [desc, setDesc] = useState("");
   const [trimbleUrl, setTrimbleUrl] = useState("");
+  const [properties, setProperties] = useState([]);
+  const [propertyId, setPropertyId] = useState("");
+  const [loadingProps, setLoadingProps] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
+
+  // P0.1 — Property Anchor: încarcă proprietățile clientului pentru selector.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      setLoadingProps(true);
+      try {
+        const { data } = await axios.get(`${API}/operator/digital-twin/clients/${client.client_id}/properties`);
+        if (!active) return;
+        const items = data.items || [];
+        setProperties(items);
+        if (items.length === 1) setPropertyId(items[0].id);
+      } catch (_) {
+        if (active) setProperties([]);
+      } finally {
+        if (active) setLoadingProps(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [client.client_id]);
 
   const create = async () => {
     setBusy(true); setErr(null);
     try {
       const { data } = await axios.post(`${API}/operator/digital-twin/clients/${client.client_id}/projects`, {
         client_id: client.client_id, name, description: desc,
+        property_id: propertyId || null,
         trimble_embed_url: trimbleUrl.trim() || null,
       });
       onCreated?.(data);
@@ -140,6 +187,36 @@ const CreateProjectModal = ({ client, onClose, onCreated }) => {
             <p className="text-xs text-stone-400 mt-0.5">Pentru <strong>{client.client_name}</strong>. Proiectul va apărea în contul clientului instant.</p>
           </div>
           <button onClick={onClose}><X className="w-5 h-5 text-stone-500" /></button>
+        </div>
+
+        <div>
+          <label className="text-[10px] uppercase text-emerald-300 font-semibold flex items-center gap-1.5">
+            <MapPin className="w-3 h-3" /> Proprietate (Property Anchor) *
+          </label>
+          {loadingProps ? (
+            <div className="mt-1 text-xs text-stone-500 flex items-center gap-1.5" data-testid="create-project-property-loading">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Se încarcă proprietățile clientului…
+            </div>
+          ) : properties.length === 0 ? (
+            <div className="mt-1 text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2" data-testid="create-project-no-properties">
+              Clientul nu are nicio proprietate. Clientul trebuie să adauge o proprietate înainte de a ancora un Digital Twin.
+            </div>
+          ) : (
+            <select
+              value={propertyId}
+              onChange={(e) => setPropertyId(e.target.value)}
+              className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+              data-testid="create-project-property"
+            >
+              <option value="" className="bg-stone-900">Selectează proprietatea…</option>
+              {properties.map(p => (
+                <option key={p.id} value={p.id} className="bg-stone-900">
+                  {p.name}{p.address ? ` · ${p.address}` : ""}
+                </option>
+              ))}
+            </select>
+          )}
+          <p className="text-[10px] text-stone-500 mt-1">Twin-ul și modelele 3D vor fi ancorate de această proprietate.</p>
         </div>
 
         <div>
@@ -187,7 +264,7 @@ const CreateProjectModal = ({ client, onClose, onCreated }) => {
           <button onClick={onClose} className="flex-1 px-3 py-2 text-sm rounded-lg bg-white/5 hover:bg-white/10 text-stone-300">Anulează</button>
           <button
             onClick={create}
-            disabled={busy || name.trim().length < 2}
+            disabled={busy || name.trim().length < 2 || !propertyId}
             className="flex-1 px-3 py-2 text-sm rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-medium flex items-center justify-center gap-1.5"
             data-testid="create-project-submit"
           >
@@ -211,6 +288,22 @@ const UploadFilesModal = ({ project, client, onClose, onUploaded }) => {
   const [trimbleUrl, setTrimbleUrl] = useState(project.trimble_embed_url || "");
   const [savingTrimble, setSavingTrimble] = useState(false);
   const [err, setErr] = useState(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiMsg, setAiMsg] = useState(null);
+
+  const aiGenerate = async () => {
+    setAiBusy(true); setAiMsg(null); setErr(null);
+    try {
+      await axios.post(`${API}/digital-twin/projects/${project.id}/ai-generate`);
+      setAiMsg("✓ Model AI orientativ generat (inferred, neverificat).");
+      await loadHistory();
+      onUploaded?.();
+    } catch (e) {
+      setErr(e?.response?.data?.detail || e.message);
+    } finally {
+      setAiBusy(false);
+    }
+  };
 
   const saveTrimble = async () => {
     setSavingTrimble(true); setErr(null);
@@ -244,7 +337,7 @@ const UploadFilesModal = ({ project, client, onClose, onUploaded }) => {
   // from "Se convertește 35%" → "Gata!" without manual refresh.
   useEffect(() => {
     const converting = (history.models || []).filter(
-      m => m.kind === "archive" && m.conversion_status && !["completed", "failed", "n/a"].includes(m.conversion_status)
+      m => m.kind === "archive" && m.conversion_status && !["completed", "failed", "unsupported", "n/a"].includes(m.conversion_status)
     );
     if (converting.length === 0) return undefined;
     const t = setInterval(() => { loadHistory(); }, 5000);
@@ -358,7 +451,7 @@ const UploadFilesModal = ({ project, client, onClose, onUploaded }) => {
                   <div className="text-[11px] text-stone-500 mt-1 leading-relaxed">
                     <strong className="text-emerald-400">.glb / .gltf</strong> — vizualizabil instant<br/>
                     <strong className="text-amber-400">.dae / .obj / .fbx / .stl / .ply</strong> — auto-conversie via Blender ⚡<br/>
-                    <strong className="text-stone-400">.skp</strong> — SketchUp (doar descărcabil; exportă .dae pentru viewer)
+                    <strong className="text-stone-400">.skp</strong> — SketchUp: stocat intact & descărcabil (exportă .glb/.gltf/.dae din SketchUp sau vezi în Trimble Connect)
                   </div>
                 </div>
               )}
@@ -383,6 +476,24 @@ const UploadFilesModal = ({ project, client, onClose, onUploaded }) => {
               </>
             )}
 
+            {/* AI-3D orientative generation (inferred) — anchored projects only */}
+            <div className="pt-2 border-t border-white/5">
+              <button
+                onClick={aiGenerate}
+                disabled={aiBusy}
+                className="w-full py-2 rounded-lg border border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 disabled:opacity-50 text-violet-200 text-sm font-medium flex items-center justify-center gap-2"
+                data-testid="op-ai-generate"
+                title="Generează un model 3D orientativ (AI, inferred). Necesită proiect ancorat la o proprietate. Nu suprascrie modele documentate."
+              >
+                {aiBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                {aiBusy ? "Se generează…" : "Generează AI 3D (orientativ)"}
+              </button>
+              {aiMsg && <div className="mt-2 text-[11px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2" data-testid="op-ai-msg">{aiMsg}</div>}
+              <p className="text-[10px] text-stone-500 mt-1.5 leading-relaxed">
+                Massing orientativ din camerele proprietății. Etichetat „inferred / neverificat". Nu înlocuiește modelul profesional.
+              </p>
+            </div>
+
             {history.models.length > 0 && (
               <div className="pt-3 space-y-1.5">
                 <div className="text-[10px] uppercase tracking-wider text-stone-500 font-bold">Versiuni încărcate</div>
@@ -391,7 +502,7 @@ const UploadFilesModal = ({ project, client, onClose, onUploaded }) => {
                   const isSource = m.kind === "source"; // DAE/OBJ/FBX/STL/PLY — auto-converts to .glb
                   const cstatus = m.conversion_status;
                   const cpct = m.conversion_percent || 0;
-                  const isConverting = (isArchive || isSource) && cstatus && !["completed", "failed", "n/a"].includes(cstatus);
+                  const isConverting = (isArchive || isSource) && cstatus && !["completed", "failed", "unsupported", "n/a"].includes(cstatus);
                   const engine = m.conversion_engine === "blender" ? "Blender ⚡" : "CloudConvert ☁️";
                   const conversionLabel = {
                     pending: `${engine} · În așteptare…`,
@@ -413,9 +524,28 @@ const UploadFilesModal = ({ project, client, onClose, onUploaded }) => {
                           </div>
                         </div>
                         {isArchive && !cstatus && <span className="text-[9px] uppercase text-amber-400">Descărcabil</span>}
+                        {cstatus === "unsupported" && <span className="text-[9px] uppercase text-amber-400">SketchUp · descărcabil</span>}
                         {isSource && !cstatus && <span className="text-[9px] uppercase text-blue-400">Sursă</span>}
                         {cstatus === "completed" && <span className="text-[9px] uppercase text-emerald-400 flex items-center gap-1"><Wand2 className="w-3 h-3"/>GLB Gata</span>}
                       </div>
+                      {cstatus === "unsupported" && (
+                        <div className="bg-amber-500/10 border border-amber-500/20 rounded p-2 space-y-1.5" data-testid={`conv-unsupported-${m.id}`}>
+                          <div className="text-[10px] text-amber-200 leading-relaxed">
+                            📦 {m.conversion_note || "Fișier SketchUp stocat intact. Nu poate fi convertit automat pe server."}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={`${process.env.REACT_APP_BACKEND_URL}${m.url}`}
+                              target="_blank" rel="noreferrer"
+                              className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-100 flex items-center gap-1"
+                              data-testid={`skp-download-${m.id}`}
+                            >
+                              <FileText className="w-2.5 h-2.5" /> Descarcă .skp
+                            </a>
+                            <span className="text-[9px] text-stone-500">sau folosește tab-ul „Trimble Connect” pentru viewer nativ</span>
+                          </div>
+                        </div>
+                      )}
                       {isConverting && (
                         <div className="space-y-1" data-testid={`conv-row-${m.id}`}>
                           <div className="flex items-center justify-between text-[10px]">
@@ -656,6 +786,343 @@ const ClientCard = ({ client, onCreateProject, onUpload, onOpenDigitalTwin }) =>
   );
 };
 
+// ============= UNRESOLVED PROJECTS (Historical Anchor) — single + BULK =============
+// Ancorare manuală a proiectelor 3D istorice (neancorate) la o proprietate.
+// ZERO auto-assign. Bulk: multi-select DOAR în cadrul aceluiași owner + preview obligatoriu + confirmare explicită.
+const UnresolvedRow = ({ item, selected, onToggle, selectDisabled, onAnchored }) => {
+  const [propertyId, setPropertyId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [done, setDone] = useState(false);
+  const cands = item.candidate_properties || [];
+
+  const anchor = async () => {
+    if (!propertyId) return;
+    setBusy(true); setErr(null);
+    try {
+      await axios.patch(`${API}/digital-twin/projects/${item.id}/property`, { property_id: propertyId });
+      setDone(true);
+      onAnchored?.(item.id);
+    } catch (e) {
+      setErr(e?.response?.data?.detail || e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (done) {
+    return (
+      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-xs text-emerald-300 flex items-center gap-2" data-testid={`unresolved-done-${item.id}`}>
+        <CheckCircle2 className="w-4 h-4" /> „{item.name}" a fost ancorat la proprietate.
+      </div>
+    );
+  }
+
+  return (
+    <div className={`rounded-xl p-3 space-y-2 border ${selected ? "bg-emerald-500/10 border-emerald-500/30" : "bg-white/[0.03] border-white/10"}`} data-testid={`unresolved-row-${item.id}`}>
+      <div className="flex items-start gap-2">
+        <input
+          type="checkbox"
+          checked={selected}
+          disabled={selectDisabled || cands.length === 0}
+          onChange={() => onToggle(item)}
+          className="mt-0.5 accent-emerald-500 disabled:opacity-30"
+          data-testid={`unresolved-check-${item.id}`}
+          title={cands.length === 0 ? "Proprietarul nu are proprietăți" : (selectDisabled ? "Selectează doar proiecte ale aceluiași proprietar" : "Selectează pentru ancorare în masă")}
+        />
+        <Unlink className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm text-white truncate">{item.name || "Proiect fără nume"}</div>
+          <div className="text-[10px] text-stone-500">
+            {item.owner_name} · {item.created_at ? new Date(item.created_at).toLocaleDateString("ro-RO") : "—"} · {item.model_count} model · {item.plan_count} plan
+          </div>
+        </div>
+      </div>
+
+      {cands.length === 0 ? (
+        <div className="text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2" data-testid={`unresolved-no-cands-${item.id}`}>
+          Proprietarul nu are nicio proprietate. Adaugă o proprietate în contul lui înainte de ancorare.
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <select
+            value={propertyId}
+            onChange={(e) => setPropertyId(e.target.value)}
+            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white"
+            data-testid={`unresolved-select-${item.id}`}
+          >
+            <option value="" className="bg-stone-900">Ancorare individuală…</option>
+            {cands.map((c) => (
+              <option key={c.id} value={c.id} className="bg-stone-900">
+                {c.name}{c.address ? ` · ${c.address}` : ""}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={anchor}
+            disabled={!propertyId || busy}
+            className="px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-white text-xs font-medium flex items-center gap-1.5 shrink-0"
+            data-testid={`unresolved-anchor-${item.id}`}
+          >
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+            Ancorează
+          </button>
+        </div>
+      )}
+      {err && <div className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-2">{err}</div>}
+    </div>
+  );
+};
+
+const PropertyPreviewCard = ({ propertyId }) => {
+  const [pv, setPv] = useState(null);
+  useEffect(() => {
+    if (!propertyId) { setPv(null); return; }
+    axios.get(`${API}/admin/digital-twin/properties/${propertyId}/preview`)
+      .then((r) => setPv(r.data)).catch(() => setPv(null));
+  }, [propertyId]);
+  if (!propertyId) return null;
+  if (!pv) return <div className="text-[11px] text-stone-500 py-2"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Se încarcă previzualizarea…</div>;
+  return (
+    <div className="rounded-lg bg-white/[0.04] border border-white/10 p-2.5" data-testid="bulk-property-preview">
+      <div className="flex items-center gap-2">
+        <div className="w-9 h-9 rounded-lg bg-emerald-500/15 flex items-center justify-center shrink-0"><MapPin className="w-4 h-4 text-emerald-300" /></div>
+        <div className="min-w-0">
+          <div className="text-sm text-white truncate">{pv.name}</div>
+          <div className="text-[10px] text-stone-500 truncate">{pv.address || "—"}</div>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 mt-2 text-[10px] text-stone-400">
+        {pv.type && <span className="px-1.5 py-0.5 rounded bg-white/5">{pv.type}</span>}
+        {pv.surface != null && <span className="px-1.5 py-0.5 rounded bg-white/5">{pv.surface} m²</span>}
+        {pv.rooms != null && <span className="px-1.5 py-0.5 rounded bg-white/5">{pv.rooms} camere</span>}
+        {pv.health_score != null && <span className="px-1.5 py-0.5 rounded bg-white/5">Sănătate {pv.health_score}</span>}
+        <span className="px-1.5 py-0.5 rounded bg-white/5">Proprietar: {pv.owner_name}</span>
+      </div>
+    </div>
+  );
+};
+
+const UnresolvedModal = ({ onClose, onChanged }) => {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(null);
+  const [selected, setSelected] = useState([]); // array of items
+  const [bulkProp, setBulkProp] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkResult, setBulkResult] = useState(null);
+
+  const selectedOwner = selected[0]?.owner_id || null;
+  const selectedCands = selected[0]?.candidate_properties || [];
+
+  const load = async () => {
+    setLoading(true); setErr(null);
+    try {
+      const { data } = await axios.get(`${API}/admin/digital-twin/unresolved-projects`);
+      setItems(data.items || []);
+    } catch (e) {
+      setErr(e?.response?.data?.detail || e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => { load(); }, []);
+
+  const toggle = (item) => {
+    setBulkResult(null);
+    setSelected((arr) => {
+      const exists = arr.find((x) => x.id === item.id);
+      if (exists) {
+        const next = arr.filter((x) => x.id !== item.id);
+        if (next.length === 0) { setBulkProp(""); }
+        return next;
+      }
+      // enforce same owner
+      if (arr.length && arr[0].owner_id !== item.owner_id) return arr;
+      return [...arr, item];
+    });
+  };
+
+  const handleAnchored = (id) => {
+    setTimeout(() => setItems((arr) => arr.filter((x) => x.id !== id)), 1200);
+    setSelected((arr) => arr.filter((x) => x.id !== id));
+    onChanged?.();
+  };
+
+  const runBulk = async () => {
+    if (!bulkProp || selected.length === 0) return;
+    setBulkBusy(true); setErr(null); setBulkResult(null);
+    try {
+      const { data } = await axios.post(`${API}/admin/digital-twin/bulk-anchor`, {
+        project_ids: selected.map((s) => s.id),
+        property_id: bulkProp,
+      });
+      setBulkResult(data);
+      const okIds = new Set(data.results.filter((r) => r.ok).map((r) => r.project_id));
+      setTimeout(() => setItems((arr) => arr.filter((x) => !okIds.has(x.id))), 1200);
+      setSelected([]);
+      setBulkProp("");
+      onChanged?.();
+    } catch (e) {
+      setErr(e?.response?.data?.detail || e.message);
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="bg-stone-900 border border-white/10 rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col" data-testid="unresolved-modal">
+        <div className="flex items-start justify-between p-5 pb-3 border-b border-white/10">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.16em] text-amber-400/90 font-semibold">Ancorare istorică</div>
+            <h3 className="font-serif text-lg text-white">Proiecte 3D neancorate</h3>
+            <p className="text-xs text-stone-400 mt-0.5">Leagă manual proiectele vechi de o proprietate. Bifează mai multe (același proprietar) pentru ancorare în masă. ZERO atribuire automată.</p>
+          </div>
+          <button onClick={onClose} data-testid="unresolved-close"><X className="w-5 h-5 text-stone-500" /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-2">
+          {loading ? (
+            <div className="text-center py-8 text-sm text-stone-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Se încarcă…</div>
+          ) : err ? (
+            <div className="text-center py-6 text-red-400 text-sm">{err}</div>
+          ) : items.length === 0 ? (
+            <div className="text-center py-8" data-testid="unresolved-empty">
+              <CheckCircle2 className="w-10 h-10 text-emerald-500/60 mx-auto mb-2" />
+              <p className="text-sm text-stone-300">Toate proiectele sunt ancorate. Nimic de rezolvat.</p>
+            </div>
+          ) : (
+            <>
+              <div className="text-[11px] text-stone-500">{items.length} proiecte neancorate{selectedOwner ? ` · selectezi de la ${selected[0].owner_name}` : ""}</div>
+              {items.map((it) => (
+                <UnresolvedRow
+                  key={it.id}
+                  item={it}
+                  selected={!!selected.find((x) => x.id === it.id)}
+                  selectDisabled={!!selectedOwner && it.owner_id !== selectedOwner}
+                  onToggle={toggle}
+                  onAnchored={handleAnchored}
+                />
+              ))}
+            </>
+          )}
+        </div>
+
+        {/* Persistent bulk result (stays visible after selection clears) */}
+        {bulkResult && (
+          <div className="mx-5 mb-3 text-[11px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5" data-testid="bulk-result">
+            ✓ {bulkResult.anchored_count}/{bulkResult.requested} proiecte ancorate la „{bulkResult.property_name}".
+          </div>
+        )}
+
+        {/* Bulk bar */}
+        {selected.length > 0 && (
+          <div className="border-t border-white/10 p-4 space-y-2 bg-stone-900" data-testid="bulk-anchor-bar">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-white font-medium">{selected.length} proiecte selectate</span>
+              <button onClick={() => { setSelected([]); setBulkProp(""); }} className="text-[11px] text-stone-500 hover:text-stone-300" data-testid="bulk-clear">Anulează selecția</button>
+            </div>
+            <select
+              value={bulkProp}
+              onChange={(e) => setBulkProp(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white"
+              data-testid="bulk-property-select"
+            >
+              <option value="" className="bg-stone-900">Alege proprietatea țintă…</option>
+              {selectedCands.map((c) => (
+                <option key={c.id} value={c.id} className="bg-stone-900">{c.name}{c.address ? ` · ${c.address}` : ""}</option>
+              ))}
+            </select>
+            <PropertyPreviewCard propertyId={bulkProp} />
+            <button
+              onClick={runBulk}
+              disabled={!bulkProp || bulkBusy}
+              className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-white text-sm font-medium"
+              data-testid="bulk-anchor-confirm"
+            >
+              {bulkBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+              Ancorează în masă ({selected.length})
+            </button>
+            <p className="text-[10px] text-stone-500 text-center">Confirmarea leagă toate proiectele bifate de proprietatea aleasă. Nimic nu se șterge.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ============= PROFESSIONAL REVIEW QUEUE (cross-project) =============
+const ReviewQueueModal = ({ onClose, onChanged }) => {
+  const [items, setItems] = useState(null);
+  const [busyId, setBusyId] = useState(null);
+  const [err, setErr] = useState(null);
+
+  const load = () => {
+    axios.get(`${API}/digital-twin/professional/review-queue`)
+      .then((r) => setItems(r.data.items || [])).catch((e) => { setItems([]); setErr(e?.response?.data?.detail || e.message); });
+  };
+  useEffect(() => { load(); }, []);
+
+  const act = async (modelId, action) => {
+    setBusyId(modelId + action); setErr(null);
+    try {
+      await axios.post(`${API}/digital-twin/models/${modelId}/validate`, { action });
+      setItems((arr) => arr.filter((x) => x.model_id !== modelId));
+      onChanged?.();
+    } catch (e) {
+      setErr(e?.response?.data?.detail || e.message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="bg-stone-900 border border-white/10 rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col" data-testid="review-queue-modal">
+        <div className="flex items-start justify-between p-5 pb-3 border-b border-white/10">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.16em] text-blue-400/90 font-semibold">Validare profesională</div>
+            <h3 className="font-serif text-lg text-white">Coadă de validare</h3>
+            <p className="text-xs text-stone-400 mt-0.5">Modele orientative (AI) trimise la validare. Confirmă → devine „Verificat profesional".</p>
+          </div>
+          <button onClick={onClose} data-testid="review-queue-close"><X className="w-5 h-5 text-stone-500" /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5 space-y-2">
+          {items === null ? (
+            <div className="text-center py-8 text-sm text-stone-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Se încarcă…</div>
+          ) : items.length === 0 ? (
+            <div className="text-center py-8" data-testid="review-queue-empty">
+              <CheckCircle2 className="w-10 h-10 text-emerald-500/60 mx-auto mb-2" />
+              <p className="text-sm text-stone-300">Nimic de validat. Coada e goală.</p>
+            </div>
+          ) : items.map((it) => (
+            <div key={it.model_id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3 space-y-2" data-testid={`review-item-${it.model_id}`}>
+              <div>
+                <div className="text-sm text-white truncate">{it.filename}</div>
+                <div className="text-[10px] text-stone-500">{it.project_name} · {it.owner_name} · cerut de {it.requested_by_name}{it.is_design_concept ? " · Concept Design" : ""}</div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => act(it.model_id, "confirm")} disabled={!!busyId}
+                  className="flex-1 px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-white text-xs font-medium flex items-center justify-center gap-1.5"
+                  data-testid={`review-confirm-${it.model_id}`}>
+                  {busyId === it.model_id + "confirm" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />} Validează
+                </button>
+                <button onClick={() => act(it.model_id, "reject")} disabled={!!busyId}
+                  className="px-3 py-2 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 text-xs font-medium flex items-center justify-center gap-1.5"
+                  data-testid={`review-reject-${it.model_id}`}>
+                  Respinge
+                </button>
+              </div>
+            </div>
+          ))}
+          {err && <div className="text-xs text-red-400">{err}</div>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ============= MAIN VIEW =============
 export const OperatorDigitalTwin = () => {
   const [items, setItems] = useState([]);
@@ -667,6 +1134,24 @@ export const OperatorDigitalTwin = () => {
   const [creatingFor, setCreatingFor] = useState(null);
   const [uploadingFor, setUploadingFor] = useState(null); // { client, project }
   const [toast, setToast] = useState(null);
+  const [showUnresolved, setShowUnresolved] = useState(false);
+  const [unresolvedCount, setUnresolvedCount] = useState(0);
+  const [showReviewQueue, setShowReviewQueue] = useState(false);
+  const [reviewCount, setReviewCount] = useState(0);
+
+  const loadUnresolvedCount = async () => {
+    try {
+      const { data } = await axios.get(`${API}/admin/digital-twin/unresolved-projects`);
+      setUnresolvedCount(data.count ?? (data.items || []).length);
+    } catch { /* ignore */ }
+  };
+
+  const loadReviewCount = async () => {
+    try {
+      const { data } = await axios.get(`${API}/digital-twin/professional/review-queue`);
+      setReviewCount(data.count ?? (data.items || []).length);
+    } catch { /* ignore */ }
+  };
 
   const load = async () => {
     setLoading(true); setErr(null);
@@ -681,6 +1166,7 @@ export const OperatorDigitalTwin = () => {
     }
   };
   useEffect(() => { load();   }, [filter]);
+  useEffect(() => { loadUnresolvedCount(); loadReviewCount(); }, []);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -715,13 +1201,41 @@ export const OperatorDigitalTwin = () => {
             <h2 className="font-serif text-xl text-white">Clienți cu acces 3D</h2>
             <p className="text-xs text-stone-400 mt-0.5">Acordă acces, creează proiecte, încarcă modele .glb/.gltf/.skp și planuri PDF 2D.</p>
           </div>
-          <button
-            onClick={() => setShowGrant(true)}
-            className="px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium flex items-center gap-1.5"
-            data-testid="op-grant-access-btn"
-          >
-            <ShieldCheck className="w-3.5 h-3.5" />Acordă acces DT
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowReviewQueue(true)}
+              className="relative px-3 py-2 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 text-blue-200 text-xs font-medium flex items-center gap-1.5"
+              data-testid="op-review-queue-btn"
+              title="Validează modelele orientative (AI) trimise la validare"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />Coadă validare
+              {reviewCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-blue-500 text-white text-[10px] font-bold leading-none" data-testid="op-review-badge">
+                  {reviewCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setShowUnresolved(true)}
+              className="relative px-3 py-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 text-xs font-medium flex items-center gap-1.5"
+              data-testid="op-unresolved-btn"
+              title="Ancorează proiectele 3D vechi (neancorate) la o proprietate"
+            >
+              <Unlink className="w-3.5 h-3.5" />Proiecte neancorate
+              {unresolvedCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-stone-900 text-[10px] font-bold leading-none" data-testid="op-unresolved-badge">
+                  {unresolvedCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setShowGrant(true)}
+              className="px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium flex items-center gap-1.5"
+              data-testid="op-grant-access-btn"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />Acordă acces DT
+            </button>
+          </div>
         </div>
 
         {/* Filter pills */}
@@ -777,6 +1291,18 @@ export const OperatorDigitalTwin = () => {
       )}
 
       {showGrant && <GrantAccessModal onClose={() => setShowGrant(false)} onGranted={load} />}
+      {showUnresolved && (
+        <UnresolvedModal
+          onClose={() => setShowUnresolved(false)}
+          onChanged={() => { loadUnresolvedCount(); load(); }}
+        />
+      )}
+      {showReviewQueue && (
+        <ReviewQueueModal
+          onClose={() => setShowReviewQueue(false)}
+          onChanged={() => { loadReviewCount(); }}
+        />
+      )}
       {creatingFor && (
         <CreateProjectModal client={creatingFor} onClose={() => setCreatingFor(null)} onCreated={onProjectCreated} />
       )}

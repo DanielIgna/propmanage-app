@@ -23,11 +23,10 @@ Endpoints:
 Categories:
   forum, groups, faq, reviews
 """
-from fastapi import APIRouter, HTTPException, Depends, Query, Body
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 from typing import Optional, Literal
 from datetime import datetime, timezone, timedelta
-from bson import ObjectId
 import uuid
 
 from deps import get_current_user

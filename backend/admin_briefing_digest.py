@@ -20,8 +20,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from db import db
-# Lazy-imported inside `compute_briefing_payload` to break circular dependency
-# with routes/admin_healthcheck.py (which imports from this module at runtime).
+from healthcheck_service import compute_healthcheck_report
 
 logger = logging.getLogger("propmanage.admin_briefing_digest")
 
@@ -75,6 +74,18 @@ async def _open_ai_findings() -> dict:
                 "occurrences": f.get("occurrences", 1),
             })
     return {"counts": {"open": total_open}, "by_severity": counts_by_sev, "top": top}
+
+
+async def _orchestrator_last_24h() -> dict:
+    """Autonomy Orchestrator activity in the last 24h (ledger summary)."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    entries = [d async for d in db.orchestrator_ledger.find({"ts": {"$gte": cutoff}}, {"_id": 0})]
+    return {
+        "actions": len(entries),
+        "minutes_saved": sum(e.get("minutes_saved") or 0 for e in entries),
+        "auto_resolved": sum(1 for e in entries if e.get("outcome") == "auto_resolved"),
+        "escalated": sum(1 for e in entries if e.get("escalated")),
+    }
 
 
 async def _latest_backup() -> Optional[dict]:
@@ -147,16 +158,23 @@ def _backup_tone(backup: Optional[dict]) -> str:
         return "warn"
 
 
+def _orchestrator_tone(orch: dict) -> str:
+    if orch.get("escalated", 0) > 0:
+        return "warn"
+    if orch.get("actions", 0) == 0:
+        return "idle"
+    return "ok"
+
+
 async def compute_briefing_payload() -> dict:
     """Build the full briefing payload (data only, no rendering)."""
-    # Lazy import to break circular dependency with routes/admin_healthcheck.py
-    from routes.admin_healthcheck import compute_healthcheck_report
     healthcheck = await compute_healthcheck_report()
     smoke = await _latest_smoke_test()
     integrity = await _latest_data_integrity()
     incidents = await _active_incidents(days=30)
     findings = await _open_ai_findings()
     backup = await _latest_backup()
+    orchestrator = await _orchestrator_last_24h()
 
     tones = {
         "hc": _healthcheck_tone(healthcheck),
@@ -165,6 +183,7 @@ async def compute_briefing_payload() -> dict:
         "inc": _incidents_tone(incidents),
         "fi": _findings_tone(findings),
         "backup": _backup_tone(backup),
+        "orch": _orchestrator_tone(orchestrator),
     }
     has_fail = any(t == "fail" for t in tones.values())
     has_warn = any(t == "warn" for t in tones.values())
@@ -178,6 +197,7 @@ async def compute_briefing_payload() -> dict:
         "incidents": {"tone": tones["inc"], **incidents},
         "findings": {"tone": tones["fi"], **findings},
         "backup": {"tone": tones["backup"], "report": backup},
+        "orchestrator": {"tone": tones["orch"], **orchestrator},
     }
 
 
@@ -198,6 +218,7 @@ _TILE_LABEL = {
     "integrity": "Integritate date",
     "incidents": "Incidente publice",
     "findings": "AI Findings",
+    "orchestrator": "Autonomy Orchestrator",
 }
 
 
@@ -258,12 +279,24 @@ def _headline_findings(section: dict) -> tuple[str, str]:
     return (f"{open_count} findings deschise", "Verifică AI Investigator")
 
 
+def _headline_orchestrator(section: dict) -> tuple[str, str]:
+    actions = section.get("actions", 0)
+    if actions == 0:
+        return ("Nicio situație de gestionat", "Zi liniștită — 0 semnale în ultimele 24h")
+    escalated = section.get("escalated", 0)
+    minutes = section.get("minutes_saved", 0)
+    headline = f"{section.get('auto_resolved', 0)}/{actions} situații rezolvate automat (~{minutes} min salvate)"
+    sub = f"{escalated} escaladate la om" if escalated else "0 escaladări — a mers fără intervenție umană"
+    return (headline, sub)
+
+
 _HEADLINE_DISPATCH = {
     "healthcheck": _headline_healthcheck,
     "smoke": _headline_smoke,
     "integrity": _headline_integrity,
     "incidents": _headline_incidents,
     "findings": _headline_findings,
+    "orchestrator": _headline_orchestrator,
 }
 
 
@@ -283,7 +316,7 @@ def _render_briefing_html(payload: dict, app_url: str) -> str:
     }.get(overall, "Status indisponibil.")
 
     rows = ""
-    for key in ("healthcheck", "smoke", "integrity", "incidents", "findings"):
+    for key in ("orchestrator", "healthcheck", "smoke", "integrity", "incidents", "findings"):
         section = payload.get(key, {})
         tone = section.get("tone", "idle")
         color, _ = _TONE_COLORS.get(tone, _TONE_COLORS["idle"])

@@ -8,32 +8,21 @@ Endpoints (admin-only):
   PUT  /api/admin/autonomy/targets    — Update targets/weights
 """
 import logging
+import re
 import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, Body, HTTPException, BackgroundTasks
+from pydantic import BaseModel
 
 from db import db
 from deps import require_role
-from autonomy.engine import compute_autonomy_scores, DEFAULT_WEIGHTS, DEFAULT_TARGETS
+from autonomy.engine import compute_autonomy_scores, DEFAULT_WEIGHTS
+from autonomy.snapshots import _CACHE, _CACHE_TTL_SECONDS, load_targets, take_autonomy_snapshot
 
 logger = logging.getLogger("propmanage.autonomy_routes")
 router = APIRouter(prefix="/api/admin/autonomy", tags=["admin-autonomy"])
-
-# Simple in-memory cache (5 min TTL)
-_CACHE = {"data": None, "ts": None}
-_CACHE_TTL_SECONDS = 300
-
-
-async def _load_targets() -> dict:
-    doc = await db.autonomy_targets.find_one({"_id": "config"})
-    if not doc:
-        return {"weights": DEFAULT_WEIGHTS, "targets": DEFAULT_TARGETS}
-    return {
-        "weights": doc.get("weights") or DEFAULT_WEIGHTS,
-        "targets": doc.get("targets") or DEFAULT_TARGETS,
-    }
 
 
 @router.get("/score")
@@ -43,7 +32,7 @@ async def get_autonomy_score(user=Depends(require_role("admin"))):
     if _CACHE["data"] and _CACHE["ts"] and (now - _CACHE["ts"]).total_seconds() < _CACHE_TTL_SECONDS:
         return {**_CACHE["data"], "cached": True}
 
-    cfg = await _load_targets()
+    cfg = await load_targets()
     report = await compute_autonomy_scores(weights=cfg["weights"], targets=cfg["targets"])
     _CACHE["data"] = report
     _CACHE["ts"] = now
@@ -76,12 +65,11 @@ async def force_snapshot(user=Depends(require_role("admin"))):
 async def boost_dev_score(background_tasks: BackgroundTasks, user=Depends(require_role("admin"))):
     """One-click action to improve DEV sub-score:
       1) Trigger a release gate run IN BACKGROUND (avoids Cloudflare 100s timeout)
-      2) Mark stale open QA findings (>14d) as 'dismissed' (fast)
-      3) Re-take autonomy snapshot so the new score is visible immediately (fast)
+      2) Re-take autonomy snapshot so the new score is visible immediately (fast)
 
-    Returns immediately. Release gate result is persisted to release_gate_runs
-    and can be checked via GET /api/admin/autonomy/boost-dev/last-gate.
-    Idempotent and safe to call repeatedly.
+    DECONTAMINATED (P1): the old step that auto-dismissed stale QA findings was
+    removed — it inflated the score and hid real issues. Only the REAL release
+    gate + an honest snapshot remain. Idempotent and safe to call repeatedly.
     """
     summary = {"release_gate": {"status": "scheduled_in_background"}, "qa_findings_dismissed": 0, "new_dev_score": None, "previous_dev_score": None}
 
@@ -120,28 +108,13 @@ async def boost_dev_score(background_tasks: BackgroundTasks, user=Depends(requir
 
     background_tasks.add_task(_run_gate_bg)
 
-    # 2) Dismiss stale QA findings (fast — runs synchronously)
-    try:
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
-        dismissed_count = 0
-        async for sess in db.qa_sessions.find({}, {"_id": 1, "findings": 1, "created_at": 1}):
-            findings = sess.get("findings") or []
-            changed = False
-            for f in findings:
-                status = f.get("status") or "open"
-                created = f.get("created_at") or sess.get("created_at") or ""
-                if status == "open" and isinstance(created, str) and created < cutoff:
-                    f["status"] = "dismissed"
-                    f["dismissed_at"] = datetime.now(timezone.utc).isoformat()
-                    f["dismissed_reason"] = "stale_auto_boost_dev"
-                    changed = True
-                    dismissed_count += 1
-            if changed:
-                await db.qa_sessions.update_one({"_id": sess["_id"]}, {"$set": {"findings": findings}})
-        summary["qa_findings_dismissed"] = dismissed_count
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"boost-dev: dismiss findings failed: {e}")
-        summary["qa_findings_dismissed_error"] = str(e)[:200]
+    # 2) Findings dismissal REMOVED (P1 decontamination — Iun 2026): auto-
+    #    dismissing open QA findings to lift the DEV/AI closure ratio was score
+    #    inflation and hid real issues. Boost DEV now only runs the REAL release
+    #    gate (background) + a fresh honest snapshot. Findings must be triaged by
+    #    a human in the QA Copilot, not auto-hidden.
+    summary["qa_findings_dismissed"] = 0
+    summary["qa_findings_dismissal"] = "disabled_decontamination"
 
     # 3) Force fresh snapshot + invalidate cache (FAST — uses cached data, no gate dependency)
     try:
@@ -359,20 +332,23 @@ async def generate_tasks(
     user=Depends(require_role("admin")),
 ):
     """Materialize current recommendations as actionable TODOs in admin_todos.
+    Întoarce mereu JSON valid (și pe eroare), ca frontend-ul să nu primească HTML 500."""
+    try:
+        return await materialize_recommendations(
+            max_items=int(payload.get("max_items", 6)),
+            min_impact=float(payload.get("min_impact", 0.0)),
+            dry_run=bool(payload.get("dry_run", False)),
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.exception("[autonomy] generate-tasks failed")
+        return {"ok": False, "error": str(e)[:300], "counts": {"injected": 0, "skipped": 0, "considered": 0}}
 
-    Body (optional):
-      - max_items: int (default 6 — same as engine's hard cap)
-      - min_impact: float (default 0.0 — filter low-impact recs)
-      - dry_run: bool (default false — preview without insert)
 
-    De-duplicates by text (case-insensitive). Returns list of injected + skipped.
-    """
-    max_items = int(payload.get("max_items", 6))
-    min_impact = float(payload.get("min_impact", 0.0))
-    dry_run = bool(payload.get("dry_run", False))
+async def materialize_recommendations(max_items: int = 6, min_impact: float = 0.0, dry_run: bool = False) -> dict:
+    """Reusable: recomandările Autonomy → TODO-uri (de-dup pe text). Folosit și de Self-Driving cron."""
 
     # Always use a fresh report (no cache) so generated tasks reflect reality
-    cfg = await _load_targets()
+    cfg = await load_targets()
     report = await compute_autonomy_scores(weights=cfg["weights"], targets=cfg["targets"])
     recs = report.get("recommendations", []) or []
     recs = [r for r in recs if float(r.get("impact_points", 0)) >= min_impact][:max_items]
@@ -386,8 +362,8 @@ async def generate_tasks(
         priority = _PRIORITY_TODO_MAP.get(r.get("priority", "medium"), "medium")
         text = f"[Autonomy · {area_label}] {r.get('action','(no action)')}"
         text = text[:500]
-        # de-dupe (case-insensitive)
-        existing = await db.admin_todos.find_one({"text": {"$regex": f"^{text[:60]}", "$options": "i"}})
+        # de-dupe (case-insensitive) — re.escape ca textul cu [ ] ( ) · să nu producă regex invalid → 500
+        existing = await db.admin_todos.find_one({"text": {"$regex": f"^{re.escape(text[:60])}", "$options": "i"}})
         if existing:
             skipped.append({"text": text, "reason": "duplicate"})
             continue
@@ -422,7 +398,7 @@ async def generate_tasks(
 
 @router.get("/targets")
 async def get_targets(user=Depends(require_role("admin"))):
-    cfg = await _load_targets()
+    cfg = await load_targets()
     return cfg
 
 
@@ -451,7 +427,7 @@ async def update_targets(
     await db.autonomy_targets.update_one({"_id": "config"}, {"$set": update}, upsert=True)
     # Invalidate cache
     _CACHE["data"] = None
-    return await _load_targets()
+    return await load_targets()
 
 
 @router.get("/alerts/recent")
@@ -527,39 +503,35 @@ async def trigger_test_alert(user=Depends(require_role("admin"))):
 
 @router.post("/seed-ai-data")
 async def seed_ai_data(user=Depends(require_role("admin"))):
-    """Boost the AI sub-score by seeding the knowledge base + memories.
+    """DEPRECATED (P1 decontamination — Iun 2026): no longer seeds synthetic data.
 
-    Super-admin only. Idempotent — skips docs whose title already exists and
-    skips memories whose summary already exists. Re-invalidates the autonomy
-    cache and takes a fresh snapshot so the dashboard shows the new AI score.
+    This endpoint used to inject 17 fabricated internal docs + 100 synthetic
+    memories to inflate the AI sub-score. Since scores now EXCLUDE synthetic
+    seed rows, this "boost" is meaningless and would only pollute the DB, so it
+    is now a NO-OP that simply reports the REAL knowledge-base counts.
     """
     from sub_admin_deps import is_super_admin
     if not is_super_admin(user):
-        raise HTTPException(403, "Doar super-admin poate rula seed-ul.")
+        raise HTTPException(403, "Doar super-admin poate rula acest endpoint.")
 
-    from scripts.seed_autonomy_data import seed_documents, seed_memories
-
-    # Capture before
-    prev_docs = await db.ai_documents.count_documents({})
-    prev_mems = await db.ai_memories.count_documents({})
-
-    docs_added = await seed_documents()
-    mems_added = await seed_memories(target_total=110)
-
-    # Refresh autonomy
-    _CACHE["data"] = None
-    snap = await take_autonomy_snapshot()
-
-    new_docs = await db.ai_documents.count_documents({})
-    new_mems = await db.ai_memories.count_documents({})
+    real_docs = await db.ai_documents.count_documents({"source": {"$ne": "autonomy_seed"}})
+    real_mems = await db.ai_memories.count_documents({"source": {"$not": {"$regex": "^autonomy_seed"}}})
+    seed_docs = await db.ai_documents.count_documents({"source": "autonomy_seed"})
+    seed_mems = await db.ai_memories.count_documents({"source": {"$regex": "^autonomy_seed"}})
 
     return {
         "ok": True,
-        "documents": {"before": prev_docs, "added": docs_added, "after": new_docs},
-        "memories": {"before": prev_mems, "added": mems_added, "after": new_mems},
-        "new_ai_score": (snap.get("breakdown_summary") or {}).get("ai"),
-        "new_general_score": (snap.get("scores") or {}).get("general"),
-        "tier": snap.get("tier"),
+        "deprecated": True,
+        "no_op": True,
+        "message": (
+            "Seed-ul de date sintetice a fost dezactivat. Scorul AI se calculează "
+            "acum DOAR pe date reale; injectarea de docs/memorii sintetice nu mai "
+            "influențează scorul și ar polua baza de date."
+        ),
+        "real_documents": real_docs,
+        "real_memories": real_mems,
+        "excluded_seed_documents": seed_docs,
+        "excluded_seed_memories": seed_mems,
     }
 
 
@@ -568,82 +540,32 @@ async def run_auto_tune_orchestration(triggered_by: str = "manual") -> dict:
 
     ``triggered_by`` is logged in ``autopilot_runs`` (e.g. ``manual:<user_id>``,
     ``cron_weekly``). Idempotent — safe to call multiple times.
+
+    DECONTAMINATED (P1 — Iun 2026): this orchestrator NO LONGER injects synthetic
+    seed data (docs/memories/repair decisions/concierge traffic) and NO LONGER
+    mass-dismisses open QA findings. Those steps existed only to inflate the
+    autonomy/AI-Health scores with fabricated data — exactly what the founder
+    asked to stop. Auto-Tune is now an HONEST recompute: it recalculates the
+    scores from REAL signals and takes a fresh snapshot. Nothing is fabricated,
+    nothing real is auto-dismissed.
     """
-    from scripts.seed_autonomy_data import seed_documents, seed_memories
-    from scripts.seed_health_data import seed_repair_decisions, seed_concierge_traffic
+    report = {"steps": [], "triggered_by": triggered_by, "decontaminated": True}
 
-    report = {"steps": [], "triggered_by": triggered_by}
-
-    cfg = await _load_targets()
+    cfg = await load_targets()
     before_report = await compute_autonomy_scores(weights=cfg["weights"], targets=cfg["targets"])
     report["before"] = {"scores": before_report["scores"], "tier": before_report["tier"]}
 
-    # Step 1: AI Knowledge Base
-    try:
-        docs_added = await seed_documents()
-        mems_added = await seed_memories(target_total=110)
-        report["steps"].append({
-            "name": "seed_ai_knowledge", "status": "ok",
-            "docs_added": docs_added, "memories_added": mems_added,
-        })
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"[auto-tune] seed_ai_knowledge failed: {e}")
-        report["steps"].append({"name": "seed_ai_knowledge", "status": "error", "error": str(e)[:160]})
-
-    # Step 2: Repair Effectiveness
-    try:
-        r = await seed_repair_decisions(target_applied=10)
-        report["steps"].append({"name": "seed_repair_decisions", "status": "ok", **r})
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"[auto-tune] seed_repair_decisions failed: {e}")
-        report["steps"].append({"name": "seed_repair_decisions", "status": "error", "error": str(e)[:160]})
-
-    # Step 3: Concierge Traffic
-    try:
-        c = await seed_concierge_traffic(target_messages=15)
-        report["steps"].append({"name": "seed_concierge_traffic", "status": "ok", **c})
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"[auto-tune] seed_concierge_traffic failed: {e}")
-        report["steps"].append({"name": "seed_concierge_traffic", "status": "error", "error": str(e)[:160]})
-
-    # Step 4: Dismiss QA findings — if platform is stable (smoke 7d OK + no
-    # critical AI findings open), dismiss ALL open QA findings. Otherwise only
-    # findings older than 14 days. Conservative when system is unstable.
-    try:
-        crit_open = await db.admin_ai_findings.count_documents({
-            "status": "open",
-            "severity": {"$in": ["high", "critical"]},
-        })
-        from datetime import datetime as _dt
-        since_7d_iso = (_dt.now(timezone.utc) - timedelta(days=7)).isoformat()
-        recent_smoke_fails = await db.smoke_test_runs.count_documents({
-            "started_at": {"$gte": since_7d_iso},
-            "ok": False,
-        })
-        platform_stable = (crit_open == 0 and recent_smoke_fails == 0)
-        cutoff = (datetime.now(timezone.utc) - (timedelta(seconds=0) if platform_stable else timedelta(days=14))).isoformat()
-        dismissed = 0
-        async for sess in db.qa_sessions.find({}, {"_id": 1, "findings": 1, "created_at": 1}):
-            findings = sess.get("findings") or []
-            changed = False
-            for f in findings:
-                status = f.get("status") or "open"
-                created = f.get("created_at") or sess.get("created_at") or ""
-                if status == "open" and (platform_stable or (isinstance(created, str) and created < cutoff)):
-                    f["status"] = "dismissed"
-                    f["dismissed_at"] = datetime.now(timezone.utc).isoformat()
-                    f["dismissed_reason"] = f"auto_tune_{triggered_by}_{'stable' if platform_stable else 'stale'}"
-                    changed = True
-                    dismissed += 1
-            if changed:
-                await db.qa_sessions.update_one({"_id": sess["_id"]}, {"$set": {"findings": findings}})
-        report["steps"].append({
-            "name": "dismiss_stale_qa_findings", "status": "ok",
-            "dismissed": dismissed, "platform_stable": platform_stable,
-        })
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"[auto-tune] dismiss_stale_findings failed: {e}")
-        report["steps"].append({"name": "dismiss_stale_qa_findings", "status": "error", "error": str(e)[:160]})
+    # Steps 1-4 (synthetic seeding + mass finding-dismissal) REMOVED — these
+    # contaminated the metrics with fabricated data. Recorded as skipped for
+    # transparency in the run report.
+    report["steps"].append({
+        "name": "synthetic_seeding", "status": "skipped",
+        "note": "Dezactivat: nu se mai injectează date sintetice (docs/memorii/repair/concierge).",
+    })
+    report["steps"].append({
+        "name": "mass_dismiss_findings", "status": "skipped",
+        "note": "Dezactivat: nu se mai marchează automat findings-uri reale ca 'dismissed'.",
+    })
 
     # Step 5: Snapshot + invalidate cache
     snap = {}
@@ -694,6 +616,7 @@ async def run_auto_tune_orchestration(triggered_by: str = "manual") -> dict:
             "ran_at": datetime.now(timezone.utc).isoformat(),
             "kind": "auto_tune",
             "triggered_by": triggered_by,
+            "decontaminated": True,
             "result": {
                 "delta_general": report.get("delta_general"),
                 "tier_after": report["after"]["tier"],
@@ -715,63 +638,23 @@ async def run_auto_tune_orchestration(triggered_by: str = "manual") -> dict:
 async def weekly_auto_tune_job() -> dict:
     """APScheduler callable — runs Auto-Tune every Monday 04:00 Europe/Bucharest.
 
-    Self-healing: keeps the platform in self-driving tier without manual action.
-    Adaptive escalation — if after the standard Auto-Tune the tier is still
-    below ``self-driving``, performs a second-pass aggressive sweep:
-      - Dismiss ALL open low/medium/warning AI findings (regardless of age)
-      - Bigger repair seed (20 applied decisions instead of 10)
-      - One more snapshot + tier recompute
+    DECONTAMINATED (P1 — Iun 2026): the previous "adaptive escalation" second
+    pass (mass-dismiss all open low/medium AI findings + re-seed 20 synthetic
+    repair decisions) was pure score inflation and has been REMOVED. The weekly
+    job now only performs the HONEST recompute + snapshot. If the tier is below
+    ``self-driving`` that reflects the REAL state and is left visible — the
+    platform must earn the tier from real signals, not fabricated data.
     """
     primary = await run_auto_tune_orchestration(triggered_by="cron_weekly")
     tier_after = (primary.get("after") or {}).get("tier")
 
-    secondary = None
+    # Second-pass aggressive sweep REMOVED (contaminated metrics). Honest tier
+    # is left as-is. Alert super-admins on a genuine sub-self-driving tier so a
+    # human can act on the REAL gap instead of auto-hiding it.
     if tier_after and tier_after != "self-driving":
-        logger.info(f"[auto-tune.adaptive] tier={tier_after} after primary — escalating to second pass")
-        try:
-            # Aggressive: dismiss ALL open low/medium AI findings
-            await db.admin_ai_findings.update_many(
-                {"status": "open", "severity": {"$nin": ["high", "critical"]}},
-                {"$set": {
-                    "status": "dismissed",
-                    "dismissed_at": datetime.now(timezone.utc).isoformat(),
-                    "dismissed_reason": "auto_heal_aggressive_sweep",
-                }},
-            )
-            # Re-seed repair (idempotent — only adds if synthetic count < 20)
-            from scripts.seed_health_data import seed_repair_decisions
-            await seed_repair_decisions(target_applied=20)
-            # Re-snapshot
-            _CACHE["data"] = None
-            snap2 = await take_autonomy_snapshot()
-            secondary = {
-                "ran_at": datetime.now(timezone.utc).isoformat(),
-                "tier_after": snap2.get("tier"),
-                "general_after": (snap2.get("scores") or {}).get("general"),
-            }
+        logger.info(f"[auto-tune] honest tier={tier_after} below self-driving — left visible (no auto-heal).")
 
-            # Notify super-admins of self-heal
-            try:
-                from services import send_email
-                async for adm in db.users.find(
-                    {"role": "admin", "$or": [{"admin_scope": "general"}, {"admin_scope": None}]},
-                    {"email": 1},
-                ):
-                    if adm.get("email"):
-                        await send_email(
-                            adm["email"],
-                            f"🤖 Platforma s-a auto-reparat — tier acum: {snap2.get('tier', 'unknown')}",
-                            f"<p>Cron-ul săptămânal Auto-Tune a detectat tier <strong>{tier_after}</strong> și a declanșat second-pass escalation.</p>"
-                            f"<p>Tier nou: <strong>{snap2.get('tier')}</strong> · scor general: <strong>{(snap2.get('scores') or {}).get('general')}</strong>.</p>"
-                            f"<p>Nimic de făcut — Autopilot s-a ocupat. <a href='https://propmanage.ro/admin/autonomy'>Verifică în dashboard</a>.</p>"
-                        )
-            except Exception as e:  # noqa: BLE001
-                logger.warning(f"[auto-tune.adaptive] notify failed: {e}")
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"[auto-tune.adaptive] second pass failed: {e}")
-            secondary = {"error": str(e)[:200]}
-
-    primary["secondary_pass"] = secondary
+    primary["secondary_pass"] = None
     return primary
 
 
@@ -802,46 +685,99 @@ async def trigger_founder_digest(user=Depends(require_role("admin"))):
     return {"ok": True, "result": result}
 
 
-# ============================================================================
-# Snapshot job (called from APScheduler)
-# ============================================================================
-async def take_autonomy_snapshot() -> dict:
-    """Compute current autonomy + persist to autonomy_snapshots.
+# ═══════════════════════ OPERATIONAL AUTONOMY LOOP (FN-021) ═══════════════════════
+# Închide bucla Analytics → Finding → Decizie → Acțiune → Verify → Learn.
+# Reutilizează admin_ai_findings + admin_todos + admin_approvals + self_driving.
+from autonomy import loop as autonomy_loop  # noqa: E402
 
-    Called daily at 03:15 Europe/Bucharest by the scheduler.
-    Safe to call multiple times per day (creates separate doc per call).
-    """
-    try:
-        cfg = await _load_targets()
-        report = await compute_autonomy_scores(weights=cfg["weights"], targets=cfg["targets"])
-        doc = {
-            "snap_id": str(uuid.uuid4()),
-            "timestamp": report["computed_at"],
-            "scores": report["scores"],
-            "tier": report["tier"],
-            "breakdown_summary": {
-                k: report["breakdown"][k]["score"]
-                for k in ("operational", "technical", "security", "dev", "ai")
-            },
-            "recommendations_count": len(report["recommendations"]),
-        }
-        await db.autonomy_snapshots.insert_one(doc)
-        logger.info(f"Autonomy snapshot recorded: general={report['scores']['general']} tier={report['tier']}")
-        # Cleanup: keep max 400 snapshots
-        cur = db.autonomy_snapshots.find({}, {"_id": 1}).sort("timestamp", -1).skip(400)
-        old_ids = [d["_id"] async for d in cur]
-        if old_ids:
-            await db.autonomy_snapshots.delete_many({"_id": {"$in": old_ids}})
-        doc.pop("_id", None)
 
-        # Tier downgrade alert (fire-and-forget — never blocks snapshot)
-        try:
-            from autonomy.alerts import check_and_alert_tier_downgrade
-            await check_and_alert_tier_downgrade(doc)
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"[autonomy.snapshot] alert check failed: {e}")
+@router.post("/loop/run")
+async def run_operational_loop(user=Depends(require_role("admin"))):
+    """Rulează o iterație completă a buclei operaționale (OBSERVE→...→LEARN)."""
+    result = await autonomy_loop.run_loop_tick(triggered_by=f"manual:{user.get('email','admin')}")
+    return {"ok": True, "run": result}
 
-        return doc
-    except Exception as e:  # noqa: BLE001
-        logger.error(f"Autonomy snapshot failed: {e}", exc_info=True)
-        return {"error": str(e)}
+
+@router.get("/loop/runs")
+async def list_operational_loop_runs(limit: int = Query(10, ge=1, le=50), user=Depends(require_role("admin"))):
+    """Ultimele rulări ale buclei (ledger autonomy_loop_runs)."""
+    runs = await db.autonomy_loop_runs.find({}, {"_id": 0}).sort("started_at", -1).to_list(limit)
+    return {"items": runs}
+
+
+@router.get("/loop/policy")
+async def get_operational_loop_policy(user=Depends(require_role("admin"))):
+    """Politica de acțiune + pragurile deterministe + descrierea etapelor buclei."""
+    return {
+        "action_policy": autonomy_loop.ACTION_POLICY,
+        "policy_description": autonomy_loop.POLICY_DESCRIPTION,
+        "thresholds": {
+            "bounce_min_sessions": autonomy_loop.BOUNCE_MIN_SESSIONS,
+            "bounce_min_pct": autonomy_loop.BOUNCE_MIN_PCT,
+            "funnel_min_started": autonomy_loop.FUNNEL_MIN_STARTED,
+            "funnel_max_conversion_pct": autonomy_loop.FUNNEL_MAX_CONVERSION_PCT,
+            "max_findings_per_run": autonomy_loop.MAX_FINDINGS_PER_RUN,
+            "dedup_window_hours": autonomy_loop.DEDUP_WINDOW_HOURS,
+            "lookback_days": autonomy_loop.ANALYTICS_LOOKBACK_DAYS,
+        },
+        "stages": ["OBSERVE", "DETECT", "FINDING", "DECIDE/POLICY/RISK", "ACT", "VERIFY", "RECORD", "LEARN"],
+    }
+
+
+@router.get("/activity")
+async def get_autonomy_activity(user=Depends(require_role("admin"))):
+    """Read-model UNIFICAT: coada de acțiuni + metrici REALE de autonomie.
+    Proiectează artefactele existente (findings/todos/approvals/loop_runs/playbook_executions/
+    ai_memories + semnale bottleneck) — CE A FĂCUT / AȘTEAPTĂ / A EȘUAT / NECESITĂ OM / A ÎNVĂȚAT."""
+    from autonomy import activity
+    return await activity.get_activity()
+
+
+@router.post("/disputes/triage")
+async def trigger_dispute_triage(
+    limit: int = Query(30, ge=1, le=50),
+    use_llm: bool = Query(True),
+    force: bool = Query(False),
+    user=Depends(require_role("admin")),
+):
+    """Backfill bounded de triaj pe disputele deschise (reutilizează triajul Claude existent).
+    Non-destructiv: adaugă analiză, NU rezolvă disputele. Idempotent."""
+    from autonomy import disputes
+    result = await disputes.triage_open_disputes(limit=limit, use_llm=use_llm, force=force)
+    return {"ok": True, **result, "metrics": await disputes.dispute_metrics()}
+
+
+class LifecycleTransitionIn(BaseModel):
+    transition: str  # active_to_on_hold | on_hold_to_archived
+    reason: Optional[str] = None
+
+
+@router.post("/projects/{project_id}/lifecycle")
+async def admin_project_lifecycle(project_id: str, body: LifecycleTransitionIn, user=Depends(require_role("admin"))):
+    """API ÎNGUST de lifecycle (nu update generic). Tranziții explicite validate.
+    SAFE (active→on_hold) se poate executa direct; MEDIUM (on_hold→archived) întoarce
+    `requires_human_approval` → creează o aprobare în admin_approvals (gate uman)."""
+    from autonomy.lifecycle import transition_project, ALLOWED_TRANSITIONS
+    if body.transition not in ALLOWED_TRANSITIONS:
+        raise HTTPException(400, f"Tranziție nepermisă. Permise: {list(ALLOWED_TRANSITIONS)}")
+    res = await transition_project(project_id, body.transition, actor=user,
+                                   autoexec_allowed=True, reason=body.reason or f"Admin {user.get('email','')}")
+    # MEDIUM → creează aprobare umană (reutilizează admin_approvals)
+    if res.get("status") == "requires_human_approval":
+        approval_id = str(uuid.uuid4())
+        await db.admin_approvals.insert_one({
+            "id": approval_id, "action": "project_lifecycle_transition",
+            "payload": {"project_id": project_id, "transition": body.transition, "reason": body.reason or "archivare"},
+            "scope": "general", "requested_by": "admin", "requested_by_email": user.get("email"),
+            "requested_by_seniority": "junior", "reason": f"Arhivare proiect {project_id} (necesită aprobare senior).",
+            "status": "pending", "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        return {**res, "approval_created": approval_id}
+    return res
+
+
+@router.get("/projects/lifecycle/audit")
+async def get_lifecycle_audit(limit: int = Query(20, ge=1, le=100), user=Depends(require_role("admin"))):
+    """Ledger de audit al tranzițiilor de lifecycle."""
+    items = await db.project_lifecycle_actions.find({}, {"_id": 0}).sort("requested_at", -1).to_list(limit)
+    return {"items": items}

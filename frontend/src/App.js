@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -8,21 +8,33 @@ import {
   Activity, Layers, Cpu, Award, MessageSquare, Camera, Bell, Plus, Minus, Languages, LogIn, LogOut, LayoutDashboard, ShieldCheck
 } from "lucide-react";
 import { AuthProvider, useAuth } from "./auth";
+import { ServiceGate } from "./components/ServiceGate";
+import { Toaster } from "sonner";
+import { EntitlementToast } from "./components/EntitlementToast";
 import { I18nProvider, useI18n } from "./i18n";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { DesignTokensProvider } from "./contexts/DesignTokensProvider";
 import { useABTest } from "./ab";
 import { LoginPage, RegisterPage } from "./pages/Auth";
 import { EmailVerifyPage } from "./pages/EmailVerifyPage";
-import { ClientRequestOffersPage } from "./pages/ClientRequestOffersPage";
-import { PremiumProfileEditorPage } from "./pages/PremiumProfileEditorPage";
+const ClientRequestOffersPage = lazy(() => import("./pages/ClientRequestOffersPage").then(m => ({ default: m.ClientRequestOffersPage })));
+const PremiumProfileEditorPage = lazy(() => import("./pages/PremiumProfileEditorPage").then(m => ({ default: m.PremiumProfileEditorPage })));
 import { CookieBanner } from "./components/CookieBanner";
+import { BetaFeedbackWidget } from "./components/BetaFeedbackWidget";
+import { AssistantDock } from "./components/AssistantDock";
 import { ThemeToggle } from "./pages/DashShared";
-import { ClientDashboard, SpecialistDashboard, AdminDashboard, OperatorDashboard } from "./pages/Dashboards";
+const SpecialistDashboard = lazy(() => import("./pages/Dashboards").then(m => ({ default: m.SpecialistDashboard })));
+const AdminDashboard = lazy(() => import("./pages/Dashboards").then(m => ({ default: m.AdminDashboard })));
+const OperatorDashboard = lazy(() => import("./pages/Dashboards").then(m => ({ default: m.OperatorDashboard })));
 import { AuthCallback } from "./pages/AuthCallback";
 import { SpecialistProfile } from "./pages/SpecialistProfile";
 import { PublicMarketplace } from "./pages/Marketplace";
 import { MarketplaceLanding } from "./pages/MarketplaceLanding";
 import { GhiduriIndex } from "./pages/GhiduriIndex";
 import { GhidPage } from "./pages/GhidPage";
+import { ProblemeIndex } from "./pages/ProblemeIndex";
+import { ProblemaPage } from "./pages/ProblemaPage";
+import { DesignInteriorPage } from "./pages/DesignInteriorPage";
 import { HelpPage } from "./pages/HelpPage";
 import { ProjectWorkspace } from "./pages/ProjectWorkspace";
 import { PaymentSuccess } from "./pages/PaymentSuccess";
@@ -31,154 +43,167 @@ import { RoleTour } from "./pages/RoleTour";
 import { AIConciergeBubble } from "./components/AIConciergeBubble";
 import { BookDemoModal } from "./pages/BookDemoModal";
 import { LandingDemo3D } from "./components/LandingDemo3D";
-import { PublicDemoPage } from "./pages/PublicDemoPage";
-import { AdminAuthHealthPage } from "./pages/admin/AdminAuthHealthPage";
-import { AdminSupportInboxPage } from "./pages/admin/AdminSupportInboxPage";
+const PublicDemoPage = lazy(() => import("./pages/PublicDemoPage").then(m => ({ default: m.PublicDemoPage })));
+const AdminAuthHealthPage = lazy(() => import("./pages/admin/AdminAuthHealthPage").then(m => ({ default: m.AdminAuthHealthPage })));
+const ResearchCoveragePage = lazy(() => import("./pages/admin/ResearchCoveragePage"));
+const AdminSupportInboxPage = lazy(() => import("./pages/admin/AdminSupportInboxPage").then(m => ({ default: m.AdminSupportInboxPage })));
 import { PrivacyPage, TermsPage, CookiePolicyPage } from "./pages/LegalPages";
-import { TrustCenterPage } from "./pages/TrustCenterPage";
-import { PrivacyNoticesPage } from "./pages/PrivacyNoticesPage";
-import { StatusPage } from "./pages/StatusPage";
-import ComponentsV2 from "./pages/ComponentsV2";
-import CommunityPage from "./pages/CommunityPage";
+const TrustCenterPage = lazy(() => import("./pages/TrustCenterPage").then(m => ({ default: m.TrustCenterPage })));
+const PrivacyNoticesPage = lazy(() => import("./pages/PrivacyNoticesPage").then(m => ({ default: m.PrivacyNoticesPage })));
+const StatusPage = lazy(() => import("./pages/StatusPage").then(m => ({ default: m.StatusPage })));
+const DesignSystemShowcase = lazy(() => import("./pages/DesignSystemShowcase"));
+const CommunityPage = lazy(() => import("./pages/CommunityPage"));
 import { GDPRAuditBadge } from "./components/GDPRAuditBadge";
 import { TrustStrip } from "./components/TrustStrip";
-import DigitalTwinPage from "./pages/DigitalTwinPage";
-import ReportApprovalPage from "./pages/ReportApprovalPage";
-import KYCPage from "./pages/KYCPage";
-import { EstateBrowse } from "./pages/verified-estate/EstateBrowse";
-import { EstateDetail } from "./pages/verified-estate/EstateDetail";
-import { SellMyProperty } from "./pages/verified-estate/SellMyProperty";
-import { VerifiedEstateAdmin } from "./pages/verified-estate/VerifiedEstateAdmin";
-import WhyUsPage from "./pages/WhyUsPage";
-import AdminSettingsControl from "./pages/admin/AdminSettingsControl";
-import AdminDocumentation from "./pages/admin/AdminDocumentation";
-import QACopilotPage from "./pages/admin/QACopilotPage";
-import AIControlCenterPage from "./pages/admin/AIControlCenterPage";
-import DocsAIPage from "./pages/DocsAIPage";
-import AIDevTeamPage from "./pages/admin/AIDevTeamPage";
-import AISecurityCenterPage from "./pages/admin/AISecurityCenterPage";
-import AutonomyEnginePage from "./pages/admin/AutonomyEnginePage";
-import TwinPage from "./pages/admin/TwinPage";
-import AdminHouseHealthPage from "./pages/admin/AdminHouseHealthPage";
-import HouseHealthPage from "./pages/HouseHealthPage";
-import HouseHealthUpgradePage, { HouseHealthUpgradeSuccess } from "./pages/HouseHealthUpgradePage";
-import AdminTodoBoard from "./pages/admin/AdminTodoBoard";
-import ExperienceSpacesPage from "./pages/admin/ExperienceSpacesPage";
-import FutureIdeasVault from "./pages/admin/FutureIdeasVault";
-import FounderGatePage from "./pages/admin/FounderGatePage";
-import AIGovernancePage from "./pages/admin/AIGovernancePage";
-import BugMemoryAggregatorPage from "./pages/admin/BugMemoryAggregatorPage";
-import ArchitectureBoardPage from "./pages/admin/ArchitectureBoardPage";
-import AIProductManagerPage from "./pages/admin/AIProductManagerPage";
-import OperatingManualPage from "./pages/admin/OperatingManualPage";
-import ExperienceTiersPage from "./pages/admin/ExperienceTiersPage";
-import FeatureConfiguratorPage from "./pages/admin/FeatureConfiguratorPage";
-import SpecialistProgressionPage from "./pages/admin/SpecialistProgressionPage";
-import BIMoePage from "./pages/admin/BIMoePage";
-import ContractPage from "./pages/ContractPage";
+const DigitalTwinPage = lazy(() => import("./pages/DigitalTwinPage"));
+const ReportApprovalPage = lazy(() => import("./pages/ReportApprovalPage"));
+const KYCPage = lazy(() => import("./pages/KYCPage"));
+const EstateBrowse = lazy(() => import("./pages/verified-estate/EstateBrowse").then(m => ({ default: m.EstateBrowse })));
+const EstateDetail = lazy(() => import("./pages/verified-estate/EstateDetail").then(m => ({ default: m.EstateDetail })));
+const SellMyProperty = lazy(() => import("./pages/verified-estate/SellMyProperty").then(m => ({ default: m.SellMyProperty })));
+const VerifiedEstateAdmin = lazy(() => import("./pages/verified-estate/VerifiedEstateAdmin").then(m => ({ default: m.VerifiedEstateAdmin })));
+const WhyUsPage = lazy(() => import("./pages/WhyUsPage"));
+const AdminSettingsControl = lazy(() => import("./pages/admin/AdminSettingsControl"));
+const AdminDocumentation = lazy(() => import("./pages/admin/AdminDocumentation"));
+const QACopilotPage = lazy(() => import("./pages/admin/QACopilotPage"));
+const AIControlCenterPage = lazy(() => import("./pages/admin/AIControlCenterPage"));
+const DocsAIPage = lazy(() => import("./pages/DocsAIPage"));
+const AIDevTeamPage = lazy(() => import("./pages/admin/AIDevTeamPage"));
+const AISecurityCenterPage = lazy(() => import("./pages/admin/AISecurityCenterPage"));
+const AutonomyEnginePage = lazy(() => import("./pages/admin/AutonomyEnginePage"));
+const AutonomyOrchestratorPage = lazy(() => import("./pages/admin/AutonomyOrchestratorPage"));
+const ConstructionIntelligencePage = lazy(() => import("./pages/admin/ConstructionIntelligencePage"));
+const ControlTowerPage = lazy(() => import("./pages/admin/ControlTowerPage"));
+const TwinPage = lazy(() => import("./pages/admin/TwinPage"));
+const AdminHouseHealthPage = lazy(() => import("./pages/admin/AdminHouseHealthPage"));
+const ManualTesterPage = lazy(() => import("./pages/admin/ManualTesterPage"));
+const HouseHealthPage = lazy(() => import("./pages/HouseHealthPage"));
+const HouseHealthUpgradeLazy = lazy(() => import("./pages/HouseHealthUpgradePage"));
+const PricingPageLazy = lazy(() => import("./pages/PricingPage"));
+const HouseHealthUpgradeSuccessLazy = lazy(() => import("./pages/HouseHealthUpgradePage").then(m => ({ default: m.HouseHealthUpgradeSuccess })));
+const AdminTodoBoard = lazy(() => import("./pages/admin/AdminTodoBoard"));
+const ExperienceSpacesPage = lazy(() => import("./pages/admin/ExperienceSpacesPage"));
+const FutureIdeasVault = lazy(() => import("./pages/admin/FutureIdeasVault"));
+const FounderGatePage = lazy(() => import("./pages/admin/FounderGatePage"));
+const AIGovernancePage = lazy(() => import("./pages/admin/AIGovernancePage"));
+const DesignAuditPage = lazy(() => import("./pages/admin/DesignAuditPage"));
+const DesignStudioPage = lazy(() => import("./pages/admin/DesignStudioPage"));
+const DesignIntelligencePage = lazy(() => import("./pages/admin/DesignIntelligencePage"));
+const PlatformRoadmapPage = lazy(() => import("./pages/admin/PlatformRoadmapPage"));
+const CommandCenterPage = lazy(() => import("./pages/admin/CommandCenterPage"));
+const BusinessHealthPage = lazy(() => import("./pages/admin/BusinessHealthPage"));
+const MarketplaceIntelPage = lazy(() => import("./pages/admin/MarketplaceIntelPage"));
+const FinancialCockpitPage = lazy(() => import("./pages/admin/FinancialCockpitPage"));
+const AutomationCenterPage = lazy(() => import("./pages/admin/AutomationCenterPage"));
+const CEODashboardPage = lazy(() => import("./pages/admin/CEODashboardPage"));
+const FirstRevenueWarRoom = lazy(() => import("./pages/admin/FirstRevenueWarRoom"));
+const BetaCockpitPage = lazy(() => import("./pages/admin/BetaCockpitPage"));
+const BetaIssuesPage = lazy(() => import("./pages/admin/BetaIssuesPage"));
+const CapabilityEditorPage = lazy(() => import("./pages/CapabilityEditorPage"));
+const OperationsCenter = lazy(() => import("./pages/admin/OperationsCenter"));
+const KnowledgeCenter = lazy(() => import("./pages/admin/KnowledgeCenter"));
+const EnterpriseExplorer = lazy(() => import("./pages/admin/EnterpriseExplorer"));
+const ArchitectureNavigator = lazy(() => import("./pages/admin/ArchitectureNavigator"));
+const EnterpriseHealthPage = lazy(() => import("./pages/admin/EnterpriseHealthPage"));
+const RepairCenterPage = lazy(() => import("./pages/admin/RepairCenterPage"));
+const AIBrainPage = lazy(() => import("./pages/admin/AIBrainPage"));
+const PropBenefitsAdminPage = lazy(() => import("./pages/admin/PropBenefitsAdminPage"));
+const StorageAdminPage = lazy(() => import("./pages/admin/StorageAdminPage"));
+const ServiceProvidersPage = lazy(() => import("./pages/ServiceProvidersPage"));
+const CeoBriefingPage = lazy(() => import("./pages/admin/CeoBriefingPage"));
+const EvolutionCouncilPage = lazy(() => import("./pages/admin/EvolutionCouncilPage"));
+const HealthScorePage = lazy(() => import("./pages/growth/HealthScorePage"));
+const PublicPassportPage = lazy(() => import("./pages/PublicPassportPage"));
+const BuyingChecklistPage = lazy(() => import("./pages/growth/BuyingChecklistPage"));
+const NotificationCenterPage = lazy(() => import("./pages/admin/NotificationCenterPage"));
+const UserTimelinePage = lazy(() => import("./pages/admin/UserTimelinePage"));
+const AISearchPage = lazy(() => import("./pages/admin/AISearchPage"));
+const InteriorDesignLanding = lazy(() => import("./pages/InteriorDesignLanding"));
+const InteriorDesignAdminPage = lazy(() => import("./pages/admin/InteriorDesignAdminPage"));
+const MenuManagerPage = lazy(() => import("./pages/admin/MenuManagerPage"));
+const PageRegistryPage = lazy(() => import("./pages/admin/PageRegistryPage"));
+const ConfigIOPage = lazy(() => import("./pages/admin/ConfigIOPage"));
+const XOSBuilderPage = lazy(() => import("./pages/admin/XOSBuilderPage"));
+const ServiceHubLanding = lazy(() => import("./pages/ServiceHubLanding"));
+const FranchiseDashboard = lazy(() => import("./pages/FranchiseDashboard"));
+const FranchiseApplyPage = lazy(() => import("./pages/FranchiseApplyPage"));
+const SpecialistApplyPage = lazy(() => import("./pages/SpecialistApplyPage"));
+const UIRulesPage = lazy(() => import("./pages/admin/UIRulesPage"));
+const ContentManagerPage = lazy(() => import("./pages/admin/ContentManagerPage"));
+const BugMemoryAggregatorPage = lazy(() => import("./pages/admin/BugMemoryAggregatorPage"));
+const ArchitectureBoardPage = lazy(() => import("./pages/admin/ArchitectureBoardPage"));
+const AIProductManagerPage = lazy(() => import("./pages/admin/AIProductManagerPage"));
+const OperatingManualPage = lazy(() => import("./pages/admin/OperatingManualPage"));
+const ExperienceTiersPage = lazy(() => import("./pages/admin/ExperienceTiersPage"));
+const FeatureConfiguratorPage = lazy(() => import("./pages/admin/FeatureConfiguratorPage"));
+const SpecialistProgressionPage = lazy(() => import("./pages/admin/SpecialistProgressionPage"));
+const BIMoePage = lazy(() => import("./pages/admin/BIMoePage"));
+const AnalyticsGrowthPage = lazy(() => import("./pages/admin/AnalyticsGrowthPage"));
+const FunctionMap = lazy(() => import("./pages/admin/FunctionMap"));
+const GrowthIntelligencePage = lazy(() => import("./pages/admin/GrowthIntelligencePage"));
+const LeadIntelligencePage = lazy(() => import("./pages/admin/LeadIntelligencePage"));
+const MarketingIntelligencePage = lazy(() => import("./pages/admin/MarketingIntelligencePage"));
+const LearningEnginePage = lazy(() => import("./pages/admin/LearningEnginePage"));
+const ITCollaboratorsHubPage = lazy(() => import("./pages/admin/ITCollaboratorsHubPage"));
+const ITCopilotPage = lazy(() => import("./pages/admin/ITCopilotPage"));
+const LegalAuditPage = lazy(() => import("./pages/admin/LegalAuditPage"));
+const LegalSignPage = lazy(() => import("./pages/LegalSignPage"));
+import LegalGate from "./components/LegalGate";
+const CityPartnersPage = lazy(() => import("./pages/admin/CityPartnersPage"));
+const CityPartnerProductsPage = lazy(() => import("./pages/admin/CityPartnerProductsPage"));
+const CityPartnerDetailPage = lazy(() => import("./pages/admin/CityPartnerDetailPage"));
+const MarketplacePartnersPage = lazy(() => import("./pages/admin/MarketplacePartnersPage"));
+const StrategicPartnersDashboard = lazy(() => import("./pages/admin/StrategicPartnersDashboard"));
+const MarketingDepartmentPage = lazy(() => import("./pages/admin/MarketingDepartmentPage"));
+const DemoAccountsPage = lazy(() => import("./pages/admin/DemoAccountsPage"));
+const AdminAccountsPage = lazy(() => import("./pages/admin/AdminAccountsPage"));
+const DemoActivityPage = lazy(() => import("./pages/admin/DemoActivityPage"));
+const PartnerDashboard = lazy(() => import("./pages/partner/PartnerDashboard"));
+const MarketplacePartnerPortal = lazy(() => import("./pages/partner/MarketplacePartnerPortal"));
+const ClientJuniorDashboard = lazy(() => import("./pages/dashboard/ClientJuniorDashboard"));
+const ClientDashboardV2 = lazy(() => import("./pages/clientv2/ClientDashboardV2"));
+const AdministratorWorkspace = lazy(() => import("./pages/AdministratorWorkspace"));
+const ContractPage = lazy(() => import("./pages/ContractPage"));
+const PreturiIndex = lazy(() => import("./pages/PreturiIndex"));
+const PreturiPage = lazy(() => import("./pages/PreturiPage"));
 import { trackPageView } from "@/lib/analytics";
 import { useDynamicSEO } from "@/lib/useDynamicSEO";
+import { HOUSE_HEALTH_AXIS, AXIS_DISCLAIMER } from "@/lib/houseHealthAxis";
 
 const AnalyticsRouteTracker = () => {
   const location = useLocation();
   React.useEffect(() => {
     trackPageView(location.pathname + location.search);
+    // AI Brain · Navigation Context (doar utilizatori autentificați, fire-and-forget)
+    if (localStorage.getItem("pm_session_hint")) {
+      fetch(`${process.env.REACT_APP_BACKEND_URL}/api/ai-brain/navigation`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: location.pathname }),
+      }).catch(() => {});
+    }
   }, [location.pathname, location.search]);
+  React.useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
   return null;
 };
 import { ImpersonationBanner } from "./components/ImpersonationBanner";
+import { ExplainThis } from "./components/ExplainThis";
+import { RoleThemeApplier } from "./components/RoleThemeApplier";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import SiteNav from "./components/SiteNav";
+import AnnouncementBanner from "./components/AnnouncementBanner";
+import { useSiteContent } from "./lib/siteContent";
 import "./App.css";
 
-// ============= NAV =============
-const Nav = () => {
-  const [scrolled, setScrolled] = useState(false);
-  const { user, logout } = useAuth();
-  const { lang, toggle, t } = useI18n();
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  const handleLogout = async () => {
-    try { await logout(); } catch (_) { /* ignore */ }
-    window.location.href = "/";
-  };
-
-  const links = [
-    { href: "#problem", label: t("nav.problem") },
-    { href: "#solution", label: t("nav.solution") },
-    { href: "#journey", label: t("nav.journey") },
-    { href: "#twin", label: t("nav.twin") },
-    { href: "/marketplace", label: "Marketplace", external: true },
-    { href: "/community", label: "Comunitate", external: true },
-    { href: "/imobile-verificate", label: "Imobile Verificate", external: true },
-    { href: "/de-ce-noi", label: "De ce noi?", external: true },
-  ];
-
-  return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? "py-3" : "py-6"}`}>
-      <div className={`max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-2 ${scrolled ? "glass-strong rounded-full sm:mx-6 sm:px-6" : ""}`}>
-        <a href="#top" className="flex items-center gap-2" data-testid="nav-logo">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#d4ff3a] to-[#a8e028] flex items-center justify-center">
-            <Building2 className="w-4 h-4 text-black" strokeWidth={2.5} />
-          </div>
-          <span className="font-serif text-lg sm:text-xl font-semibold tracking-tight">PropManage</span>
-        </a>
-        <div className="hidden lg:flex items-center gap-6 xl:gap-8">
-          {links.map(l => l.external ? (
-            <Link key={l.href} to={l.href} className="text-sm text-stone-400 hover:text-white transition-colors" data-testid={`nav-${l.label}`}>
-              {l.label}
-            </Link>
-          ) : (
-            <a key={l.href} href={l.href} className="text-sm text-stone-400 hover:text-white transition-colors" data-testid={`nav-${l.label}`}>
-              {l.label}
-            </a>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={toggle} className="flex items-center gap-1 px-2 sm:px-3 py-1.5 hover:bg-white/5 rounded-full text-xs uppercase tracking-wider text-stone-300" data-testid="lang-toggle">
-            <Languages className="w-3.5 h-3.5" />{lang.toUpperCase()}
-          </button>
-          {user && user !== false && user.role === "admin" && (
-            <Link
-              to="/admin"
-              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-semibold bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30 transition-colors"
-              data-testid="nav-admin"
-              title="Panou Admin"
-            >
-              <ShieldCheck className="w-3.5 h-3.5" /><span className="hidden sm:inline">Admin</span>
-            </Link>
-          )}
-          {user && user !== false ? (
-            <>
-              <Link to={`/${user.role}`} className="btn-accent px-3 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium inline-flex items-center gap-1.5" data-testid="nav-dashboard">
-                <LayoutDashboard className="w-3.5 h-3.5" /><span className="hidden sm:inline">{t("nav.dashboard")}</span>
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium bg-white/5 hover:bg-white/10 text-stone-300 border border-white/10 transition-colors"
-                data-testid="nav-logout"
-                title="Deconectare"
-              >
-                <LogOut className="w-3.5 h-3.5" /><span className="hidden sm:inline">Logout</span>
-              </button>
-            </>
-          ) : (
-            <Link to="/login" className="btn-accent px-3 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium inline-flex items-center gap-1.5" data-testid="nav-login">
-              <LogIn className="w-3.5 h-3.5" /><span className="hidden sm:inline">{t("nav.login")}</span>
-            </Link>
-          )}
-        </div>
-      </div>
-    </nav>
-  );
-};
+const Nav = () => <SiteNav />;
 
 // ============= HERO =============
 const Hero = () => {
   const { t } = useI18n();
+  const siteContent = useSiteContent();
+  const heroOv = siteContent?.hero || {};
   const { variant, trackClick } = useABTest("hero_cta1");
   const { variant: variant2, trackClick: trackClick2 } = useABTest("hero_cta2");
   const ctaText = t(`hero.cta1.variant_${variant}`) || t("hero.cta1");
@@ -199,20 +224,20 @@ const Hero = () => {
         <TrustStrip className="mb-8" />
         
         <h1 className="font-serif text-6xl md:text-8xl lg:text-9xl leading-[0.95] tracking-tight mb-8 max-w-5xl" data-testid="hero-title">
-          {t("hero.title1")}<br/>
-          <span className="italic gradient-text">{t("hero.title2")}</span> {t("hero.title3")}
+          {heroOv.title1 || t("hero.title1")}<br/>
+          <span className="italic gradient-text">{heroOv.title2 || t("hero.title2")}</span> {heroOv.title3 || t("hero.title3")}
         </h1>
         
         <p className="text-lg md:text-xl text-stone-400 max-w-2xl mb-10 leading-relaxed">
-          {t("hero.subtitle")}
+          {heroOv.subtitle || t("hero.subtitle")}
         </p>
         
         <div className="flex flex-col sm:flex-row gap-4">
-          <a href="#problem" onClick={trackClick} className="btn-accent px-8 py-4 rounded-full font-medium inline-flex items-center gap-2 group" data-testid="hero-start-btn" data-ab-variant={variant}>
+          <Link to="/register" onClick={trackClick} className="btn-accent px-8 py-4 rounded-full font-medium inline-flex items-center justify-center gap-2 group" data-testid="hero-start-btn" data-ab-variant={variant}>
             {ctaText}
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </a>
-          <a href="#journey" onClick={trackClick2} className="glass px-8 py-4 rounded-full font-medium inline-flex items-center gap-2 hover:bg-white/10 transition-colors" data-testid="hero-journey-btn" data-ab-variant={variant2}>
+          </Link>
+          <a href="#journey" onClick={trackClick2} className="glass px-8 py-4 rounded-full font-medium inline-flex items-center justify-center gap-2 hover:bg-white/10 transition-colors" data-testid="hero-journey-btn" data-ab-variant={variant2}>
             <Play className="w-4 h-4" />
             {cta2Text}
           </a>
@@ -225,14 +250,14 @@ const Hero = () => {
         className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-8 pt-12 border-t border-white/5"
       >
         {[
-          { v: "12,842", l: t("hero.stat1") },
-          { v: "856", l: t("hero.stat2") },
-          { v: "142", l: t("hero.stat3") },
-          { v: "94%", l: t("hero.stat4") },
+          { v: "Plăți protejate", l: t("hero.stat1") },
+          { v: "Specialiști verificați", l: t("hero.stat2") },
+          { v: "Garanție inclusă", l: t("hero.stat3") },
+          { v: "Istoric permanent", l: t("hero.stat4") },
         ].map((s, i) => (
           <div key={i} data-testid={`hero-stat-${i}`}>
-            <div className="font-serif text-4xl md:text-5xl font-medium">{s.v}</div>
-            <div className="text-xs uppercase tracking-wider text-stone-500 mt-2">{s.l}</div>
+            <div className="font-serif text-2xl md:text-3xl font-medium">{s.v}</div>
+            <div className="text-xs text-stone-500 mt-2 leading-relaxed">{s.l}</div>
           </div>
         ))}
       </motion.div>
@@ -345,6 +370,65 @@ const Solution = () => {
               <p className="text-sm text-stone-400 leading-relaxed">{p.desc}</p>
             </motion.div>
           ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+// ============= HOUSE HEALTH A→G (Harta casei) =============
+const HouseHealthAxisLanding = () => {
+  return (
+    <section id="house-health-axis" className="py-32 px-6 relative">
+      <div className="absolute inset-0 dotted-bg opacity-10" />
+      <div className="max-w-7xl mx-auto relative">
+        <SectionTag num="A→G" label="Harta casei" />
+        <div className="grid lg:grid-cols-2 gap-16 items-start mb-16">
+          <div>
+            <h2 className="font-serif text-5xl md:text-7xl tracking-tight" data-testid="hh-axis-landing-title">
+              Sănătatea casei tale, <span className="italic">de la A la G.</span>
+            </h2>
+          </div>
+          <div className="lg:pt-10">
+            <p className="text-lg text-stone-400 leading-relaxed">
+              PropManage organizează sănătatea și starea locuinței tale în 7 capitole, de la A la G.
+              Adaugi casa, îi înțelegi starea, vezi ce lipsește, o documentezi, o îmbunătățești prin
+              specialiști verificați și vezi progresul — pas cu pas, în aceeași poveste.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {HOUSE_HEALTH_AXIS.map((c, i) => (
+            <motion.div
+              key={c.code}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: (i % 3) * 0.08 }}
+              className="glass-strong p-7 rounded-3xl group hover:border-[#d4ff3a]/30 transition-all"
+              data-testid={`hh-axis-landing-${c.code}`}
+            >
+              <div className="flex items-center gap-3 mb-5">
+                <span className="w-12 h-12 rounded-2xl bg-[#d4ff3a]/10 border border-[#d4ff3a]/20 flex items-center justify-center text-[#d4ff3a] font-serif text-2xl group-hover:bg-[#d4ff3a]/20 transition-colors">
+                  {c.code}
+                </span>
+                <span className="text-xs uppercase tracking-[0.18em] text-stone-500">{c.homepageVerb}</span>
+              </div>
+              <h3 className="font-serif text-2xl mb-2">{c.title}</h3>
+              <p className="text-sm text-stone-400 leading-relaxed">{c.why}</p>
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="mt-10 flex flex-col sm:flex-row items-start sm:items-center gap-6">
+          <a href="/register" data-testid="hh-axis-landing-cta"
+            className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-[#d4ff3a] text-black font-medium hover:scale-[1.02] transition-transform">
+            Începe cu casa ta <ChevronRight className="w-4 h-4" />
+          </a>
+          <p className="text-xs text-stone-500 leading-relaxed max-w-2xl" data-testid="hh-axis-landing-disclaimer">
+            {AXIS_DISCLAIMER}
+          </p>
         </div>
       </div>
     </section>
@@ -1445,6 +1529,10 @@ const Footer = () => {
             <Link to="/privacy" className="hover:text-white transition-colors" data-testid="footer-privacy">Confidențialitate</Link>
             <Link to="/cookies" className="hover:text-white transition-colors" data-testid="footer-cookies">Cookies</Link>
             <Link to="/trust" className="hover:text-white transition-colors" data-testid="footer-trust">Trust Center</Link>
+            <Link to="/ghiduri" className="hover:text-white transition-colors" data-testid="footer-ghiduri">Ghiduri</Link>
+            <Link to="/probleme-casa" className="hover:text-white transition-colors" data-testid="footer-probleme">Probleme casă</Link>
+            <Link to="/devino-francizat" className="hover:text-[#d4ff3a] transition-colors" data-testid="footer-franchise">Devino francizat</Link>
+            <Link to="/devino-specialist" className="hover:text-[#d4ff3a] transition-colors" data-testid="footer-specialist-apply">Devino specialist</Link>
             <Link to="/status" className="hover:text-white transition-colors inline-flex items-center gap-1" data-testid="footer-status">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Status
             </Link>
@@ -1476,6 +1564,15 @@ const Footer = () => {
             })}
           </div>
         </div>
+        <div className="border-t border-white/5 mt-6 pt-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-2" data-testid="footer-legal">
+          <p className="text-[10px] text-stone-600 leading-relaxed">
+            PropManage este un brand operat de <strong className="text-stone-500">VINTAGE FURNITURE S.R.L.</strong> · CUI 35250247 · Nr. Reg. Com. J12/3534/2015 · Aleea Negoiu nr. 8D, Ap. 25, Cluj-Napoca, jud. Cluj, 400676
+          </p>
+          <div className="flex items-center gap-4 text-[10px] text-stone-600 shrink-0">
+            <a href="https://anpc.ro/ce-este-sal/" target="_blank" rel="noopener noreferrer" className="hover:text-stone-400 transition-colors" data-testid="footer-anpc-sal">ANPC — SAL</a>
+            <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer" className="hover:text-stone-400 transition-colors" data-testid="footer-anpc-sol">SOL — Litigii online</a>
+          </div>
+        </div>
       </div>
     </footer>
   );
@@ -1501,12 +1598,14 @@ const PromoBanner = () => {
 
 // ============= LANDING PAGE =============
 const LandingPage = () => {
-  useDynamicSEO("home", { title: "PropManage · Property Operating System" });
+  useDynamicSEO("home", {
+    title: "PropManage — Cartea Digitală a Casei Tale · Documente, istoric, specialiști",
+    description: "Cartea Digitală a Casei Tale — documentele proprietății, istoricul lucrărilor, mentenanța și specialiștii verificați ai casei, într-un singur loc.",
+  });
   const { t, showSection, isPreview } = useI18n();
   const promoText = t("landing.promo_banner");
   const hasPromo = !!promoText && promoText !== "landing.promo_banner" && sessionStorage.getItem("pm_promo_dismissed") !== "1";
   const [demoOpen, setDemoOpen] = useState(false);
-  const [demoModeDismissed, setDemoModeDismissed] = useState(() => sessionStorage.getItem("pm_demo_mode_dismissed") === "1");
 
   React.useEffect(() => {
     const handler = () => setDemoOpen(true);
@@ -1515,30 +1614,15 @@ const LandingPage = () => {
   }, []);
 
   return (
-    <div className={`grain min-h-screen bg-[#0a0a0b] text-stone-100 ${(hasPromo || isPreview || !demoModeDismissed) ? "pt-9 sm:pt-10" : ""}`}>
+    <div className={`grain min-h-screen bg-[#0a0a0b] text-stone-100 ${(hasPromo || isPreview) ? "pt-9 sm:pt-10" : ""}`}>
       {isPreview && <PreviewBanner />}
-      {!isPreview && !demoModeDismissed && (
-        <div className="fixed top-0 left-0 right-0 z-[58] bg-stone-900/95 backdrop-blur border-b border-amber-500/30 text-amber-200" data-testid="demo-mode-banner">
-          <div className="flex items-center gap-2 px-3 sm:px-10 py-1.5 text-[11px] sm:text-xs">
-            <span className="opacity-80 truncate flex-1 sm:flex-none sm:text-center">
-              <span className="hidden sm:inline">🧪 Demo Mode · Plățile Stripe sunt în mod test, fără bani reali</span>
-              <span className="sm:hidden">🧪 Demo · Stripe test mode</span>
-            </span>
-            <button onClick={() => setDemoOpen(true)} className="underline hover:no-underline font-medium text-[#d4ff3a] shrink-0" data-testid="demo-mode-cta">
-              <span className="hidden sm:inline">Programează demo</span>
-              <span className="sm:hidden">Demo</span>
-            </button>
-            <button onClick={() => { sessionStorage.setItem("pm_demo_mode_dismissed", "1"); setDemoModeDismissed(true); }} className="shrink-0 w-7 h-7 -mr-1 flex items-center justify-center hover:bg-white/10 active:bg-white/15 rounded-full text-stone-300" aria-label="Închide banner demo" data-testid="demo-mode-dismiss">
-              <Minus className="w-4 h-4 rotate-45" />
-            </button>
-          </div>
-        </div>
-      )}
-      {!isPreview && demoModeDismissed && <PromoBanner />}
+      {!isPreview && <PromoBanner />}
+      <AnnouncementBanner />
       <Nav />
       <Hero />
       <Problem />
       <Solution />
+      <HouseHealthAxisLanding />
       <UserJourney />
       <SpecialistJourney />
       <WalletEcosystem />
@@ -1550,15 +1634,6 @@ const LandingPage = () => {
       {showSection("landing_show_golden_path", true) && <GoldenPath />}
       <CTA />
       <Footer />
-      {/* Sticky "Book a Demo" floating CTA (bottom-left, doesn't fight Emergent badge) */}
-      <button
-        onClick={() => setDemoOpen(true)}
-        className="fixed bottom-6 left-6 z-[55] inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#d4ff3a] text-black font-semibold text-sm shadow-2xl shadow-lime-500/30 hover:scale-105 transition-transform"
-        data-testid="floating-book-demo"
-      >
-        <Sparkles className="w-4 h-4" />
-        Programează o demonstrație
-      </button>
       <BookDemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
     </div>
   );
@@ -1572,18 +1647,39 @@ const PreviewBanner = () => (
   </div>
 );
 
+const ExplainThisMount = () => {
+  const { user } = useAuth();
+  if (!user) return null;
+  return <ExplainThis role={user.role} />;
+};
+
 // ============= MAIN APP =============
 function App() {
   return (
     <div className="App">
+      <ThemeProvider>
+      <DesignTokensProvider>
       <I18nProvider>
         <AuthProvider>
           <BrowserRouter>
             <ErrorBoundary>
               <ImpersonationBanner />
+              <RoleThemeApplier />
               <AnalyticsRouteTracker />
+              <ExplainThisMount />
+              <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center"><div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>}>
               <Routes>
               <Route path="/" element={<LandingPage />} />
+              <Route path="/design-interior" element={<InteriorDesignLanding />} />
+              <Route path="/design-interior/stil/:slug" element={<DesignInteriorPage kind="style" />} />
+              <Route path="/design-interior/:slug" element={<DesignInteriorPage kind="page" />} />
+              <Route path="/design-exterior" element={<ServiceHubLanding slug="design-exterior" />} />
+              <Route path="/arhitectura" element={<ServiceHubLanding slug="arhitectura" />} />
+              <Route path="/franciza" element={<FranchiseDashboard />} />
+              <Route path="/devino-francizat" element={<FranchiseApplyPage />} />
+              <Route path="/devino-specialist" element={<SpecialistApplyPage />} />
+              <Route path="/franchise_admin" element={<FranchiseDashboard />} />
+              <Route path="/servicii/design-interior" element={<Navigate to="/design-interior" replace />} />
               <Route path="/demo" element={<PublicDemoPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/privacy/notices" element={<PrivacyNoticesPage />} />
@@ -1593,17 +1689,20 @@ function App() {
               <Route path="/cookies" element={<CookiePolicyPage />} />
               <Route path="/trust" element={<TrustCenterPage />} />
               <Route path="/status" element={<StatusPage />} />
-              <Route path="/components-v2" element={<ComponentsV2 />} />
+              <Route path="/components-v2" element={<DesignSystemShowcase />} />
               <Route path="/community" element={<CommunityPage />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/auth" element={<Navigate to="/login" replace />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/verify-email" element={<EmailVerifyPage />} />
               <Route path="/client/requests/:requestId/offers" element={<ClientRequestOffersPage />} />
               <Route path="/specialist/premium-profile" element={<PremiumProfileEditorPage />} />
+              <Route path="/specialist/capabilities" element={<CapabilityEditorPage />} />
               <Route path="/kyc" element={<KYCPage />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
-              <Route path="/marketplace" element={<PublicMarketplace />} />
-              <Route path="/marketplace/:slug" element={<MarketplaceLanding />} />
+              <Route path="/marketplace" element={<ServiceGate serviceId="specialisti"><PublicMarketplace /></ServiceGate>} />
+              <Route path="/marketplace/:slug" element={<ServiceGate serviceId="specialisti"><MarketplaceLanding /></ServiceGate>} />
+              <Route path="/servicii/:id" element={<ServiceProvidersPage />} />
               <Route path="/imobile-verificate" element={<EstateBrowse />} />
               <Route path="/de-ce-noi" element={<WhyUsPage />} />
               <Route path="/imobile-verificate/sell" element={<SellMyProperty />} />
@@ -1616,16 +1715,56 @@ function App() {
               <Route path="/admin/ai-dev-team" element={<AIDevTeamPage />} />
               <Route path="/admin/ai-security" element={<AISecurityCenterPage />} />
               <Route path="/admin/autonomy" element={<AutonomyEnginePage />} />
+              <Route path="/admin/orchestrator" element={<AutonomyOrchestratorPage />} />
+              <Route path="/admin/construction" element={<ConstructionIntelligencePage />} />
+              <Route path="/admin/control-tower" element={<ControlTowerPage />} />
               <Route path="/admin/twin" element={<TwinPage />} />
               <Route path="/house-health/:twinId" element={<HouseHealthPage />} />
-              <Route path="/house-health/upgrade" element={<HouseHealthUpgradePage />} />
-              <Route path="/house-health/upgrade/success" element={<HouseHealthUpgradeSuccess />} />
+              <Route path="/house-health/upgrade" element={<HouseHealthUpgradeLazy />} />
+              <Route path="/house-health/upgrade/success" element={<HouseHealthUpgradeSuccessLazy />} />
+              <Route path="/pricing" element={<PricingPageLazy />} />
               <Route path="/admin/house-health" element={<AdminHouseHealthPage />} />
+              <Route path="/admin/manual-tester" element={<ManualTesterPage />} />
               <Route path="/admin/todo" element={<AdminTodoBoard />} />
               <Route path="/admin/experience-spaces" element={<ExperienceSpacesPage />} />
               <Route path="/admin/future-ideas" element={<FutureIdeasVault />} />
               <Route path="/admin/founder-gate" element={<FounderGatePage />} />
               <Route path="/admin/ai-governance" element={<AIGovernancePage />} />
+              <Route path="/admin/design-audit" element={<DesignAuditPage />} />
+              <Route path="/admin/design-studio" element={<DesignStudioPage />} />
+              <Route path="/admin/design-intelligence" element={<DesignIntelligencePage />} />
+              <Route path="/admin/interior-design" element={<InteriorDesignAdminPage />} />
+              <Route path="/admin/menu-manager" element={<MenuManagerPage />} />
+              <Route path="/admin/page-registry" element={<PageRegistryPage />} />
+              <Route path="/admin/design-tokens" element={<Navigate to="/admin/design-studio" replace />} />
+              <Route path="/admin/config-io" element={<ConfigIOPage />} />
+              <Route path="/admin/xos-builder" element={<XOSBuilderPage />} />
+              <Route path="/admin/ui-rules" element={<UIRulesPage />} />
+              <Route path="/admin/content-manager" element={<ContentManagerPage />} />
+              <Route path="/admin/roadmap" element={<PlatformRoadmapPage />} />
+              <Route path="/admin/command-center" element={<CommandCenterPage />} />
+              <Route path="/admin/business-health" element={<BusinessHealthPage />} />
+              <Route path="/admin/marketplace-intel" element={<MarketplaceIntelPage />} />
+              <Route path="/admin/financial-cockpit" element={<FinancialCockpitPage />} />
+              <Route path="/admin/automation" element={<AutomationCenterPage />} />
+              <Route path="/admin/ceo" element={<CEODashboardPage />} />
+              <Route path="/admin/war-room" element={<FirstRevenueWarRoom />} />
+              <Route path="/admin/beta-cockpit" element={<BetaCockpitPage />} />
+              <Route path="/admin/beta-issues" element={<BetaIssuesPage />} />
+              <Route path="/admin/operations" element={<OperationsCenter />} />
+              <Route path="/admin/knowledge-center" element={<KnowledgeCenter />} />
+              <Route path="/admin/explorer" element={<EnterpriseExplorer />} />
+              <Route path="/admin/architecture" element={<ArchitectureNavigator />} />
+              <Route path="/admin/enterprise-health" element={<EnterpriseHealthPage />} />
+              <Route path="/admin/repair-center" element={<RepairCenterPage />} />
+              <Route path="/admin/ai-brain" element={<AIBrainPage />} />
+              <Route path="/admin/prop-benefits" element={<PropBenefitsAdminPage />} />
+              <Route path="/admin/storage" element={<StorageAdminPage />} />
+              <Route path="/admin/ceo-briefing" element={<CeoBriefingPage />} />
+              <Route path="/admin/evolution-council" element={<EvolutionCouncilPage />} />
+              <Route path="/admin/notification-center" element={<NotificationCenterPage />} />
+              <Route path="/admin/user-timeline" element={<UserTimelinePage />} />
+              <Route path="/admin/ai-search" element={<AISearchPage />} />
               <Route path="/admin/bug-memory" element={<BugMemoryAggregatorPage />} />
               <Route path="/admin/architecture-board" element={<ArchitectureBoardPage />} />
               <Route path="/admin/ai-pm" element={<AIProductManagerPage />} />
@@ -1634,32 +1773,73 @@ function App() {
               <Route path="/admin/feature-configurator" element={<FeatureConfiguratorPage />} />
               <Route path="/admin/specialist-progression" element={<SpecialistProgressionPage />} />
               <Route path="/admin/bi-moe" element={<BIMoePage />} />
+              <Route path="/admin/analytics-growth" element={<AnalyticsGrowthPage />} />
+              <Route path="/admin/function-map" element={<FunctionMap />} />
+              <Route path="/admin/growth-intel" element={<GrowthIntelligencePage />} />
+              <Route path="/admin/lead-intel" element={<LeadIntelligencePage />} />
+              <Route path="/admin/marketing-intel" element={<MarketingIntelligencePage />} />
+              <Route path="/admin/learning" element={<LearningEnginePage />} />
+              <Route path="/admin/it-collaborators" element={<ITCollaboratorsHubPage />} />
+              <Route path="/admin/it-collaborators/copilot" element={<ITCopilotPage />} />
+              <Route path="/admin/legal-audit" element={<LegalAuditPage />} />
+              <Route path="/admin/city-partners" element={<CityPartnersPage />} />
+              <Route path="/admin/city-partner-products" element={<CityPartnerProductsPage />} />
+              <Route path="/admin/city-partners/:id" element={<CityPartnerDetailPage />} />
+              <Route path="/admin/marketplace-partners" element={<MarketplacePartnersPage />} />
+              <Route path="/admin/strategic-partners" element={<StrategicPartnersDashboard />} />
+              <Route path="/admin/marketing" element={<MarketingDepartmentPage />} />
+              <Route path="/admin/demo-accounts" element={<DemoAccountsPage />} />
+              <Route path="/admin/admin-accounts" element={<AdminAccountsPage />} />
+              <Route path="/admin/demo-activity" element={<DemoActivityPage />} />
+              <Route path="/partner/dashboard" element={<PartnerDashboard />} />
+              <Route path="/partner/marketplace" element={<MarketplacePartnerPortal />} />
+              <Route path="/dashboard/client-junior" element={<ClientJuniorDashboard />} />
+              <Route path="/incepe" element={<ClientJuniorDashboard />} />
+              <Route path="/legal/sign" element={<LegalSignPage />} />
               <Route path="/contracts/:id" element={<ContractPage />} />
               <Route path="/imobile-verificate/:id" element={<EstateDetail />} />
               <Route path="/ghiduri" element={<GhiduriIndex />} />
+              <Route path="/scorul-casei" element={<HealthScorePage />} />
+              <Route path="/p/:slug" element={<PublicPassportPage />} />
+              <Route path="/checklist-cumparare" element={<BuyingChecklistPage />} />
+              <Route path="/preturi" element={<PreturiIndex />} />
+              <Route path="/preturi/:slug" element={<PreturiPage />} />
               <Route path="/ghiduri/:slug" element={<GhidPage />} />
+              <Route path="/probleme-casa" element={<ProblemeIndex />} />
+              <Route path="/probleme-casa/:slug" element={<ProblemaPage />} />
               <Route path="/help/:token" element={<HelpPage />} />
               <Route path="/specialists/:id" element={<SpecialistProfile />} />
-              <Route path="/client" element={<ClientDashboard />} />
+              <Route path="/client" element={<ClientDashboardV2 />} />
+              <Route path="/administrator" element={<AdministratorWorkspace />} />
               <Route path="/specialist" element={<SpecialistDashboard />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/auth-health" element={<AdminAuthHealthPage />} />
+              <Route path="/admin/research-coverage" element={<ResearchCoveragePage />} />
               <Route path="/admin/support-inbox" element={<AdminSupportInboxPage />} />
               <Route path="/operator" element={<OperatorDashboard />} />
               <Route path="/projects/:id" element={<ProjectWorkspace />} />
               <Route path="/payment-success" element={<PaymentSuccess />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+              </Suspense>
             <TutorialOverlay />
             <RoleTour />
             <AIConciergeBubble />
             <CookieBanner />
+            <BetaFeedbackWidget />
+            <AssistantDock />
+            <LegalGate />
+            <EntitlementToast />
+            <Toaster position="top-right" richColors closeButton />
             </ErrorBoundary>
           </BrowserRouter>
         </AuthProvider>
       </I18nProvider>
+      </DesignTokensProvider>
+      </ThemeProvider>
     </div>
   );
 }
 
 export default App;
+;

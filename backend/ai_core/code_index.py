@@ -8,7 +8,6 @@ Only emits relative paths under /app/backend and /app/frontend/src.
 import os
 import time
 import logging
-from typing import Optional
 
 logger = logging.getLogger("propmanage.ai_core.code_index")
 

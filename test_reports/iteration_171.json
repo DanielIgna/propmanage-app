@@ -1,0 +1,20 @@
+{
+  "summary": "ASM-001 Copilotul Casei frontend testing — DESKTOP (1920x1080) și MOBIL (390x844). Login client@propmanage.io reușit. Widget-ul copilot-widget se randează primul în workspace-ul Home (top=143px pe desktop, top=92px pe mobil, deasupra hero-ului). Toate cele 19 sub-testid-uri sunt vizibile pe desktop: house-score (48/100), ai-summary (text real în română, LLM-generated), next-action + next-title + next-cta ('Fă pasul acum'), explain-toggle deschide panoul cu toate cele 5 rânduri (De ce/Ce câștigi/Ce deblochezi/Cât durează/Impact casă), checklist 4/5 cu first_document nebifat și clickabil, progress-book/twin/membership, benefits, community + ambassador-status + founding-slots, storage, subscription (70/100), timeline-toggle deschide istoricul cu copilot-timeline-item-0 vizibil (status 'Recomandat acum'). Regresie OK: pb-pulse și v2-copilot-card încă vizibile pe desktop; pb-ambassador-card se încarcă în tabul Beneficii fără erori. Pe mobil: widget vizibil primul, toate sub-elementele lizibile, ZERO overflow orizontal (scrollWidth=390=winW). Fără erori în consolă legate de Copilot.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (not tested per request)", "frontend": "100%"},
+  "test_credentials": "client@propmanage.io / Client123! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "ASM-001 Copilotul Casei este integral funcțional pe desktop și mobil. Toate cele 19 data-testid-uri răspund. Explain panel, timeline, checklist, progress toate merg. Regresie PB (pb-pulse, pb-ambassador-card) și v2-copilot-card intactă. Widget-ul apare primul pe Home în /client. Notă: la login-ul inițial navigate să meargă la /client explicit dacă browser-ul e redirect-uit la landing (unauth); după login redirect-ul e corect către /client automat.",
+  "rca of the issue": "N/A — no issues found."
+}

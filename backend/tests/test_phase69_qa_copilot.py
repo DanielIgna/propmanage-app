@@ -1,8 +1,8 @@
 """Phase 69 QA Copilot - backend tests."""
 import os
-import time
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE = os.environ["REACT_APP_BACKEND_URL"].rstrip("/") if os.environ.get("REACT_APP_BACKEND_URL") else None
 if not BASE:
@@ -16,7 +16,7 @@ if not BASE:
     except Exception:
         pass
 
-ADMIN = {"email": "admin@propmanage.io", "password": "Admin123!"}
+ADMIN = {"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD}
 CLIENT = {"email": "client@propmanage.io", "password": "Client123!"}
 
 

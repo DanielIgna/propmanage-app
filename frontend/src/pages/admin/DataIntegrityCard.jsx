@@ -1,7 +1,7 @@
 // Data Integrity Check — admin scanner for orphans, inconsistencies, lost money.
 import React, { useState } from "react";
 import axios from "axios";
-import { Database, CheckCircle2, XCircle, AlertTriangle, ShieldCheck, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import { Database, CheckCircle2, XCircle, AlertTriangle, ShieldCheck, RefreshCw, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { AdminCard, AdminBtn } from "./AdminLayoutMetronic";
 import { API } from "../DashShared";
 
@@ -18,6 +18,9 @@ export const DataIntegrityCard = () => {
   const [running, setRunning] = useState(false);
   const [report, setReport] = useState(null);
   const [expanded, setExpanded] = useState({});
+  const [resolving, setResolving] = useState(false);
+  const [confirmOrphan, setConfirmOrphan] = useState(false);
+  const [resolveMsg, setResolveMsg] = useState(null);
 
   const run = async () => {
     setRunning(true);
@@ -36,6 +39,22 @@ export const DataIntegrityCard = () => {
   };
 
   const toggle = (i) => setExpanded(e => ({ ...e, [i]: !e[i] }));
+
+  const resolveOrphanTwins = async () => {
+    setResolving(true); setResolveMsg(null);
+    try {
+      const r = await axios.post(`${API}/admin/data-integrity/orphan-twins/resolve`, {
+        action: "delete_orphan", twin_ids: null, confirm: true,
+      });
+      setResolveMsg(r.data);
+      setConfirmOrphan(false);
+      await run(); // re-scan to confirm orphan twins = 0
+    } catch (e) {
+      setResolveMsg({ error: e?.response?.data?.detail || e.message });
+    } finally {
+      setResolving(false);
+    }
+  };
 
   return (
     <AdminCard
@@ -150,14 +169,52 @@ export const DataIntegrityCard = () => {
                       ))}
                     </div>
                   )}
+                  {!c.ok && c.name === "Twins orfane" && (
+                    <div className="px-3 pb-3" data-testid="orphan-twins-actions">
+                      {!confirmOrphan ? (
+                        <button
+                          onClick={() => { setConfirmOrphan(true); setResolveMsg(null); }}
+                          disabled={resolving}
+                          className="w-full px-3 py-2 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                          data-testid="orphan-twins-delete-all-btn"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Șterge toate Twin-urile orfane ({c.issue_count})
+                        </button>
+                      ) : (
+                        <div className="rounded-lg border border-red-300 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10 p-3 space-y-2" data-testid="orphan-twins-confirm">
+                          <div className="text-[11px] text-red-800 dark:text-red-200 leading-relaxed">
+                            Aceste {c.issue_count} Twin-uri nu mai au o proprietate validă. Ștergerea elimină (și arhivează, recuperabil din <span className="font-mono">twins_orphan_archive</span>) DOAR recordurile Twin identificate.
+                            <strong> Proprietățile, utilizatorii, cererile, tranzacțiile și dispute-urile NU vor fi șterse.</strong>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={resolveOrphanTwins} disabled={resolving}
+                              className="flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                              data-testid="orphan-twins-confirm-yes">
+                              {resolving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                              Da, șterge (arhivează)
+                            </button>
+                            <button onClick={() => setConfirmOrphan(false)} disabled={resolving}
+                              className="px-3 py-1.5 rounded-lg text-xs bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200"
+                              data-testid="orphan-twins-confirm-no">Anulează</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
 
+          {resolveMsg && (
+            <div className={`mt-3 text-[11px] rounded-lg p-2.5 ${resolveMsg.error ? "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-300" : "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"}`} data-testid="orphan-twins-result">
+              {resolveMsg.error ? `Eroare: ${resolveMsg.error}` : resolveMsg.message}
+            </div>
+          )}
+
           <div className="mt-3 text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 px-1">
             <ShieldCheck className="w-3 h-3" />
-            Scanner read-only. Pentru a remedia, folosește admin tools sau scrie un script de migrare.
+            Scanner cu acțiune de remediere sigură pentru Twins orfane (arhivare + ștergere, recuperabil). Celelalte verificări rămân informative.
           </div>
         </>
       )}

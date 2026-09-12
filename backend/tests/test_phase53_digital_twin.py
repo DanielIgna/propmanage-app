@@ -37,6 +37,7 @@ def _register_client(prefix="dt"):
     s = requests.Session()
     email = f"{prefix}_{int(time.time() * 1000)}@propmanage-e2e.com"
     r = s.post(f"{BASE_URL}/api/auth/register", json={
+        "terms_accepted": True, "privacy_policy_accepted": True, "phone": "+40712000999",
         "email": email, "password": "Test1234!", "name": f"DT {prefix}", "role": "client",
     })
     r.raise_for_status()

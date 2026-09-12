@@ -1,0 +1,40 @@
+{
+  "summary": "Iteration 153 — Autonomy Score + Closed Loop (Repair → Guardian re-audit) + Regresie 21 lazy routes. Backend pytest 4/4 PASS după fix ordering în health_repair.py. Fixed: journey_guardian re-audit era adăugat DUPĂ db.health_repair_runs.insert_one, deci nu se persista niciodată în /runs. Am mutat guardian ÎNAINTE de insert_one — acum apare în GET /runs cu keys {issues_found, new_tasks, auto_resolved}. Autonomy score = 82.8/100 confirmat pe /admin/repair-center/status, snapshot.autonomy_score prezent pe /admin/orchestrator/governance, item ai_governance cu 'autonomie' în /admin/ceo-briefing. Frontend: badge data-testid='autonomy-score-badge' afișează 'Autonomie 82.8/100' în header /admin/repair-center. Toate 21 rutele lazy testate se încarcă fără 'Element type is invalid' sau ChunkLoadError: public (/imobile-verificate, /imobile-verificate/sell, /demo, /ghiduri, /help, /status, /trust, /servicii/mobilier, /house-health/upgrade, /house-health/upgrade/success — arată 'Lipsește session_id' care e comportament așteptat, /privacy-notices, homepage /), admin (/admin/auth-health, /admin/support-inbox, /admin/imobile-verificate = VerifiedEstateAdmin, /admin/repair-center), client logat (/projects/:id ProjectWorkspace afișează 'Nu ai acces', /client/requests/:id/offers ClientRequestOffersPage se încarcă cu UI complet). Regresie: homepage OK cu meniu public, login client → /client dashboard OK.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/admin/repair-center/status", "issue": "Response time 10-20s pentru compute_autonomy_score cu polling MongoDB — considerabil pentru un endpoint UI dashboard. Consider caching 60s."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "/marketplace ca ADMIN logat", "issue": "Se redirecționează la home în loc să afișeze PublicMarketplace. Cauza probabilă: ServiceGate('specialisti') blochează pentru că serviciul nu e activat în site-menu. NU e o regresie lazy loading — chunk-ul PublicMarketplace se încarcă fără eroare. Este comportament de gate/config.", "affected_selectors": []}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_autonomy_iter153.py",
+    "/app/test_reports/pytest/iter153_autonomy.xml"
+  ],
+  "action_items": [
+    "Verifică dacă serviciul 'specialisti' trebuie activat în site-menu ca /marketplace să fie accesibil pentru admin (spec cerea PublicMarketplace să se încarce pentru admin logat).",
+    "Opțional: cachează /admin/repair-center/status (score computation) 30-60s ca să scazi latența de 10-20s."
+  ],
+  "critical_code_review_comments": [
+    "BUG FIXED (health_repair.py): journey_guardian was added to run dict AFTER db.health_repair_runs.insert_one({**run}) — deci re-auditul nu apărea niciodată în /runs. Am mutat blocul guardian ÎNAINTE de insert. Verificat cu pytest end-to-end.",
+    "repair_center.py POST /run nu are guard de concurență — dublu-click poate lansa 2 cicluri paralele. Risc scăzut (idempotent), dar merită un _running flag.",
+    "compute_autonomy_score pare să facă mai multe agregări MongoDB seriale (10-20s) — putea rula în asyncio.gather sau cache-uit."
+  ],
+  "updated_files": [
+    "/app/backend/health_repair.py",
+    "/app/backend/tests/test_autonomy_iter153.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "95%"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN; client@propmanage.io / Client123!",
+  "seed_data_creation": "None. Doar rulări repair-center pe domain 'automation'.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Autonomy score steady ~82-83/100. Guardian re-audit acum persistă în db.health_repair_runs.journey_guardian după fix. Test regression file: /app/backend/tests/test_autonomy_iter153.py (4 teste, ~5s după prima rulare cu run cache). Toate rutele lazy safe — pattern named-export cu .then(m => ({default: m.X})) merge. /marketplace ca admin redirect e ServiceGate, nu lazy.",
+  "rca of the issue": "Bug (fixat): în /app/backend/health_repair.py `run_repair_cycle`, blocul care rula Journey Guardian și adăuga rezultatul la `run['journey_guardian']` era plasat DUPĂ `db.health_repair_runs.insert_one({**run})`. Cum insert_one copiază dict-ul curent, câmpul journey_guardian nu era persistat niciodată. Fix: am mutat blocul Guardian ÎNAINTE de insert_one, astfel încât `run` să conțină `journey_guardian` la momentul persistării. Verificat: GET /api/admin/repair-center/runs?limit=1 returnează acum câmpul journey_guardian cu issues_found/new_tasks/auto_resolved."
+}

@@ -1,0 +1,35 @@
+{
+  "summary": "Sprint CX-1 (iter 133) — funnel conversion & onboarding fixes validated. Backend 7/8 pytest passing (1 real validation gap on phone='abc' for client role). All frontend acceptance criteria PASS: landing hero copy 'Cartea de service...', hero CTA 'Creează contul gratuit' -> /register, no demo banner/floating demo/12,842, /auth->/login redirect, register phone optional (opțional label), full register without phone -> logged into /client dashboard, first-run client sees HeroA 'PASUL 1 DIN 3 · 1 MINUT' and 1 discover card, 1-click 'Adaugă proprietatea' opens prop-name DIRECTLY (no intermediate click), property save persists ('Test Casa' visible), desktop CTA context-aware ('Adaugă proprietatea' -> 'Solicită ofertă' after property), /devino-specialist light theme (bg rgb(250,250,249)), se-hero-cta visible with correct text, se-trades-grid visible on desktop, complete apply flow works (Instalator sanitar -> Q1 -> Q2 -> contact -> confirmation with request # SE-A0C770). Regression: admin/client/specialist login OK; /scorul-casei dark theme loads.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/auth/register", "issue": "Client phone='abc' (all non-digits) is silently stripped to empty string by re.sub then bypasses validation (returns 200). Only truly-mixed input like 'abc123' triggers 400. Acceptance criteria requires 'abc' -> 400. Fix: in routes/auth.py L103-109, if phone_raw was provided but phone_digits ended up empty (and role=client not required), reject with 400 'Format telefon invalid' instead of accepting silently."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_cx1_iter133.py",
+    "/app/test_reports/pytest/iter133_results.xml"
+  ],
+  "action_items": [
+    "Optional (minor): tighten phone validation in /api/auth/register so that a non-empty phone_raw producing empty phone_digits (e.g. 'abc') returns 400 for both client and specialist roles — currently passes silently for clients."
+  ],
+  "critical_code_review_comments": [
+    "Auth register phone validation: `re.sub(r\"[^\\d+]\", \"\", 'abc')` -> '' — the subsequent `if phone_digits and not re.match(...)` short-circuits, so any pure-letters input on client role is accepted. Consider validating on `phone_raw` presence when non-empty.",
+    "i18n hero split into title1/title2/title3 across separate spans — DOM text_content concatenates without inter-span whitespace; SEO/copy-scrapers may see 'Cartea de servicea caseitale.' Consider single <h1> with spans + &nbsp; or CSS-driven line breaks."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_cx1_iter133.py (new)"
+  ],
+  "success_rate": {"backend": "87.5% (7/8)", "frontend": "100% (all acceptance criteria)"},
+  "test_credentials": "Used cx.audit.nophone@propmanage.io / CxAudit2026! (added property 'Test Casa'). Unique register emails cx.ui.<ts>@test.io and cx.nophone.<ts>@test.io created.",
+  "seed_data_creation": "Property 'Test Casa' at 'Str. Test 1' added to cx.audit.nophone@propmanage.io. Specialist apply lead SE-A0C770 for Instalator sanitar created via public /devino-specialist flow.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter 133 validated Sprint CX-1 funnel conversion. Only remaining item is minor backend validation gap on phone='abc' for client role (see backend_issues.minor). All UI flows validated end-to-end. cx.audit.nophone user now has a property, so re-testing the no-property first-run flow requires either a fresh user or removing the property first.",
+  "rca of the issue": "phone='abc' bug RCA: In routes/auth.py L104-108, `phone_digits = re.sub(r'[^\\d+]', '', phone_raw)` strips ALL non-digit/plus chars. For input 'abc' this yields ''. Then `if data.role == 'specialist' and not phone_digits` triggers only for specialists. The subsequent `if phone_digits and not re.match(...)` skips validation when phone_digits is empty. Net effect: client submitting 'abc' is treated as 'no phone provided' and stored as empty. Reproduction: POST /api/auth/register {role:'client', phone:'abc', ...} -> 200. Mitigation: add `if phone_raw and not phone_digits: raise HTTPException(400, 'Format telefon invalid')` BEFORE the specialist check."
+}

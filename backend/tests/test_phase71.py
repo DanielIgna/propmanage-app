@@ -8,9 +8,9 @@ Covers:
 """
 import io
 import os
-import time
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 def _read_url_from_env_file():
     try:
@@ -24,7 +24,7 @@ def _read_url_from_env_file():
 BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL") or _read_url_from_env_file()).rstrip("/")
 assert BASE_URL, "REACT_APP_BACKEND_URL must be set"
 
-ADMIN = {"email": "admin@propmanage.io", "password": "Admin123!"}
+ADMIN = {"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD}
 CLIENT = {"email": "client@propmanage.io", "password": "Client123!"}
 SPEC = {"email": "specialist@propmanage.io", "password": "Spec123!"}
 

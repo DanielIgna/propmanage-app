@@ -10,6 +10,7 @@ import os
 import time
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 def _get_base_url():
     url = os.environ.get("REACT_APP_BACKEND_URL", "").strip()
@@ -29,7 +30,7 @@ BASE_URL = _get_base_url()
 assert BASE_URL, "REACT_APP_BACKEND_URL not set"
 
 ADMIN_EMAIL = "admin@propmanage.io"
-ADMIN_PASS = "Admin123!"
+ADMIN_PASS = OWNER_ADMIN_PASSWORD
 CLIENT_EMAIL = "client@propmanage.io"
 CLIENT_PASS = "Client123!"
 

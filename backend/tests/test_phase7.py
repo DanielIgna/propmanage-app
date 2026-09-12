@@ -12,6 +12,7 @@ import time
 import uuid
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 
 def _load_base_url():
@@ -35,7 +36,7 @@ assert BASE_URL, "REACT_APP_BACKEND_URL not set"
 
 CLIENT = {"email": "client@propmanage.io", "password": "Client123!"}
 SPEC = {"email": "specialist@propmanage.io", "password": "Spec123!"}
-ADMIN = {"email": "admin@propmanage.io", "password": "Admin123!"}
+ADMIN = {"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD}
 OPERATOR = {"email": "operator@propmanage.io", "password": "Op123!"}
 
 
@@ -130,8 +131,9 @@ class TestRegistration:
             "password": "TestPass123!",
             "name": "TEST Phase7 Spec",
             "role": "specialist",
-            "specialty": "HVAC",
-            "service_categories": ["HVAC", "Electric", "Sanitar"],
+            "terms_accepted": True, "privacy_policy_accepted": True,
+            "specialty": "hvac",
+            "service_categories": ["hvac", "electric", "plumbing"],
             "coverage_zones": ["Floreasca", "Pipera", "Aviatorilor"],
             "phone": "0712345678",
         }
@@ -141,14 +143,14 @@ class TestRegistration:
         data = r.json()
         assert data["email"] == email.lower()
         assert data["role"] == "specialist"
-        assert data["specialty"] == "HVAC"
-        assert data["service_categories"] == ["HVAC", "Electric", "Sanitar"]
+        assert data["specialty"] == "hvac"
+        assert data["service_categories"] == ["hvac", "electric", "plumbing"]
         assert data["coverage_zones"] == ["Floreasca", "Pipera", "Aviatorilor"]
         # confirm via /auth/me
         r2 = s.get(f"{BASE_URL}/api/auth/me", timeout=20)
         assert r2.status_code == 200
         me = r2.json()
-        assert me["service_categories"] == ["HVAC", "Electric", "Sanitar"]
+        assert me["service_categories"] == ["hvac", "electric", "plumbing"]
         assert me["coverage_zones"] == ["Floreasca", "Pipera", "Aviatorilor"]
 
     def test_register_client_with_zone(self):
@@ -158,6 +160,7 @@ class TestRegistration:
             "password": "TestPass123!",
             "name": "TEST Phase7 Client",
             "role": "client",
+            "terms_accepted": True, "privacy_policy_accepted": True, "phone": "+40712000999",
             "zone": "Cotroceni",
         }
         s = requests.Session()
@@ -170,6 +173,7 @@ class TestRegistration:
     def test_register_duplicate_rejected(self):
         s = requests.Session()
         r = s.post(f"{BASE_URL}/api/auth/register", json={
+            "terms_accepted": True, "privacy_policy_accepted": True, "phone": "+40712000999",
             "email": "client@propmanage.io",
             "password": "xxxxxx",
             "name": "dup",

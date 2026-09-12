@@ -22,7 +22,7 @@ from typing import Optional
 
 import bcrypt
 from bson import ObjectId
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 
 from db import db

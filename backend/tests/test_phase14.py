@@ -16,6 +16,7 @@ import os
 import uuid
 import requests
 import pytest
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8001").rstrip("/")
 API = f"{BASE_URL}/api"
@@ -27,7 +28,7 @@ SPEC_PASS = "Spec123!"
 SPEC2_EMAIL = "specialist2@propmanage.io"
 SPEC2_PASS = "Spec123!"
 ADMIN_EMAIL = "admin@propmanage.io"
-ADMIN_PASS = "Admin123!"
+ADMIN_PASS = OWNER_ADMIN_PASSWORD
 OPERATOR_EMAIL = "operator@propmanage.io"
 OPERATOR_PASS = "Op123!"
 
@@ -204,6 +205,7 @@ class TestTimelineRBAC:
         suffix = uuid.uuid4().hex[:8]
         other = requests.Session()
         r = other.post(f"{API}/auth/register", json={
+            "terms_accepted": True, "privacy_policy_accepted": True, "phone": "+40712000999",
             "email": f"test_p14_other_{suffix}@test.io",
             "password": "Other123!",
             "name": "TEST_Phase14 Other",
@@ -304,6 +306,7 @@ class TestFullE2E:
         email = f"test_p14_e2e_{suffix}@test.io"
         client = requests.Session()
         r = client.post(f"{API}/auth/register", json={
+            "terms_accepted": True, "privacy_policy_accepted": True, "phone": "+40712000999",
             "email": email, "password": "E2E123!",
             "name": "TEST_Phase14 E2E Client", "role": "client",
         })

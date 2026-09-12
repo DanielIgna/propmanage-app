@@ -1,0 +1,26 @@
+{
+  "summary": "Frontend-only regression gate for Beta Candidate v0.9 sprint polish (post iteration_141). All 7 items in the review request PASS on preview URL — no regressions, no new bugs. Details:\n\n1) SPECIALIST DESKTOP 1920x900 — /specialist?tab=jobs: 'Lucrările mele' grid is 2 columns on lg (gridTemplateColumns='608px 608px', 48 children rendered). Search input placeholder is exactly 'Caută în lucrările tale...'. Per-job Timeline / Chat / Detalii buttons render inside each card.\n\n2) SPECIALIST MOBILE 390x844 — same route: grid collapses to display:block, gridTemplateColumns='none' → single column stack, correct.\n\n3) SPECIALIST DESKTOP Oportunități regression: spec-workspace + spec-context-panel present; KPI cards spec-today-open + spec-progress-card still render (VERIFIED tier). No P3c regression.\n\n4) CLIENT DARK THEME CONTRAST (default): hub-status-panel 'Pasul următor' button computed style color=rgb(245,245,244) on background rgba(204,255,0,0.08) with borderColor rgba(204,255,0,0.28) — clearly legible (near-white text on translucent lime with visible border). Same colours applied to the vault-card 'Pasul următor' inside Cartea casei section. Screenshot confirms readability.\n\n5) CLIENT LIGHT THEME (after theme-switcher click, html class becomes ''): same next-step button becomes color=rgb(28,25,23) on background rgb(240,251,244) — dark near-black text on light lime — legible. No blown-out contrast in either theme.\n\n6) CLIENT LOGOUT FIX (iteration_141 outstanding bug): v2-logout in ClientDashboardV2.jsx line 208 now `onClick={async () => { await logout(); window.location.href = '/login'; }}` — click redirects to /login within <8s. Verified end-to-end on desktop. Bug from iteration_141 is FIXED.\n\n7) ACCESSIBILITY: v2-bell aria-label='Notificări' ✓, notif-bell aria-label='Notificări' ✓, dash-logout aria-label='Deconectare' ✓. Tab navigation on /client focuses hub-subnav-istoric with outline 'solid 2px rgb(22,101,52)' — visible focus-visible outline present.\n\n8) REGRESSION QUICK CHECKS: client desktop home shows v2-home-workspace + v2-hero-c + v2-contextual + v2-property-status + v2-copilot-card (8+4 layout). Property tab renders 5 sub-nav sections (rezumat/carte/twin/istoric/pasaport) all found by data-testid. Client mobile 390: v2-home-workspace + v2-bottom-nav + v2-nav-request FAB present. Specialist mobile 390: spec-today-open KPI top=322.5px, above leads list (KPIs first).\n\nNo product code was modified. Overall PASS.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Theme switcher testid is 'theme-switcher' (not 'theme-toggle') — worth documenting in a testid map for future testing agents.",
+    "Light theme override sets background to rgb(240,251,244) (#F0FBF4) via index.css tail. Contrast with lime accent bg-lime-500/lime-600 in siblings is fine but keep an eye on future tint-on-tint blend if lime hue changes."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "not tested (per request — frontend only)",
+    "frontend": "100% — all 7 sprint items validated; iteration_141 logout regression is FIXED; no new regressions found on either 1920 or 390 viewports."
+  },
+  "test_credentials": "client@propmanage.io / Client123!, specialist@propmanage.io / Spec123! (used from /app/memory/test_credentials.md style — no new users created).",
+  "seed_data_creation": "None — read-only regression pass. No documents / properties / requests created or modified.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Beta Candidate v0.9 polish sprint fully verified. Key testids still stable: spec-workspace, spec-context-panel, spec-today-open/active/notifs/earnings, spec-progress-card, spec-tab-desktop-jobs, hub-status-panel, hub-status-next-step, hub-subnav-{rezumat|carte|twin|istoric|pasaport}, vault-card, v2-home-workspace, v2-property-status, v2-copilot-card, v2-bottom-nav, v2-nav-request, v2-logout, v2-bell, notif-bell, dash-logout, theme-switcher (aria-label='Schimbă tema'), cookie-accept-all. Default theme on preview is DARK (html.dark). Click theme-switcher once → light (html class=''). Both themes legible for hub-status-next-step.",
+  "rca of the issue": "N/A — no bugs found. Previous iteration_141 bug (v2-logout no redirect) was fixed by main agent via `window.location.href = '/login'` after `await logout()` — an even more robust approach than useNavigate because it forces a full page reload and clears any stale React state, ensuring ProtectedRoute re-evaluates cleanly."
+}

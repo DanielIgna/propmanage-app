@@ -26,7 +26,7 @@ const PreviewModal = ({ slug, onClose }) => {
   const [doc, setDoc] = useState(null);
   useEffect(() => {
     if (!slug) return;
-    axios.get(`${API}/admin/docs/${slug}`).then(r => setDoc(r.data));
+    axios.get(`${API}/admin/docs/${slug}`).then(r => setDoc(r.data)).catch(() => {});
   }, [slug]);
   if (!slug) return null;
   return (
@@ -284,7 +284,7 @@ export const AdminDocs = () => {
 
   const load = () => {
     setLoading(true);
-    axios.get(`${API}/admin/docs`).then(r => setDocs(r.data.docs || [])).finally(() => setLoading(false));
+    axios.get(`${API}/admin/docs`).then(r => setDocs(r.data.docs || [])).catch(() => {}).finally(() => setLoading(false));
   };
   useEffect(load, []);
 

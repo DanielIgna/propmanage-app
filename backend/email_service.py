@@ -7,7 +7,7 @@ import os
 import asyncio
 import logging
 from typing import Optional, List
-from datetime import datetime, timezone
+from datetime import datetime
 
 logger = logging.getLogger("propmanage.email")
 
@@ -104,7 +104,8 @@ def _layout(title: str, preheader: str, body_html: str, cta_url: Optional[str] =
             <td style="padding: 24px 32px; border-top: 1px solid #ffffff10; background-color: #0e0e10;">
               <p style="margin: 0; font-size: 11px; color: #888893; line-height: 1.5;">
                 © {datetime.now().year} PropManage · Property Operating System<br/>
-                Acest email a fost trimis de PropManage. Pentru întrebări, răspunde direct sau scrie pe <a href="mailto:contact@propmanage.ro" style="color: #d4ff3a; text-decoration: none;">contact@propmanage.ro</a>
+                Acest email a fost trimis de PropManage. Pentru întrebări, răspunde direct sau scrie pe <a href="mailto:contact@propmanage.ro" style="color: #d4ff3a; text-decoration: none;">contact@propmanage.ro</a><br/>
+                PropManage este un brand operat de VINTAGE FURNITURE S.R.L. · CUI 35250247 · Nr. Reg. Com. J12/3534/2015 · Cluj-Napoca
               </p>
             </td>
           </tr>
@@ -117,7 +118,7 @@ def _layout(title: str, preheader: str, body_html: str, cta_url: Optional[str] =
 
 # ===================== Send function =====================
 
-async def send_email(to: str | List[str], subject: str, html: str, plain: Optional[str] = None, attachments: Optional[List[dict]] = None) -> dict:
+async def send_email(to: str | List[str], subject: str, html: str, plain: Optional[str] = None, attachments: Optional[List[dict]] = None, _from_retry: bool = False) -> dict:
     """Sends an email via active provider. Returns dict {ok, provider, id|error}.
 
     attachments: optional list of dicts. Resend format: [{filename, content (base64 str)}].
@@ -136,6 +137,12 @@ async def send_email(to: str | List[str], subject: str, html: str, plain: Option
             return {"ok": True, "provider": "resend", "id": result.get("id")}
         except Exception as e:
             logger.error(f"Resend send failed: {e}")
+            if not _from_retry and not attachments:
+                try:
+                    from orchestrator.engine import emit_signal
+                    await emit_signal("webhook_fail", {"source": "resend_email", "to": recipients, "subject": subject, "html": html, "error": str(e)[:200]})
+                except Exception:  # noqa: BLE001
+                    pass
             return {"ok": False, "provider": "resend", "error": str(e)}
 
     if PROVIDER == "sendgrid":

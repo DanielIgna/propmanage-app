@@ -1,0 +1,29 @@
+{
+  "summary": "Iter 154: Regression testing after canonicalization — /client route directly loads ClientDashboardV2 (switch removed), twin_orchestrator router purged, dead /dashboard/client-v2 route removed. All 8 backend tests passed (twin-orchestrator/insights → 404, orchestrator/overview has retry_pending+retry_blocked_config, all 4 demo roles login OK, no enable_twin_orchestrator in settings). Frontend Playwright verified: (a) client login lands on /client and renders data-testid='client-dashboard-v2' even with pm_client_ui='legacy' pre-set in localStorage; (b) no 'switch-to-v2-btn' present; (c) tabs jobs/property/settings navigate correctly; (d) v2-desktop-cta opens the RequestWizard dialog; (e) /dashboard/client-v2 redirects to /; (f) specialist→/specialist, operator→/operator, admin→/admin without regressions; (g) /admin/orchestrator renders orchestrator-page and the orch-resume-blocked button is hidden (retry_blocked_config=0 as expected).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ClientDashboardV2 → Settings", "issues": ["Dead button 'v2-switch-legacy' (line ~218 of ClientDashboardV2.jsx) still writes pm_client_ui='legacy' and reloads, but since the switch was removed the flag is a no-op. Recommend removing this button + the settings panel entry to avoid user confusion."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter154_client_v2_regression.py",
+    "/app/test_reports/pytest/iter154.xml"
+  ],
+  "action_items": [
+    "(Cosmetic) Remove 'v2-switch-legacy' button + associated legacy SettingsPanel block from ClientDashboardV2.jsx settings view since the legacy switch path no longer exists."
+  ],
+  "critical_code_review_comments": [
+    "ClientDashboardV2.jsx still contains a 'Comută la interfața clasică' button (data-testid v2-switch-legacy) that writes localStorage pm_client_ui='legacy' — now dead code because /client bypasses ClientDashboardSwitch. Users clicking it will see no change (page just reloads on V2). Safe but misleading — remove."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter154_client_v2_regression.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Used from /app/memory/test_credentials.md — all 4 roles authenticated successfully.",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter 154 confirmed: canonical /client → ClientDashboardV2 wired directly; twin_orchestrator FULLY removed from backend register.py (/api/admin/twin-orchestrator/insights returns 404). Orchestrator overview API exposes retry_pending & retry_blocked_config; admin UI /admin/orchestrator renders orchestrator-page and conditionally shows orch-resume-blocked (currently hidden = 0 blocked items). Only cosmetic follow-up: dead 'v2-switch-legacy' button in ClientDashboardV2 Settings tab.",
+  "rca of the issue": "N/A — no bugs found in this iteration."
+}

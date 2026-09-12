@@ -20,9 +20,8 @@ Public endpoints:
   POST /api/auth/become-client                 (inverse of become-specialist; same dual_role)
 """
 import logging
-import asyncio
-from datetime import datetime, timezone, timedelta
-from typing import Optional, List, Dict, Any
+from datetime import datetime, timezone
+from typing import Optional, List
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query

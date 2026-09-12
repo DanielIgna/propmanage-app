@@ -20,7 +20,7 @@ from typing import Optional
 from datetime import datetime, timezone
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from db import db
 from deps import get_current_user

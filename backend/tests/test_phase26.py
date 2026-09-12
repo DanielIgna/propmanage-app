@@ -1,15 +1,15 @@
 """Phase 26: Stripe Checkout topup (DEMO), Tutorial flag, Milestone renegotiation."""
 import os
-import time
 import uuid
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://phased-document.preview.emergentagent.com").rstrip("/")
 
 CLIENT = {"email": "client@propmanage.io", "password": "Client123!"}
 SPEC = {"email": "specialist@propmanage.io", "password": "Spec123!"}
-ADMIN = {"email": "admin@propmanage.io", "password": "Admin123!"}
+ADMIN = {"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD}
 
 
 def _login(session: requests.Session, creds: dict) -> dict:

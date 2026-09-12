@@ -7,11 +7,12 @@ runs have mutated wallet balances, tokens, escrow, etc.
 import os
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://phased-document.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
-ADMIN = {"email": "admin@propmanage.io", "password": "Admin123!"}
+ADMIN = {"email": "admin@propmanage.io", "password": OWNER_ADMIN_PASSWORD}
 
 
 @pytest.fixture(scope="session", autouse=True)

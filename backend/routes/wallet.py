@@ -1,23 +1,15 @@
 """PropManage router: wallet."""
 import os
-import asyncio
-import json
 import logging
-from typing import Optional, List, Literal, Dict
-from datetime import datetime, timezone, timedelta
+from typing import Optional
+from datetime import datetime, timezone
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from db import db
-from core_utils import serialize_doc, effective_role
-from deps import get_current_user, require_role
-from services import send_email, notify, send_web_push, log_event
-from models import *
-from email_service import (
-    send_template, tpl_welcome, tpl_dispute_opened, tpl_dispute_resolved,
-    tpl_design_phase_quote, tpl_specialist_verified, tpl_escrow_funded,
-)
+from core_utils import serialize_doc
+from deps import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["wallet"])

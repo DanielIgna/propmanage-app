@@ -58,26 +58,26 @@ ROLLBACKABLE_ACTIONS = {"cms.update", "cms.reset", "settings.update", "trust_wei
 # ============= DEFAULTS =============
 DEFAULT_CMS = {
     "landing.promo_banner": "",
-    "hero.badge": "PROPERTY OPERATING SYSTEM • V4.2",
-    "hero.title1": "Proprietatea ta,",
-    "hero.title2": "perfecționată",
-    "hero.title3": "digital.",
-    "hero.subtitle": "PropManage creează un Digital Twin high-fidelity al locuinței tale, monitorizând starea structurală și performanța financiară în timp real. Liniștea structurată pentru proprietarul modern.",
-    "hero.cta1": "Explorează Demo",
-    "hero.cta1.variant_a": "Explorează Demo",
-    "hero.cta1.variant_b": "Începe gratuit acum",
-    "hero.cta2": "Vezi Flux Complet",
-    "hero.cta2.variant_a": "Vezi Flux Complet",
-    "hero.cta2.variant_b": "Vezi cum funcționează în 2 min",
-    "cta.badge": "GATA DE LANSARE",
-    "cta.title1": "Gata să digitalizezi",
-    "cta.title2": "tot ecosistemul?",
-    "cta.intro": "Alătură-te celor 12,842 de utilizatori care au transformat proprietățile lor în active digitale gestionabile, valoroase și liniștitoare.",
+    "hero.badge": "CARTEA DIGITALĂ A CASEI TALE",
+    "hero.title1": "Cartea de service",
+    "hero.title2": "a casei",
+    "hero.title3": "tale.",
+    "hero.subtitle": "Documentele, istoricul lucrărilor și specialiștii verificați ai casei tale — într-un singur loc. Știi mereu ce s-a făcut, cine a făcut și cât a costat.",
+    "hero.cta1": "Creează contul gratuit",
+    "hero.cta1.variant_a": "Creează contul gratuit",
+    "hero.cta1.variant_b": "Creează contul gratuit",
+    "hero.cta2": "Vezi cum funcționează",
+    "hero.cta2.variant_a": "Vezi cum funcționează",
+    "hero.cta2.variant_b": "Vezi cum funcționează",
+    "cta.badge": "CONT GRATUIT",
+    "cta.title1": "Casa ta merită",
+    "cta.title2": "o carte de service.",
+    "cta.intro": "Contul e gratuit. Adaugi casa într-un minut, iar fiecare document și fiecare lucrare rămân în cartea casei — pentru totdeauna.",
     "cta.btn1": "Creează cont gratuit",
     "cta.btn1.variant_a": "Creează cont gratuit",
-    "cta.btn1.variant_b": "Începe gratuit · 14 zile",
+    "cta.btn1.variant_b": "Creează cont gratuit",
     "cta.btn2": "Vorbește cu un specialist",
-    "cta.footer": "Fără card de credit · Anulezi oricând · Probă 14 zile",
+    "cta.footer": "Fără card de credit · Contul rămâne gratuit",
     "label.request.create": "Cere o ofertă",
     "label.marketplace.cta": "Vezi marketplace",
     "label.dashboard.client": "Panou Client",
@@ -1273,7 +1273,12 @@ async def export_audit_log_csv(user: dict = Depends(require_role("admin"))):
 
 
 # ============= SNAPSHOTS (full-state bookmarks) =============
-SNAPSHOT_PARTS = ["cms", "settings", "trust_weights", "presets"]
+# Sistem CANONIC de snapshot/restore pentru configurația admin-owned.
+# Include (post-remediere Iun 2026) și design_tokens RUNTIME-ACTIVE, pages,
+# site_menu, feature_config. pages_versions = istoric append-only, NU se
+# snapshot-uiește/restaurează niciodată (regulă comună cu config_io).
+SNAPSHOT_PARTS = ["cms", "settings", "trust_weights", "presets",
+                  "design_tokens", "pages", "site_menu", "feature_config"]
 
 
 class SnapshotIn(BaseModel):
@@ -1310,6 +1315,25 @@ async def create_snapshot(data: SnapshotIn, user: dict = Depends(require_role("a
             for p in ps
         ]
         counts["presets"] = len(snapshot_data["presets"])
+    if "design_tokens" in parts:
+        dt = await db.design_tokens.find_one({"_id": "active"})
+        snapshot_data["design_tokens"] = {
+            "tokens": (dt or {}).get("tokens") or {},
+            "preset_id": (dt or {}).get("preset_id"),
+        }
+        counts["design_tokens"] = len(snapshot_data["design_tokens"]["tokens"] or {})
+    if "pages" in parts:
+        page_docs = await db.pages.find({}, {"_id": 0}).to_list(500)
+        snapshot_data["pages"] = page_docs
+        counts["pages"] = len(page_docs)
+    if "site_menu" in parts:
+        menu = await db.site_menu.find_one({"key": "main"}, {"_id": 0})
+        snapshot_data["site_menu"] = menu or {}
+        counts["site_menu"] = len((menu or {}).get("items") or [])
+    if "feature_config" in parts:
+        fc = await db.feature_config.find_one({"_id": "config"}, {"_id": 0})
+        snapshot_data["feature_config"] = fc or {}
+        counts["feature_config"] = len((fc or {}).get("features") or [])
     doc = {
         "name": data.name.strip(),
         "description": data.description,
@@ -1378,6 +1402,7 @@ async def restore_snapshot(snapshot_id: str, user: dict = Depends(require_role("
     data = snap.get("data", {})
     now_iso = datetime.now(timezone.utc).isoformat()
     restored = {}
+    failed = []
 
     if "cms" in data:
         # Wipe current overrides and insert snapshot overrides
@@ -1426,9 +1451,56 @@ async def restore_snapshot(snapshot_id: str, user: dict = Depends(require_role("
                 added += 1
         restored["presets_added"] = added
 
+    if "design_tokens" in data and (data.get("design_tokens") or {}).get("tokens"):
+        try:
+            from routes.design_studio import _reject_dangerous_deep
+            _reject_dangerous_deep(data["design_tokens"]["tokens"])  # SEC-003
+            await db.design_tokens.update_one(
+                {"_id": "active"},
+                {"$set": {"tokens": data["design_tokens"]["tokens"],
+                          "preset_id": data["design_tokens"].get("preset_id") or "restored",
+                          "updated_at": now_iso}},
+                upsert=True,
+            )
+            restored["design_tokens"] = len(data["design_tokens"]["tokens"])
+        except Exception as exc:  # noqa: BLE001
+            failed.append({"part": "design_tokens", "error": str(exc)[:200]})
+
+    if "pages" in data and isinstance(data.get("pages"), list):
+        try:
+            n = 0
+            for p in data["pages"]:
+                if isinstance(p, dict) and p.get("key"):
+                    await db.pages.update_one({"key": p["key"]}, {"$set": {**p, "updated_at": now_iso}}, upsert=True)
+                    n += 1
+            restored["pages"] = n
+        except Exception as exc:  # noqa: BLE001
+            failed.append({"part": "pages", "error": str(exc)[:200]})
+
+    if "site_menu" in data and data.get("site_menu"):
+        try:
+            m = data["site_menu"]
+            await db.site_menu.update_one({"key": m.get("key") or "main"},
+                                          {"$set": {**m, "updated_at": now_iso}}, upsert=True)
+            restored["site_menu"] = len(m.get("items") or [])
+        except Exception as exc:  # noqa: BLE001
+            failed.append({"part": "site_menu", "error": str(exc)[:200]})
+
+    if "feature_config" in data and data.get("feature_config"):
+        try:
+            await db.feature_config.update_one({"_id": "config"},
+                                               {"$set": {**data["feature_config"], "updated_at": now_iso}}, upsert=True)
+            restored["feature_config"] = 1
+        except Exception as exc:  # noqa: BLE001
+            failed.append({"part": "feature_config", "error": str(exc)[:200]})
+
     await audit("snapshot.restore", user,
                 target={"type": "snapshot", "id": snapshot_id, "label": snap.get("name")},
-                after={"restored": restored})
+                after={"restored": restored, "failed": failed or None})
+    if failed:
+        # NO false-success: dacă o parte a eșuat, restore-ul eșuează vizibil.
+        raise HTTPException(500, {"message": "Restore parțial eșuat",
+                                  "restored": restored, "failed": failed})
     return {"ok": True, "name": snap.get("name"), "restored": restored}
 
 
@@ -2144,7 +2216,7 @@ async def incident_cadence_heatmap(
     """GitHub-style activity heatmap for incident-response cadence across ALL presets.
     Returns daily aggregation for the last `days` days, plus weekday distribution.
     """
-    from datetime import date as _date, timedelta as _td
+    from datetime import timedelta as _td
     today = datetime.now(timezone.utc).date()
     start_date = today - _td(days=days - 1)
     cutoff_iso = start_date.isoformat()  # YYYY-MM-DD compares fine with sent_at prefix

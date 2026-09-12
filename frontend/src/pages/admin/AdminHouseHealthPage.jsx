@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { API } from "../DashShared";
+import { ThemeSwitcher } from "../../components/ThemeSwitcher";
 
 const EMPTY_PLAN = {
   slug: "", name: "", description: "",
@@ -32,10 +33,11 @@ const AdminHouseHealthPage = () => {
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
             <Heart className="w-6 h-6 text-white" />
           </div>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold">House Health · Admin</h1>
             <p className="text-xs text-stone-400">Configurare planuri abonament și formula scor proprietate</p>
           </div>
+          <ThemeSwitcher />
         </div>
 
         <div className="flex gap-2 mb-5">

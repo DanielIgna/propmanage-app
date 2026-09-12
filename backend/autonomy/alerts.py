@@ -72,6 +72,90 @@ def _build_email_html(prev_tier: str, new_tier: str, prev_score: float, new_scor
 """.strip()
 
 
+async def _detect_downgrade(current_snapshot: dict) -> dict:
+    """Compare current snapshot vs previous one. Returns either
+    {skip: reason} or {prev_tier, new_tier, prev_score, new_score}."""
+    new_tier = current_snapshot.get("tier")
+    new_score = (current_snapshot.get("scores") or {}).get("general")
+    if not new_tier or new_score is None:
+        return {"skip": "missing_tier_or_score"}
+
+    # Find the most recent snapshot BEFORE this one (skip the one we just inserted)
+    cursor = db.autonomy_snapshots.find(
+        {"timestamp": {"$lt": current_snapshot.get("timestamp")}},
+        {"tier": 1, "scores": 1, "timestamp": 1},
+    ).sort("timestamp", -1).limit(1)
+    prev_list = [d async for d in cursor]
+    if not prev_list:
+        return {"skip": "no_previous_snapshot"}
+    prev = prev_list[0]
+    prev_tier = prev.get("tier") or "manual"
+    prev_score = (prev.get("scores") or {}).get("general") or 0
+
+    if TIER_RANK.get(new_tier, 0) >= TIER_RANK.get(prev_tier, 0):
+        return {"skip": "no_downgrade", "prev_tier": prev_tier, "new_tier": new_tier}
+
+    # De-dupe: skip if same downgrade pair was alerted in the last 12h
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=12)).isoformat()
+    recent = await db.autonomy_alerts.find_one({
+        "prev_tier": prev_tier,
+        "new_tier": new_tier,
+        "sent_at": {"$gte": cutoff},
+    })
+    if recent:
+        return {"skip": "deduped_recent_alert"}
+
+    return {"prev_tier": prev_tier, "new_tier": new_tier,
+            "prev_score": prev_score, "new_score": new_score}
+
+
+async def _notify_admin(adm: dict, title: str, body: str, email_html: str) -> tuple:
+    """Send in-app + push + email to one admin. Returns (pushed, emailed)."""
+    from services import send_email, send_web_push
+    uid = str(adm.get("_id"))
+    email = adm.get("email")
+    pushed = emailed = 0
+    # 1) In-app notification (direct insert to avoid notify's generic email)
+    try:
+        await db.notifications.insert_one({
+            "user_id": uid,
+            "title": title,
+            "message": body,
+            "type": "autonomy_tier_downgrade",
+            "link": "/admin/autonomy",
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        pushed = 1
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[autonomy.alert] in-app insert failed for {email}: {e}")
+    # 2) Web push (best-effort)
+    try:
+        await send_web_push(uid, title, body, "/admin/autonomy")
+    except Exception:  # noqa: BLE001
+        pass
+    # 3) Rich email
+    if email:
+        try:
+            await send_email(email, title, email_html)
+            emailed = 1
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"[autonomy.alert] email failed for {email}: {e}")
+    return pushed, emailed
+
+
+async def _persist_alert(alert_doc: dict) -> None:
+    """Store the alert (audit + de-dupe source) and cap collection at 200 docs."""
+    try:
+        await db.autonomy_alerts.insert_one({**alert_doc})
+        cur = db.autonomy_alerts.find({}, {"_id": 1}).sort("sent_at", -1).skip(200)
+        old = [d["_id"] async for d in cur]
+        if old:
+            await db.autonomy_alerts.delete_many({"_id": {"$in": old}})
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[autonomy.alert] persist failed: {e}")
+
+
 async def check_and_alert_tier_downgrade(current_snapshot: dict) -> dict:
     """Compare current snapshot vs prev and alert on downgrade.
 
@@ -82,37 +166,13 @@ async def check_and_alert_tier_downgrade(current_snapshot: dict) -> dict:
     Returns:
         dict: {alerted: bool, reason: str, downgrade: optional dict}
     """
-    new_tier = current_snapshot.get("tier")
-    new_score = (current_snapshot.get("scores") or {}).get("general")
-    if not new_tier or new_score is None:
-        return {"alerted": False, "reason": "missing_tier_or_score"}
+    detection = await _detect_downgrade(current_snapshot)
+    if "skip" in detection:
+        reason = detection.pop("skip")
+        return {"alerted": False, "reason": reason, **detection}
 
-    # Find the most recent snapshot BEFORE this one (skip the one we just inserted)
-    cursor = db.autonomy_snapshots.find(
-        {"timestamp": {"$lt": current_snapshot.get("timestamp")}},
-        {"tier": 1, "scores": 1, "timestamp": 1},
-    ).sort("timestamp", -1).limit(1)
-    prev_list = [d async for d in cursor]
-    if not prev_list:
-        return {"alerted": False, "reason": "no_previous_snapshot"}
-    prev = prev_list[0]
-    prev_tier = prev.get("tier") or "manual"
-    prev_score = (prev.get("scores") or {}).get("general") or 0
-
-    prev_rank = TIER_RANK.get(prev_tier, 0)
-    new_rank = TIER_RANK.get(new_tier, 0)
-    if new_rank >= prev_rank:
-        return {"alerted": False, "reason": "no_downgrade", "prev_tier": prev_tier, "new_tier": new_tier}
-
-    # De-dupe: skip if same downgrade pair was alerted in the last 12h
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=12)).isoformat()
-    recent = await db.autonomy_alerts.find_one({
-        "prev_tier": prev_tier,
-        "new_tier": new_tier,
-        "sent_at": {"$gte": cutoff},
-    })
-    if recent:
-        return {"alerted": False, "reason": "deduped_recent_alert"}
+    prev_tier, new_tier = detection["prev_tier"], detection["new_tier"]
+    prev_score, new_score = detection["prev_score"], detection["new_score"]
 
     # Build & dispatch
     breakdown = current_snapshot.get("breakdown_summary") or {}
@@ -128,40 +188,13 @@ async def check_and_alert_tier_downgrade(current_snapshot: dict) -> dict:
     email_html = _build_email_html(prev_tier, new_tier, prev_score, new_score, breakdown)
 
     try:
-        from services import send_email, send_web_push
         for adm in super_admins:
-            uid = str(adm.get("_id"))
-            email = adm.get("email")
-            # 1) In-app notification (direct insert to avoid notify's generic email)
-            try:
-                await db.notifications.insert_one({
-                    "user_id": uid,
-                    "title": title,
-                    "message": body,
-                    "type": "autonomy_tier_downgrade",
-                    "link": "/admin/autonomy",
-                    "read": False,
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                })
-                sent_push_count += 1
-            except Exception as e:  # noqa: BLE001
-                logger.warning(f"[autonomy.alert] in-app insert failed for {email}: {e}")
-            # 2) Web push (best-effort)
-            try:
-                await send_web_push(uid, title, body, "/admin/autonomy")
-            except Exception:  # noqa: BLE001
-                pass
-            # 3) Rich email
-            if email:
-                try:
-                    await send_email(email, title, email_html)
-                    sent_email_count += 1
-                except Exception as e:  # noqa: BLE001
-                    logger.warning(f"[autonomy.alert] email failed for {email}: {e}")
+            pushed, emailed = await _notify_admin(adm, title, body, email_html)
+            sent_push_count += pushed
+            sent_email_count += emailed
     except Exception as e:  # noqa: BLE001
         logger.warning(f"[autonomy.alert] dispatch error: {e}")
 
-    # Persist alert (audit + de-dupe source)
     alert_doc = {
         "prev_tier": prev_tier,
         "new_tier": new_tier,
@@ -173,15 +206,7 @@ async def check_and_alert_tier_downgrade(current_snapshot: dict) -> dict:
         "email_count": sent_email_count,
         "sent_at": datetime.now(timezone.utc).isoformat(),
     }
-    try:
-        await db.autonomy_alerts.insert_one({**alert_doc})
-        # Keep last 200 alerts
-        cur = db.autonomy_alerts.find({}, {"_id": 1}).sort("sent_at", -1).skip(200)
-        old = [d["_id"] async for d in cur]
-        if old:
-            await db.autonomy_alerts.delete_many({"_id": {"$in": old}})
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"[autonomy.alert] persist failed: {e}")
+    await _persist_alert(alert_doc)
 
     alert_doc.pop("_id", None)
     logger.info(

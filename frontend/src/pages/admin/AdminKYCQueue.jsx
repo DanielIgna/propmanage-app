@@ -67,6 +67,13 @@ const AIVerificationPanel = ({ doc, kycId, onRerun }) => {
       ) : (
         <div className="space-y-2">
           <div className="flex items-center gap-3 flex-wrap">
+            {ai.recommendation && (
+              <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${ai.recommendation === "approve"
+                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"}`} data-testid="ai-recommendation">
+                {ai.recommendation === "approve" ? "✓ Recomandat spre aprobare" : "⚠ Necesită review manual"}
+              </span>
+            )}
             <div className={`px-3 py-1.5 rounded-lg ${scoreTone}`} data-testid="ai-score">
               <span className="text-[10px] uppercase tracking-wider opacity-70">Match score</span>
               <span className="ml-2 font-bold text-lg">{score !== null && score !== undefined ? `${score}/100` : "—"}</span>
@@ -200,7 +207,7 @@ const KYCDetailModal = ({ kycId, onClose, onDecision }) => {
             {/* AI Verification panel */}
             <AIVerificationPanel doc={doc} kycId={kycId} onRerun={() => {
               setDoc(null);
-              axios.get(`${API}/kyc/admin/${kycId}`).then((r) => setDoc(r.data));
+              axios.get(`${API}/kyc/admin/${kycId}`).then((r) => setDoc(r.data)).catch(() => {});
             }} />
 
             {["uploaded", "reviewing"].includes(doc.status) && (

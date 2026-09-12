@@ -25,7 +25,7 @@ export const AdminImpersonationLogs = () => {
   const load = () => {
     setLoading(true);
     axios.get(`${API}/admin/impersonation-logs`, { params: { skip, limit: 25 } })
-      .then(r => setData(r.data))
+      .then(r => setData(r.data)).catch(() => {})
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, [skip]);

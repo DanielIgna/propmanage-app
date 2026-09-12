@@ -26,6 +26,11 @@ async def get_current_user(request: Request) -> dict:
         # Attach impersonation context (if the token was minted by /admin/impersonate)
         if payload.get("impersonation"):
             u["impersonation"] = payload["impersonation"]
+        # Expose to middleware (e.g., demo activity logger)
+        try:
+            request.state.user = u
+        except Exception:  # noqa: BLE001
+            pass
         return u
     except jwt.ExpiredSignatureError:
         raise HTTPException(401, "Token expired")

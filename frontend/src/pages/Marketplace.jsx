@@ -5,9 +5,10 @@ import axios from "axios";
 import { motion } from "framer-motion";
 import { Building2, Star, CheckCircle2, Search, Filter, ArrowLeft, Shield, QrCode, Copy, Check, Calendar, Wrench, AlertTriangle, CreditCard, MapPin } from "lucide-react";
 import { useAuth, formatApiError } from "../auth";
-import { HealthScoreBadge } from "../components/HealthScoreBadge";
 import { useSEO } from "../hooks/useSEO";
 import { PMCard, PMPillButton, PMChip, PMSectionHeader, PMEmptyState } from "../components/pm";
+import { MarketplaceBenefitStrip } from "../components/pb/PbEverywhere";
+import { EcosystemFlow } from "../components/ecosystem/EcosystemFlow";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -52,8 +53,15 @@ export const PublicMarketplace = () => {
     setLoading(true);
     axios.get(`${API}/marketplace/specialists?${params}`)
       .then(r => setSpecialists(r.data))
+      .catch(() => setSpecialists([]))
       .finally(() => setLoading(false));
   }, [filters]);
+
+  // PPOS P3a-M5 — prezentare defensivă publică: statusurile de moderare nu se afișează niciodată
+  const visibleSpecialists = specialists.filter(
+    s => !["REJECTED", "SUSPENDED", "BLOCKED"].includes(String(s.tier || "").toUpperCase())
+  );
+  const PUBLIC_TIERS = ["VERIFIED", "ADVANCED", "PREMIUM", "TOP"];
 
   return (
     <div className="pm-page-bg">
@@ -76,8 +84,13 @@ export const PublicMarketplace = () => {
         <div className="pm-fade-in">
           <PMChip variant="primary" className="mb-3">MARKETPLACE PROPMANAGE</PMChip>
           <h1 className="font-serif text-4xl sm:text-6xl tracking-tight mb-3" data-testid="mkt-title">Specialiști verificați</h1>
-          <p className="text-stone-400 mb-8 max-w-xl">Descoperă cei mai buni profesioniști pentru proprietatea ta. Recenzii reale, plăți escrow, garanție lucrare.</p>
+          <p className="text-stone-400 mb-6 max-w-xl">Descoperă cei mai buni profesioniști pentru proprietatea ta. Recenzii reale, plăți escrow, garanție lucrare.</p>
+          <div className="pm-card-glass !p-4 mb-8" data-testid="mkt-ecosystem-flow">
+            <EcosystemFlow dark compact activeKey="specialists" />
+          </div>
         </div>
+
+        <MarketplaceBenefitStrip />
 
         {/* Filters */}
         <div className="pm-card-glass !p-4 mb-6 flex flex-wrap gap-3 items-center pm-fade-in-delay-1">
@@ -102,10 +115,10 @@ export const PublicMarketplace = () => {
           </select>
         </div>
 
-        <div className="text-xs text-stone-500 mb-4">{loading ? "Se încarcă..." : `${specialists.length} specialiști`}</div>
+        <div className="text-xs text-stone-500 mb-4">{loading ? "Se încarcă..." : `${visibleSpecialists.length} specialiști`}</div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 pm-fade-in-delay-2">
-          {specialists.map((s, i) => (
+          {visibleSpecialists.map((s, i) => (
             <motion.div key={s.id}
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
               <PMCard className="hover:!border-[var(--pm-primary)]/30 transition-all group h-full flex flex-col" testid={`mkt-card-${s.id}`}>
@@ -121,16 +134,55 @@ export const PublicMarketplace = () => {
                     <div className="text-xs text-stone-400 capitalize">{s.specialty || "Specialist"}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs mb-3 flex-wrap">
-                  <div className="flex items-center gap-1 bg-amber-500/15 border border-amber-500/30 text-amber-300 px-2.5 py-1 rounded-full">
-                    <Star className="w-3 h-3 fill-current" />
-                    <span className="font-semibold">{s.rating || "—"}</span>
-                    <span className="opacity-70">({s.reviews_count})</span>
-                  </div>
-                  {s.tier && <PMChip variant="primary">{s.tier}</PMChip>}
-                </div>
-                <div className="mb-4 flex-1">
-                  <HealthScoreBadge health={s.health} size="sm" />
+                <div className="flex items-center gap-2 text-xs mb-4 flex-wrap flex-1">
+                  {s.trust?.trust_score != null && (
+                    <div className="flex items-center gap-1 bg-[var(--pm-primary)]/10 border border-[var(--pm-primary)]/30 text-[var(--pm-primary)] px-2.5 py-1 rounded-full" data-testid={`mkt-trust-score-${s.id}`}>
+                      <span className="font-black">Trust {s.trust.trust_score}</span>
+                      <span className="opacity-70">/100</span>
+                    </div>
+                  )}
+                  {(s.trust?.confirmed_jobs || 0) > 0 && (
+                    <div className="flex items-center gap-1 bg-sky-500/15 border border-sky-500/30 text-sky-300 px-2.5 py-1 rounded-full" data-testid={`mkt-confirmed-${s.id}`}>
+                      <span className="font-semibold">{s.trust.confirmed_jobs}</span>
+                      <span className="opacity-70">lucrări confirmate</span>
+                    </div>
+                  )}
+                  {(s.trust?.ambassadors || 0) > 0 && (
+                    <div className="flex items-center gap-1 bg-violet-500/15 border border-violet-500/30 text-violet-300 px-2.5 py-1 rounded-full" data-testid={`mkt-ambassadors-${s.id}`}>
+                      <span>🏅</span>
+                      <span className="font-semibold">{s.trust.ambassadors}</span>
+                      <span className="opacity-70">{s.trust.ambassadors === 1 ? "ambasador" : "ambasadori"}</span>
+                    </div>
+                  )}
+                  {(s.trust?.community_value || 0) > 0 && (
+                    <div className="flex items-center gap-1 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-2.5 py-1 rounded-full" data-testid={`mkt-community-value-${s.id}`}>
+                      <span className="font-semibold">{s.trust.community_value} RON</span>
+                      <span className="opacity-70">beneficii generate comunității</span>
+                    </div>
+                  )}
+                  {s.trust?.rebook_show && (
+                    <div className="flex items-center gap-1 bg-rose-500/15 border border-rose-500/30 text-rose-300 px-2.5 py-1 rounded-full" data-testid={`mkt-rebook-${s.id}`}>
+                      <span>❤️</span>
+                      <span className="font-semibold">{s.trust.rebook_pct}%</span>
+                      <span className="opacity-70">ar angaja din nou</span>
+                    </div>
+                  )}
+                  {(s.trust?.recommenders || 0) > 0 && (
+                    <div className="flex items-center gap-1 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-2.5 py-1 rounded-full" data-testid={`mkt-recommenders-${s.id}`}>
+                      <span className="font-semibold">{s.trust.recommenders}</span>
+                      <span className="opacity-70">{s.trust.recommenders === 1 ? "proprietar recomandă" : "proprietari recomandă"}</span>
+                    </div>
+                  )}
+                  {(s.reviews_count || 0) >= 1 ? (
+                    <div className="flex items-center gap-1 bg-amber-500/15 border border-amber-500/30 text-amber-300 px-2.5 py-1 rounded-full">
+                      <Star className="w-3 h-3 fill-current" />
+                      <span className="font-semibold">{s.rating || "—"}</span>
+                      <span className="opacity-70">({s.reviews_count})</span>
+                    </div>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-stone-400" data-testid={`mkt-new-${s.id}`}>Nou pe platformă</span>
+                  )}
+                  {PUBLIC_TIERS.includes(String(s.tier || "").toUpperCase()) && <PMChip variant="primary">{s.tier}</PMChip>}
                 </div>
                 <Link to={`/specialists/${s.id}`} className="block" data-testid={`mkt-view-${s.id}`}>
                   <PMPillButton variant="ghost" className="w-full">
@@ -143,11 +195,31 @@ export const PublicMarketplace = () => {
         </div>
 
         {specialists.length === 0 && !loading && (
-          <PMEmptyState
-            icon={Search}
-            title="Niciun specialist găsit"
-            description="Încearcă să ajustezi filtrele sau revino mai târziu."
-          />
+          (filters.category || filters.verified_only) ? (
+            <PMEmptyState
+              icon={Search}
+              title="Niciun specialist găsit"
+              description="Încearcă să ajustezi filtrele sau revino mai târziu."
+            />
+          ) : (
+            /* GBOS P0 — marketplace-ul nu arată niciodată „gol": early access onest */
+            <div className="pm-card-glass !p-8 sm:!p-12 text-center" data-testid="mkt-early-access">
+              <PMChip variant="primary" className="mb-4">EARLY ACCESS</PMChip>
+              <h2 className="font-serif text-3xl sm:text-4xl mb-3">Construim rețeaua de încredere, oraș cu oraș</h2>
+              <p className="text-stone-400 max-w-xl mx-auto mb-8">
+                Primii specialiști intră pe platformă prin recomandările proprietarilor — nu prin reclame.
+                Fiecare profil vine cu recenzii verificate din lucrări reale, plăți escrow și garanție.
+              </p>
+              <div className="flex flex-wrap justify-center gap-3">
+                <Link to="/register?role=specialist" data-testid="mkt-ea-specialist">
+                  <PMPillButton variant="primary">Sunt specialist — vreau primele cereri</PMPillButton>
+                </Link>
+                <Link to="/register" data-testid="mkt-ea-owner">
+                  <PMPillButton variant="ghost">Sunt proprietar — las prima cerere</PMPillButton>
+                </Link>
+              </div>
+            </div>
+          )
         )}
 
         {/* SEO internal-link block — surfaces all category/city landing pages */}

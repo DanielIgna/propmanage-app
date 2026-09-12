@@ -19,9 +19,11 @@ const StatusBadge = ({ status }) => {
 };
 
 export const AdminApprovals = () => {
+  const focusId = React.useMemo(() => new URLSearchParams(window.location.search).get("focus"), []);
   const [items, setItems] = useState([]);
-  const [filter, setFilter] = useState("pending");
+  const [filter, setFilter] = useState(() => (focusId ? "all" : "pending"));
   const [loading, setLoading] = useState(true);
+  const [focusMissing, setFocusMissing] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -33,6 +35,20 @@ export const AdminApprovals = () => {
     }
   };
   useEffect(() => { load(); }, [filter]);
+
+  // Deep-link: /admin?tab=approvals&focus=<id> → evidențiază approval-ul exact (fără fallback homepage)
+  useEffect(() => {
+    if (!focusId || loading) return;
+    const exists = items.some(a => a.id === focusId);
+    setFocusMissing(!exists);
+    if (exists) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`approval-${focusId}`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [focusId, loading, items]);
 
   const approve = async (id) => {
     const note = prompt("Notă aprobare (opțional):", "");
@@ -90,10 +106,16 @@ export const AdminApprovals = () => {
           </div>
         ) : (
           <div className="space-y-2">
+            {focusMissing && (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300" data-testid="approval-focus-missing">
+                Approval indisponibil (a fost decis sau nu mai există).
+              </div>
+            )}
             {items.map((a) => (
               <div
                 key={a.id}
-                className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-slate-50 dark:bg-slate-800/50"
+                id={`approval-${a.id}`}
+                className={`rounded-xl border p-4 bg-slate-50 dark:bg-slate-800/50 ${focusId === a.id ? "border-violet-500 ring-2 ring-violet-500/40" : "border-slate-200 dark:border-slate-700"}`}
                 data-testid={`approval-${a.id}`}
               >
                 <div className="flex items-start justify-between gap-3 flex-wrap">

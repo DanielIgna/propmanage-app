@@ -1,0 +1,44 @@
+{
+  "summary": "Full backend + frontend verification of the new Admin Zones separation (Business vs Infrastructure & Development). 9/9 backend tests pass (registry, /me, /assign happy & error paths, geographic-zones regression, admin smoke pages). Frontend: zone switcher renders with both tabs, Business zone shows EXACTLY 10 sections, Infrastructure zone shows EXACTLY 5, no cross-leak. All required nav items resolve (users, finance, settings) and /admin/admin-accounts loads correctly. Command-palette auto-switch works (searching 'Setări Platformă' from Business zone triggered zone switch to Infrastructure). Regression pages (/admin, /admin/marketing, /admin/demo-accounts, /admin/admin-accounts) load with no console errors; logout works. One minor conflict found between persistence and auto-switch — see backend/frontend issues below.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Zone persistence after reload conflicts with auto-switch effect",
+        "issue": "After clicking zone-tab-infrastructure on default /admin (where active=dashboard, a business item), localStorage.pm_admin_zone is correctly set to 'infrastructure', but on RELOAD the useEffect at AdminLayoutMetronic.jsx:702-709 keyed on [active] fires with active='dashboard' → activeSection.zone='business' → switchZone('business') → overwrites localStorage back to 'business'. Result: sidebar shows Business sections after reload even though user explicitly toggled Infrastructure. Review-request item #3 (persist across reload via localStorage) therefore fails for the toggle-only case. Item #6 (auto-switch on deep-link to another zone) still works — as verified by Cmd+K → 'Setări Platformă' which correctly switched to Infrastructure. Suggested fix: only auto-switch when the active item was set via navigation (deep-link/palette), not on initial mount, OR change the effect to only run when 'active' actually changes (skip first render) so the persisted zone wins on cold-load.",
+        "affected_selectors": ["[data-testid='zone-tab-business']", "[data-testid='zone-tab-infrastructure']", "localStorage:pm_admin_zone"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_admin_zones_iter81.py",
+    "/app/test_reports/pytest/iter81_admin_zones.xml"
+  ],
+  "action_items": [
+    "Decide the priority between zone persistence (localStorage) vs auto-switch on active-item change. The current useEffect at AdminLayoutMetronic.jsx line 702-709 unconditionally overrides localStorage on every mount because active is populated at first render. Simplest fix: gate the effect with a ref that skips the first render so the persisted zone wins on cold-load, while deep-link/Cmd+K navigations (which set active AFTER mount) still auto-switch. Everything else in the review request works as expected."
+  ],
+  "critical_code_review_comments": [
+    "AdminLayoutMetronic.jsx:702-709 — useEffect keyed only on [active] runs on mount; because active is populated during the first render, it overrides the persisted zone from localStorage on every cold reload. Add a first-render guard (useRef) or key the effect off a genuine navigation event.",
+    "backend/routes/admin_zones.py:100-113 — /assign updates user doc but has no audit-log write. Consider mirroring the sub_admin audit pattern for traceability when 'zone_role_assigned_by' actions happen with the master code.",
+    "backend/routes/admin_zones.py:29 — DEMO_MASTER_CODE hardcoded default of '0108' in code path is fine for the demo env but should be verified is not exposed in a public repo/env snapshot.",
+    "Frontend AdminLayoutMetronic.jsx exceeds 996 LOC — consider splitting NAV_SECTIONS, ZoneSwitcher, and QuickProfileSwitch into separate modules for maintainability (soft guideline)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_admin_zones_iter81.py (new pytest file, 9 tests all passing)"
+  ],
+  "success_rate": {
+    "backend": "100% (9/9 pytest)",
+    "frontend": "~90% (9/10 explicit review-request items PASS; only zone persistence-on-reload conflicts with auto-switch — minor)"
+  },
+  "test_credentials": "Super Admin: danieligna1@gmail.com / 0108 (cookie-based login, POST /api/auth/login sets access_token+refresh_token httpOnly cookies). NOTE: /app/memory/test_credentials.md still lists old demo admin (admin@propmanage.io / Admin123!). It does NOT contain the super-admin danieligna1 credentials or note the cookie-vs-bearer behaviour. Suggest updating memory file.",
+  "seed_data_creation": "None — used existing testing.admin@propmanage.io account for /assign happy-path (already present in DB).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Admin Zones separation (iter81) is functionally complete: backend endpoints 100% pass, frontend UI renders both zones with correct section counts (10 business + 5 infra) and no cross-leak. The only observed defect is a conflict between the localStorage persistence and the [active]-effect auto-switch, which overrides the user's zone toggle on cold reload of /admin. Everything else in the review request (nav item clicks, deep-link auto-switch via Cmd+K, regression pages, logout) works. Backend test file added at /app/backend/tests/test_admin_zones_iter81.py — run with REACT_APP_BACKEND_URL=<preview_url> pytest backend/tests/test_admin_zones_iter81.py.",
+  "rca_of_the_issue": "Root cause of the persistence-vs-auto-switch conflict: In AdminLayoutMetronic.jsx the useEffect at lines 702-709 is keyed on [active]. React runs it once on mount with the initial active prop (typically 'dashboard'). It then looks up which section owns that item ('dashboard' → business zone) and unconditionally calls switchZone('business') → setStoredZone('business'), overwriting whatever the user persisted. Reproduction: (1) login as super-admin, (2) go to /admin, (3) click [data-testid='zone-tab-infrastructure'], (4) verify localStorage.pm_admin_zone==='infrastructure', (5) hard reload — sidebar now shows Business sections and localStorage flips back to 'business'. Mitigation: add a useRef first-render guard, e.g. `const didMount = useRef(false); useEffect(() => { if (!didMount.current) { didMount.current = true; return; } /* existing auto-switch */ }, [active]);`. This preserves auto-switch on genuine navigation (Cmd+K, deep-link clicks after mount) while letting the persisted zone win on initial load."
+}

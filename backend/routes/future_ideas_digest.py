@@ -19,7 +19,7 @@ import re
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Body, HTTPException
+from fastapi import APIRouter, Depends, Body
 from pydantic import BaseModel, Field
 
 from db import db

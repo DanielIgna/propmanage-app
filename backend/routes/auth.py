@@ -99,25 +99,29 @@ async def register(data: RegisterIn, request: Request, response: Response):
         raise HTTPException(400, "Trebuie să accepți Termenii și Condițiile pentru a continua")
     if not data.privacy_policy_accepted:
         raise HTTPException(400, "Trebuie să accepți Politica de Confidențialitate pentru a continua")
-    # Phone required (validation only — verification via SMS deferred until Twilio)
+    # Phone: obligatoriu doar pentru specialiști (EO-006 F6 — progressive disclosure pentru clienți)
     phone_raw = (data.phone or "").strip()
-    if not phone_raw:
-        raise HTTPException(400, "Numărul de telefon este obligatoriu")
     import re
-    phone_digits = re.sub(r"[^\d+]", "", phone_raw)
-    # Accept: +40XXXXXXXXX (12 chars), 0XXXXXXXXX (10 digits), or +XXX... international (8-15 digits)
-    if not (re.match(r"^\+?\d{8,15}$", phone_digits)):
+    phone_digits = re.sub(r"[^\d+]", "", phone_raw) if phone_raw else ""
+    if phone_raw and not phone_digits:
+        raise HTTPException(400, "Format telefon invalid. Folosește +40 7XX XXX XXX sau 07XX XXX XXX")
+    if data.role == "specialist" and not phone_digits:
+        raise HTTPException(400, "Numărul de telefon este obligatoriu pentru specialiști")
+    if phone_digits and not re.match(r"^\+?\d{8,15}$", phone_digits):
         raise HTTPException(400, "Format telefon invalid. Folosește +40 7XX XXX XXX sau 07XX XXX XXX")
     if await db.users.find_one({"email": email}):
         raise HTTPException(400, "Email already registered")
     now_iso = datetime.now(timezone.utc).isoformat()
     verif_token = _gen_email_verification_token()
     verif_expires = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+    from tenancy import resolve_tenant_slug
+    tenant_id = await resolve_tenant_slug(request)
     user = {
         "email": email,
         "password_hash": hash_password(data.password),
         "name": data.name,
         "role": data.role,
+        "tenant_id": tenant_id,
         "phone": phone_digits,
         "wallet_balance": 500.0 if data.role == "specialist" else 0.0,
         "tokens": 0,
@@ -304,10 +308,11 @@ async def me(user: dict = Depends(get_current_user)):
             "dual_role_enabled": 1, "active_view": 1,
             "avatar": 1, "avatar_source": 1, "picture": 1,
             "experience_tier": 1, "experience_tier_locked": 1,
-            "admin_scope": 1, "admin_seniority": 1,
+            "admin_scope": 1, "admin_seniority": 1, "tenant_id": 1,
         },
     )
     user["tutorial_seen"] = bool((doc or {}).get("tutorial_seen", False))
+    user["tenant_id"] = (doc or {}).get("tenant_id") or "main"
     user["ai_admin_tour_seen"] = bool((doc or {}).get("ai_admin_tour_seen", False))
     user["dashboard_tour_completed"] = bool((doc or {}).get("dashboard_tour_completed", False))
     # `has_password` lets frontend show "Backup password" button only for Google-only accounts
@@ -316,6 +321,36 @@ async def me(user: dict = Depends(get_current_user)):
     # Dual-role view state (multi-profile system)
     user["dual_role_enabled"] = bool((doc or {}).get("dual_role_enabled", False))
     user["active_view"] = (doc or {}).get("active_view") or user.get("role")
+    # SELF-HEALING: prevent the impossible state where dual_role_enabled=True
+    # but the user has NO specialist profile data (no service_categories, no
+    # coverage_zones, no specialist_onboarded_at) AND role is not "specialist".
+    # This state can be reached via manual DB edits / admin testing and would
+    # cause the dashboard guard (DashShared) to bounce the user to the wrong
+    # role-specific dashboard. Auto-correct it here so the user gets a coherent
+    # session on the very next request.
+    if user["dual_role_enabled"] and user.get("role") != "specialist":
+        has_spec_profile = bool(
+            (doc or {}).get("service_categories")
+            or (doc or {}).get("coverage_zones")
+            or (doc or {}).get("specialist_onboarded_at")
+            or (doc or {}).get("specialist_profile_id")
+        )
+        if not has_spec_profile:
+            await db.users.update_one(
+                {"_id": ObjectId(user["id"])},
+                {"$set": {"dual_role_enabled": False, "active_view": user.get("role")}},
+            )
+            user["dual_role_enabled"] = False
+            user["active_view"] = user.get("role")
+            try:
+                import logging as _lg
+                _lg.getLogger("propmanage.auth").info(
+                    "[auth/me] self-healed dual_role state for user=%s role=%s "
+                    "(had dual_role_enabled=True but no specialist profile)",
+                    user.get("email"), user.get("role"),
+                )
+            except Exception:  # noqa: BLE001
+                pass
     # Avatar metadata for source-aware UI (Google sync / uploaded)
     user["avatar"] = (doc or {}).get("avatar") or user.get("avatar")
     user["avatar_source"] = (doc or {}).get("avatar_source")
@@ -477,7 +512,7 @@ async def send_backup_password(user: dict = Depends(get_current_user)):
         f"<a href='mailto:contact@propmanage.ro' style='color:#d4ff3a;'>contact@propmanage.ro</a>.</p>"
         f"<hr style='border:none;border-top:1px solid #292524; margin:24px 0;'/>"
         f"<p style='color:#78716c; font-size:11px; text-align:center;'>"
-        f"PropManage SRL · {front_url}</p>"
+        f"PropManage · operat de VINTAGE FURNITURE S.R.L. · CUI 35250247 · {front_url}</p>"
         f"</div>"
     )
     try:
@@ -569,6 +604,27 @@ async def switch_view(data: SwitchViewIn, user: dict = Depends(get_current_user)
             403,
             "Profilul dublu nu este activ. Adaugă întâi profilul de Specialist din Setări → 'Devino Specialist'.",
         )
+    # Additional integrity check: if switching to "specialist", verify a real
+    # specialist profile exists. Prevents desynced state where dual_role_enabled
+    # is true but no specialist data is set.
+    if data.view == "specialist" and user.get("role") != "specialist":
+        full = await db.users.find_one({"_id": ObjectId(user["id"])})
+        has_spec_profile = bool(
+            (full or {}).get("service_categories")
+            or (full or {}).get("coverage_zones")
+            or (full or {}).get("specialist_onboarded_at")
+            or (full or {}).get("specialist_profile_id")
+        )
+        if not has_spec_profile:
+            # Self-heal: clear stale dual-role flag.
+            await db.users.update_one(
+                {"_id": ObjectId(user["id"])},
+                {"$set": {"dual_role_enabled": False, "active_view": user.get("role")}},
+            )
+            raise HTTPException(
+                403,
+                "Nu ai un profil de Specialist activ. Adaugă unul din Setări → 'Devino Specialist'.",
+            )
     await db.users.update_one(
         {"_id": ObjectId(user["id"])},
         {"$set": {"active_view": data.view}}
@@ -1010,6 +1066,131 @@ async def status_2fa(user: dict = Depends(get_current_user)):
     return {"enabled": bool(full_user.get("totp_enabled"))}
 
 
+# ============= GOOGLE OAUTH (Own project — Direct Google flow) =============
+_GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+_GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
+
+
+class GoogleCallbackIn(BaseModel):
+    code: str = Field(..., min_length=10, max_length=2048)
+    redirect_uri: str = Field(..., min_length=10, max_length=512)
+
+
+@router.post("/auth/google/callback")
+async def google_direct_callback(payload: GoogleCallbackIn, response: Response, request: Request):
+    """Direct Google OAuth flow — uses our own Google Cloud project (not Emergent).
+
+    Frontend sends the `code` returned by Google + the exact redirect_uri that
+    was used. Backend exchanges code → access_token at Google, fetches user
+    profile at Google's userinfo endpoint, then creates/updates the user and
+    issues the same JWT cookies as the Emergent flow. Downstream user model
+    identical (google_auth=True, avatar_source='google', etc.).
+    """
+    started_at = datetime.now(timezone.utc)
+
+    def _base_event(**extra):
+        ev = {
+            "event_type": "google_oauth_direct",
+            "flow": "direct",
+            "started_at": started_at.isoformat(),
+            "ip": request.client.host if request.client else None,
+        }
+        ev.update(extra)
+        return ev
+
+    client_id = os.environ.get("GOOGLE_CLIENT_ID")
+    client_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
+    if not client_id or not client_secret:
+        await _record_oauth_health(_base_event(outcome="config_error", final_status=500), started_at)
+        raise HTTPException(500, "Server misconfigured: GOOGLE_CLIENT_ID/SECRET missing.")
+
+    # Step 1: exchange authorization code for access_token at Google
+    try:
+        async with httpx.AsyncClient(timeout=15) as http:
+            token_r = await http.post(_GOOGLE_TOKEN_URL, data={
+                "code": payload.code,
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "redirect_uri": payload.redirect_uri,
+                "grant_type": "authorization_code",
+            })
+    except (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPError) as e:
+        logger.error(f"[google_direct_callback] token network error: {e}")
+        await _record_oauth_health(_base_event(outcome="network", final_status=503, last_error=f"{type(e).__name__}: {e}"), started_at)
+        raise HTTPException(503, f"Google OAuth token endpoint unreachable: {type(e).__name__}") from e
+
+    if token_r.status_code != 200:
+        logger.warning(f"[google_direct_callback] token exchange failed status={token_r.status_code} body={token_r.text[:300]}")
+        await _record_oauth_health(_base_event(outcome="token_refused", final_status=401, upstream_status=token_r.status_code, last_error=token_r.text[:300]), started_at)
+        raise HTTPException(
+            401,
+            f"Google a refuzat schimbul de cod (HTTP {token_r.status_code}). "
+            f"Detaliu: {token_r.text[:200]}. Verifică redirect_uri să fie whitelisted în Google Cloud Console."
+        )
+    tokens = token_r.json()
+    access_token = tokens.get("access_token")
+    if not access_token:
+        await _record_oauth_health(_base_event(outcome="no_token", final_status=401), started_at)
+        raise HTTPException(401, "Google nu a returnat access_token.")
+
+    # Step 2: fetch user profile
+    try:
+        async with httpx.AsyncClient(timeout=10) as http:
+            ui_r = await http.get(_GOOGLE_USERINFO_URL, headers={"Authorization": f"Bearer {access_token}"})
+    except (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPError) as e:
+        await _record_oauth_health(_base_event(outcome="userinfo_network", final_status=503, last_error=f"{type(e).__name__}: {e}"), started_at)
+        raise HTTPException(503, f"Google userinfo unreachable: {type(e).__name__}") from e
+
+    if ui_r.status_code != 200:
+        await _record_oauth_health(_base_event(outcome="userinfo_refused", final_status=401, upstream_status=ui_r.status_code), started_at)
+        raise HTTPException(401, f"Google userinfo refuzat (HTTP {ui_r.status_code}).")
+    profile = ui_r.json()
+    email = (profile.get("email") or "").lower()
+    if not email:
+        await _record_oauth_health(_base_event(outcome="no_email", final_status=400), started_at)
+        raise HTTPException(400, "Google nu a returnat email.")
+    name = profile.get("name") or ""
+    picture = profile.get("picture") or ""
+
+    # Step 3: upsert user (identical logic to Emergent flow)
+    existing = await db.users.find_one({"email": email})
+    if existing:
+        patch = {"picture": picture, "name": name, "google_auth": True}
+        if existing.get("avatar_source") != "uploaded":
+            patch["avatar"] = picture
+            patch["avatar_source"] = "google" if picture else None
+        await db.users.update_one({"_id": existing["_id"]}, {"$set": patch})
+        user = await db.users.find_one({"_id": existing["_id"]})
+        uid = str(user["_id"])
+    else:
+        new_user = {
+            "email": email, "name": name, "picture": picture,
+            "tenant_id": "main",
+            "avatar": picture or None, "avatar_source": "google" if picture else None,
+            "role": "client", "google_auth": True, "password_hash": "",
+            "wallet_balance": 0.0, "tokens": 0,
+            "rating": None, "reviews_count": 0, "verified": False, "tier": None,
+            "phone": "",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        result = await db.users.insert_one(new_user)
+        uid = str(result.inserted_id)
+        user = new_user
+        user["_id"] = result.inserted_id
+
+    user = await _enforce_admin_role(user)
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"last_seen": datetime.now(timezone.utc).isoformat()}}
+    )
+    access = create_access_token(uid, email, user.get("role", "client"))
+    refresh = create_refresh_token(uid)
+    set_auth_cookies(response, access, refresh)
+    # Success (uses same helper for consistency with failure branches)
+    await _record_oauth_health(_base_event(outcome="success", final_status=200, email=email), started_at)
+    return serialize_doc(user)
+
+
 # ============= GOOGLE OAUTH (Emergent-managed) =============
 @router.post("/auth/google/session")
 async def google_session_exchange(request: Request, response: Response):
@@ -1118,6 +1299,7 @@ async def google_session_exchange(request: Request, response: Response):
             "email": email,
             "name": name,
             "picture": picture,
+            "tenant_id": "main",
             "avatar": picture or None,
             "avatar_source": "google" if picture else None,
             "role": "client",

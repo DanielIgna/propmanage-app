@@ -28,7 +28,7 @@ Collections:
 Feature flag: ``app_settings.house_health.enabled`` (default False).
 """
 import logging
-import os
+import asyncio
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -39,6 +39,9 @@ from pydantic import BaseModel, Field
 
 from db import db
 from deps import get_current_user, require_role
+from entitlements import F_HOUSE_HEALTH_BASIC, get_user_entitlements
+import storage_service
+from storage_client import get_object as st_get_object, put_object as st_put_object
 
 logger = logging.getLogger("propmanage.house_health")
 
@@ -92,6 +95,27 @@ async def _user_active_subscription(user_id: str) -> Optional[dict]:
         ],
     }, {"_id": 0})
     return sub
+
+
+async def _assert_house_health_entitlement(user: dict) -> dict:
+    """Central gate: aruncă 402 dacă user-ul nu are house_health_basic.
+    Specialiștii care produc evaluări sunt exceptați (role check separat)."""
+    role = user.get("active_view") or user.get("role")
+    if role == "specialist":
+        return user
+    ent = await get_user_entitlements(user)
+    if F_HOUSE_HEALTH_BASIC in set(ent["features"]):
+        return user
+    raise HTTPException(
+        status_code=402,
+        detail={
+            "error": "entitlement_required",
+            "feature": F_HOUSE_HEALTH_BASIC,
+            "current_tier": ent["tier"],
+            "current_tier_label": ent["tier_label"],
+            "message": "House Health Basic este inclus în abonamentul PropManage. Activează abonamentul pentru a accesa această funcție.",
+        },
+    )
 
 
 @router.get("/feature-flag")
@@ -176,6 +200,21 @@ async def dashboard(user=Depends(get_current_user)):
             "lock_message": "Serviciul House Health este disponibil doar proprietăților cu Digital Twin activ.",
         }
 
+    # Central entitlement gate — FREE users see locked upgrade state
+    role = user.get("active_view") or user.get("role")
+    if role not in ("admin", "operator", "franchise_admin", "specialist"):
+        ent = await get_user_entitlements(user)
+        if F_HOUSE_HEALTH_BASIC not in set(ent["features"]):
+            return {
+                "enabled": True,
+                "locked": True,
+                "lock_reason": "no_subscription",
+                "lock_message": "House Health Basic este inclus în abonamentul PropManage. Activează abonamentul pentru a accesa această funcție.",
+                "required_tier": "CLIENT_BASIC",
+                "current_tier": ent["tier"],
+                "cta_label": "Activează PropManage Basic",
+            }
+
     twin_id = twin.get("id")
 
     # Score (latest)
@@ -254,6 +293,7 @@ async def upload_document(
     """
     if not await _is_feature_enabled():
         raise HTTPException(403, "House Health nu este activ.")
+    await _assert_house_health_entitlement(user)
     if category not in ALLOWED_DOC_CATEGORIES:
         raise HTTPException(400, f"Categorie invalidă. Permise: {ALLOWED_DOC_CATEGORIES}")
     await _assert_twin_owner(twin_project_id, user["id"])
@@ -279,14 +319,19 @@ async def upload_document(
     }
 
     if has_file:
-        # Cap size at 20MB
         contents = await file.read()
-        if len(contents) > 20 * 1024 * 1024:
-            raise HTTPException(413, "Fișierul depășește 20MB.")
+        limit = await storage_service.file_limit_bytes("house_health_doc")
+        if len(contents) > limit:
+            raise HTTPException(413, f"Fișierul depășește {storage_service.fmt_bytes(limit)}.")
+        ext = Path(file.filename or "").suffix.lower().lstrip(".")
+        if (file.content_type or "").startswith("image/"):
+            contents, _cm = await storage_service.maybe_compress_image(contents, ext)
+        await storage_service.check_quota(user["id"], len(contents), "personal")
         safe_name = f"{doc_id}_{Path(file.filename).name[:80]}"
-        target = UPLOAD_DIR / safe_name
-        target.write_bytes(contents)
-        record["storage"] = "local"
+        object_path = f"propmanage/house_health/{doc_id}/{safe_name}"
+        await asyncio.to_thread(st_put_object, object_path, contents, file.content_type or "application/octet-stream")
+        record["storage"] = "object"
+        record["object_path"] = object_path
         record["filename"] = file.filename
         record["file_url"] = f"/api/house-health/documents/{doc_id}/download"
         record["size_bytes"] = len(contents)
@@ -334,15 +379,21 @@ async def delete_document(doc_id: str, user=Depends(get_current_user)):
             except OSError:
                 pass
     await db.hh_documents.delete_one({"id": doc_id})
+    if d.get("size_bytes"):
+        await storage_service.add_usage(user["id"], -d["size_bytes"], "personal")
     return {"ok": True, "deleted_id": doc_id}
 
 
 @router.get("/documents/{doc_id}/download")
 async def download_document(doc_id: str, user=Depends(get_current_user)):
-    from fastapi.responses import FileResponse
+    from fastapi.responses import FileResponse, Response
     d = await db.hh_documents.find_one({"id": doc_id, "user_id": user["id"]}, {"_id": 0})
-    if not d or d.get("storage") != "local":
+    if not d or d.get("storage") not in ("local", "object"):
         raise HTTPException(404, "Document inexistent.")
+    if d.get("storage") == "object" and d.get("object_path"):
+        data, ct = await asyncio.to_thread(st_get_object, d["object_path"])
+        return Response(content=data, media_type=d.get("mime") or ct,
+                        headers={"Content-Disposition": f'attachment; filename="{d.get("filename") or "document"}"'})
     for f in UPLOAD_DIR.glob(f"{doc_id}_*"):
         return FileResponse(path=str(f), filename=d.get("filename", "document"), media_type=d.get("mime") or "application/octet-stream")
     raise HTTPException(404, "Fișier dispărut de pe disc.")
@@ -444,26 +495,40 @@ async def upload_evaluation_file(
         raise HTTPException(403, "Doar specialistul evaluării poate încărca.")
 
     contents = await file.read()
-    if len(contents) > 20 * 1024 * 1024:
-        raise HTTPException(413, "Fișier > 20MB.")
+    limit = await storage_service.file_limit_bytes("house_health_eval")
+    if len(contents) > limit:
+        raise HTTPException(413, f"Fișier > {storage_service.fmt_bytes(limit)}.")
+    ext = Path(file.filename or "").suffix.lower().lstrip(".")
+    if (file.content_type or "").startswith("image/"):
+        contents, _cm = await storage_service.maybe_compress_image(contents, ext)
+    await storage_service.check_quota(user["id"], len(contents), "personal")
     att_id = uuid.uuid4().hex
     safe_name = f"eval_{eval_id}_{att_id}_{Path(file.filename).name[:80]}"
-    (UPLOAD_DIR / safe_name).write_bytes(contents)
+    object_path = f"propmanage/house_health/eval/{eval_id}/{safe_name}"
+    await asyncio.to_thread(st_put_object, object_path, contents, file.content_type or "application/octet-stream")
     attachment = {
         "id": att_id,
         "filename": file.filename,
         "url": f"/api/house-health/evaluations/{eval_id}/files/{att_id}",
+        "object_path": object_path,
+        "uploaded_by": user["id"],
         "mime": file.content_type,
         "size_bytes": len(contents),
         "uploaded_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.hh_evaluations.update_one({"id": eval_id}, {"$push": {"attachments": attachment}})
+    await storage_service.add_usage(user["id"], len(contents), "personal")
     return {"ok": True, "attachment": attachment}
 
 
 @router.get("/evaluations/{eval_id}/files/{att_id}")
 async def download_eval_file(eval_id: str, att_id: str, user=Depends(get_current_user)):
-    from fastapi.responses import FileResponse
+    from fastapi.responses import FileResponse, Response
+    e = await db.hh_evaluations.find_one({"id": eval_id}, {"attachments": 1})
+    att = next((a for a in (e or {}).get("attachments", []) if a.get("id") == att_id), None)
+    if att and att.get("object_path"):
+        data, ct = await asyncio.to_thread(st_get_object, att["object_path"])
+        return Response(content=data, media_type=att.get("mime") or ct)
     for f in UPLOAD_DIR.glob(f"eval_{eval_id}_{att_id}_*"):
         return FileResponse(path=str(f))
     raise HTTPException(404, "Fișier inexistent.")

@@ -17,7 +17,6 @@ import io
 import base64
 import json
 import logging
-import asyncio
 import tarfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,7 +24,7 @@ from typing import Optional
 
 from bson import json_util
 
-from db import db, client as mongo_client
+from db import db
 
 logger = logging.getLogger("propmanage.backup")
 
@@ -183,7 +182,7 @@ def list_local_backups() -> list[dict]:
 
 async def email_backup(filepath: str, size_mb: float, meta: dict) -> dict:
     """Email the backup archive to ADMIN_EMAILS. Skips if too large."""
-    from email_service import _layout, send_email_with_attachments  # lazy import
+    from email_service import _layout  # lazy import
 
     recipients_raw = os.environ.get("ADMIN_EMAILS", "") or os.environ.get("ADMIN_EMAIL", "")
     recipients = [e.strip() for e in recipients_raw.split(",") if e.strip()]

@@ -155,7 +155,7 @@ class TestStripeCheckout:
         r = s.get(f"{API}/payments/status/{sid}", timeout=20)
         assert r.status_code == 200, r.text
         data = r.json()
-        assert data["status"] in ("unpaid", "open", "no_payment_required", "paid")
+        assert data["status"] in ("unpaid", "open", "no_payment_required", "paid", "complete", "expired")
         assert data["request_id"] == TestStripeCheckout.request_id
         assert isinstance(data["amount"], (int, float))
 

@@ -122,18 +122,9 @@ async def log_event(
     payload: Optional[dict] = None,
     property_id: Optional[str] = None,
 ):
-    """Append an immutable event to activity_events. Best-effort, never raises."""
+    """Append an immutable event. Delegates to the canonical XOS Event Bus (Felia 1)."""
     try:
-        doc = {
-            "request_id": request_id,
-            "property_id": property_id,
-            "event_type": event_type,
-            "actor_id": actor.get("id") if actor else None,
-            "actor_name": actor.get("name") if actor else "System",
-            "actor_role": (actor.get("active_view") or actor.get("role")) if actor else "system",
-            "payload": payload or {},
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }
-        await db.activity_events.insert_one(doc)
+        from event_bus import emit
+        await emit(event_type, request_id=request_id, property_id=property_id, actor=actor, payload=payload)
     except Exception as e:
         logging.warning(f"log_event failed: {e}")

@@ -20,7 +20,6 @@ are suggestions for human admins.
 import logging
 from datetime import datetime, timezone, timedelta
 from collections import Counter
-from typing import Optional
 
 from db import db
 from ai_core.provider import call_llm, ecosystem_enabled
@@ -105,26 +104,30 @@ async def _collect_recent_events(hours: int = 24) -> dict:
     return {"events": events, "incidents": incidents, "failed_logins": failed_logins, "since": since, "hours": hours}
 
 
+_EVENT_PENALTY = {"critical": 8, "high": 4, "medium": 1.5, "low": 0.5}
+_INCIDENT_PENALTY = {"critical": 10, "high": 5, "medium": 2}
+
+
+def _threat_level(score: int) -> str:
+    if score >= 85:
+        return "low"
+    if score >= 65:
+        return "medium"
+    if score >= 40:
+        return "high"
+    return "critical"
+
+
 def _compute_score(snapshot: dict) -> dict:
     """Score 0-100 (higher = safer). Pure heuristic; no LLM."""
-    score = 100
     events = snapshot["events"]
     incidents = snapshot["incidents"]
     failed = snapshot["failed_logins"]
 
+    score = 100
     # Penalize by severity
-    for e in events:
-        sev = (e.get("severity") or "").lower()
-        if sev == "critical": score -= 8
-        elif sev == "high": score -= 4
-        elif sev == "medium": score -= 1.5
-        elif sev == "low": score -= 0.5
-
-    for inc in incidents:
-        sev = (inc.get("severity") or "medium").lower()
-        if sev == "critical": score -= 10
-        elif sev == "high": score -= 5
-        elif sev == "medium": score -= 2
+    score -= sum(_EVENT_PENALTY.get((e.get("severity") or "").lower(), 0) for e in events)
+    score -= sum(_INCIDENT_PENALTY.get((inc.get("severity") or "medium").lower(), 0) for inc in incidents)
 
     # Failed login bursts
     ip_counts = Counter(f["ip"] for f in failed if f.get("ip"))
@@ -132,14 +135,10 @@ def _compute_score(snapshot: dict) -> dict:
     score -= 3 * len(burst_ips)
 
     score = max(0, min(100, int(round(score))))
-    if score >= 85: level = "low"
-    elif score >= 65: level = "medium"
-    elif score >= 40: level = "high"
-    else: level = "critical"
 
     return {
         "score": score,
-        "threat_level": level,
+        "threat_level": _threat_level(score),
         "burst_ips": burst_ips,
         "active_incidents": len(incidents),
         "events_24h": len(events),

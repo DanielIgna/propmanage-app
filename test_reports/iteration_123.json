@@ -1,0 +1,27 @@
+{
+  "summary": "Board Directive 011 — Learning Engine (GI-4a) + /login conversion CTA fully validated. 19/19 backend pytest cases PASS. Frontend: CTA above form navigates to /register; /admin/learning loads with 4 KPIs (8 decisions, 100% rate, 800 lei revenue), by_type card, 8 ledger entries incl. 4 VENIT badges, run button works; admin-nav-learning_engine exists under Statistici & KPI; /admin/marketing-intel & /admin/command-center regress OK.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_learning_engine_iter123.py",
+    "/app/test_reports/pytest/iter123_learning.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "learning_engine.py: solid. Outcome scan is idempotent, uses request_id shortcut for opportunities, correctly marks untracked entries final. Attribution model documented ('last_touch'). Good.",
+    "opportunities.py: ledger insert on accept/dismiss uses shared ledger_entry() constructor with target={user_id, property_id, service} + request_id — respects GI-4 vocabulary law.",
+    "marketing_intelligence.py:128 — playbook writes ledger entry inline (NOT via ledger_entry constructor). Inconsistent with Legea Vocabularului. Recommend refactor to use shared ledger_entry() for uniformity — currently sets status='pending' vs ledger_entry default 'decided'; but tests confirm target/source_agent are present so it works.",
+    "command_center.py:299 — reco toggle writes ledger without target intentionally → outcome scan marks it 'untracked' (correct per spec, documented behavior).",
+    "auth Auth.jsx:80 — demoLogin admin password is 'Admin123!' (dead code: real admin password is different per test_credentials.md). The demoLogin function isn't wired to any button in login UI so it's dormant, but the mismatch is misleading. Minor cleanup."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_learning_engine_iter123.py"
+  ],
+  "success_rate": {"backend": "100% (19/19)", "frontend": "100%"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN, client@propmanage.io / Client123!",
+  "seed_data_creation": "2 test opportunities [TEST-iter123] auto-created in Mongo for client 6a11d70d600be19667009c8e (property Skyline Loft A4) — accept + dismiss flows. Auto-cleanup fixture removes them + linked ledger entries + [TEST-iter123] requests after test session.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Learning Engine ledger currently contains ~8 entries: 6 contact_playbook (mix of GI-3 legacy untracked + new ones with target), 1 opportunity with revenue 800 RON final, 1 command_center_reco untracked. The E2E flow (create opp → accept → run → confirm → run → revenue) is validated end-to-end. If ledger grows in future sprints, existing tests still pass because they check for entry presence by opp_id/ledger_id snapshot diff, not absolute counts.",
+  "rca of the issue": "N/A — no bugs found. One test tweak: contact_playbook has 10-min debounce (marketing_intelligence.py:60), so tests need to delete recent playbooks for the ref_id first — handled in test_playbook_ledger_has_target."
+}

@@ -108,17 +108,16 @@ export const TrustStrip = ({ className = "" }) => (
       to="/privacy/notices"
       accent="emerald"
       icon={ShieldCheck}
-      label="GDPR Audit Passed"
-      sub="Februarie 2026 · DPO verified"
+      label="Datele tale, protejate"
+      sub="Confidențialitate garantată (GDPR)"
       testid="trust-pill-gdpr"
     />
-    <LiveUptimePill />
     <Pill
       href="https://stripe.com/docs/security/stripe"
       accent="blue"
       icon={Lock}
-      label="Powered by Stripe"
-      sub="PCI DSS Level 1 compliant"
+      label="Plăți protejate prin Stripe"
+      sub="Plătești doar după ce confirmi lucrarea"
       testid="trust-pill-stripe"
       external
     />

@@ -147,7 +147,7 @@ const EventPayload = ({ payload }) => {
 };
 
 // ============= SCHEDULE PROPOSAL MODAL (Specialist) =============
-export const ScheduleProposalModal = ({ requestId, requestTitle, onClose, onAccepted }) => {
+export const ScheduleProposalModal = ({ requestId, requestTitle, feeWaived = false, onClose, onAccepted }) => {
   const today = new Date().toISOString().split("T")[0];
   const [form, setForm] = useState({
     proposed_start_date: today,
@@ -187,7 +187,7 @@ export const ScheduleProposalModal = ({ requestId, requestTitle, onClose, onAcce
         </div>
         <p className="text-xs text-stone-400 mb-4 leading-relaxed">
           {requestTitle ? <>Pentru: <span className="text-stone-200">"{requestTitle}"</span>. </> : null}
-          Setează datele propuse — clientul le va vedea în timeline și te poate contacta pentru ajustări. Taxa de lead 45 RON se reține la acceptare.
+          Setează datele propuse — clientul le va vedea în timeline și te poate contacta pentru ajustări. {feeWaived ? "Cerere directă de re-angajare — taxa de lead este 0 RON." : "Taxa de lead 45 RON se reține la acceptare."}
         </p>
         <form onSubmit={submit} className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
@@ -224,7 +224,7 @@ export const ScheduleProposalModal = ({ requestId, requestTitle, onClose, onAcce
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={onClose} className="flex-1 py-3 bg-white/5 rounded-xl text-sm">Anulează</button>
             <button type="submit" disabled={loading} className="flex-1 btn-accent py-3 rounded-xl text-sm font-medium" data-testid="schedule-submit">
-              {loading ? "..." : "Acceptă (45 RON)"}
+              {loading ? "..." : feeWaived ? "Acceptă (gratuit)" : "Acceptă (45 RON)"}
             </button>
           </div>
         </form>

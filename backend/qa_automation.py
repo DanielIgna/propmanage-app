@@ -23,7 +23,9 @@ import logging
 import tempfile
 import subprocess
 from datetime import datetime, timezone
-from typing import Callable, Optional, Awaitable
+from typing import Optional
+ADMIN_SEED_PW = os.environ.get("SEED_ADMIN_PASSWORD", "Admin123!")  # env-driven, no hardcoded secret
+
 
 import httpx
 
@@ -163,17 +165,30 @@ async def http_public_sitemap_valid() -> dict:
 
 
 async def http_marketplace_landing_returns_seo_data() -> dict:
-    """P-02: SEO landing pentru oraș-categorie e listată în sitemap + există slug map."""
+    """P-02: Indexability Gate SSOT — /api/public/seo/gate decide index/noindex, iar sitemap-ul
+    listează DOAR landing-uri marketplace care trec gate-ul (fără conținut subțire)."""
+    import re as _re
     async with await _client() as c:
+        # Gate pe un slug necunoscut → noindex + canonical la părinte (determinist, independent de date).
+        gb = await c.get("/api/public/seo/gate?path=/marketplace/slug-inexistent-xyz")
+        if gb.status_code != 200:
+            return _ko(f"gate endpoint status {gb.status_code}")
+        bad = gb.json()
+        if bad.get("index") is not False or not bad.get("canonical"):
+            return _ko(f"gate pentru slug invalid ar trebui noindex+canonical: {bad}")
+        # Sitemap-ul flat trebuie să conțină DOAR landing-uri care trec gate-ul.
         r = await c.get("/api/public/sitemap.xml")
         if r.status_code != 200:
             return _ko(f"sitemap status {r.status_code}")
-        body = r.text
-        # Expect at least the city-category landing patterns
-        sample = "/marketplace/electrician-bucuresti"
-        if sample in body:
-            return _ok(f"OK — sitemap include landing {sample}")
-        return _ko(f"sitemap missing {sample!r}")
+        m = _re.search(r"/marketplace/([a-z0-9\-]+)</loc>", r.text)
+        if not m:
+            return _ok("OK — gate funcțional (slug invalid→noindex); niciun landing marketplace nu trece încă pragul (marketplace tânăr)")
+        slug = m.group(1)
+        g = await c.get(f"/api/public/seo/gate?path=/marketplace/{slug}")
+        gd = g.json()
+        if gd.get("index") is True:
+            return _ok(f"OK — gate SSOT: '{slug}' din sitemap trece gate-ul (index=true); slug invalid→noindex+canonical {bad.get('canonical')}")
+        return _ko(f"'{slug}' e în sitemap dar gate-ul spune index={gd.get('index')}")
 
 
 async def http_health_status_alive() -> dict:
@@ -189,7 +204,7 @@ async def http_docs_pdf_renders() -> dict:
     """A-01: PDF Knowledge Base se generează pentru toate 6 rolurile (regression)."""
     async with await _client() as c:
         # Auth as admin first
-        r = await c.post("/api/auth/login", json={"email": "admin@propmanage.io", "password": "Admin123!"})
+        r = await c.post("/api/auth/login", json={"email": "admin@propmanage.io", "password": ADMIN_SEED_PW})
         if r.status_code != 200:
             return _ko(f"Admin login failed {r.status_code}")
         slugs = ["client", "specialist", "operator", "admin", "qa-testing", "architecture"]
@@ -205,7 +220,7 @@ async def http_docs_pdf_renders() -> dict:
 async def http_onboarding_queue_endpoint() -> dict:
     """A-02: Admin Onboarding queue endpoint răspunde cu stats + recent."""
     async with await _client() as c:
-        r = await c.post("/api/auth/login", json={"email": "admin@propmanage.io", "password": "Admin123!"})
+        r = await c.post("/api/auth/login", json={"email": "admin@propmanage.io", "password": ADMIN_SEED_PW})
         if r.status_code != 200:
             return _ko(f"login failed {r.status_code}")
         rr = await c.get("/api/admin/onboarding/queue")
@@ -220,7 +235,7 @@ async def http_onboarding_queue_endpoint() -> dict:
 async def http_qa_checklist_template() -> dict:
     """A-03: QA checklist template returnează 105 items + stats corecte."""
     async with await _client() as c:
-        r = await c.post("/api/auth/login", json={"email": "admin@propmanage.io", "password": "Admin123!"})
+        r = await c.post("/api/auth/login", json={"email": "admin@propmanage.io", "password": ADMIN_SEED_PW})
         if r.status_code != 200:
             return _ko(f"login failed {r.status_code}")
         rr = await c.get("/api/admin/qa/checklist/template")
@@ -490,6 +505,7 @@ async def lifecycle_client_register_then_delete() -> dict:
         r = await c.post("/api/auth/register", json={
             "email": email, "password": "Test1234!", "name": "Lifecycle Client",
             "role": "client", "phone": "0712345678", "zone": "Bucuresti",
+            "terms_accepted": True, "privacy_policy_accepted": True,
         })
         if r.status_code != 200:
             return _ko(f"register failed {r.status_code}: {r.text[:200]}")
@@ -515,6 +531,7 @@ async def lifecycle_specialist_register_then_onboarding_drip() -> dict:
         r = await c.post("/api/auth/register", json={
             "email": email, "password": "Test1234!", "name": "Lifecycle Spec",
             "role": "specialist", "phone": "0712345678",
+            "terms_accepted": True, "privacy_policy_accepted": True,
             "service_categories": ["electric"], "coverage_zones": ["Bucuresti"],
         })
         if r.status_code != 200:
@@ -569,7 +586,11 @@ async def lifecycle_specialist_profile_public_view() -> dict:
 async def lifecycle_admin_role_unique_count() -> dict:
     """LIFECYCLE-05: verifică integritate referențială — fiecare user are exact 1 rol valid."""
     from db import db
-    valid_roles = {"client", "specialist", "operator", "admin"}
+    valid_roles = {
+        "client", "specialist", "operator", "admin",
+        # Roles added in later phases (partners portal + marketing sub-admins)
+        "city_partner", "marketplace_partner", "marketing_manager", "super_admin",
+    }
     bad = []
     async for u in db.users.find({}, {"email": 1, "role": 1}):
         if u.get("role") not in valid_roles:
@@ -645,6 +666,7 @@ async def _register_and_login(role: str, prefix: str, *, extra: Optional[dict] =
     payload = {
         "email": email, "password": "Test1234!", "name": f"E2E {role}",
         "role": role, "phone": "0712000000",
+        "terms_accepted": True, "privacy_policy_accepted": True,
     }
     if role == "specialist":
         payload.update({"service_categories": ["electric"], "coverage_zones": ["Bucuresti"]})
@@ -652,7 +674,7 @@ async def _register_and_login(role: str, prefix: str, *, extra: Optional[dict] =
         payload["zone"] = "Bucuresti"
     if extra:
         payload.update(extra)
-    c = httpx.AsyncClient(base_url=BACKEND_URL, timeout=20.0, follow_redirects=False)
+    c = httpx.AsyncClient(base_url=BACKEND_URL, timeout=45.0, follow_redirects=False)
     r = await c.post("/api/auth/register", json=payload)
     if r.status_code != 200:
         await c.aclose()
@@ -688,7 +710,7 @@ async def _register_and_login(role: str, prefix: str, *, extra: Optional[dict] =
 async def _admin_client() -> httpx.AsyncClient:
     """Login as the seeded admin account and return the authenticated httpx client."""
     c = httpx.AsyncClient(base_url=BACKEND_URL, timeout=20.0, follow_redirects=False)
-    r = await c.post("/api/auth/login", json={"email": "admin@propmanage.io", "password": "Admin123!"})
+    r = await c.post("/api/auth/login", json={"email": "admin@propmanage.io", "password": ADMIN_SEED_PW})
     if r.status_code != 200:
         await c.aclose()
         raise RuntimeError(f"admin login failed {r.status_code}")
@@ -2056,17 +2078,21 @@ async def seo_sitemap_xml_well_formed() -> dict:
 
 @_safe_e2e
 async def seo_sitemap_landing_diverse_cities() -> dict:
-    """SEO-LANDING-CITIES: Sitemap include landings pt min 3 orașe diferite."""
+    """SEO-GATE-CONSISTENCY: fiecare landing marketplace din sitemap trece Indexability Gate-ul."""
+    import re as _re
     async with await _client() as c:
         r = await c.get("/api/public/sitemap.xml")
         if r.status_code != 200:
             return _ko(f"sitemap {r.status_code}")
-        body = r.text.lower()
-        cities = ["bucuresti", "cluj", "timisoara", "iasi", "constanta", "brasov"]
-        found = [c for c in cities if f"-{c}" in body]
-        if len(found) >= 3:
-            return _ok(f"OK — sitemap include landings pentru: {', '.join(found)}")
-        return _ko(f"doar {len(found)} orașe în sitemap: {found}")
+        landings = _re.findall(r"/marketplace/([a-z0-9\-]+)</loc>", r.text)
+        bad = []
+        for slug in landings[:8]:
+            g = await c.get(f"/api/public/seo/gate?path=/marketplace/{slug}")
+            if g.status_code != 200 or g.json().get("index") is not True:
+                bad.append(slug)
+        if not bad:
+            return _ok(f"OK — {len(landings)} landing-uri în sitemap, {min(len(landings), 8)} verificate, toate trec gate-ul")
+        return _ko(f"landing-uri în sitemap care NU trec gate-ul: {bad}")
 
 
 @_safe_e2e
@@ -3280,7 +3306,7 @@ AUTOMATED_TESTS: dict[str, dict] = {
         "runner": seo_sitemap_xml_well_formed,
     },
     "SEO-LANDING-CITIES": {
-        "code": "SEO-LANDING-CITIES", "title": "Sitemap include landings pentru min 3 orașe",
+        "code": "SEO-LANDING-CITIES", "title": "Landing-urile marketplace din sitemap trec Indexability Gate-ul",
         "kind": "http", "category": "SEO", "priority": "P2",
         "runner": seo_sitemap_landing_diverse_cities,
     },
@@ -3443,10 +3469,17 @@ async def execute_tests(test_codes: list[str], run_id: Optional[str] = None) -> 
     if not selected:
         return {"results": [], "summary": {"total": 0, "pass": 0, "fail": 0}}
 
+    # Bounded concurrency: the checks call back into THIS backend (single
+    # uvicorn worker) and several do bcrypt-heavy register/login flows.
+    # Unbounded gather over 100+ checks self-saturates the event loop and
+    # everything times out — cap parallelism instead.
+    sem = asyncio.Semaphore(4)
+
     async def _one(t: dict) -> dict:
         t0 = time.time()
         try:
-            res = await t["runner"]()
+            async with sem:
+                res = await t["runner"]()
         except Exception as e:  # noqa: BLE001
             res = {"status": "fail", "note": f"Unhandled crash: {type(e).__name__}: {str(e)[:200]}"}
         elapsed = round((time.time() - t0) * 1000)

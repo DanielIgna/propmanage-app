@@ -8,10 +8,10 @@ Covers:
 """
 
 import os
-import time
 import uuid
 import requests
 import pytest
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8001").rstrip("/")
 API = f"{BASE_URL}/api"
@@ -21,7 +21,7 @@ CLIENT_PASS = "Client123!"
 OPERATOR_EMAIL = "operator@propmanage.io"
 OPERATOR_PASS = "Op123!"
 ADMIN_EMAIL = "admin@propmanage.io"
-ADMIN_PASS = "Admin123!"
+ADMIN_PASS = OWNER_ADMIN_PASSWORD
 SPECIALIST_EMAIL = "specialist@propmanage.io"
 SPECIALIST_PASS = "Spec123!"
 
@@ -82,6 +82,7 @@ class TestFreshClientFullCycle:
         password = "Fresh123!"
         s = requests.Session()
         r = s.post(f"{API}/auth/register", json={
+            "terms_accepted": True, "privacy_policy_accepted": True, "phone": "+40712000999",
             "email": email,
             "password": password,
             "name": "TEST_Phase13 Fresh Client",
@@ -187,6 +188,7 @@ class TestNeedsRevisionFlow:
         password = "Fresh123!"
         s = requests.Session()
         r = s.post(f"{API}/auth/register", json={
+            "terms_accepted": True, "privacy_policy_accepted": True, "phone": "+40712000999",
             "email": email, "password": password,
             "name": "TEST_Phase13 Revise Client", "role": "client",
         })

@@ -10,7 +10,6 @@ What gets reset (safe, no destruction outside demo scope):
 - Tutorial/AI-tour seen flags reset so demo users see the tour again
 - "Cleared at" timestamp recorded so admin sees freshness in admin panel
 """
-import os
 import logging
 from datetime import datetime, timezone
 

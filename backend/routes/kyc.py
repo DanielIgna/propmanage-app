@@ -99,6 +99,7 @@ def _public_payload(doc: dict, include_files: bool = False) -> dict:
             "match_score": ai.get("match_score"),
             "flags": ai.get("flags") or [],
             "summary": ai.get("summary"),
+            "recommendation": ai.get("recommendation"),
             "error": ai.get("error"),
         }
     return payload
@@ -196,11 +197,38 @@ async def _run_ai_verification(kyc_id: str) -> dict:
         logger.warning(f"[kyc.ai_verify] {kyc_id}: {e}")
         result["error"] = f"{type(e).__name__}: {str(e)[:200]}"
 
+    # Recommendation mode (GDPR-safe): AI recomandă, adminul decide
+    _NEGATIVE_FLAGS = {
+        "possible_screen_capture", "id_partially_covered", "selfie_no_id_visible",
+        "id_country_unsupported", "face_match_uncertain",
+    }
+    ms = result.get("match_score")
+    if result.get("error") or ms is None:
+        result["recommendation"] = "review"
+    elif ms >= 85 and not (set(result.get("flags") or []) & _NEGATIVE_FLAGS):
+        result["recommendation"] = "approve"
+    else:
+        result["recommendation"] = "review"
+
     # Persist
     await db.kyc_documents.update_one(
         {"id": kyc_id},
         {"$set": {"ai_verification": result}},
     )
+
+    # Orchestrator: KYC pre-validation reporter (ledger + notificare admin)
+    try:
+        from orchestrator.engine import emit_signal
+        owner = await db.users.find_one({"_id": ObjectId(doc["user_id"])}, {"name": 1}) if doc.get("user_id") else None
+        await emit_signal("kyc_prevalidated", {
+            "kyc_id": kyc_id,
+            "user_name": (owner or {}).get("name"),
+            "recommendation": result["recommendation"],
+            "match_score": result.get("match_score"),
+            "flags": result.get("flags") or [],
+        })
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[kyc.ai_verify] orchestrator signal failed: {e}")
 
     # Auto-approve gate (config in app_settings.kyc_auto_approve)
     try:
@@ -494,6 +522,12 @@ async def kyc_approve(
             try:
                 from routes.tier_milestones import check_tier_milestones
                 await check_tier_milestones(doc["user_id"])
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                import asyncio
+                from seo_regen import on_specialist_verification_changed
+                asyncio.create_task(on_specialist_verification_changed(str(doc["user_id"]), source="kyc_approve"))
             except Exception:  # noqa: BLE001
                 pass
     except Exception as e:  # noqa: BLE001

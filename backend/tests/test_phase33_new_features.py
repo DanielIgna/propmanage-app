@@ -9,6 +9,7 @@ import os
 import time
 import pytest
 import requests
+from tests.test_config import OWNER_ADMIN_PASSWORD
 
 # Load from frontend .env if not in environ
 _url = os.environ.get("REACT_APP_BACKEND_URL")
@@ -26,7 +27,7 @@ assert BASE_URL, "REACT_APP_BACKEND_URL not set"
 API = f"{BASE_URL}/api"
 
 ADMIN_EMAIL = "admin@propmanage.io"
-ADMIN_PASSWORD = "Admin123!"
+ADMIN_PASSWORD = OWNER_ADMIN_PASSWORD
 CLIENT_EMAIL = "client@propmanage.io"
 CLIENT_PASSWORD = "Client123!"
 
@@ -89,6 +90,7 @@ class TestOnboardingDrip:
         payload = {
             "email": TestOnboardingDrip.spec_email,
             "password": "Test1234!",
+            "terms_accepted": True, "privacy_policy_accepted": True, "phone": "+40712000999",
             "name": "Auto Test Specialist",
             "role": "specialist",
             "service_categories": ["electric"],

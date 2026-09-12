@@ -15,19 +15,30 @@ export const GhiduriIndex = () => {
     canonical: `${SITE_URL}/ghiduri`,
     jsonLd: {
       "@context": "https://schema.org",
-      "@type": "Blog",
-      "name": "Ghiduri PropManage",
-      "url": `${SITE_URL}/ghiduri`,
-      "inLanguage": "ro-RO",
-      "publisher": { "@type": "Organization", "name": "PropManage", "url": SITE_URL },
-      "blogPost": GHIDURI.map(g => ({
-        "@type": "BlogPosting",
-        "headline": g.title,
-        "url": `${SITE_URL}/ghiduri/${g.slug}`,
-        "datePublished": g.publishedAt,
-        "dateModified": g.updatedAt,
-        "description": g.description,
-      })),
+      "@graph": [
+        {
+          "@type": "Blog",
+          "name": "Ghiduri PropManage",
+          "url": `${SITE_URL}/ghiduri`,
+          "inLanguage": "ro-RO",
+          "publisher": { "@type": "Organization", "name": "PropManage", "url": SITE_URL },
+          "blogPost": GHIDURI.map(g => ({
+            "@type": "BlogPosting",
+            "headline": g.title,
+            "url": `${SITE_URL}/ghiduri/${g.slug}`,
+            "datePublished": g.publishedAt,
+            "dateModified": g.updatedAt,
+            "description": g.description,
+          })),
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Acasă", "item": `${SITE_URL}/` },
+            { "@type": "ListItem", "position": 2, "name": "Ghiduri", "item": `${SITE_URL}/ghiduri` },
+          ],
+        },
+      ],
     },
   });
 
@@ -41,7 +52,10 @@ export const GhiduriIndex = () => {
             </div>
             <span className="font-serif text-lg font-semibold">PropManage</span>
           </Link>
-          <Link to="/marketplace" className="text-xs text-stone-400 hover:text-white">Marketplace</Link>
+          <div className="flex items-center gap-4">
+            <Link to="/probleme-casa" className="text-xs text-stone-400 hover:text-white" data-testid="ghiduri-to-probleme">Probleme casă</Link>
+            <Link to="/imobile-verificate" className="text-xs text-stone-400 hover:text-white">Imobile Verificate</Link>
+          </div>
         </div>
       </header>
 
@@ -109,7 +123,7 @@ export const GhiduriIndex = () => {
       </main>
 
       <footer className="border-t border-white/5 mt-16 py-8 px-6 text-center text-xs text-stone-500">
-        © {new Date().getFullYear()} PropManage · <Link to="/terms" className="hover:text-stone-300">Termeni</Link> · <Link to="/privacy" className="hover:text-stone-300">Confidențialitate</Link>
+        © {new Date().getFullYear()} PropManage · operat de Vintage Furniture S.R.L. (CUI 35250247) · <Link to="/terms" className="hover:text-stone-300">Termeni</Link> · <Link to="/privacy" className="hover:text-stone-300">Confidențialitate</Link>
       </footer>
     </div>
   );
