@@ -161,6 +161,7 @@ from routes.trusted_specialists import router as trusted_specialists_router
 from routes.maintenance_calendar import router as maintenance_calendar_router
 from routes.community_buildings import router as community_buildings_router
 from routes.building_admin import router as building_admin_router
+from routes.hartablocuri import router as hartablocuri_router, public_router as hartablocuri_public_router
 from routes.launch_sentinel import router as launch_sentinel_router
 from routes.prop_benefits import user_router as prop_benefits_user_router, admin_router as prop_benefits_admin_router
 from routes.storage import user_router as storage_user_router, admin_router as storage_admin_router
@@ -341,6 +342,8 @@ ALL_ROUTERS = (
     maintenance_calendar_router,
     community_buildings_router,
     building_admin_router,
+    hartablocuri_router,
+    hartablocuri_public_router,
     launch_sentinel_router,
     prop_benefits_user_router,
     prop_benefits_admin_router,

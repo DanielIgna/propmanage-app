@@ -43,6 +43,7 @@ import { RoleTour } from "./pages/RoleTour";
 import { AIConciergeBubble } from "./components/AIConciergeBubble";
 import { BookDemoModal } from "./pages/BookDemoModal";
 import { LandingDemo3D } from "./components/LandingDemo3D";
+import { BuildingDiscovery } from "./components/BuildingDiscovery";
 const PublicDemoPage = lazy(() => import("./pages/PublicDemoPage").then(m => ({ default: m.PublicDemoPage })));
 const AdminAuthHealthPage = lazy(() => import("./pages/admin/AdminAuthHealthPage").then(m => ({ default: m.AdminAuthHealthPage })));
 const ResearchCoveragePage = lazy(() => import("./pages/admin/ResearchCoveragePage"));
@@ -1654,6 +1655,7 @@ const LandingPage = () => {
       <Problem />
       <Solution />
       <HouseHealthAxisLanding />
+      <BuildingDiscovery />
       <UserJourney />
       <SpecialistJourney />
       <WalletEcosystem />
