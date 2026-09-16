@@ -175,6 +175,21 @@ async def admin_stats(user: dict = Depends(require_role("admin"))):
         "source": {"$ne": "hartablocuri_import"}})
     conflicts = await db.buildings.count_documents(
         {"context.conflicts": {"$elemMatch": {"status": "review"}}})
+    # Overview read-only — doar indicatori calculabili sigur din datele existente
+    with_year = await db.buildings.count_documents({"context.construction_year": {"$nin": [None, ""]}})
+    with_floors = await db.buildings.count_documents({"context.floors": {"$nin": [None, ""]}})
+    with_units = await db.buildings.count_documents({"context.number_of_units": {"$nin": [None, ""]}})
+    incomplete = await db.buildings.count_documents({"$or": [
+        {"context.construction_year": {"$in": [None, ""]}},
+        {"context.floors": {"$in": [None, ""]}},
+        {"context.number_of_units": {"$in": [None, ""]}},
+    ]})
+    loc_agg = await db.buildings.aggregate([
+        {"$match": {"city": {"$nin": [None, ""]}}},
+        {"$group": {"_id": "$city"}}, {"$count": "n"}]).to_list(1)
+    nbh_agg = await db.buildings.aggregate([
+        {"$match": {"context.neighborhood": {"$nin": [None, ""]}}},
+        {"$group": {"_id": "$context.neighborhood"}}, {"$count": "n"}]).to_list(1)
     return {
         "total_buildings": total,
         "with_hartablocuri": hb,
@@ -182,6 +197,12 @@ async def admin_stats(user: dict = Depends(require_role("admin"))):
         "matched_both_sources": both,
         "propmanage_only": total - hb,
         "with_conflicts": conflicts,
+        "localities": (loc_agg[0]["n"] if loc_agg else 0),
+        "neighborhoods": (nbh_agg[0]["n"] if nbh_agg else 0),
+        "with_construction_year": with_year,
+        "with_floors": with_floors,
+        "with_units": with_units,
+        "incomplete": incomplete,
     }
 
 
@@ -292,7 +313,8 @@ async def admin_list_buildings(
     conds = []
     if q.strip():
         rx = {"$regex": re.escape(q.strip()), "$options": "i"}
-        conds.append({"$or": [{"name": rx}, {"address": rx}, {"city": rx}]})
+        conds.append({"$or": [{"name": rx}, {"address": rx}, {"city": rx},
+                              {"context.neighborhood": rx}]})
     if source == "hartablocuri":
         conds.append({"source": "hartablocuri_import"})
     elif source == "both":
@@ -314,6 +336,8 @@ async def admin_list_buildings(
         out.append({
             "id": str(b["_id"]), "name": b.get("name"), "address": b.get("address"),
             "city": b.get("city"), "neighborhood": ctx.get("neighborhood"),
+            "construction_year": ctx.get("construction_year"),
+            "floors": ctx.get("floors"), "units": ctx.get("number_of_units"),
             "source": _source_of(b),
             "verification_status": ctx.get("verification_status", "unverified"),
             "conflicts_count": len(open_conflicts),

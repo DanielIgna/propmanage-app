@@ -67,6 +67,7 @@ const VerifiedEstateAdmin = lazy(() => import("./pages/verified-estate/VerifiedE
 const WhyUsPage = lazy(() => import("./pages/WhyUsPage"));
 const AdminSettingsControl = lazy(() => import("./pages/admin/AdminSettingsControl"));
 const HartaBlocuriAdmin = lazy(() => import("./pages/admin/HartaBlocuriAdmin"));
+const HartaBlocuriObservability = lazy(() => import("./pages/admin/HartaBlocuriObservability"));
 const AdminDocumentation = lazy(() => import("./pages/admin/AdminDocumentation"));
 const QACopilotPage = lazy(() => import("./pages/admin/QACopilotPage"));
 const AIControlCenterPage = lazy(() => import("./pages/admin/AIControlCenterPage"));
@@ -1748,6 +1749,7 @@ function App() {
               <Route path="/admin/imobile-verificate" element={<VerifiedEstateAdmin />} />
               <Route path="/admin/settings-control" element={<AdminSettingsControl />} />
               <Route path="/admin/hartablocuri" element={<HartaBlocuriAdmin />} />
+              <Route path="/admin/harta-blocuri" element={<HartaBlocuriObservability />} />
               <Route path="/admin/documentation" element={<AdminDocumentation />} />
               <Route path="/admin/qa-copilot" element={<QACopilotPage />} />
               <Route path="/admin/ai-control" element={<AIControlCenterPage />} />
