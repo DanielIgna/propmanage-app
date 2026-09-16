@@ -138,17 +138,14 @@ async def public_building_detail(building_id: str):
     # Truth Layer READ MODEL — derivat pur la citire (nu se salvează în DB)
     card["truth_layer"] = build_truth_layer(hb_raw) if hb else None
     if hb:
-        ctx = b.get("context") or {}
-        card["lat"] = ctx.get("lat") if isinstance(ctx.get("lat"), (int, float)) else hb_raw.get("lat")
-        card["lng"] = ctx.get("lng") if isinstance(ctx.get("lng"), (int, float)) else hb_raw.get("lng")
         card["county"] = hb_raw.get("judet")
         card["plan_urls"] = hb.get("plan_urls") or []
         from seo_clusters import MONETIZATION
         card["monetization"] = MONETIZATION
-        card["cta"] = {"add_property": f"/register?binvite={card['id']}", "cartea_casei": "/cartea-casei",
-                       "house_health": "/scorul-casei", "digital_twin": "/digital-twin", "marketplace": "/marketplace"}
-        if card["lat"] and card["lng"]:
-            card["google_maps_url"] = f"https://www.google.com/maps/search/?api=1&query={card['lat']},{card['lng']}"
+        # GRANIȚĂ PUBLIC/PRIVAT: NU expunem lat/lng exact, google_maps_url sau building_id-based access.
+        # Discovery public → identificare → login → asociere → Private Property GIS (coordonate exacte).
+        card["cta"] = {"identify": f"/register?binvite={card['id']}", "cartea_casei": "/cartea-casei"}
+        card["private_note"] = "Coordonatele exacte și contextul complet sunt disponibile după conectarea proprietății."
     return {"building": card}
 
 
@@ -156,11 +153,14 @@ async def public_building_detail(building_id: str):
 
 @public_router.get("/maps/config")
 async def public_maps_config():
-    """Config strat de cartografiere (abstraction). Cheia din env; feature flag + fallback."""
+    """Config strat de cartografiere (abstraction). Cheia din env; feature flag + fallback.
+    NOTĂ: cheia server-side (GOOGLE_MAPS_SERVER_API_KEY) NU se expune niciodată clientului."""
     import os
+    enabled = os.environ.get("GOOGLE_MAPS_ENABLED", "").strip().lower() in ("1", "true", "yes")
     key = os.environ.get("GOOGLE_MAPS_API_KEY", "").strip()
-    return {"provider": "google" if key else "fallback", "enabled": bool(key),
-            "api_key": key or None, "fallback": not bool(key),
+    active = bool(enabled and key)
+    return {"provider": "google" if active else "fallback", "enabled": active,
+            "api_key": key if active else None, "fallback": not active,
             "attribution": "HartaBlocuri (date) · Google Maps (cartografiere)"}
 
 
@@ -169,37 +169,43 @@ async def public_map_markers(
     city: Optional[str] = Query(None, max_length=80),
     era: Optional[str] = Query(None, max_length=60),
     typology: Optional[str] = Query(None, max_length=8),
-    limit: int = Query(5000, ge=1, le=6000),
 ):
-    """Markeri hartă din coordonatele existente HartaBlocuri (fără geocoding)."""
+    """Hartă PUBLICĂ contextuală — AGREGATĂ pe cartier/localitate (centroid rotunjit ~1km).
+    NU expune coordonate exacte sau date individuale ale clădirilor (granița public/privat)."""
+    from collections import defaultdict
     q = {"context.external_sources.hartablocuri": {"$exists": True}}
     if city:
         q["city"] = {"$regex": re.escape(city), "$options": "i"}
-    out = []
-    async for b in db.buildings.find(q):
-        if len(out) >= limit:
-            break
+    groups = defaultdict(lambda: {"count": 0, "lat_sum": 0.0, "lng_sum": 0.0})
+    async for b in db.buildings.find(q, {"city": 1, "context": 1}):
         ctx = b.get("context") or {}
-        hb = _hb(b) or {}
-        raw = hb.get("raw") or {}
+        raw = (ctx.get("external_sources") or {}).get("hartablocuri", {}).get("raw") or {}
         lat = ctx.get("lat") if isinstance(ctx.get("lat"), (int, float)) else raw.get("lat")
         lng = ctx.get("lng") if isinstance(ctx.get("lng"), (int, float)) else raw.get("lng")
         if not (isinstance(lat, (int, float)) and isinstance(lng, (int, float))):
             continue
+        tl = build_truth_layer(raw) or {}
         if era and (raw.get("era") or "").strip().lower() != era.strip().lower():
             continue
-        tl = build_truth_layer(raw) or {}
         if typology and not any(p["code"] == typology.upper() for p in (tl.get("typology_profiles") or [])):
             continue
+        key = (b.get("city") or "?", (ctx.get("neighborhood") or raw.get("neighborhood") or "—"))
+        g = groups[key]
+        g["count"] += 1
+        g["lat_sum"] += lat
+        g["lng_sum"] += lng
+    out = []
+    for (loc, nbh), g in groups.items():
+        n = g["count"]
         out.append({
-            "id": str(b["_id"]), "name": b.get("name"), "address": b.get("address"),
-            "lat": lat, "lng": lng, "city": b.get("city"),
-            "era": raw.get("era"),
-            "floors": (tl.get("regime") or {}).get("derived_floors"),
-            "profiles": [p["code"] for p in (tl.get("typology_profiles") or [])],
-            "href": f"/blocuri/cladire/{b['_id']}",
+            "city": loc, "neighborhood": nbh, "count": n,
+            # centroid rotunjit la ~1km (2 zecimale) — contextual, NU precis
+            "lat": round(g["lat_sum"] / n, 2), "lng": round(g["lng_sum"] / n, 2),
+            "approximate": True,
         })
-    return {"markers": out, "total": len(out)}
+    out.sort(key=lambda x: -x["count"])
+    return {"areas": out, "total_buildings": sum(a["count"] for a in out),
+            "note": "Zone agregate (centroid aproximativ). Coordonatele exacte sunt private."}
 
 
 @public_router.get("/blocuri/clusters")

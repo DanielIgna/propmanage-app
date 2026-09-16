@@ -210,6 +210,89 @@ async def get_building_context(prop_id: str, user: dict = Depends(get_current_us
     return {"building": _serialize_building(b), "attached": True}
 
 
+# Categorii documentație recomandate (recomandare, NU obligație legală)
+_RECOMMENDED_DOCS = [
+    ("act_proprietate", "Act de proprietate"),
+    ("plan_cadastral", "Plan cadastral / releveu"),
+    ("certificat_energetic", "Certificat de performanță energetică"),
+    ("regulament_asociatie", "Regulament asociație / bloc"),
+    ("plan_instalatii", "Plan instalații"),
+]
+
+
+async def _documentation_status(prop_id: str) -> dict:
+    docs = await db.property_documents.find({"property_id": prop_id}).to_list(500)
+    present_cats = {(d.get("category") or d.get("type") or "").lower() for d in docs}
+    items = []
+    for cat, label in _RECOMMENDED_DOCS:
+        has = cat in present_cats
+        items.append({"category": cat, "label": label,
+                      "status": "present" if has else "missing",
+                      "recommendation": None if has else f"Recomandăm adăugarea documentului: {label}"})
+    return {"total_documents": len(docs), "recommended": items,
+            "present": sum(1 for i in items if i["status"] == "present"),
+            "missing": sum(1 for i in items if i["status"] == "missing"),
+            "note": "Recomandări, nu obligații legale. PropManage nu emite diagnostice legale."}
+
+
+@router.get("/properties/{prop_id}/gis")
+async def property_gis(prop_id: str, user: dict = Depends(get_current_user)):
+    """PRIVATE Property GIS — DOAR pentru owner/admin (authz server-side via _load_property_for → 403).
+    Livrează coordonate EXACTE + context complet, spre deosebire de discovery-ul public agregat."""
+    prop = await _load_property_for(user, prop_id)  # 403 dacă nu e proprietarul
+    b = await _load_building_for_property(prop)
+    b_ctx = (b or {}).get("context") or {}
+    hb = (b_ctx.get("external_sources") or {}).get("hartablocuri")
+    hb_raw = (hb or {}).get("raw") or {}
+    blat = b_ctx.get("lat") if isinstance(b_ctx.get("lat"), (int, float)) else hb_raw.get("lat")
+    blng = b_ctx.get("lng") if isinstance(b_ctx.get("lng"), (int, float)) else hb_raw.get("lng")
+    plat = prop.get("lat") if isinstance(prop.get("lat"), (int, float)) else blat
+    plng = prop.get("lng") if isinstance(prop.get("lng"), (int, float)) else blng
+    twin = await db.twins.find_one({"property_id": prop_id})
+    docs = await _documentation_status(prop_id)
+    layers = []
+    if plat and plng:
+        layers.append({"id": "L0", "label": "Locație proprietate", "type": "point",
+                       "lat": plat, "lng": plng})
+    if b and blat and blng:
+        layers.append({"id": "L1", "label": "Clădire", "type": "point", "lat": blat, "lng": blng,
+                       "building_id": str(b["_id"]), "name": b.get("name")})
+    if b_ctx.get("floors") or hb_raw.get("scari"):
+        layers.append({"id": "L2", "label": "Regim / scări", "type": "attribute",
+                       "floors": b_ctx.get("floors"), "entrances": hb_raw.get("scari")})
+    layers.append({"id": "L3", "label": "Apartament", "type": "attribute",
+                   "unit": prop.get("unit") or prop.get("apartment") or prop.get("name")})
+    layers.append({"id": "L6", "label": "Documentație", "type": "status",
+                   "present": docs["present"], "missing": docs["missing"]})
+    if twin:
+        layers.append({"id": "L7", "label": "Digital Twin", "type": "link", "twin_id": str(twin.get("_id"))})
+    # CTA-uri contextuale bazate pe date REALE ale proprietății
+    ctas = [{"key": "cartea_casei", "label": "Completează Cartea Casei", "href": f"/property/{prop_id}"}]
+    if docs["missing"] > 0:
+        ctas.append({"key": "add_document", "label": f"Adaugă documente ({docs['missing']} recomandate)", "href": f"/property/{prop_id}"})
+    if not twin:
+        ctas.append({"key": "build_twin", "label": "Construiește Digital Twin", "href": "/digital-twin"})
+    ctas += [
+        {"key": "house_health", "label": "Creează House Health", "href": "/scorul-casei"},
+        {"key": "specialist", "label": "Găsește specialist", "href": "/marketplace"},
+    ]
+    from seo_clusters import MONETIZATION
+    gmaps = (f"https://www.google.com/maps/search/?api=1&query={plat},{plng}"
+             if (plat and plng) else None)
+    return {
+        "property_id": prop_id,
+        "authorized": True,
+        "location": {"lat": plat, "lng": plng} if (plat and plng) else None,
+        "google_maps_url": gmaps,
+        "building": _serialize_building(b) if b else None,
+        "layers": layers,
+        "documentation_status": docs,
+        "ctas": ctas,
+        "monetization": MONETIZATION,
+        "provenance_note": "Context HartaBlocuri: date externe — neverificate de PropManage. Derivate: context derivat — neverificat.",
+    }
+
+
 @router.post("/properties/{prop_id}/building-context")
 async def attach_or_create_building_context(
     prop_id: str,

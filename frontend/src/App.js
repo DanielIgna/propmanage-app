@@ -61,6 +61,7 @@ const DigitalTwinPage = lazy(() => import("./pages/DigitalTwinPage"));
 const BlocuriExplorer = lazy(() => import("./pages/BlocuriPublic").then(m => ({ default: m.BlocuriExplorer })));
 const BlocuriBuildingDetail = lazy(() => import("./pages/BlocuriPublic").then(m => ({ default: m.BlocuriBuildingDetail })));
 const BlocuriCluster = lazy(() => import("./pages/BlocuriPublic").then(m => ({ default: m.BlocuriCluster })));
+const PropertyGISPage = lazy(() => import("./pages/PropertyGIS").then(m => ({ default: m.PropertyGISPage })));
 const ReportApprovalPage = lazy(() => import("./pages/ReportApprovalPage"));
 const KYCPage = lazy(() => import("./pages/KYCPage"));
 const EstateBrowse = lazy(() => import("./pages/verified-estate/EstateBrowse").then(m => ({ default: m.EstateBrowse })));
@@ -1730,6 +1731,8 @@ function App() {
               <Route path="/blocuri" element={<BlocuriExplorer />} />
               <Route path="/blocuri/cladire/:id" element={<BlocuriBuildingDetail />} />
               <Route path="/blocuri/*" element={<BlocuriCluster />} />
+              <Route path="/property/:id/gis" element={<PropertyGISPage />} />
+              <Route path="/property/:id/map" element={<PropertyGISPage />} />
               <Route path="/report-respond/:token" element={<ReportApprovalPage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/cookies" element={<CookiePolicyPage />} />

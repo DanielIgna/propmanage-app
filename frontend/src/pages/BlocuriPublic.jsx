@@ -31,7 +31,7 @@ const ERA_OPTS = [
 ];
 const TYP_OPTS = [{ v: "", l: "Toate tipologiile" }, { v: "C1", l: "Panou P+4" }, { v: "C4", l: "Turn înalt" }];
 
-const GoogleMap = ({ markers, apiKey }) => {
+const GoogleMap = ({ areas, apiKey }) => {
   const ref = useRef(null);
   const mapRef = useRef(null);
   useEffect(() => {
@@ -39,34 +39,31 @@ const GoogleMap = ({ markers, apiKey }) => {
     loadGoogleMaps(apiKey).then((maps) => {
       if (cancelled || !ref.current) return;
       if (!mapRef.current) {
-        mapRef.current = new maps.Map(ref.current, { center: { lat: 46.77, lng: 23.6 }, zoom: 12, mapId: "DEMO_MAP_ID" });
+        mapRef.current = new maps.Map(ref.current, { center: { lat: 46.77, lng: 23.6 }, zoom: 11 });
       }
-      (mapRef.current._markers || []).forEach((m) => (m.map = null));
-      const ms = markers.slice(0, 1500).map((b) => new maps.Marker({
-        position: { lat: b.lat, lng: b.lng }, map: mapRef.current, title: b.name,
+      (mapRef.current._c || []).forEach((c) => c.setMap(null));
+      // Zone agregate: cercuri proporționale cu numărul de blocuri (coordonate aproximative)
+      mapRef.current._c = areas.map((a) => new maps.Circle({
+        map: mapRef.current, center: { lat: a.lat, lng: a.lng },
+        radius: Math.min(1200, 200 + a.count), fillColor: "#d4ff3a", fillOpacity: 0.18,
+        strokeColor: "#d4ff3a", strokeOpacity: 0.5, strokeWeight: 1,
       }));
-      mapRef.current._markers = ms;
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [markers, apiKey]);
+  }, [areas, apiKey]);
   return <div ref={ref} className="w-full h-[520px] rounded-2xl border border-white/10" data-testid="blocuri-google-map" />;
 };
 
-const FallbackMap = ({ markers }) => (
+const FallbackMap = ({ areas }) => (
   <div className="w-full rounded-2xl border border-white/10 bg-white/[0.03] p-4" data-testid="blocuri-fallback-map">
     <div className="flex items-center gap-2 text-xs text-amber-400/80 mb-3">
-      <Info className="w-3.5 h-3.5" /> Hartă interactivă indisponibilă (cheie Google Maps neconfigurată). Listă cu navigație.
+      <Info className="w-3.5 h-3.5" /> Hartă contextuală (zone agregate, aproximativă). Coordonatele exacte sunt private.
     </div>
-    <div className="grid sm:grid-cols-2 gap-2 max-h-[460px] overflow-y-auto">
-      {markers.slice(0, 200).map((b) => (
-        <div key={b.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-3" data-testid={`blocuri-fallback-item-${b.id}`}>
-          <MapPin className="w-4 h-4 text-[#d4ff3a] shrink-0" />
-          <div className="flex-1 min-w-0">
-            <Link to={`/blocuri/cladire/${b.id}`} className="text-sm font-semibold text-stone-100 hover:text-[#d4ff3a] truncate block">{b.name}</Link>
-            <div className="text-[11px] text-stone-500 truncate">{b.address}</div>
-          </div>
-          <a href={`https://www.google.com/maps/search/?api=1&query=${b.lat},${b.lng}`} target="_blank" rel="noreferrer nofollow"
-            className="text-[10px] text-stone-400 hover:text-[#d4ff3a] inline-flex items-center gap-1 shrink-0">Google <ExternalLink className="w-3 h-3" /></a>
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[460px] overflow-y-auto">
+      {areas.map((a, i) => (
+        <div key={i} className="rounded-xl border border-white/10 bg-white/[0.02] p-3" data-testid={`blocuri-area-${i}`}>
+          <div className="text-sm font-semibold text-stone-100 truncate">{a.neighborhood !== "—" ? a.neighborhood : a.city}</div>
+          <div className="text-[11px] text-stone-500">{a.city} · <b className="text-[#d4ff3a]">{a.count}</b> blocuri</div>
         </div>
       ))}
     </div>
@@ -76,7 +73,8 @@ const FallbackMap = ({ markers }) => (
 // ── /blocuri — Map + cluster explorer ───────────────────────────────────────
 export const BlocuriExplorer = () => {
   const [cfg, setCfg] = useState(null);
-  const [markers, setMarkers] = useState([]);
+  const [areas, setAreas] = useState([]);
+  const [total, setTotal] = useState(0);
   const [clusters, setClusters] = useState([]);
   const [city, setCity] = useState("Cluj-Napoca");
   const [era, setEra] = useState("");
@@ -89,7 +87,7 @@ export const BlocuriExplorer = () => {
     setLoading(true);
     const p = new URLSearchParams();
     if (city) p.set("city", city); if (era) p.set("era", era); if (typ) p.set("typology", typ);
-    axios.get(`${API}/public/blocuri/map?${p.toString()}&limit=3000`).then(r => setMarkers(r.data.markers || [])).finally(() => setLoading(false));
+    axios.get(`${API}/public/blocuri/map?${p.toString()}`).then(r => { setAreas(r.data.areas || []); setTotal(r.data.total_buildings || 0); }).finally(() => setLoading(false));
   }, [city, era, typ]);
 
   return (
@@ -114,11 +112,11 @@ export const BlocuriExplorer = () => {
           <select value={typ} onChange={e => setTyp(e.target.value)} className="rounded-full bg-white/[0.04] border border-white/10 px-4 py-2.5 text-sm" data-testid="blocuri-filter-typology">
             {TYP_OPTS.map(o => <option key={o.v} value={o.v} className="bg-stone-900">{o.l}</option>)}
           </select>
-          <span className="inline-flex items-center text-sm text-stone-500" data-testid="blocuri-marker-count">{loading ? "…" : `${markers.length} blocuri`}</span>
+          <span className="inline-flex items-center text-sm text-stone-500" data-testid="blocuri-marker-count">{loading ? "…" : `${total} blocuri · ${areas.length} zone`}</span>
         </div>
 
         <div className="mt-6">
-          {cfg?.enabled ? <GoogleMap markers={markers} apiKey={cfg.api_key} /> : <FallbackMap markers={markers} />}
+          {cfg?.enabled ? <GoogleMap areas={areas} apiKey={cfg.api_key} /> : <FallbackMap areas={areas} />}
         </div>
 
         {clusters.length > 0 && (
