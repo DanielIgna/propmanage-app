@@ -169,7 +169,7 @@ async def public_map_markers(
     city: Optional[str] = Query(None, max_length=80),
     era: Optional[str] = Query(None, max_length=60),
     typology: Optional[str] = Query(None, max_length=8),
-    limit: int = Query(2000, ge=1, le=5000),
+    limit: int = Query(5000, ge=1, le=6000),
 ):
     """Markeri hartă din coordonatele existente HartaBlocuri (fără geocoding)."""
     q = {"context.external_sources.hartablocuri": {"$exists": True}}

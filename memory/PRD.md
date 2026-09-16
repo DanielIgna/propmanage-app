@@ -6779,3 +6779,18 @@ Testat în preview: pagina se încarcă, click → „32 emailuri repuse în coa
 **GARANȚIE:** sitemap/robots/raw/schema/import/Truth Layer/Marketplace/House Health/Digital Twin/OAuth = NESCHIMBATE. Niciun `/blocuri/` în sitemap. Integritate 3408/3406/2.
 
 **BLOCAT (așteaptă aprobare P4):** publicare SEO, sitemap expansion, generare pagini, indexability changes, alte clustere.
+
+---
+
+## HartaBlocuri — National SEO + Map + Business Engine (Faza 4) — 2026-06
+
+**Status:** IMPLEMENTAT + TESTAT (E2E iteration_226.json: backend 100%, frontend 100%, 0 issues).
+
+**Motor county-agnostic** (`seo_clusters.py`): discovery pe toate dimensiunile+combos, state machine CANDIDATE/PREPARED/INDEX/NOINDEX/BLOCKED, quality gate (≥30 INDEX auto-publish). Din Cluj: 166 clustere (66 INDEX/41 PREPARED/59 CANDIDATE). DOAR INDEX în sitemap (child aditiv sitemap-blocuri.xml, 66 URL).
+**Map:** /blocuri (Google Maps abstraction + fallback, markeri din lat/lng existent). **Building public:** /blocuri/cladire/:id (funnel CTA + monetization). **Cluster public:** /blocuri/* (doar INDEX).
+**SEO Control Center:** tab HartaBlocuri extins (state summary + filtre). **Business funnel + monetization** (FREE/LEAD/PAID/SPECIALIST/PROPERTY) pe fiecare cluster + building.
+**Scalabil național:** județ nou = doar operațiune de date, fără refactor.
+
+**NESCHIMBAT:** raw/schema/import/Truth Layer/Marketplace/House Health/Digital Twin/OAuth/robots/root sitemap. Integritate 3408/3406/2.
+
+**Backlog (viitor, cu aprobare):** activare Google Maps (cheie env GOOGLE_MAPS_API_KEY), extindere alte județe, Places/Routes, monitorizare thin-content per cluster.

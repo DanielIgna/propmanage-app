@@ -109,3 +109,18 @@ Corectitudinea datelor, Contextul clădirii, Admin Import Center, rezolvarea con
 - **Teste:** `tests/test_seo_clusters_iter226.py` (24) + 13 teste API integrare (external URL) — 100% pass. E2E iteration_225.json: backend 100%, frontend 100%, 0 issues.
 - **GARANȚIE verificată:** sitemap.xml + child sitemaps NU conțin `/blocuri/` · clusters existente intacte (building_hartablocuri pages=0) · Truth Layer neschimbat · integritate 3408/3406/2.
 - **STOP:** publicarea SEO, sitemap expansion, generarea de pagini, indexability changes — BLOCATE până la aprobare explicită (P4).
+
+## 17. National SEO + Map + Business ENGINE — Faza 4 — 2026-06
+**Decizie:** Clujul NU mai e pilot temporar — e prima instanță a unui motor county-agnostic scalabil național.
+- **Engine:** `/app/backend/seo_clusters.py` rescris county-agnostic (Romania→Județ→Localitate→Cartier→Eră→Tipologie→Project Family→Building). `discover(facts)` enumeră toate dimensiunile + combos (localitate×eră, localitate×tipologie, localitate×cartier, localitate×formă, localitate×familie, eră×tipologie). NU hardcoda județul (din `raw.judet`). Cache 120s. Read-only, zero scriere DB.
+- **State machine (data-driven):** BLOCKED (placeholder) / CANDIDATE (<10) / PREPARED (10–29) / INDEX (≥30 & scor≥55, auto-publish) / NOINDEX. Quality score = volum(65%) + completitudine(35%). DOAR INDEX intră în sitemap.
+- **Descoperit din Cluj:** 166 clustere → 66 INDEX, 41 PREPARED, 59 CANDIDATE, 0 BLOCKED. Sloguri `/blocuri/<judet>/<localitate>/<dimensiune-valoare>`.
+- **Content model** (INDEX/PREPARED): title/h1/meta_title/meta_description(≤300)/intro/what_it_means/what_it_does_not_mean, din agregate REALE (fără fabricare). data_limits legale, internal_links (forward + parents + related_guides reale + building samples), monetization (FREE/LEAD/PAID/SPECIALIST/PROPERTY — infra existentă, fără prețuri noi).
+- **Map Engine:** `GET /api/public/blocuri/map` (markeri din lat/lng existent, fără geocoding; filtre city/era/typology). `GET /api/public/maps/config` (abstraction: provider google/fallback din env `GOOGLE_MAPS_API_KEY`, feature flag, fallback). Frontend `BlocuriExplorer` (`/blocuri`): Google Maps dinamic când există cheie, altfel listă fallback + „Deschide în Google Maps".
+- **Building Context public:** `/blocuri/cladire/:id` (`BlocuriBuildingDetail`) — Truth Layer + typology candidate + funnel CTA (Adaugă locuința → Cartea Casei → Scorul Casei) + monetization. Endpoint `GET /api/public/buildings/{id}` îmbogățit (lat/lng, county, monetization, cta, google_maps_url).
+- **Cluster public:** `/blocuri/*` (`BlocuriCluster`) — DOAR clustere INDEX (`GET /api/public/blocuri/cluster?slug=`); non-INDEX → 404.
+- **Sitemap (aditiv):** `sitemap-blocuri.xml` (66 URL INDEX) adăugat în `_CHILD_SITEMAPS` + index (acum 7 copii). Copiii existenți NESCHIMBAȚI (Marketplace=7). `_blocuri_entries()` în public.py.
+- **SEO Control Center:** tab „HartaBlocuri" extins — summary pe state, filtre state, rânduri cu state/INDEX/SITEMAP badge + detaliu.
+- **Teste:** test_seo_clusters_iter226.py (rescris, 22) + test_seo_admin_iter218 (child_count 6→7) + 23 API integrare + frontend E2E (iteration_226.json) — backend 100%, frontend 100%, 0 issues.
+- **Scalabilitate națională:** județ nou = DATASET→IMPORT→VALIDATION→TRUTH LAYER→DISCOVERY→QUALITY GATE→PUBLISH, fără refactor SEO/URL/DB/map/linking.
+- **NESCHIMBAT:** raw/schema/import/Truth Layer/Marketplace/House Health/Digital Twin/OAuth/robots/root sitemap logic/existing children. Integritate 3408/3406/2.

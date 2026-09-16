@@ -1,0 +1,25 @@
+{
+  "summary": "Phase 4 HartaBlocuri National SEO + Map + Business Engine tested end-to-end. Backend: 23/23 new API integration tests pass via external URL. Verified county-agnostic engine returns exact counts (total=166, INDEX=66, PREPARED=41, CANDIDATE=59, BLOCKED=0, in_sitemap=66, counties=[Cluj]); filters (?state=, ?county=, ?dimension=) work; detail endpoint returns cluster with content+aggregates for INDEX slug and 404 for unknown. CRITICAL SAFETY GUARANTEE VERIFIED: only INDEX clusters have index=true+in_sitemap=true; PREPARED/CANDIDATE/BLOCKED all have index=false+in_sitemap=false. Public endpoints: /maps/config returns fallback provider (no key), /blocuri/map returns 2258 markers with lat/lng/href for city=Cluj-Napoca and 1124 for typology=C1 (with limit=5000; default page-size cap is 2000), /blocuri/clusters returns only the 66 INDEX ones, /blocuri/cluster returns 200 for INDEX slug and 404 for non-INDEX (e.g. /blocuri/cluj/gilau). Public building 6aaabeb516469f4cdea48187 includes lat/lng/county/monetization/cta/google_maps_url + truth_layer. Sitemap: sitemap-blocuri.xml contains exactly 66 <loc> (all under /blocuri/cluj/...); sitemap-index.xml lists 7 children incl sitemap-blocuri.xml; sitemap-marketplace.xml unchanged (7 locs). Regression: admin /seo/overview reports sitemap.child_count=7 and health.gate_ok=true; /seo/sitemap/validate valid=true; legacy /seo/clusters still returns 9 clusters. Frontend PUBLIC: /blocuri renders BlocuriExplorer with all filters, fallback map, cluster index; /blocuri/cladire/{id} renders truth-layer facts, Candidate typology, Google Maps link, funnel CTA; /blocuri/cluj/cluj-napoca renders cluster H1 + intro + 'Ce înseamnă'/'Ce NU înseamnă'; /blocuri/cluj/gilau shows 'Categorie indisponibilă' 404. Frontend ADMIN: /admin?tab=seo&subtab=hartablocuri-clusters shows all seven stat tiles (166/66/41/59/0/66/1), all 5 state filter buttons, cluster rows with INDEX + SITEMAP badges (screenshot confirmed). All 7 other SEO subtabs (overview/indexability/sitemap/pages/clusters/alerts/gsc) load with 0 console errors.",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "/api/public/blocuri/map", "issue": "Default response caps markers at 2000 (both markers[] length AND total field), even though DB has 2258 for city=Cluj-Napoca. Callers must pass limit=5000 to get the full set. Consider raising the default or returning the true unfiltered total in a separate field so the public frontend doesn't visually under-report by ~258 markers."}
+  ]},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_phase4_hartablocuri_iter226.py",
+    "/app/test_reports/pytest/iter226_phase4.xml"
+  ],
+  "action_items": [
+    "(Optional) Raise default page-size for /api/public/blocuri/map above 2000 or expose an unbounded total, so the public map doesn't visually drop ~258 Cluj-Napoca buildings unless the caller opts into limit=5000."
+  ],
+  "critical_code_review_comments": [
+    "Public map endpoint applies a silent default limit of 2000 to BOTH markers[] and the 'total' field; the 'total' should ideally reflect the true unfiltered dataset size regardless of pagination cap, otherwise clients can't detect they're seeing a truncated view.",
+    "List vs detail response shape inconsistency persists (list returns bare clusters[], detail returns {cluster:{...}}, building returns {building:{...}}) — worth standardising via response_model."
+  ],
+  "updated_files": ["/app/backend/tests/test_phase4_hartablocuri_iter226.py"],
+  "success_rate": {"backend": "100% (23/23)", "frontend": "100%"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (cookie session, external URL)",
+  "seed_data_creation": "none (read-only engine, no DB writes)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Phase 4 engine verified county-agnostic: 166 clusters from Cluj (66 INDEX, 41 PREPARED, 59 CANDIDATE, 0 BLOCKED, 66 in sitemap). CRITICAL sitemap safety: sitemap-blocuri.xml has exactly 66 locs — ALL INDEX, no leaks of PREPARED/CANDIDATE/BLOCKED. Marketplace (7) and other 5 existing child sitemaps unchanged. Public /blocuri/cluster returns 404 for non-INDEX slugs. Google Maps runs in fallback mode (no API key). Only note: /api/public/blocuri/map default caps at 2000 markers — pass limit=5000 to get 2258. Admin UI at /admin?tab=seo&subtab=hartablocuri-clusters is fully functional. Note: `wait_until='networkidle'` times out on this app because of long-poll/streaming; use `domcontentloaded` for Playwright navigation."
+}
