@@ -6794,3 +6794,14 @@ Testat în preview: pagina se încarcă, click → „32 emailuri repuse în coa
 **NESCHIMBAT:** raw/schema/import/Truth Layer/Marketplace/House Health/Digital Twin/OAuth/robots/root sitemap. Integritate 3408/3406/2.
 
 **Backlog (viitor, cu aprobare):** activare Google Maps (cheie env GOOGLE_MAPS_API_KEY), extindere alte județe, Places/Routes, monitorizare thin-content per cluster.
+
+---
+
+## HartaBlocuri — Private Property GIS + Google Maps (Faza 5) — 2026-06
+**Status:** IMPLEMENTAT + TESTAT (iteration_227.json: backend 100%, frontend 100%, 0 issues).
+**Regulă fundamentală:** public = discovery/context agregat (fără coordonate exacte); privat = Property GIS autentificat cu authz server-side (401/403).
+- Public map agregat pe cartier; public building fără lat/lng exact/google_maps_url.
+- `GET /api/properties/{id}/gis` (authz `_load_property_for`) → layers L0-L7, doc status, CTA contextuale, coordonate exacte + google_maps_url.
+- Google Maps abstraction (env flag + fallback); `PropertyGIS.jsx` + rute `/property/:id/gis`. robots += /property//account//my-home.
+- ENV activare: GOOGLE_MAPS_API_KEY (browser restricționat), GOOGLE_MAPS_SERVER_API_KEY (server), GOOGLE_MAPS_ENABLED=true.
+**NESCHIMBAT:** SEO clusters/sitemap/Marketplace/House Health/Digital Twin/OAuth/raw/import/Truth Layer. Integritate 3408/3406/2.

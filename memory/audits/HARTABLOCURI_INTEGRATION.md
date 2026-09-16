@@ -124,3 +124,15 @@ Corectitudinea datelor, Contextul clădirii, Admin Import Center, rezolvarea con
 - **Teste:** test_seo_clusters_iter226.py (rescris, 22) + test_seo_admin_iter218 (child_count 6→7) + 23 API integrare + frontend E2E (iteration_226.json) — backend 100%, frontend 100%, 0 issues.
 - **Scalabilitate națională:** județ nou = DATASET→IMPORT→VALIDATION→TRUTH LAYER→DISCOVERY→QUALITY GATE→PUBLISH, fără refactor SEO/URL/DB/map/linking.
 - **NESCHIMBAT:** raw/schema/import/Truth Layer/Marketplace/House Health/Digital Twin/OAuth/robots/root sitemap logic/existing children. Integritate 3408/3406/2.
+
+## 18. Private Property GIS + Google Maps — Faza 5 — 2026-06
+**REGULĂ FUNDAMENTALĂ:** HartaBlocuri PUBLIC = discovery/context (agregat, FĂRĂ coordonate exacte). Property GIS PRIVAT = acțiune (autentificat, coordonate exacte, authz server-side).
+- **Granița public/privat:**
+  - `GET /api/public/blocuri/map` → AGREGAT pe cartier/localitate (centroid rotunjit 2 zecimale, `approximate:true`, count). NU expune id/nume/adresă/lat-lng individual.
+  - `GET /api/public/buildings/{id}` → FĂRĂ lat/lng exact, FĂRĂ google_maps_url. Doar context + cta {identify, cartea_casei} + private_note.
+- **Private GIS:** `GET /api/properties/{id}/gis` — authz server-side prin `_load_property_for` (401 neautentificat, 403 non-owner). Livrează location EXACT, google_maps_url, layers L0-L7 (doar cele cu date reale), documentation_status (recomandări, nu obligații), CTA-uri contextuale din date reale, monetization. Provenance HartaBlocuri „neverificat".
+- **Google Maps abstraction:** `GET /api/public/maps/config` → provider google/fallback din `GOOGLE_MAPS_ENABLED` + `GOOGLE_MAPS_API_KEY`. Cheia server (`GOOGLE_MAPS_SERVER_API_KEY`) NU se expune clientului. Fallback funcțional. Frontend `PropertyMap` (Google când activ, altfel „Deschide în Google Maps").
+- **Frontend:** `/blocuri` (zone agregate), `/property/:id/gis` + `/property/:id/map` (`PropertyGIS.jsx`, guard 401/403). robots.txt += `/property/`, `/account`, `/my-home` (aditiv).
+- **ENV necesare (activare, NEsetate acum):** `GOOGLE_MAPS_API_KEY` (browser, restricționat propmanage.ro + API-uri necesare), `GOOGLE_MAPS_SERVER_API_KEY` (server-side, restricții server, niciodată la client), `GOOGLE_MAPS_ENABLED=true`.
+- **Teste:** privacy/authz A-I + boundary + regression — iteration_227.json backend 100%, frontend 100%, 0 issues. 64 unit pass.
+- **NESCHIMBAT:** raw/import/Truth Layer/66 INDEX+41 PREPARED+59 CANDIDATE/sitemap-blocuri.xml/Marketplace/House Health/Digital Twin/OAuth/root sitemap. Integritate 3408/3406/2.
