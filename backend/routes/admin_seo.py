@@ -81,6 +81,10 @@ GUIDE_CLUSTER = {
     "design-interior-vs-amenajare": "design_interior",
     "ce-verifici-inainte-de-renovare-apartament": "design_interior",
     "compartimentare-cost-amenajare": "design_interior",
+    "ce-documente-verifici-cumparare-apartament": "imobile_verificate",
+    "probleme-tehnice-apartament-inainte-cumparare": "imobile_verificate",
+    "verificare-imobil-digital-twin": "imobile_verificate",
+    "riscuri-cumparare-apartament-bloc-vechi": "imobile_verificate",
 }
 
 # Internally-linked hubs (footer / nav) — used for orphan/coverage heuristic.

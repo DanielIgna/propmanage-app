@@ -1,3 +1,29 @@
+## 🔎📈 SEO EXPANSION #2 — Design Interior local complet + cluster Imobile Verificate (Iun 2026)
+
+Continuare a expansiunii SEO, doar conținut real justificat. FĂRĂ GSC OAuth/PKCE/Google Login/robots/canonical global/regula marketplace ≥3. Verificat (19 pytest PASS + validate 6/6 green + screenshots render).
+
+**AUDIT servicii Design Interior**: cele 14 pagini de conținut + 9 stiluri au deja title/meta/H1/conținut unic/CTA/internal-linking + hub-ul `/design-interior` are deja secțiunea „Design interior în orașul tău" (linkează toate cele 7 orașe). Concluzie: NU se justifică pagini de serviciu noi („consultanță" = tip de lead, nu conținut suficient pentru pagină proprie).
+
+**LIVRAT**:
+1. **Conținut local pentru încă 3 orașe** (`designInteriorLocal.js` + `seo_design.DESIGN_LOCAL_INDEXABLE`): **Iași** (oraș universitar/cultural, Copou/Tătărași/Palas), **Sibiu** (centru istoric săsesc UNESCO, Șelimbăr, turism), **Oradea** (Art Nouveau/Secession, Rogerius, turism balnear). Fiecare cu conținut unic factual (cartiere reale, nevoi specifice, FAQ, related). Acum TOATE cele 7 orașe locale (bucurești, cluj-napoca, timișoara, brașov, iași, sibiu, oradea) = INDEX + self-canonical + în sitemap-design. Toate cele 7 linkuri din secțiunea „orașul tău" a hub-ului duc acum la pagini indexabile de calitate.
+2. **Cluster editorial Imobile Verificate — 4 ghiduri noi** (`ghiduri.js` + `seo_guides.py`, cluster `imobile_verificate`): `ce-documente-verifici-cumparare-apartament`, `probleme-tehnice-apartament-inainte-cumparare`, `verificare-imobil-digital-twin`, `riscuri-cumparare-apartament-bloc-vechi`. Internal-linking semantic către `/imobile-verificate`, `/scorul-casei` (echivalentul real al „/audit-locuinta" — care NU există ca rută), `/digital-twin` + ghidurile conexe. FIX quote: un `"` drept într-un string cu ghilimele drepte rupea compilarea → înlocuit cu `"`.
+
+**STRUCTURĂ SEO**: Design Interior → servicii (14) → stiluri (9) → orașe (7, conținut real) → editorial (11 ghiduri). Imobile Verificate → audit/verificare → Digital Twin → Scorul Casei/Cartea Casei, prin cele 4 ghiduri noi + cele 4 existente.
+
+**BEFORE → AFTER (arc complet SEO, preview)**:
+- Total INDEX: 96 → **111** (+15: 8 batch #1 + 3 orașe + 4 ghiduri imobile)
+- NOINDEX: 200 → **200** (neschimbat — marketplace thin + regula ≥3)
+- Sitemap: 5 → **6 copii** (static 17 / content 42 / marketplace 7 / specialists 15 / design 30 / estate 0-preview·real-pe-prod)
+- Design Interior: 24 → **30** în sitemap-design (14 pagini + 9 stiluri + 7 orașe) + hub + 11 ghiduri editoriale
+- Imobile Verificate: hub + estate detail (gated, non-demo, real pe prod) + **8 ghiduri** cluster (4 vechi + 4 noi)
+- Articole editoriale noi în total sesiune: **9** (5 design + 4 imobile)
+- **Rămân NOINDEX + motiv**: 195 marketplace service×city + 5 național (<3 specialiști, regula anti-thin păstrată). Zero orașe design rămân generice (toate 7 au conținut). Estate detail demo/seed = excluse explicit.
+
+**NEATINS**: GSC OAuth/PKCE/Google Login, robots.txt, canonical global, gate marketplace ≥3. **Necesită redeploy** pentru producție.
+
+---
+
+
 ## 🔎📈 SEO INDEXABILITY EXPANSION — audit + conținut local real + estate sitemap (Iun 2026)
 
 Audit read-only al Indexability Gate + expansiune CONTROLATĂ, doar unde e justificat de conținut real. FĂRĂ atingerea GSC OAuth/PKCE/Google Login, FĂRĂ slăbirea regulii marketplace ≥3, FĂRĂ pagini artificiale. Verificat E2E (34 pytest PASS + validate sitemap 6/6 + testing_agent 24/25→fix).

@@ -52,7 +52,7 @@ DESIGN_LOCAL_CITIES: list[str] = [
 # based on CONTENT sufficiency (not specialist count). Cities NOT listed here
 # render a generic template and stay NOINDEX (canonical → /design-interior).
 DESIGN_LOCAL_INDEXABLE: set[str] = {
-    "cluj-napoca", "bucuresti", "timisoara", "brasov",
+    "cluj-napoca", "bucuresti", "timisoara", "brasov", "iasi", "sibiu", "oradea",
 }
 
 DESIGN_PAGE_SLUGS = {s for s, _ in DESIGN_PAGES}

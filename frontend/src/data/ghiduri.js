@@ -1418,6 +1418,221 @@ export const GHIDURI = [
       { label: "Randări 3D & Digital Twin", to: "/design-interior/3d" },
       { label: "Cum pregătești apartamentul pentru renovare", to: "/ghiduri/cum-pregatesti-apartament-renovare" },
     ],
+  },
+  {
+    slug: "ce-documente-verifici-cumparare-apartament",
+    title: "Ce documente verifici înainte să cumperi un apartament · Ghid 2026",
+    h1: "Ce documente trebuie verificate înainte de cumpărarea unui apartament",
+    description: "Lista completă de acte de verificat înainte de a cumpăra un apartament: extras de carte funciară, intabulare, sarcini, certificat energetic, situația la asociație.",
+    tag: "Cumpărare sigură",
+    icon: "BookOpen",
+    publishedAt: "2026-06-16",
+    updatedAt: "2026-06-16",
+    readMins: 7,
+    sections: [
+      {
+        heading: "De ce contează documentele",
+        body: [
+          "O parte din riscurile la cumpărare nu se văd la vizionare — ele sunt în acte. Verificarea documentelor înainte de antecontract te protejează de datorii, sarcini sau litigii moștenite odată cu apartamentul.",
+          "Verificarea juridică se completează cu una tehnică: un **audit al locuinței** îți arată starea reală a instalațiilor și structurii. Vezi și programul **Imobile Verificate**, unde apartamentele au deja audit tehnic și Digital Twin.",
+        ],
+      },
+      {
+        heading: "Documentele esențiale",
+        body: [
+          { type: "list", items: [
+            "Extras de carte funciară actualizat (proprietar, suprafață, sarcini)",
+            "Dovada intabulării și a dreptului de proprietate",
+            "Sarcini/ipoteci/interdicții înscrise în CF",
+            "Certificatul de performanță energetică",
+            "Situația la zi a cheltuielilor de întreținere (fără restanțe)",
+            "Actele de identitate ale vânzătorilor și, dacă e cazul, acordul soț/soție",
+            "Autorizații pentru eventuale modificări (extinderi, recompartimentări)",
+          ] },
+          { type: "callout", title: "Atenție", body: "Un extras de carte funciară de informare nu blochează tranzacția. Pentru siguranță, notarul obține un extras pentru autentificare chiar înainte de semnare." },
+        ],
+      },
+      {
+        heading: "Documente + verificare tehnică = decizie completă",
+        body: [
+          "Actele îți spun ce cumperi din punct de vedere juridic; auditul tehnic îți spune ce cumperi din punct de vedere fizic. Împreună îți dau o imagine completă înainte să semnezi.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Cine verifică documentele apartamentului?", a: "Notarul verifică situația juridică la autentificare, dar e recomandat să ceri extrasul de carte funciară și situația la asociație din timp. Un avocat te poate ajuta la tranzacții complexe." },
+      { q: "Ce e mai important, verificarea juridică sau cea tehnică?", a: "Ambele. Verificarea juridică previne probleme de proprietate și datorii; cea tehnică previne costuri ascunse de reparații. Programul Imobile Verificate le combină." },
+      { q: "Pot cumpăra un apartament cu restanțe la întreținere?", a: "Poți, dar restanțele pot trece parțial în sarcina noului proprietar în anumite condiții. Cere situația la zi de la asociație înainte de a semna." },
+    ],
+    relatedCity: null,
+    relatedCategories: [],
+    internalLinks: [
+      { label: "Imobile Verificate — cum funcționează", to: "/imobile-verificate" },
+      { label: "Verificare apartament înainte de cumpărare", to: "/ghiduri/verificare-apartament-inainte-de-cumparare" },
+      { label: "Ce probleme tehnice urmărești", to: "/ghiduri/probleme-tehnice-apartament-inainte-cumparare" },
+      { label: "Verifică Scorul Casei", to: "/scorul-casei" },
+      { label: "Audit tehnic apartament: preț", to: "/ghiduri/audit-tehnic-apartament-pret" },
+    ],
+  },
+  {
+    slug: "probleme-tehnice-apartament-inainte-cumparare",
+    title: "Ce probleme tehnice urmărești înainte să cumperi un apartament · Ghid 2026",
+    h1: "Ce probleme tehnice trebuie urmărite înainte de cumpărare",
+    description: "Checklist tehnic la vizionare: instalații electrice și sanitare, umezeală, structură, izolație și tâmplărie. Ce semne de alarmă te feresc de costuri ascunse.",
+    tag: "Cumpărare sigură",
+    icon: "BookOpen",
+    publishedAt: "2026-06-16",
+    updatedAt: "2026-06-16",
+    readMins: 8,
+    sections: [
+      {
+        heading: "Ce nu se vede la o vizionare rapidă",
+        body: [
+          "Un apartament proaspăt zugrăvit poate ascunde probleme costisitoare. Cele mai scumpe defecte sunt cele tehnice — instalații, structură, umezeală — care apar după ce ai cumpărat.",
+          "Pentru o evaluare obiectivă, un **audit tehnic** verifică sistematic aceste puncte. În programul **Imobile Verificate**, apartamentele au deja acest audit + un **Digital Twin** al locuinței.",
+        ],
+      },
+      {
+        heading: "Checklist la vizionare",
+        body: [
+          { type: "list", items: [
+            "Instalația electrică — tablou, vechime, prize suficiente, împământare",
+            "Instalația sanitară — presiune, scurgeri, urme de umezeală sub chiuvete",
+            "Umezeală și mucegai — colțuri, pereți exteriori, băi, sub geamuri",
+            "Structura — fisuri în pereți, tavane, planeitatea pardoselii",
+            "Izolația termică — apartamentele de colț și de la etaje extreme",
+            "Tâmplăria — etanșeitate, condens între geamuri",
+            "Încălzirea — starea caloriferelor sau a centralei",
+          ] },
+          { type: "callout", title: "Semnal de alarmă", body: "Pete proaspăt vopsite doar pe anumite porțiuni sau miros de umezeală pot indica infiltrații mascate. Cere să vezi apartamentul și pe vreme umedă, dacă e posibil." },
+        ],
+      },
+      {
+        heading: "De la impresie la certitudine",
+        body: [
+          "O vizionare atentă îți dă o primă impresie; un audit tehnic îți dă certitudinea. Diferența de cost dintre un audit și o reparație majoră neanticipată e uriașă în favoarea auditului.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Merită un audit tehnic înainte de a cumpăra?", a: "Da. Costă o fracțiune din prețul unei reparații majore neanticipate (instalații, umezeală, structură) și îți dă o bază de negociere reală." },
+      { q: "Pot verifica singur un apartament?", a: "Poți face o verificare de bază cu acest checklist, dar un specialist detectează probleme ascunse (instalații, structură) pe care ochiul neexperimentat le ratează." },
+      { q: "Ce înseamnă un imobil deja verificat?", a: "Un apartament din programul Imobile Verificate a trecut printr-un audit tehnic complet și are un Digital Twin — vezi starea reală înainte de vizionarea fizică." },
+    ],
+    relatedCity: null,
+    relatedCategories: [],
+    internalLinks: [
+      { label: "Imobile Verificate", to: "/imobile-verificate" },
+      { label: "Ce documente verifici la cumpărare", to: "/ghiduri/ce-documente-verifici-cumparare-apartament" },
+      { label: "Riscuri la cumpărarea într-un bloc vechi", to: "/ghiduri/riscuri-cumparare-apartament-bloc-vechi" },
+      { label: "Verifică Scorul Casei", to: "/scorul-casei" },
+      { label: "Ce este Digital Twin-ul locuinței", to: "/ghiduri/ce-este-digital-twin-locuinta" },
+    ],
+  },
+  {
+    slug: "verificare-imobil-digital-twin",
+    title: "Cum se leagă verificarea unui imobil de Digital Twin · Ghid 2026",
+    h1: "Cum se leagă verificarea unui imobil de Digital Twin",
+    description: "Ce este un Digital Twin al locuinței, cum se creează din audit și cum te ajută să vezi starea reală a unui apartament înainte de cumpărare sau renovare.",
+    tag: "Digital Twin",
+    icon: "BookOpen",
+    publishedAt: "2026-06-16",
+    updatedAt: "2026-06-16",
+    readMins: 6,
+    sections: [
+      {
+        heading: "De la audit la Digital Twin",
+        body: [
+          "Verificarea unui imobil produce date: starea instalațiilor, a structurii, a finisajelor. Un **Digital Twin** transformă aceste date într-o reprezentare digitală a locuinței — o hartă vie a proprietății, nu doar un dosar de hârtii.",
+          "Astfel, ce descoperă auditul devine vizibil și ușor de înțeles, iar informația rămâne legată de locuință în timp, în **Cartea Casei**.",
+        ],
+      },
+      {
+        heading: "Ce vezi într-un Digital Twin",
+        body: [
+          { type: "list", items: [
+            "Structura și compartimentarea locuinței",
+            "Starea sistemelor verificate la audit",
+            "Istoricul lucrărilor și al intervențiilor",
+            "Documente și rapoarte legate de proprietate",
+          ] },
+          { type: "callout", title: "De ce contează la cumpărare", body: "Un Digital Twin îți permite să înțelegi apartamentul înainte de vizionarea fizică — vezi starea reală, nu doar fotografiile de prezentare." },
+        ],
+      },
+      {
+        heading: "Verificare + Twin = încredere",
+        body: [
+          "În programul Imobile Verificate, apartamentele publicate au un audit tehnic complet ȘI un Digital Twin. Combinația transformă o promisiune („apartament în stare bună”) într-o dovadă verificabilă.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Ce este mai exact un Digital Twin al locuinței?", a: "O reprezentare digitală a apartamentului, care leagă structura, starea sistemelor și documentele într-un singur loc — actualizabilă în timp." },
+      { q: "Am nevoie de Digital Twin dacă doar cumpăr?", a: "Te ajută să înțelegi apartamentul înainte de vizionare și îți rămâne util după achiziție, ca bază pentru Cartea Casei și pentru renovări viitoare." },
+      { q: "Cum obțin un Digital Twin pentru apartamentul meu?", a: "Se creează în urma unui audit/scanare a locuinței. Pentru apartamentele din Imobile Verificate, twin-ul e inclus în proces." },
+    ],
+    relatedCity: null,
+    relatedCategories: [],
+    internalLinks: [
+      { label: "Imobile Verificate", to: "/imobile-verificate" },
+      { label: "Ce este Digital Twin-ul locuinței", to: "/ghiduri/ce-este-digital-twin-locuinta" },
+      { label: "Pagina Digital Twin", to: "/digital-twin" },
+      { label: "Verifică Scorul Casei", to: "/scorul-casei" },
+      { label: "Ce probleme tehnice urmărești", to: "/ghiduri/probleme-tehnice-apartament-inainte-cumparare" },
+    ],
+  },
+  {
+    slug: "riscuri-cumparare-apartament-bloc-vechi",
+    title: "Riscuri la cumpărarea unui apartament într-un bloc vechi · Ghid 2026",
+    h1: "Riscuri la cumpărarea unui apartament într-un bloc vechi",
+    description: "Ce riști când cumperi într-un bloc vechi: instalații depășite, risc seismic, izolație slabă, costuri de reabilitare. Cum le verifici și cum le negociezi.",
+    tag: "Cumpărare sigură",
+    icon: "BookOpen",
+    publishedAt: "2026-06-16",
+    updatedAt: "2026-06-16",
+    readMins: 8,
+    sections: [
+      {
+        heading: "Blocurile vechi: farmec și capcane",
+        body: [
+          "Apartamentele din blocuri vechi pot fi spațioase și bine poziționate, dar vin cu riscuri specifice care nu se văd la o vizionare rapidă. A le cunoaște înainte te ajută să negociezi corect sau să eviți o achiziție proastă.",
+        ],
+      },
+      {
+        heading: "Principalele riscuri de verificat",
+        body: [
+          { type: "list", items: [
+            "Risc seismic — verifică dacă blocul e pe lista clădirilor cu risc (mai ales construcțiile dinainte de normele moderne)",
+            "Instalații depășite — electrice și sanitare care necesită înlocuire completă",
+            "Izolație termică slabă — facturi mari și disconfort",
+            "Structura și fisurile — semne de tasare sau degradare",
+            "Fondul de reparații al asociației — reabilitări majore care urmează",
+            "Umezeală și infiltrații — mai ales la parter și ultimul etaj",
+          ] },
+          { type: "callout", title: "Cheia deciziei", body: "Un audit tehnic îți spune cât ar costa aducerea apartamentului la o stare bună — o cifră care schimbă complet negocierea prețului." },
+        ],
+      },
+      {
+        heading: "Cum te protejezi",
+        body: [
+          "Comandă un audit tehnic înainte de antecontract, cere situația juridică și fondul de reparații de la asociație, și folosește costul estimat al reparațiilor ca argument de negociere. Programul **Imobile Verificate** oferă apartamente care au trecut deja prin această verificare.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Merită să cumpăr într-un bloc vechi?", a: "Poate merita, dacă prețul reflectă starea reală și costul reparațiilor necesare. Un audit tehnic îți dă cifra exactă pentru a decide informat." },
+      { q: "Cum aflu dacă blocul are risc seismic?", a: "Există liste publice ale clădirilor încadrate în clase de risc seismic. Verifică adresa înainte de a face o ofertă; un specialist te poate ghida." },
+      { q: "Cât cresc costurile ascunse la un apartament vechi?", a: "Depinde de stare, dar reabilitarea instalațiilor, tâmplăriei și finisajelor poate ajunge la o sumă semnificativă. Auditul o estimează înainte să cumperi." },
+    ],
+    relatedCity: null,
+    relatedCategories: [],
+    internalLinks: [
+      { label: "Imobile Verificate", to: "/imobile-verificate" },
+      { label: "Ce probleme tehnice urmărești la cumpărare", to: "/ghiduri/probleme-tehnice-apartament-inainte-cumparare" },
+      { label: "Ce documente verifici la cumpărare", to: "/ghiduri/ce-documente-verifici-cumparare-apartament" },
+      { label: "Design pentru renovare", to: "/design-interior/renovare" },
+      { label: "Verifică Scorul Casei", to: "/scorul-casei" },
+    ],
   }
 ];
 

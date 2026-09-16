@@ -28,4 +28,8 @@ GUIDE_SLUGS: list[tuple[str, str]] = [
     ("design-interior-vs-amenajare", "2026-06-16"),
     ("ce-verifici-inainte-de-renovare-apartament", "2026-06-16"),
     ("compartimentare-cost-amenajare", "2026-06-16"),
+    ("ce-documente-verifici-cumparare-apartament", "2026-06-16"),
+    ("probleme-tehnice-apartament-inainte-cumparare", "2026-06-16"),
+    ("verificare-imobil-digital-twin", "2026-06-16"),
+    ("riscuri-cumparare-apartament-bloc-vechi", "2026-06-16"),
 ]

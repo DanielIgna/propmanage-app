@@ -208,6 +208,156 @@ export const DI_LOCAL_CONTENT = {
       { to: "/scorul-casei", label: "Verifică Scorul Casei tale" },
     ],
   },
+
+  "iasi": {
+    name: "Iași",
+    intro:
+      "Iașiul, capitala culturală a Moldovei și unul dintre cele mai mari centre universitare din țară, are o piață rezidențială modelată de studenți, tineri profesioniști și de un fond locativ variat — de la clădiri istorice în Copou, la blocuri dense în Tătărași și ansambluri noi spre Bucium. Pe PropManage lucrezi cu designeri verificați, iar proiectul se leagă de execuție prin escrow.",
+    sections: [
+      {
+        h2: "Ce tipuri de locuințe amenajăm în Iași",
+        body: [
+          "Fondul locativ ieșean acoperă extreme: apartamente istorice în zona universitară și blocuri comuniste dense, dar și dezvoltări noi pe dealurile din jur.",
+        ],
+        bullets: [
+          "**Apartamente în zona Copou** — aproape de universitate, unele în clădiri vechi cu caracter",
+          "**Blocuri comuniste** în Tătărași, Păcurari, Nicolina, Alexandru cel Bun — compartimentări de optimizat",
+          "**Ansambluri noi** în zona Palas, Bucium, Aurel Vlaicu — finisaje și open-space de personalizat",
+          "**Garsoniere pentru închiriere studențească** — amenajare practică și rezistentă",
+        ],
+      },
+      {
+        h2: "Nevoi și provocări specifice Iașiului",
+        body: [
+          "Populația studențească mare și terenul deluros aduc cerințe recurente:",
+        ],
+        bullets: [
+          "Amenajări funcționale și durabile pentru apartamente închiriate studenților",
+          "Optimizarea spațiilor mici din blocurile din Tătărași și Nicolina",
+          "Depozitare inteligentă și birou de acasă pentru tineri profesioniști",
+          "Reabilitarea instalațiilor în clădirile vechi din zona centrală",
+        ],
+      },
+      {
+        h2: "Cum lucrăm în Iași",
+        body: [
+          "De la releveu și concept, la randări 3D și, opțional, implementare cu specialiști verificați. Pentru apartamentele destinate închirierii sau pentru clădirile mai vechi, un **audit tehnic** înainte de finisaje ajută la un buget realist.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Cât costă designul interior în Iași?", a: "Un concept pornește de la câteva sute de lei pe cameră; proiectul tehnic complet se calculează pe metru pătrat, în funcție de suprafață și complexitate." },
+      { q: "Merită designul pentru un apartament de închiriat studenților?", a: "Da — o amenajare practică, durabilă și ușor de întreținut reduce uzura și crește atractivitatea. Un designer optimizează depozitarea și rezistența finisajelor cu buget controlat." },
+      { q: "Aveți designeri verificați în Iași?", a: "Vezi mai jos designerii verificați care acoperă zona Iași. Poți vedea portofoliile și recenziile lor sau posta o cerere pentru oferte." },
+    ],
+    related: [
+      { to: "/design-interior/apartament-mic", label: "Design apartament mic" },
+      { to: "/design-interior/apartament", label: "Design interior apartament" },
+      { to: "/design-interior/renovare", label: "Design pentru renovare" },
+      { to: "/imobile-verificate", label: "Imobile Verificate" },
+      { to: "/scorul-casei", label: "Verifică Scorul Casei tale" },
+    ],
+  },
+
+  "sibiu": {
+    name: "Sibiu",
+    intro:
+      "Sibiul are unul dintre cele mai bine păstrate centre istorice săsești din România, cu Orașul de Sus și Orașul de Jos, moștenire germană și un turism puternic. Aici designul interior echilibrează respectul pentru patrimoniu cu confortul modern, în apartamente istorice, blocuri comuniste și case noi spre Șelimbăr. Pe PropManage lucrezi cu designeri verificați, cu proiect legat de execuție prin escrow.",
+    sections: [
+      {
+        h2: "Ce tipuri de locuințe amenajăm în Sibiu",
+        body: [
+          "Contrastul dintre centrul istoric și zonele rezidențiale noi definește proiectele sibiene.",
+        ],
+        bullets: [
+          "**Apartamente și case în centrul istoric** (Orașul de Sus, Orașul de Jos) — caracter aparte, elemente de patrimoniu de respectat",
+          "**Blocuri comuniste** în Ștrand, Hipodrom, Vasile Aaron — compartimentări de optimizat",
+          "**Locuințe noi** în Șelimbăr, Calea Cisnădiei — finisaje de personalizat",
+          "**Apartamente pentru închiriere turistică** — Sibiul e o destinație căutată",
+        ],
+      },
+      {
+        h2: "Nevoi și provocări specifice Sibiului",
+        body: [
+          "Patrimoniul și turismul modelează cerințele frecvente:",
+        ],
+        bullets: [
+          "Restaurarea cu grijă a apartamentelor din centrul istoric, fără a strica elementele de epocă",
+          "Amenajări durabile pentru apartamentele închiriate turiștilor",
+          "Izolație termică bună pentru clima mai rece din zona montană apropiată",
+          "Estetică inspirată de moștenirea germană, sobră și funcțională",
+        ],
+      },
+      {
+        h2: "Cum lucrăm în Sibiu",
+        body: [
+          "Pornim de la releveu și concept, cu atenție la caracterul clădirii, apoi randări 3D și, opțional, implementare cu specialiști verificați. La imobilele de patrimoniu, un **audit tehnic** înainte de finisaje e recomandat.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Cât costă designul interior în Sibiu?", a: "Un concept pornește de la câteva sute de lei pe cameră; proiectul tehnic complet se calculează pe metru pătrat. Imobilele de patrimoniu pot necesita relevee detaliate, reflectate în preț." },
+      { q: "Pot amenaja modern un apartament din centrul istoric al Sibiului?", a: "Da, cu echilibru: se păstrează elementele valoroase și se adaugă confort modern. Un designer bun face tranziția fără să afecteze caracterul clădirii." },
+      { q: "Aveți designeri verificați în Sibiu?", a: "Vezi mai jos designerii verificați care acoperă zona. Dacă lista e scurtă, poți posta o cerere și primești oferte de la specialiști din regiune." },
+    ],
+    related: [
+      { to: "/design-interior/apartament-vechi", label: "Design apartament vechi" },
+      { to: "/design-interior/stil/classic", label: "Design interior stil clasic" },
+      { to: "/design-interior/renovare", label: "Design pentru renovare" },
+      { to: "/imobile-verificate", label: "Imobile Verificate" },
+      { to: "/scorul-casei", label: "Verifică Scorul Casei tale" },
+    ],
+  },
+
+  "oradea": {
+    name: "Oradea",
+    intro:
+      "Oradea e recunoscută pentru arhitectura sa Art Nouveau (Secession) recent restaurată și moștenirea austro-ungară a centrului. Piața rezidențială combină apartamente în clădiri de patrimoniu cu blocuri comuniste în Rogerius și dezvoltări noi în Iosia. Turismul balnear și proximitatea de graniță adaugă cerințe aparte. Pe PropManage lucrezi cu designeri verificați, cu proiect legat de execuție prin escrow.",
+    sections: [
+      {
+        h2: "Ce tipuri de locuințe amenajăm în Oradea",
+        body: [
+          "Patrimoniul Art Nouveau și zonele noi coexistă în fondul locativ orădean.",
+        ],
+        bullets: [
+          "**Apartamente în clădiri Art Nouveau / de epocă** din centru — detalii decorative, tavane înalte, de tratat cu respect",
+          "**Blocuri comuniste** în Rogerius, Nufărul, Velența — compartimentări de optimizat",
+          "**Locuințe noi** în Iosia, Oncea, spre Sânmartin — finisaje de personalizat",
+          "**Apartamente pentru închiriere** (turism balnear Băile Felix) — amenajare durabilă",
+        ],
+      },
+      {
+        h2: "Nevoi și provocări specifice Oradei",
+        body: [
+          "Patrimoniul arhitectural și turismul balnear aduc cerințe frecvente:",
+        ],
+        bullets: [
+          "Restaurarea atentă a apartamentelor de epocă, păstrând detaliile Art Nouveau",
+          "Amenajări durabile pentru apartamentele închiriate în zona balneară",
+          "Optimizarea locuințelor din blocurile din Rogerius și Nufărul",
+          "Reabilitarea instalațiilor în clădirile vechi, înainte de finisaje",
+        ],
+      },
+      {
+        h2: "Cum lucrăm în Oradea",
+        body: [
+          "De la releveu și concept, cu atenție la caracterul clădirii, la randări 3D și, opțional, implementare cu specialiști verificați. La imobilele de patrimoniu recomandăm un **audit tehnic** înainte de finisaje.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Cât costă designul interior în Oradea?", a: "Un concept pornește de la câteva sute de lei pe cameră; proiectul tehnic complet se calculează pe metru pătrat, în funcție de suprafață și complexitate." },
+      { q: "Se poate păstra caracterul Art Nouveau al unui apartament orădean?", a: "Da — un designer bun păstrează detaliile de epocă valoroase (stucaturi, tâmplărie, tavane înalte) și adaugă confort modern, fără să strice identitatea clădirii." },
+      { q: "Aveți designeri verificați în Oradea?", a: "Vezi mai jos designerii verificați care acoperă zona. Poți vedea portofoliile și recenziile lor sau posta o cerere pentru oferte." },
+    ],
+    related: [
+      { to: "/design-interior/apartament-vechi", label: "Design apartament vechi" },
+      { to: "/design-interior/apartament", label: "Design interior apartament" },
+      { to: "/design-interior/renovare", label: "Design pentru renovare" },
+      { to: "/imobile-verificate", label: "Imobile Verificate" },
+      { to: "/scorul-casei", label: "Verifică Scorul Casei tale" },
+    ],
+  },
 };
 
 export const DI_LOCAL_INDEXABLE = Object.keys(DI_LOCAL_CONTENT);

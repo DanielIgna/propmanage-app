@@ -42,34 +42,28 @@ def test_direct_navigation_no_redirect_serves_spa_shell():
 
 
 def test_gate_editorial_index_vs_gated_city_noindex():
-    """Editorial DI pages -> index (self). Local city pages: INDEX if they have
-    unique authored content (cluj-napoca), NOINDEX + parent canonical if generic (oradea)."""
+    """Editorial DI pages -> index (self). Local city pages: INDEX when they have unique
+    authored content. Cities without content (mechanism preserved) -> NOINDEX + parent canonical."""
     ap = requests.get(f"{API}/public/seo/gate", params={"path": "/design-interior/apartament"}, timeout=15).json()
     assert ap["index"] is True
 
-    # cluj-napoca now has unique authored local content -> INDEX + self-canonical
-    cluj = requests.get(f"{API}/public/seo/gate", params={"path": "/design-interior/cluj-napoca"}, timeout=15).json()
-    assert cluj["index"] is True
-
-    # oradea has NO authored content -> NOINDEX + canonical to parent
-    oradea = requests.get(f"{API}/public/seo/gate", params={"path": "/design-interior/oradea"}, timeout=15).json()
-    assert oradea["index"] is False
-    assert oradea["canonical"] == "https://propmanage.ro/design-interior"
+    # all authored content cities -> INDEX + self-canonical
+    for city in ("cluj-napoca", "bucuresti", "timisoara", "brasov", "iasi", "sibiu", "oradea"):
+        g = requests.get(f"{API}/public/seo/gate", params={"path": f"/design-interior/{city}"}, timeout=15).json()
+        assert g["index"] is True, f"{city} should be indexable (has authored content)"
 
 
 def test_sitemap_design_has_pages_styles_and_only_content_cities():
-    """sitemap-design.xml = 14 pages + 9 styles + ONLY cities with authored content."""
+    """sitemap-design.xml = 14 pages + 9 styles + the 7 cities with authored content."""
     r = requests.get(f"{API}/public/sitemap-design.xml", timeout=20)
     assert r.status_code == 200 and "<urlset" in r.text
     locs = {re.sub(r"^https?://[^/]+", "", u) for u in re.findall(r"<loc>([^<]+)</loc>", r.text)}
     # content + style pages always present
     assert "/design-interior/apartament" in locs
     assert "/design-interior/stil/japandi" in locs
-    # cities with authored unique content are present
-    assert "/design-interior/cluj-napoca" in locs, "content city should be in sitemap"
-    assert "/design-interior/bucuresti" in locs, "content city should be in sitemap"
-    # cities WITHOUT authored content must NOT be present
-    assert "/design-interior/oradea" not in locs, "generic city must be excluded from sitemap"
+    # all 7 cities with authored unique content are present
+    for city in ("cluj-napoca", "bucuresti", "timisoara", "brasov", "iasi", "sibiu", "oradea"):
+        assert f"/design-interior/{city}" in locs, f"content city {city} should be in sitemap"
     # hub + editorial guide live in OTHER child sitemaps, not the design child
     assert "/design-interior" not in locs, "hub belongs to sitemap-static, not sitemap-design"
 
