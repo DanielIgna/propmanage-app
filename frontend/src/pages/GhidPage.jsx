@@ -242,6 +242,24 @@ export const GhidPage = () => {
             </section>
           )}
 
+          {/* Curated internal links — pillar/service/local/editorial semantic links */}
+          {guide.internalLinks && guide.internalLinks.length > 0 && (
+            <section className="mt-12 pt-10 border-t border-white/5" data-testid="ghid-curated-links">
+              <h2 className="font-serif text-2xl text-white mb-5">Continuă cu</h2>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {guide.internalLinks.map((lnk, i) => (
+                  <Link key={i} to={lnk.to}
+                    className="glass-strong rounded-xl px-4 py-3 flex items-center justify-between hover:bg-white/[0.06] transition group"
+                    data-testid={`ghid-curated-link-${i}`}
+                  >
+                    <span className="text-sm text-stone-200">{lnk.label}</span>
+                    <ArrowRight className="w-4 h-4 text-stone-500 group-hover:text-[#d4ff3a] transition" />
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Lead magnets — Growth OS G1 */}
           <LeadMagnetCTA />
 

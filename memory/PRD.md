@@ -1,3 +1,26 @@
+## 🔎📈 SEO INDEXABILITY EXPANSION — audit + conținut local real + estate sitemap (Iun 2026)
+
+Audit read-only al Indexability Gate + expansiune CONTROLATĂ, doar unde e justificat de conținut real. FĂRĂ atingerea GSC OAuth/PKCE/Google Login, FĂRĂ slăbirea regulii marketplace ≥3, FĂRĂ pagini artificiale. Verificat E2E (34 pytest PASS + validate sitemap 6/6 + testing_agent 24/25→fix).
+
+**AUDIT (BEFORE, preview live)**: 296 URL publice · 96 INDEX · 200 NOINDEX (thin marketplace/local, corect). Sitemap = 5 copii (static 17 / content 33 / marketplace 7 / specialists 15 / design 24). Concluzie: fundația e sănătoasă; indexarea mică în GSC = ofertă reală redusă + latență crawl domeniu nou, NU bug de gate. Singura problemă reală de structură: footer-ul (backbone de internal-linking sitewide) nu lega paginile comerciale strategice.
+
+**Pagini strategice cerute vs realitate**: `/design-interior`, `/imobile-verificate`, `/digital-twin` = deja INDEX+sitemap. `/audit-locuinta` NU există → echivalent real `/scorul-casei`+`/checklist-cumparare` (indexate). `/renovare`/`/implementare` NU există standalone → `/design-interior/renovare` + `/design-interior/implementare` (indexate). NU s-au inventat rute.
+
+**MODIFICĂRI IMPLEMENTATE (AFTER)**:
+1. **Conținut local Design Interior REAL** (`frontend/src/data/designInteriorLocal.js`) — conținut unic, factual, distinct pentru 4 orașe: **cluj-napoca** (flagship), **bucuresti**, **timisoara**, **brasov** (intro local, tipuri de locuințe cu cartiere reale, nevoi specifice, proces, FAQ, related). Gate-ul local a fost mutat de la „număr specialiști" la „suficiență de conținut": `seo_design.DESIGN_LOCAL_INDEXABLE` + `public.compute_design_gate` → oraș cu conținut = INDEX self-canonical; fără conținut (oradea/sibiu/iasi) = NOINDEX + canonical `/design-interior`. `LocalDesignPage` randează conținutul autorizat + păstrează lista dinamică de designeri verificați. FĂRĂ designeri/proiecte/adrese inventate.
+2. **5 ghiduri editoriale noi** (`ghiduri.js` + `seo_guides.py`): `cat-costa-design-interior-cluj`, `cum-pregatesti-apartament-renovare`, `design-interior-vs-amenajare`, `ce-verifici-inainte-de-renovare-apartament`, `compartimentare-cost-amenajare`. Legături semantice pilon→servicii→local→editorial + cross-cluster (Imobile Verificate ↔ Audit/Scorul Casei ↔ Digital Twin). FIX: `GhidPage.jsx` nu randa deloc `guide.internalLinks` → adăugat blocul „Continuă cu" (`ghid-curated-links`).
+3. **Estate detail în sitemap** (`sitemap-estate.xml`, al 6-lea copil) — `public._estate_entries` emite `/imobile-verificate/{id}` DOAR pentru `status=published` NON-demo (exclude `is_demo:True` + `digital_twin_id` care începe cu `demo-`). Adăugat `is_demo:True` la seed-ul demo. `EstateDetail.jsx` primește `useSEO` (title/desc/canonical/Product+BreadcrumbList JSON-LD; noindex pe demo). Preview = 0 (doar demo); producție = anunțuri reale publicate.
+4. **Footer „Explorează"** (`App.js`) — coloană sitewide cu 6 linkuri comerciale: /design-interior, /imobile-verificate, /digital-twin, /marketplace, /scorul-casei, /preturi (`footer-explore-*`).
+
+**AFTER (cifre preview)**: 104 INDEX (+8: 5 ghiduri + 3 orașe design) · 200 NOINDEX (neschimbat) · sitemap = 6 copii (static 17 / content 38 / marketplace 7 / specialists 15 / design 27 / estate 0-preview). validate = 6/6 green, 104 URL, 0 blocate robots, 0 duplicate.
+
+**NOINDEX→INDEX**: /design-interior/cluj-napoca, /timisoara, /brasov. **Rămân NOINDEX+motiv**: /design-interior/oradea·sibiu·iasi (fără conținut unic → generic) + 195 marketplace service×city + 5 național (<3 specialiști, regula anti-thin păstrată). **Adăugate în sitemap**: 3 orașe design + 5 ghiduri + copil estate (real pe prod). **Canonical**: orașele design cu conținut → self-canonical (erau către părinte). **Internal linking**: footer Explorează + related pe paginile locale + blocul curat de internalLinks pe ghiduri.
+
+**NEATINS**: GSC OAuth/PKCE/Google Login, robots.txt, arhitectura canonical globală, regula marketplace ≥3. Teste actualizate: `test_design_interior_routing_iter219.py` (gate content-based), `test_seo_admin_iter218.py` (6 copii). **Necesită redeploy Fondator** pentru producție (pe prod estate reflectă anunțurile reale publicate).
+
+---
+
+
 ## 🐞 FIX GSC OAuth #3 — invalid_grant = PKCE fără code_verifier (Iun 2026) · CAUZĂ REALĂ
 
 **Cauza exactă**: authorization_url (generat de google-auth-oauthlib în fix #2) conținea **PKCE** — `code_challenge` + `code_challenge_method=S256`. Odată trimis un challenge, Google IMPUNE `code_verifier` la token exchange. POST-ul direct httpx (fix #2) NU trimitea `code_verifier` → Google răspunde `invalid_grant` pentru ORICE cod real. Nu era double-consumption, nici redirect_uri, nici client_secret (proba cod-fals → invalid_grant, nu invalid_client), nici scope.

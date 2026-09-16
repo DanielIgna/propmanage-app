@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only testing of SEO Indexability Expansion (DesignInterior local pages, 5 new guides, footer Explorează, estate detail). 24/25 verifications passed. All authored city pages render distinct content with FAQ/related/CTA opening lead modal; Oradea correctly falls back to generic template; all 5 new guides render (200, h1, h2s, lists); footer-explore shows all 6 links with correct hrefs; verified-estate detail page loads with detail-title; /design-interior hub and /ghiduri index regression OK. One minor internal-linking miss: the Cluj cost guide's rendered 'Citește și' section shows only 3 guide→guide links and does NOT surface the /design-interior/cluj-napoca link even though guide data includes it.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Ghiduri related-links semantic internal linking",
+        "issue": "Guide /ghiduri/cat-costa-design-interior-cluj lists `{ to: '/design-interior/cluj-napoca' }` in its data `related` array, but the rendered 'Citește și' block only outputs the /ghiduri/* related items — the local design-interior link is filtered out or not rendered. This weakens semantic linking to the target local page (review requirement said the Cluj cost guide should link to /design-interior/cluj-napoca).",
+        "affected_selectors": ["Citește și block on /ghiduri/cat-costa-design-interior-cluj"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "In the guide detail component (GhidDetail or similar), ensure the `related` array items with non-/ghiduri `to` targets (e.g. /design-interior/cluj-napoca) are rendered as links in the 'Citește și' section, not filtered out. This is required for the SEO internal-linking objective in the review."
+  ],
+  "critical_code_review_comments": [
+    "Guide related-links component appears to whitelist only /ghiduri/* targets — should render any valid `to` value from the guide data so cross-section internal linking works (guides ↔ local design-interior pages)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (not tested)", "frontend": "96% (24/25 checks)"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All local Design Interior pages (cluj-napoca, bucuresti, timisoara, brasov) render authored unique content with data-testid di-h1, di-section-0, di-faq, di-related, di-cta-hero-btn. CTA correctly opens lead modal. Oradea (no authored content) renders generic template with di-local-availability and no di-section-0. All 5 new guides return 200 with h1/h2s/lists. Footer has data-testid=footer-explore with the 6 sub-links (design, estate, twin, marketplace, audit, preturi) — all hrefs correct. Estate detail: navigate via listing card link like /imobile-verificate/6a20619b8291e51775cb1a5c (not /imobile-verificate/sell) — data-testid=detail-title renders. Only minor gap: guide→local-page related link not rendered.",
+  "rca of the issue": "The GhidDetail page's related-list rendering appears to include only guide-slug entries; items pointing to /design-interior/* are dropped. Fix: update the render loop to accept any `to` URL, or map `to` to Link href unconditionally."
+}
