@@ -23,6 +23,9 @@ const GateChip = ({ ok, label }) => (
   </span>
 );
 
+const fmtEur = (eur) => (eur == null ? null : "≈ " + new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 0 }).format(eur) + " EUR");
+const fmtRateDate = (d) => (d ? d.split("-").reverse().join(".") : "");
+
 const ListingCard = ({ item, onPublish, onArchive, onMarkSold, onEditPrice, busy }) => {
   const gates = item.gates_status || {};
   const canPublish = Object.values(gates).every(g => g?.ok);
@@ -47,6 +50,11 @@ const ListingCard = ({ item, onPublish, onArchive, onMarkSold, onEditPrice, busy
               <Pencil className="w-3 h-3" /> Editează
             </button>
           </div>
+          {item.price_eur != null && (
+            <div className="text-[10px] text-stone-500 mt-0.5" data-testid={`kanban-eur-${item.id}`}>
+              {fmtEur(item.price_eur)}{item.exchange_rate_date ? ` · curs BNR ${fmtRateDate(item.exchange_rate_date)}` : ""}
+            </div>
+          )}
         </div>
       </div>
       <div className="flex flex-wrap gap-1 mb-3">
@@ -115,6 +123,12 @@ const PriceEditModal = ({ item, onCancel, onSave, busy }) => {
         {!valid && val.trim() !== "" && (
           <div className="text-[11px] text-red-400 mt-1" data-testid="price-edit-error">Introdu o valoare numerică &ge; 0.</div>
         )}
+        {valid && item.eur_ron_rate ? (
+          <div className="text-[11px] text-stone-400 mt-1.5" data-testid="price-edit-eur-preview">
+            {fmtEur(Math.round(num / item.eur_ron_rate))}
+            {item.exchange_rate_date ? ` la cursul BNR din ${fmtRateDate(item.exchange_rate_date)}` : ""}
+          </div>
+        ) : null}
         <div className="flex items-center gap-2 mt-4">
           <button onClick={() => onSave(item.id, num)} disabled={!valid || busy === item.id}
             className="flex-1 pm-btn pm-btn-primary pm-btn-sm justify-center disabled:opacity-50" data-testid="price-edit-save">

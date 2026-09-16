@@ -32,6 +32,7 @@ from db import db
 from deps import require_role
 from core_utils import serialize_doc
 from email_service import send_email
+from bnr_exchange_rate import get_eur_ron_rate, compute_price_eur
 
 logger = logging.getLogger("propmanage.verified_estate")
 
@@ -238,6 +239,24 @@ def _serialize_listing(doc: dict) -> dict:
     return out
 
 
+def _with_eur(out: dict, rate_info) -> dict:
+    """Atașează EUR derivat (read-only) din cursul BNR. RON rămâne source of truth.
+    price_eur NU este editabil și NU este persistat pe listing."""
+    if not out:
+        return out
+    if rate_info and rate_info.get("rate") and out.get("price_ron") is not None:
+        out["price_eur"] = compute_price_eur(out.get("price_ron"), rate_info["rate"])
+        out["eur_ron_rate"] = rate_info["rate"]
+        out["exchange_rate_source"] = "BNR"
+        out["exchange_rate_date"] = rate_info.get("rate_date")
+    else:
+        out["price_eur"] = None
+        out["eur_ron_rate"] = None
+        out["exchange_rate_source"] = None
+        out["exchange_rate_date"] = None
+    return out
+
+
 def _evaluate_gates(payload: dict) -> dict:
     """Return a dict with each Gate status (pass/fail + reason)."""
     audit_id = payload.get("audit_report_id")
@@ -286,7 +305,8 @@ async def list_public_listings(
         query["price_ron"] = price_q
 
     cursor = db.verified_estate_listings.find(query).sort("published_at", -1).skip(skip).limit(limit)
-    items = [_serialize_listing(d) async for d in cursor]
+    rate_info = await get_eur_ron_rate()
+    items = [_with_eur(_serialize_listing(d), rate_info) async for d in cursor]
     total = await db.verified_estate_listings.count_documents(query)
     return {"items": items, "total": total, "skip": skip, "limit": limit}
 
@@ -301,7 +321,8 @@ async def get_listing(listing_id: str):
         raise HTTPException(404, "Listing not found")
     if not doc:
         raise HTTPException(404, "Listing not found")
-    return _serialize_listing(doc)
+    rate_info = await get_eur_ron_rate()
+    return _with_eur(_serialize_listing(doc), rate_info)
 
 
 @router.post("/inquiries")
@@ -419,7 +440,8 @@ async def admin_list_listings(
     if status:
         query["status"] = status
     cursor = db.verified_estate_listings.find(query).sort("updated_at", -1).skip(skip).limit(limit)
-    items = [_serialize_listing(d) async for d in cursor]
+    rate_info = await get_eur_ron_rate()
+    items = [_with_eur(_serialize_listing(d), rate_info) async for d in cursor]
     total = await db.verified_estate_listings.count_documents(query)
     return {"items": items, "total": total, "skip": skip, "limit": limit}
 
@@ -440,13 +462,15 @@ async def admin_patch_listing(
         raise HTTPException(404, "Listing not found")
     updates = {k: v for k, v in body.model_dump(exclude_unset=True).items() if v is not None}
     if not updates:
-        return _serialize_listing(existing)
+        rate_info = await get_eur_ron_rate()
+        return _with_eur(_serialize_listing(existing), rate_info)
     merged = {**existing, **updates}
     updates["gates_status"] = _evaluate_gates(merged)
     updates["updated_at"] = datetime.now(timezone.utc)
     await db.verified_estate_listings.update_one({"_id": oid}, {"$set": updates})
     doc = await db.verified_estate_listings.find_one({"_id": oid})
-    return _serialize_listing(doc)
+    rate_info = await get_eur_ron_rate()
+    return _with_eur(_serialize_listing(doc), rate_info)
 
 
 @router.post("/admin/listings/{listing_id}/publish")

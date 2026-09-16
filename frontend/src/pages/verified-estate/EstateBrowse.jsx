@@ -19,6 +19,13 @@ const formatPrice = (ron) => {
   return new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 0 }).format(ron) + " RON";
 };
 
+const formatEur = (eur) => {
+  if (eur == null) return null;
+  return "≈ " + new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 0 }).format(eur) + " EUR";
+};
+
+const fmtRateDate = (d) => (d ? d.split("-").reverse().join(".") : "");
+
 const VerifiedBadge = ({ size = "md" }) => (
   <div
     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#d4ff3a]/15 border border-[#d4ff3a]/40 text-[#d4ff3a] ${size === "lg" ? "text-sm" : "text-[10px]"} font-semibold tracking-wide`}
@@ -161,6 +168,12 @@ const ListingCard = ({ item }) => (
         <div>
           <div className="text-[10px] text-stone-500 uppercase tracking-wider">Preț</div>
           <div className="font-serif text-2xl">{formatPrice(item.price_ron)}</div>
+          {item.price_eur != null && (
+            <div className="text-xs text-stone-400" data-testid={`estate-eur-${item.id}`}
+              title={item.exchange_rate_date ? `Calculat la cursul BNR din ${fmtRateDate(item.exchange_rate_date)}` : ""}>
+              {formatEur(item.price_eur)}
+            </div>
+          )}
         </div>
         <div className="text-[#d4ff3a] flex items-center gap-1 text-xs">
           Detalii <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />

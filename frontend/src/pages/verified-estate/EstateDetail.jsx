@@ -16,6 +16,13 @@ const formatPrice = (ron) => {
   return new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 0 }).format(ron) + " RON";
 };
 
+const formatEur = (eur) => {
+  if (eur == null) return null;
+  return "≈ " + new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 0 }).format(eur) + " EUR";
+};
+
+const fmtRateDate = (d) => (d ? d.split("-").reverse().join(".") : "");
+
 const InquiryForm = ({ listing, intent = "viewing", onSuccess }) => {
   const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
@@ -286,6 +293,14 @@ export const EstateDetail = () => {
               </div>
               <div className="text-xs text-stone-500 uppercase tracking-wider mb-1">Preț</div>
               <div className="font-serif text-4xl mb-5" data-testid="detail-price">{formatPrice(listing.price_ron)}</div>
+              {listing.price_eur != null && (
+                <div className="-mt-4 mb-5" data-testid="detail-price-eur">
+                  <div className="text-base text-stone-400">{formatEur(listing.price_eur)}</div>
+                  {listing.exchange_rate_date && (
+                    <div className="text-[11px] text-stone-500">Calculat la cursul BNR din {fmtRateDate(listing.exchange_rate_date)}</div>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-3 gap-3 pb-5 border-b border-white/5 mb-5">
                 <div className="text-center">
