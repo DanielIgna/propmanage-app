@@ -1,0 +1,24 @@
+{
+  "summary": "Iter221 — HartaBlocuri integration testing (public discovery + admin control). BACKEND: 14/14 pytest PASS in test_iter100_hartablocuri.py. Public discovery endpoints (/api/public/buildings/search q=Muscel returns proper fields incl source_label='HartaBlocuri' & verification_note; q<2 chars → empty list; city=Cluj-Napoca filter works; /api/public/buildings/cities lists localities sorted DESC; /api/public/buildings/{id} returns full detail + hartablocuri sub-obj era/structura/regim_inaltime/reference_url; invalid id → 404). Admin endpoints (auth required 401/403 anon; stats: total_buildings=3405, with_hartablocuri=3404, with_conflicts>=2; batches lists loturi with total_records/new_buildings/duplicates_updated/conflicts; buildings list respects source & status filters; import dry_run limit=20 idempotent → new_buildings=0, duplicates_updated>=1). FRONTEND (1440x900, anon, /): data-testid=building-discovery section present, discovery-search-input accepts 'Muscel' → 8 discovery-result-* entries render (Bloc A2/A3/A4 with HARTABLOCURI badge + 'Date externe — neverificate de PropManage'), first result href=/register?binvite=6aaab1ff41ed4e462d83aaa8; empty query → data-testid=discovery-empty visible with discovery-empty-register button href=/register. All 11 acceptance criteria met.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter100_hartablocuri.py",
+    "/app/test_reports/pytest/iter100_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "hartablocuri.py L142 — `result.pop('error_samples', None) if False else None` is dead code (always None branch). Remove or drop `if False` guard.",
+    "hartablocuri.py L96-101 public_cities() iterates full buildings collection in Python to aggregate city counts. With 3400+ docs this is O(N) per request without cache. Consider MongoDB $group aggregation or short TTL cache.",
+    "hartablocuri.py L88 — search does count_documents(query) alongside .find().limit() → count runs on full query. For broad regex on 3400+ docs consider text/compound indices.",
+    "hartablocuri.py L200 inner await db.properties.count_documents(...) inside async-for loop = N+1 queries. Fine for page_size=25 but consider $lookup for larger pages.",
+    "hartablocuri.py L57 verification_note logic: surfaces only when source!=propmanage AND status=='unverified'. For 'both' with verified PropManage status → null (correct)."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter100_hartablocuri.py (new)"],
+  "success_rate": {"backend": "100% (14/14)", "frontend": "100% — all discovery testids present and behave per spec"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN via POST /api/auth/login (cookie session) — OK. Public endpoints require no auth.",
+  "seed_data_creation": "None. Import test used dry_run=true (no writes). All read-only.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "HartaBlocuri feature fully green. Data: 3405 buildings total, 3404 with hartablocuri source, >=2 with conflicts. Testids: building-discovery, discovery-search-input, discovery-result-{id}, discovery-empty, discovery-empty-register. Routes: /api/public/buildings/{search,cities,{id}}, /api/admin/hartablocuri/{stats,batches,buildings,import}. Admin uses httpOnly cookie via POST /api/auth/login. For idempotency retests use dry_run=true."
+}

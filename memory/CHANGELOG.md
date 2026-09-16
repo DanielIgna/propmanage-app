@@ -4,6 +4,28 @@ Rol: jurnal cronologic al schimbărilor semnificative + sincronizărilor de cuno
 
 ---
 
+## 2026-06 · HartaBlocuri Cluj — import + discovery public „Găsește-ți blocul" — PREVIEW/BUILT
+Integrare aditivă a bazei externe HartaBlocuri Cluj în entitatea `buildings` existentă (NU sistem paralel).
+
+**Import (`/app/backend/hartablocuri_import.py`)**
+- Parsează foaia „Detalii blocuri" din `/app/backend/data/hartablocuri_cluj.xlsx`. Exclude rândurile `STERGE`/`DE ADĂUGAT` → **3406 înregistrări utile**.
+- **Idempotent**: cheie `context.external_sources.hartablocuri.source_record_id` (hash md5 din nume+adresă+coordonate). Reimport ⇒ 0 blocuri noi (update in-place). Index sparse pe source_record_id + `context.norm_address`.
+- **Matching cross-source**: adresă normalizată + proximitate coordonate ≤60m; adrese placeholder („Strada ?? nr. ?") NU sunt chei de matching → blocuri distincte. Rezultat: **UN Building cu 2 surse** (PropManage + HartaBlocuri), verificat manual (Phase 18).
+- **Non-destructiv**: completează doar câmpuri goale în `context`; diferențele față de date manuale → `context.conflicts[]` (status review), NU suprascrie. Proveniență completă în `context.external_sources.hartablocuri` (raw + plan_urls/photo_urls, verification_status=neverificat). NU activează Digital Twin/Building Health/PVI.
+- **Rezultat import real**: 3404 blocuri noi, 2 conflicte reale, 0 erori. Total `buildings` = 3405 (3404 HB + 1 PropManage).
+- Colecție nouă `import_batches` (Batch ID, source, file, total/imported/matched/new/duplicates/conflicts/errors).
+
+**Endpoint-uri (`/app/backend/routes/hartablocuri.py`)**
+- Public (fără auth): `GET /api/public/buildings/search` (q+city), `/cities`, `/{id}`.
+- Admin: `POST /api/admin/hartablocuri/import` (suportă dry_run), `GET .../batches`, `GET .../stats`, `GET .../buildings` (filtre source: all/propmanage/hartablocuri/both · status: unverified/conflict/…).
+
+**Frontend** — `components/BuildingDiscovery.jsx` montat în LandingPage (`App.js`) după `HouseHealthAxisLanding`. Căutare live → rezultate cu badge sursă + „Date externe — neverificate de PropManage" → link `/register?binvite=<id>` (reutilizează mecanismul binvite existent).
+
+**Testare**: iteration_221.json — backend 14/14 PASS, frontend 11/11 criterii PASS, 0 issues.
+
+**RĂMAS (P1, neînceput)**: Phase 7/8/9 UI — afișarea datelor HartaBlocuri + proveniență în „Contextul clădirii" (pagina proprietății) și filtrele sursă/status + panoul de import în „Administrare blocuri".
+
+
 ## 2026-09 · Google Ads tag (AW-857233494) + GDPR Consent Mode v2 — PREVIEW
 - Adăugat gtag.js (Google Ads AW-857233494) în `frontend/public/index.html` cu **Google Consent Mode v2**: default `denied` pentru `ad_storage/ad_user_data/ad_personalization/analytics_storage`; citește alegerea salvată (`pm_cookie_consent_v1`) la load.
 - `CookieBanner.jsx::persist()` trimite `gtag('consent','update',...)`: Marketing→`ad_*`, Statistice→`analytics_storage`. Verificat e2e (denied la prima vizită → granted la „Accept toate" → denied la „Refuz").
