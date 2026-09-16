@@ -125,15 +125,48 @@ class BuildingContextIn(BaseModel):
     context_notes: Optional[str] = Field(default=None, max_length=2000)
 
 
+def _serialize_hartablocuri(hb: dict) -> dict:
+    """Proveniență HartaBlocuri pentru UI Contextul clădirii (raw + planuri, sursă vizibilă)."""
+    raw = hb.get("raw") or {}
+    return {
+        "source_name": hb.get("source_name", "HartaBlocuri"),
+        "source_dataset": hb.get("source_dataset"),
+        "source_record_id": hb.get("source_record_id"),
+        "import_batch_id": hb.get("import_batch_id"),
+        "imported_at": hb.get("imported_at"),
+        "verification_status": hb.get("verification_status", "neverificat"),
+        "reference_url": hb.get("reference_url"),
+        "fields": {
+            "nume": raw.get("nume"), "adresa": raw.get("adresa"),
+            "city": raw.get("city"), "neighborhood": raw.get("neighborhood"), "uat": raw.get("uat"),
+            "lat": raw.get("lat"), "lng": raw.get("lng"),
+            "regim_inaltime": raw.get("regim_inaltime"), "lift": raw.get("lift"),
+            "scari": raw.get("scari"), "niveluri": raw.get("niveluri"),
+            "niveluri_locuite": raw.get("niveluri_locuite"), "apartamente": raw.get("apartamente"),
+            "rooms_breakdown": raw.get("rooms_breakdown"),
+            "an_finalizare": raw.get("an_finalizare_raw"), "construction_year": raw.get("construction_year"),
+            "era": raw.get("era"), "structura": raw.get("structura"),
+            "dezvoltator": raw.get("dezvoltator"), "finisaje": raw.get("finisaje"),
+            "alte_detalii": raw.get("alte_detalii"), "risc_seismic": raw.get("risc_seismic"),
+        },
+        "plan_urls": hb.get("plan_urls") or [],
+        "photo_urls": hb.get("photo_urls") or [],
+    }
+
+
 def _serialize_building(b: dict) -> dict:
     if not b:
         return None
     ctx = b.get("context") or {}
+    hb = (ctx.get("external_sources") or {}).get("hartablocuri")
     return {
         "id": str(b["_id"]),
         "name": b.get("name"),
         "address": b.get("address"),
         "city": b.get("city"),
+        "neighborhood": ctx.get("neighborhood"),
+        "lat": ctx.get("lat"),
+        "lng": ctx.get("lng"),
         "construction_year": ctx.get("construction_year"),
         "building_type": ctx.get("building_type"),
         "building_type_label": BUILDING_TYPES.get(ctx.get("building_type") or ""),
@@ -149,6 +182,8 @@ def _serialize_building(b: dict) -> dict:
         ),
         "context_notes": ctx.get("context_notes"),
         "context_updated_at": ctx.get("updated_at"),
+        "conflicts": ctx.get("conflicts") or [],
+        "hartablocuri": _serialize_hartablocuri(hb) if hb else None,
         "created_by": b.get("created_by"),
         "created_at": b.get("created_at"),
     }

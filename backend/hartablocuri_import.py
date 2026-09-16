@@ -197,6 +197,71 @@ def _haversine_m(lat1, lon1, lat2, lon2) -> float:
     return r * 2 * atan2(sqrt(a), sqrt(1 - a))
 
 
+def _period_from_year(year: Optional[int]) -> Optional[str]:
+    if not year:
+        return None
+    if year < 1950:
+        return "antebelic/interbelic"
+    if year < 1970:
+        return "comunist_timpuriu_1950_1969"
+    if year < 1990:
+        return "comunist_tarziu_1970_1989"
+    return "post_1990"
+
+
+def _norm_era(era: Optional[str]) -> Optional[str]:
+    if not era:
+        return None
+    e = era.lower()
+    if "interbelic" in e or "antebelic" in e:
+        return "antebelic/interbelic"
+    if "1950" in e or "1960" in e or "1969" in e:
+        return "comunist_timpuriu_1950_1969"
+    if "1968" in e or "1970" in e or "1977" in e or "1979" in e or "1990" in e or "1980" in e:
+        return "comunist_tarziu_1970_1989"
+    if "post" in e or "1990" in e:
+        return "post_1990"
+    return None
+
+
+def _norm_structure(struct: Optional[str]) -> Optional[str]:
+    if not struct:
+        return None
+    s = struct.lower()
+    if "necunoscut" in s:
+        return None
+    if "panou" in s or "prefabric" in s:
+        return "panouri_prefabricate"
+    if "cadre" in s or "beton" in s:
+        return "cadre_beton_armat"
+    if "zid" in s or "caramid" in s or "cărămid" in s:
+        return "zidarie_portanta"
+    return "altele"
+
+
+def build_typology(rec: dict) -> dict:
+    """Câmpuri normalizate pentru viitorul Typology Engine — raw + normalized + source.
+    NU activează clasificare/UI; doar pregătește datele. Păstrează mereu RAW.
+    """
+    src = SOURCE_NAME
+
+    def cell(raw, normalized):
+        return {"raw": raw, "normalized": normalized, "source": src}
+
+    return {
+        "period": cell(rec.get("an_finalizare_raw"), _period_from_year(rec.get("construction_year"))),
+        "year": cell(rec.get("an_finalizare_raw"), rec.get("construction_year")),
+        "era": cell(rec.get("era"), _norm_era(rec.get("era"))),
+        "height_regime": cell(rec.get("regim_inaltime"), rec.get("niveluri")),
+        "structure": cell(rec.get("structura"), _norm_structure(rec.get("structura"))),
+        "entrances": cell(rec.get("scari"), rec.get("scari")),
+        "apartments": cell(rec.get("apartamente"), rec.get("apartamente")),
+        "rooms_breakdown": cell(rec.get("rooms_breakdown"), rec.get("rooms_breakdown")),
+        "neighborhood": cell(rec.get("uat"), rec.get("neighborhood")),
+        "generated_at": _now(),
+    }
+
+
 # Câmpuri normalizate top-level context ↔ cheie record
 _CONTEXT_MAP = {
     "construction_year": "construction_year",
@@ -326,6 +391,10 @@ def _merge_context(existing_ctx: dict, rec: dict, ext: dict) -> tuple[dict, list
     ctx.setdefault("verification_status", "unverified")
     if rec.get("adresa"):
         ctx["norm_address"] = _norm(rec.get("adresa"))
+    # Typology Engine — pregătire date (raw+normalized+source). NU activează clasificare/UI.
+    existing_typ = ctx.get("typology")
+    if not existing_typ or existing_typ.get("period", {}).get("source") == SOURCE_NAME:
+        ctx["typology"] = build_typology(rec)
     ctx["updated_at"] = _now()
     return ctx, conflicts
 

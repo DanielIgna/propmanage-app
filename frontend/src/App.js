@@ -66,6 +66,7 @@ const SellMyProperty = lazy(() => import("./pages/verified-estate/SellMyProperty
 const VerifiedEstateAdmin = lazy(() => import("./pages/verified-estate/VerifiedEstateAdmin").then(m => ({ default: m.VerifiedEstateAdmin })));
 const WhyUsPage = lazy(() => import("./pages/WhyUsPage"));
 const AdminSettingsControl = lazy(() => import("./pages/admin/AdminSettingsControl"));
+const HartaBlocuriAdmin = lazy(() => import("./pages/admin/HartaBlocuriAdmin"));
 const AdminDocumentation = lazy(() => import("./pages/admin/AdminDocumentation"));
 const QACopilotPage = lazy(() => import("./pages/admin/QACopilotPage"));
 const AIControlCenterPage = lazy(() => import("./pages/admin/AIControlCenterPage"));
@@ -1746,6 +1747,7 @@ function App() {
               <Route path="/imobile-verificate/sell" element={<SellMyProperty />} />
               <Route path="/admin/imobile-verificate" element={<VerifiedEstateAdmin />} />
               <Route path="/admin/settings-control" element={<AdminSettingsControl />} />
+              <Route path="/admin/hartablocuri" element={<HartaBlocuriAdmin />} />
               <Route path="/admin/documentation" element={<AdminDocumentation />} />
               <Route path="/admin/qa-copilot" element={<QACopilotPage />} />
               <Route path="/admin/ai-control" element={<AIControlCenterPage />} />

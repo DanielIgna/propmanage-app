@@ -169,6 +169,95 @@ async def admin_stats(user: dict = Depends(require_role("admin"))):
     }
 
 
+class ConflictResolve(BaseModel):
+    field: str = Field(max_length=80)
+    action: str = Field(pattern="^(confirm|reject)$")  # confirm=acceptă HartaBlocuri, reject=păstrează PropManage
+
+
+@router.get("/admin/hartablocuri/buildings/{building_id}")
+async def admin_building_detail(building_id: str, user: dict = Depends(require_role("admin"))):
+    """Detaliu complet bloc pentru Admin: context, proveniență HartaBlocuri, conflicte, typology."""
+    if not ObjectId.is_valid(building_id):
+        raise HTTPException(404, "Blocul nu există")
+    b = await db.buildings.find_one({"_id": ObjectId(building_id)})
+    if not b:
+        raise HTTPException(404, "Blocul nu există")
+    ctx = b.get("context") or {}
+    hb = _hb(b)
+    return {
+        "id": str(b["_id"]),
+        "name": b.get("name"), "address": b.get("address"), "city": b.get("city"),
+        "source": _source_of(b),
+        "verification_status": ctx.get("verification_status", "unverified"),
+        "context": {k: v for k, v in ctx.items() if k not in ("external_sources", "norm_address")},
+        "conflicts": ctx.get("conflicts") or [],
+        "typology": ctx.get("typology"),
+        "hartablocuri": hb,
+        "residents_count": await db.properties.count_documents({"building_id": str(b["_id"])}),
+    }
+
+
+@router.post("/admin/hartablocuri/buildings/{building_id}/conflicts/resolve")
+async def admin_resolve_conflict(building_id: str, body: ConflictResolve,
+                                 user: dict = Depends(require_role("admin"))):
+    """Rezolvă un conflict per câmp. confirm=valoarea HartaBlocuri devine activă; reject=rămâne PropManage.
+    NU șterge valoarea originală HartaBlocuri; păstrează ambele valori + istoric.
+    """
+    if not ObjectId.is_valid(building_id):
+        raise HTTPException(404, "Blocul nu există")
+    b = await db.buildings.find_one({"_id": ObjectId(building_id)})
+    if not b:
+        raise HTTPException(404, "Blocul nu există")
+    ctx = b.get("context") or {}
+    conflicts = ctx.get("conflicts") or []
+    target = next((c for c in conflicts if c.get("field") == body.field and c.get("status") == "review"), None)
+    if not target:
+        raise HTTPException(404, "Conflict nerezolvat inexistent pentru acest câmp")
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+    chosen = target["hartablocuri_value"] if body.action == "confirm" else target["propmanage_value"]
+    set_ops = {}
+    if body.action == "confirm":
+        set_ops[f"context.{body.field}"] = target["hartablocuri_value"]
+    target.update({
+        "status": "confirmed" if body.action == "confirm" else "rejected",
+        "chosen_value": chosen, "chosen_source": "HartaBlocuri" if body.action == "confirm" else "PropManage",
+        "resolved_by": user["id"], "resolved_by_name": user.get("name"), "resolved_at": now,
+    })
+    history = ctx.get("conflict_history") or []
+    history.append({**{k: target[k] for k in ("field", "propmanage_value", "hartablocuri_value",
+                                              "status", "chosen_value", "chosen_source")},
+                    "resolved_by_name": user.get("name"), "resolved_at": now})
+    set_ops["context.conflicts"] = conflicts
+    set_ops["context.conflict_history"] = history
+    set_ops["context.updated_at"] = now
+    await db.buildings.update_one({"_id": b["_id"]}, {"$set": set_ops})
+    return {"ok": True, "field": body.field, "action": body.action, "chosen_value": chosen}
+
+
+@router.get("/admin/hartablocuri/conflicts")
+async def admin_list_conflicts(page: int = Query(1, ge=1), page_size: int = Query(25, ge=1, le=100),
+                               unresolved_only: bool = Query(True),
+                               user: dict = Depends(require_role("admin"))):
+    """Listă blocuri cu conflicte + detaliile fiecărui conflict pentru review."""
+    q = {"context.conflicts.0": {"$exists": True}}
+    if unresolved_only:
+        q = {"context.conflicts": {"$elemMatch": {"status": "review"}}}
+    total = await db.buildings.count_documents(q)
+    skip = (page - 1) * page_size
+    out = []
+    async for b in db.buildings.find(q).skip(skip).limit(page_size):
+        ctx = b.get("context") or {}
+        conflicts = ctx.get("conflicts") or []
+        if unresolved_only:
+            conflicts = [c for c in conflicts if c.get("status") == "review"]
+        out.append({
+            "id": str(b["_id"]), "name": b.get("name"), "address": b.get("address"),
+            "city": b.get("city"), "conflicts": conflicts,
+        })
+    return {"buildings": out, "total": total, "page": page, "page_size": page_size}
+
+
 @router.get("/admin/hartablocuri/buildings")
 async def admin_list_buildings(
     q: str = Query("", max_length=160),

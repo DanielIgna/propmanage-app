@@ -127,6 +127,91 @@ const SummaryTile = ({ label, value, sub }) => (
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// HARTABLOCURI — date externe de referință (neverificate). Sursă vizibilă per câmp.
+// ─────────────────────────────────────────────────────────────────────────────
+const HB_FIELD_LABELS = {
+  nume: "Nume bloc", adresa: "Adresă", city: "Localitate", neighborhood: "Cartier / zonă",
+  lat: "Latitudine", lng: "Longitudine", regim_inaltime: "Regim înălțime", lift: "Lift",
+  scari: "Scări", niveluri: "Niveluri", niveluri_locuite: "Niveluri locuite",
+  apartamente: "Apartamente", an_finalizare: "An finalizare", construction_year: "An construcție",
+  era: "Eră / categorie", structura: "Structură", dezvoltator: "Dezvoltator",
+  finisaje: "Finisaje", alte_detalii: "Alte detalii", risc_seismic: "Risc seismic",
+};
+const HB_FIELD_ORDER = ["nume", "adresa", "city", "neighborhood", "an_finalizare", "era",
+  "regim_inaltime", "niveluri", "apartamente", "scari", "lift", "structura",
+  "dezvoltator", "finisaje", "risc_seismic", "alte_detalii", "lat", "lng"];
+
+const roomsSummary = (rb) => {
+  if (!rb) return null;
+  const map = { garsoniere: "garsoniere", doua_camere: "2 camere", trei_camere: "3 camere",
+    patru_camere: "4 camere", cinci_camere: "5 camere", sase_camere: "6 camere", camere_comune: "camere comune" };
+  return Object.entries(map).filter(([k]) => rb[k]).map(([k, l]) => `${rb[k]} × ${l}`).join(" · ") || null;
+};
+
+const HartaBlocuriCard = ({ hb }) => {
+  if (!hb) return null;
+  const f = hb.fields || {};
+  const rooms = roomsSummary(f.rooms_breakdown);
+  return (
+    <div className="rounded-2xl border-2 border-amber-200 bg-amber-50/40 p-4" data-testid="ptr-hartablocuri-card">
+      <div className="flex items-start gap-2">
+        <ExternalLink className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-black text-amber-900">Date externe HartaBlocuri</div>
+          <div className="text-[11px] text-amber-700 font-bold" data-testid="ptr-hb-unverified-note">
+            Date externe HartaBlocuri — neverificate de PropManage
+          </div>
+        </div>
+        <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-100 text-amber-700 shrink-0">
+          {hb.verification_status || "neverificat"}
+        </span>
+      </div>
+
+      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5">
+        {HB_FIELD_ORDER.filter(k => f[k] !== null && f[k] !== undefined && f[k] !== "").map(k => (
+          <div key={k} className="text-[11px]" data-testid={`ptr-hb-field-${k}`}>
+            <dt className="text-amber-700/70">{HB_FIELD_LABELS[k] || k}</dt>
+            <dd className="font-bold text-slate-800 break-words">{String(f[k])}</dd>
+          </div>
+        ))}
+        {rooms && (
+          <div className="text-[11px] col-span-2" data-testid="ptr-hb-field-rooms">
+            <dt className="text-amber-700/70">Distribuție camere</dt>
+            <dd className="font-bold text-slate-800">{rooms}</dd>
+          </div>
+        )}
+      </dl>
+
+      {(hb.plan_urls || []).length > 0 && (
+        <div className="mt-3" data-testid="ptr-hb-plans">
+          <div className="text-[10px] font-black uppercase tracking-wider text-amber-700/70 mb-1.5">Planuri (sursă: HartaBlocuri)</div>
+          <div className="flex flex-wrap gap-2">
+            {hb.plan_urls.map((url, i) => (
+              <a key={i} href={url} target="_blank" rel="noreferrer nofollow" data-testid={`ptr-hb-plan-${i}`}
+                className="block w-20 h-20 rounded-lg overflow-hidden border border-amber-200 bg-white hover:ring-2 hover:ring-amber-400 transition-shadow">
+                <img src={url} alt="Plan HartaBlocuri" loading="lazy" className="w-full h-full object-cover" />
+              </a>
+            ))}
+          </div>
+          <div className="mt-1 text-[9px] text-amber-700/60">Imagini găzduite pe hartablocuri.ro — se deschid în tab nou.</div>
+        </div>
+      )}
+
+      <div className="mt-3 pt-2 border-t border-amber-200/60 flex items-center gap-2 flex-wrap text-[9px] text-amber-700/70">
+        <span>Sursă: <b>{hb.source_name || "HartaBlocuri"}</b></span>
+        {hb.reference_url && (
+          <a href={hb.reference_url} target="_blank" rel="noreferrer nofollow" data-testid="ptr-hb-source-link"
+            className="inline-flex items-center gap-0.5 text-amber-700 font-bold hover:underline">
+            {hb.reference_url.replace(/^https?:\/\//, "")} <ExternalLink className="w-2.5 h-2.5" />
+          </a>
+        )}
+        {hb.imported_at && <span>· importat {new Date(hb.imported_at).toLocaleDateString("ro-RO")}</span>}
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // BUILDING CONTEXT (B)
 // ─────────────────────────────────────────────────────────────────────────────
 const BuildingContextSection = ({ propId, initial, vocab, viewer, onSaved }) => {
@@ -280,6 +365,9 @@ const BuildingContextSection = ({ propId, initial, vocab, viewer, onSaved }) => 
           </div>
         )}
       </div>
+
+      {/* Date externe HartaBlocuri — proveniență vizibilă, neverificate */}
+      {building?.hartablocuri && <HartaBlocuriCard hb={building.hartablocuri} />}
 
       {/* Building Neighbours — a doua axă: 1 building → N properties */}
       {building && neighbours && (
