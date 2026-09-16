@@ -1,3 +1,29 @@
+## 🔎📈 SEO EXPANSION #4 — Achiziție proprietari / specialiști / designeri (Iun 2026)
+
+Sistem SEO de achiziție (batch 1), conform fazelor cerute: AUDIT → PROPUNERE → VALIDARE utilizator (aprobat 1a/2a/3a) → IMPLEMENTARE. FĂRĂ doorway/scaled content: fiecare pagină are conținut unic, non-templat. FĂRĂ Client Beta/Google OAuth/GSC/robots/canonical global/regula marketplace ≥3. Verificat: 24 pytest PASS + validate 6/6 green + testing_agent frontend 37/37 PASS + compile clean.
+
+**AUDIT (constatare cheie)**: achiziția lipsea aproape complet din SEO — `/devino-specialist` NU era în niciun sitemap (neindexat, fără SEO), iar pagini de tip „platformă pentru proprietari", „recrutare designeri" (distinct de comercialul /design-interior) nu existau.
+
+**LIVRAT — 9 landing pages noi + fix /devino-specialist** (`data/acquisitionSeo.js` + `pages/AcquisitionPage.jsx`, un singur component data-driven, rezolvat pe pathname; rute în `App.js`; sitemap în `public.py _STATIC_PAGES`; clasificare în `admin_seo._classify`):
+- **A. PROPRIETARI** (CTA „Creează gratuit Casa mea" → `/register`): `/pentru-proprietari`, `/cartea-casei`
+- **B. SPECIALIȘTI** (CTA „Înregistrează-te gratuit ca specialist" → `/devino-specialist`): pillar `/pentru-specialisti` + 5 meserii cu conținut DISTINCT (`/electrician`, `/instalator`, `/constructor`, `/auditor-energetic`, `/hvac`). Adăugat `useSEO` pe `SpecialistApplyPage` + `/devino-specialist` în sitemap.
+- **C. DESIGNERI (recrutare, distinct de comercial)** (CTA „Devino designer de interior pe PropManage" → `/devino-specialist`): `/pentru-designeri`
+- Slug necunoscut `/pentru-specialisti/:trade` inexistent → redirect la homepage.
+- Footer: secțiune nouă „Alătură-te PropManage" (`footer-join`) cu 4 linkuri pillar (internal linking sitewide).
+- Fără pagini locale de achiziție (risc doorway) — pillar-uri naționale.
+
+**BEFORE → AFTER (preview)**:
+- INDEX: 126 → **136** (+10: 9 landing + /devino-specialist).
+- NOINDEX: **200 neschimbat**.
+- Sitemap: static 27 (era 17), content 45, marketplace 7, specialists 15, design 42, estate 0-preview → **6 copii, 136 URL, validate green**.
+- Clustere achiziție noi: proprietari (2), specialiști (7 incl. pillar+5 meserii+/devino-specialist), designeri (1).
+- Fiecare pagină: title, meta, H1, canonical self, JSON-LD (WebPage+BreadcrumbList+FAQPage), internal links, CTA, mobile OK, routing OK, în sitemap, INDEX.
+
+**NEATINS**: Client Beta, Google OAuth/GSC/PKCE, Google Login, robots.txt, canonical global, regula marketplace ≥3. Task-uri reportate (cartiere București, bloc ghiduri /imobile-verificate, enterprise cabinete-medicale/saloane) — NU în acest batch (per decizia userului 4b). **Necesită redeploy** pentru producție; „nu publica fără validarea userului".
+
+---
+
+
 ## 🔎📈 SEO EXPANSION #3 — Zone/cartiere + enterprise + cluster Audit/Cartea Casei (Iun 2026)
 
 Extindere zone locale + servicii enterprise + editorial audit, doar conținut real. FĂRĂ GSC OAuth/PKCE/Google Login/robots/canonical global/regula marketplace ≥3. Verificat (19 pytest PASS + validate 6/6 green + render screenshots).
