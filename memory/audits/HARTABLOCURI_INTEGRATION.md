@@ -71,3 +71,18 @@ Corectitudinea datelor, Contextul clădirii, Admin Import Center, rezolvarea con
 - Controale confirmate OK: admin endpoints cu `require_role('admin')`; `re.escape` pe q/city (anti NoSQL/ReDoS); paginare mărginită; `ObjectId.is_valid`; public whitelist fără `owner_id`/rezidenți/note; fără `dangerouslySetInnerHTML`; scheme URL forțate http/https; `rel="noreferrer nofollow"` + `target=_blank`.
 - Deschis (P3, neimplementat acum): rate limiting per-IP pe endpoint-urile publice (doar abuz/cost, nu scurgere de date).
 
+## 14. Truth Layer READ MODEL v1.0 (Faza 1 — 2026-06)
+**Principiu:** strat derivat calculat EXCLUSIV la citire. Zero scriere DB, zero modificare raw/schema/import/proveniență. Nicio inferență profesională (L3).
+- **Modul pur:** `/app/backend/hartablocuri_read_layer.py` → `build_truth_layer(hb_raw)` (fără efecte secundare). Returnează `None` dacă nu există date HartaBlocuri.
+- **Niveluri:** L0 = SOURCE FACT (păstrat exact) · L1 = DERIVED FACT (derivare deterministă). L2 (CANDIDATE) / L3 (PROFESSIONAL) NEintroduse.
+- **ERA (L0):** din `raw.era`; valoare validă → `high`; marker necunoscut ("necunoscut"/"de adaugat"/"?"...) → `unknown`; lipsă → `not_available`. NU se estimează din an.
+- **FORM (L1):** derivat DOAR din `raw.proiect` → {bara, turn, cruce, drept, mixt, unknown}. keyword unic (bara/turn/cruce/drept) → `high`; ≥2 keyword-uri (ex. „cruce/drept") → `mixt`/`low`; coduri fără formă (cf1, cf1d, „bloc unicat"), „DE ADĂUGAT" → `unknown`; lipsă → `not_available`. Păstrează `form.raw_project`.
+- **REGIME (L1):** `derived_floors` din `raw.regim_inaltime` DOAR determinist: „P+N" / „parter + N etaje" → N (`high`). Prefixe tehnice ambigue (S+P+4, D+P+4) → `null`/`unknown`. NU suprascrie niveluri/regim/floors.
+- **CARTIER (L0):** exclusiv `raw.neighborhood`; fără inferență din UAT. Lipsă → `not_available`.
+- **Provenance:** `source=hartablocuri`, `verification_status=neverificat`, notă „Date externe — neverificate de PropManage".
+- **Confidence:** high | medium | low | unknown | not_available.
+- **Suprafață:** adăugat `truth_layer` (non-breaking) în `GET /api/public/buildings/{id}` (public) și `GET /api/admin/hartablocuri/buildings/{id}` (admin). Reguli de acces nemodificate.
+- **UI minimal:** secțiune „Truth Layer (derivat · read-only)" în modalul read-only din `HartaBlocuriObservability.jsx` (fără refactor). Fără UI public nou.
+- **Teste:** `tests/test_hartablocuri_truth_layer_iter224.py` (23/23 pass — ERA/FORM/REGIME/CARTIER/provenance/null-safety).
+- **STOP:** BLOCAT în continuare — Project Family, Plan Family, C1/C4, SEO, sitemap, enrichment. Așteaptă aprobare P2.
+

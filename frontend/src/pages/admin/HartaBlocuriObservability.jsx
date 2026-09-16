@@ -93,6 +93,17 @@ const BuildingDetailModal = ({ id, onClose }) => {
                 )}
               </div>
             </section>
+            {b.truth_layer && (
+              <section data-testid="hb-obs-truth-layer">
+                <h4 className="text-[10px] font-black uppercase tracking-wider text-stone-500 mb-2">Truth Layer (derivat · read-only)</h4>
+                <div className="rounded-lg border border-stone-800 bg-stone-900/50 p-3 space-y-2 text-[12px]">
+                  <TruthRow label="Eră" value={b.truth_layer.era?.value} level={b.truth_layer.era?.level} confidence={b.truth_layer.era?.confidence} testid="hb-tl-era" />
+                  <TruthRow label="Formă" value={b.truth_layer.form?.value} level={b.truth_layer.form?.level} confidence={b.truth_layer.form?.confidence} hint={b.truth_layer.form?.raw_project} testid="hb-tl-form" />
+                  <TruthRow label="Regim derivat" value={b.truth_layer.regime?.derived_floors != null ? `${b.truth_layer.regime.derived_floors} etaje` : null} level={b.truth_layer.regime?.level} confidence={b.truth_layer.regime?.confidence} hint={b.truth_layer.regime?.raw} testid="hb-tl-regime" />
+                  <p className="text-[10px] text-stone-600 pt-1.5 border-t border-stone-800">Valori derivate din datele externe — neverificate de PropManage. Nu constituie diagnostic tehnic.</p>
+                </div>
+              </section>
+            )}
             {b.residents_count > 0 && (
               <div className="text-[11px] text-stone-400 flex items-center gap-1.5" data-testid="hb-obs-detail-residents">
                 <Users className="w-3.5 h-3.5" /> Asociată cu proprietăți PropManage: <b className="text-stone-200">{b.residents_count}</b>
@@ -107,6 +118,26 @@ const BuildingDetailModal = ({ id, onClose }) => {
 };
 const Field = ({ label, value }) => (
   <div><dt className="text-stone-500 text-[10px]">{label}</dt><dd className="font-bold text-stone-200 break-words">{value ?? "—"}</dd></div>
+);
+
+const CONF_CLS = {
+  high: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  medium: "bg-sky-500/15 text-sky-300 border-sky-500/30",
+  low: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+  unknown: "bg-stone-600/20 text-stone-400 border-stone-600/30",
+  not_available: "bg-stone-800 text-stone-500 border-stone-700",
+};
+const TruthRow = ({ label, value, level, confidence, hint, testid }) => (
+  <div className="flex items-center justify-between gap-2" data-testid={testid}>
+    <div className="min-w-0">
+      <div className="text-stone-500 text-[10px]">{label} {level && <span className="text-stone-600">· {level}</span>}</div>
+      <div className="font-bold text-stone-200 break-words">{value ?? "—"}</div>
+      {hint && <div className="text-[9px] text-stone-600 truncate">raw: {hint}</div>}
+    </div>
+    {confidence && (
+      <span className={`shrink-0 text-[9px] px-2 py-0.5 rounded-full border uppercase ${CONF_CLS[confidence] || CONF_CLS.unknown}`}>{confidence}</span>
+    )}
+  </div>
 );
 
 export const HartaBlocuriObservability = () => {

@@ -6730,3 +6730,19 @@ Testat în preview: pagina se încarcă, click → „32 emailuri repuse în coa
 7. Sugestiile AI rămân BACKLOG până la autorizare Fondator (§7).
 8. Silent-fallback pe date runtime în locul source-of-truth declarativ = CONFLICT (rândul G nou din §11).
 
+
+---
+
+## HartaBlocuri — Truth Layer READ MODEL v1.0 (Faza 1) — 2026-06
+
+**Status:** IMPLEMENTAT + TESTAT. STOP obligatoriu după Faza 1.
+
+**Ce s-a implementat (read-only, zero scriere DB):**
+- `hartablocuri_read_layer.py` → `build_truth_layer(hb_raw)` funcție pură (ERA L0 / FORM L1 / REGIME L1 / CARTIER L0 + provenance + confidence).
+- `truth_layer` expus non-breaking în `GET /api/public/buildings/{id}` și `GET /api/admin/hartablocuri/buildings/{id}`.
+- UI minimal: secțiune „Truth Layer (derivat · read-only)" în modalul din `HartaBlocuriObservability.jsx` (fără refactor).
+- Teste: `tests/test_hartablocuri_truth_layer_iter224.py` (23/23 pass).
+
+**Integritate confirmată (preview):** 3408 total / 3406 HartaBlocuri / 2 PropManage · 0 raw fields modified · 0 import changes · 0 schema changes · 0 sitemap/SEO/Marketplace changes.
+
+**BLOCAT explicit (așteaptă aprobare P2):** Project Family, Plan Family, C1/C4 Typology Profiles, SEO, pagini programatice, sitemap expansion, enrichment construction_year. Fără import HartaBlocuri în această fază.

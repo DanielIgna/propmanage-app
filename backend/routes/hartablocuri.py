@@ -14,6 +14,7 @@ from typing import Optional
 
 from db import db
 from deps import require_role
+from hartablocuri_read_layer import build_truth_layer
 
 logger = logging.getLogger("propmanage.hartablocuri")
 router = APIRouter(prefix="/api", tags=["hartablocuri"])
@@ -124,15 +125,18 @@ async def public_building_detail(building_id: str):
         raise HTTPException(404, "Blocul nu există")
     card = _public_card(b)
     hb = _hb(b) or {}
+    hb_raw = hb.get("raw") or {}
     card["hartablocuri"] = {
-        "era": (hb.get("raw") or {}).get("era"),
-        "structura": (hb.get("raw") or {}).get("structura"),
-        "regim_inaltime": (hb.get("raw") or {}).get("regim_inaltime"),
-        "lift": (hb.get("raw") or {}).get("lift"),
-        "scari": (hb.get("raw") or {}).get("scari"),
+        "era": hb_raw.get("era"),
+        "structura": hb_raw.get("structura"),
+        "regim_inaltime": hb_raw.get("regim_inaltime"),
+        "lift": hb_raw.get("lift"),
+        "scari": hb_raw.get("scari"),
         "reference_url": hb.get("reference_url"),
         "verification_status": hb.get("verification_status"),
     } if hb else None
+    # Truth Layer READ MODEL — derivat pur la citire (nu se salvează în DB)
+    card["truth_layer"] = build_truth_layer(hb_raw) if hb else None
     return {"building": card}
 
 
@@ -234,6 +238,7 @@ async def admin_building_detail(building_id: str, user: dict = Depends(require_r
         "conflicts": ctx.get("conflicts") or [],
         "typology": ctx.get("typology"),
         "hartablocuri": hb,
+        "truth_layer": build_truth_layer((hb or {}).get("raw")) if hb else None,
         "residents_count": await db.properties.count_documents({"building_id": str(b["_id"])}),
     }
 
