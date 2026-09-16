@@ -1,0 +1,33 @@
+{
+  "summary": "Iter222 — HartaBlocuri Phase 1 (conflict resolution + typology + client PTR + admin 4-tab UI). BACKEND (8/8 pytest): admin cookie auth OK. GET /api/admin/hartablocuri/conflicts?unresolved_only=true → returns buildings with review-status conflicts. GET /api/admin/hartablocuri/buildings/{id} → returns context/conflicts/typology/hartablocuri/residents_count; typology has all 9 required cells (period/year/era/height_regime/structure/entrances/apartments/rooms_breakdown/neighborhood) each with {raw, normalized, source='HartaBlocuri'}. POST .../conflicts/resolve confirm → context[field]=HB value, status='confirmed', chosen_source='HartaBlocuri', HB raw preserved. reject → chosen_value=PropManage value, status='rejected', chosen_source='PropManage', context unchanged. Invalid field → 404. Client attach-building + GET /api/properties/{id}/building-context → building.hartablocuri {source_name='HartaBlocuri', verification_status='neverificat', fields{}, plan_urls[], reference_url} and building.verification_status='unverified'. Regresie: public search /api/public/buildings/search?q=Muscel OK; POST /api/buildings (client role) still creates manual PropManage-only buildings visible in admin list. FRONTEND (Playwright, 1440x900): /admin/hartablocuri loads with hb-admin-page + 4 tabs (hb-tab-overview/batches/buildings/conflicts). Overview stats render (3406 total, 3404 HB, 2 conflicts). Buildings tab: hb-b-source=hartablocuri filter → 30 rows; hb-b-status=conflict → 2 rows. Batches tab lists 3 batches. Conflicts tab: 1 building (Maia Zorilor 2) with 3 confirm/3 reject buttons for lat/lng/number_of_units. Clicking hb-resolve-confirm-<id>-number_of_units → conflict removed (2 confirm buttons remain). Client PTR: property Skyline Loft A4 attached to HB Muscel bloc — ptr-building-section renders ptr-hartablocuri-card with 'neverificat' badge + ptr-hb-unverified-note='Date externe HartaBlocuri — neverificate de PropManage' + HB fields (Bloc A2, Cluj-Napoca, Andrei Mureșanu, coords 46.7647/23.6032, era, apartamente, scari, lift, rooms_breakdown). All acceptance criteria met.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Property Technical Record — Contextul clădirii → HartaBlocuri card", "issues": ["Field labels (Nume, Adresă, Localitate, Cartier, Era, Regim, Apartamente etc.) rendered in a very dim amber tone on amber-50/40 bg — low contrast vs values. Consider bumping label color to amber-800 or slate-700 for readability."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_hartablocuri_conflicts_iter222.py",
+    "/app/test_reports/pytest/iter222_results.xml"
+  ],
+  "action_items": [
+    "(design polish, non-blocking) Bump HartaBlocuri card field-label contrast in PropertyTechnicalRecord.jsx"
+  ],
+  "critical_code_review_comments": [
+    "hartablocuri.py L142 — `result.pop('error_samples', None) if False else None` still present; dead code. Remove.",
+    "hartablocuri.py admin_resolve_conflict: history push doesn't include a resolution timestamp per-item (uses shared 'now') — fine, but consider adding action='confirm|reject' explicitly to history entry (not just via status/chosen_source) for easier auditing.",
+    "hartablocuri.py admin_list_conflicts: when unresolved_only=false the code returns ALL conflicts including resolved ones (status confirmed/rejected). Consider surfacing counts by status for UI filtering.",
+    "property_technical_record.py _serialize_building: hb.get('verification_status','neverificat') mixes RO 'neverificat' with the top-level 'unverified' vocabulary — intentional per spec, but UI must always render label from HB-specific dictionary.",
+    "hartablocuri.py public_cities() still iterates full buildings scan (3400+ docs) per request — noted in iter221; consider $group aggregation + short cache."
+  ],
+  "updated_files": ["/app/backend/tests/test_hartablocuri_conflicts_iter222.py"],
+  "success_rate": {"backend": "100% (8/8)", "frontend": "100% — all admin tabs + conflict resolve flow + client PTR HB card render and interact per spec"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (cookie), client@propmanage.io / Client123! (cookie).",
+  "seed_data_creation": "Test attached Skyline Loft A4 (client@propmanage.io) to HB Muscel bloc via /api/properties/{id}/attach-building — persistent side effect (harmless, matches acceptance flow). Manual TEST_ManualBloc_* created by regression test — one new propmanage-only building per run.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Data state: 3406+ buildings, 3404 HB. Conflict resolution tested via lat/lng/number_of_units fields on 'Maia Zorilor 2' (id=6aaab20641ed4e462d83b767) — some fields already resolved. Client 'client@propmanage.io' has Skyline Loft A4 attached to an HB Muscel bloc. Nav path client PTR HB card: /client → v2-desktop-nav-property → hub-subnav-dosar → ptr-nav-building → ptr-building-section → ptr-hartablocuri-card. Admin page auto-loads all 4 tabs correctly. dry-run import through UI is slow (parses full workbook ~30s) — avoid in tight UI tests; backend already validated idempotency (limit=20 → new_buildings=0).",
+  "rca of the issue": "No issues found — Phase 1 HartaBlocuri conflict resolution + typology + client context UI + admin 4-tab UI all green."
+}

@@ -170,13 +170,13 @@ const HartaBlocuriCard = ({ hb }) => {
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5">
         {HB_FIELD_ORDER.filter(k => f[k] !== null && f[k] !== undefined && f[k] !== "").map(k => (
           <div key={k} className="text-[11px]" data-testid={`ptr-hb-field-${k}`}>
-            <dt className="text-amber-700/70">{HB_FIELD_LABELS[k] || k}</dt>
+            <dt className="text-amber-800">{HB_FIELD_LABELS[k] || k}</dt>
             <dd className="font-bold text-slate-800 break-words">{String(f[k])}</dd>
           </div>
         ))}
         {rooms && (
           <div className="text-[11px] col-span-2" data-testid="ptr-hb-field-rooms">
-            <dt className="text-amber-700/70">Distribuție camere</dt>
+            <dt className="text-amber-800">Distribuție camere</dt>
             <dd className="font-bold text-slate-800">{rooms}</dd>
           </div>
         )}
@@ -184,7 +184,7 @@ const HartaBlocuriCard = ({ hb }) => {
 
       {(hb.plan_urls || []).length > 0 && (
         <div className="mt-3" data-testid="ptr-hb-plans">
-          <div className="text-[10px] font-black uppercase tracking-wider text-amber-700/70 mb-1.5">Planuri (sursă: HartaBlocuri)</div>
+          <div className="text-[10px] font-black uppercase tracking-wider text-amber-800 mb-1.5">Planuri (sursă: HartaBlocuri)</div>
           <div className="flex flex-wrap gap-2">
             {hb.plan_urls.map((url, i) => (
               <a key={i} href={url} target="_blank" rel="noreferrer nofollow" data-testid={`ptr-hb-plan-${i}`}
@@ -197,7 +197,7 @@ const HartaBlocuriCard = ({ hb }) => {
         </div>
       )}
 
-      <div className="mt-3 pt-2 border-t border-amber-200/60 flex items-center gap-2 flex-wrap text-[9px] text-amber-700/70">
+      <div className="mt-3 pt-2 border-t border-amber-200/60 flex items-center gap-2 flex-wrap text-[9px] text-amber-800">
         <span>Sursă: <b>{hb.source_name || "HartaBlocuri"}</b></span>
         {hb.reference_url && (
           <a href={hb.reference_url} target="_blank" rel="noreferrer nofollow" data-testid="ptr-hb-source-link"

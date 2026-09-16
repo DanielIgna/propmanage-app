@@ -4,6 +4,28 @@ Rol: jurnal cronologic al schimbărilor semnificative + sincronizărilor de cuno
 
 ---
 
+## 2026-06 · HartaBlocuri Phase 1 — Contextul clădirii + Admin Import Center + Typology prep — PREVIEW/BUILT
+Continuare a integrării HartaBlocuri (aditiv, nedistructiv). Testat: iteration_222 — backend 8/8, frontend 100%.
+
+**Contextul clădirii (client)** — `PropertyTechnicalRecord.jsx > HartaBlocuriCard`
+- Card „Date externe HartaBlocuri — neverificate de PropManage" cu toate câmpurile (nume/adresă/localitate/cartier/lat-lng/an/regim/niveluri/apartamente/scări/lift/structură/eră/dezvoltator/finisaje/risc seismic/distribuție camere).
+- Planuri = thumbnail-uri hotlink către hartablocuri.ro (tab nou, atribuire vizibilă). Poze absente în fișier.
+- Backend: `_serialize_building` + `_serialize_hartablocuri` adaugă `hartablocuri`, `conflicts`, `typology` la `GET /api/properties/{id}/building-context`.
+
+**Admin Import Center** — `/admin/hartablocuri` (`HartaBlocuriAdmin.jsx`), 4 tab-uri:
+- Overview (statistici + rulare import dry-run/real, idempotent), Loturi Import (batches), Blocuri (filtre sursă all/propmanage/hartablocuri/both + status), Conflicte (rezolvare per câmp).
+- Endpoint-uri noi: `GET /api/admin/hartablocuri/conflicts`, `GET .../buildings/{id}`, `POST .../buildings/{id}/conflicts/resolve`.
+- Rezolvare conflict: `confirm`=valoarea HartaBlocuri devine activă; `reject`=rămâne PropManage. Ambele păstrează valoarea brută HB + `context.conflict_history[]` (fără ștergere).
+
+**Typology Engine (DOAR pregătire date)** — `context.typology` cu `{raw, normalized, source}` pentru period/year/era/height_regime/structure/entrances/apartments/rooms_breakdown/neighborhood. Backfilled pe 3404 blocuri. Fără clasificare/UI activată.
+
+**Knowledge Center**: doc nou `/app/memory/audits/HARTABLOCURI_INTEGRATION.md` (apare automat în Enterprise Knowledge Center, categoria Platform Audits).
+
+**Garanții respectate**: Building Health / Twin Maturity / PVI / Cartea Casei / Digital Twin / abonamente NEATINSE. Adăugarea manuală de blocuri rămâne funcțională. Import EXCLUSIV județul Cluj.
+
+**Rămas înainte de SEO programatic**: validare reală extinsă a datelor pe teren (opțional), apoi pagini publice SEO per bloc/cartier care consumă aceeași entitate Building.
+
+
 ## 2026-06 · HartaBlocuri Cluj — import + discovery public „Găsește-ți blocul" — PREVIEW/BUILT
 Integrare aditivă a bazei externe HartaBlocuri Cluj în entitatea `buildings` existentă (NU sistem paralel).
 
