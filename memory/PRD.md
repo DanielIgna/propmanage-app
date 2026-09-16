@@ -6805,3 +6805,11 @@ Testat în preview: pagina se încarcă, click → „32 emailuri repuse în coa
 - Google Maps abstraction (env flag + fallback); `PropertyGIS.jsx` + rute `/property/:id/gis`. robots += /property//account//my-home.
 - ENV activare: GOOGLE_MAPS_API_KEY (browser restricționat), GOOGLE_MAPS_SERVER_API_KEY (server), GOOGLE_MAPS_ENABLED=true.
 **NESCHIMBAT:** SEO clusters/sitemap/Marketplace/House Health/Digital Twin/OAuth/raw/import/Truth Layer. Integritate 3408/3406/2.
+
+---
+
+## Data Integrity + Smoke Test Remediation — 2026-06
+**Admin smoke test 401 → FIXAT (cauză reală):** credential drift în `routes/admin_smoketest.py` — folosea default hardcodat `Admin123!` în loc de parola seed-ată (`SEED_ADMIN_PASSWORD`). Fix: admin password chaining `SMOKE_ADMIN_PASSWORD → SEED_ADMIN_PASSWORD → ADMIN_PASSWORD`. Fără relaxare auth/bypass. Verificat: all-roles 4/4 PASS (client 6/6, specialist 4/4, operator 4/4, admin 4/4). Regression test: test_smoke_admin_credentials_iter228.py (3/3).
+**Data Integrity — financiar CLEAN:** wallet↔tranzacții=0, solduri negative=0, proprietăți fără owner=0, emailuri duplicate=0, twins orfane=0, dispute active pe cereri închise=0.
+**Anomalii legacy/demo rămase (NEmodificate per reguli B/C/J — fără ștergere/invenție):** cereri→proprietate inexistentă=5 (WARN), cereri→user inexistent=1 (CRIT), dispute→cerere inexistentă=14 (CRIT). Toate = referințe orfane din fixture/demo (resetate nightly de demo_reset), zero impact financiar. Nu există mecanism sigur de archive pentru requests/disputes (doar pentru twins) → raportate ca known legacy anomalies.
+**NESCHIMBAT:** HartaBlocuri/import/Truth Layer/SEO/sitemap/Marketplace/House Health/Digital Twin/GIS/Google Maps/robots/OAuth. Fără deploy/publish.

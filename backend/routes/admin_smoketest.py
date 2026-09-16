@@ -38,7 +38,9 @@ ROLE_CREDENTIALS = {
     "specialist": {"email": os.environ.get("SMOKE_SPECIALIST_EMAIL", "specialist@propmanage.io"),
                    "password": os.environ.get("SMOKE_SPECIALIST_PASSWORD", "Spec123!")},
     "admin":      {"email": os.environ.get("SMOKE_ADMIN_EMAIL", "admin@propmanage.io"),
-                   "password": os.environ.get("SMOKE_ADMIN_PASSWORD", "Admin123!")},
+                   "password": os.environ.get("SMOKE_ADMIN_PASSWORD")
+                   or os.environ.get("SEED_ADMIN_PASSWORD")
+                   or os.environ.get("ADMIN_PASSWORD", "Admin123!")},
     "operator":   {"email": os.environ.get("SMOKE_OPERATOR_EMAIL", "operator@propmanage.io"),
                    "password": os.environ.get("SMOKE_OPERATOR_PASSWORD", "Op123!")},
 }
