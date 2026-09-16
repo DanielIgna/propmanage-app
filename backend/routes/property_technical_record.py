@@ -1165,6 +1165,20 @@ async def search_buildings_for_ptr(
     async for b in db.buildings.find(query).limit(limit):
         s = _serialize_building(b)
         s["units_registered"] = await db.properties.count_documents({"building_id": s["id"]})
+        ctx = b.get("context") or {}
+        has_hb = "hartablocuri" in (ctx.get("external_sources") or {})
+        # coordonate: context sau raw HartaBlocuri (fallback)
+        if not isinstance(s.get("lat"), (int, float)) or not isinstance(s.get("lng"), (int, float)):
+            raw = (ctx.get("external_sources") or {}).get("hartablocuri", {}).get("raw") or {}
+            if isinstance(raw.get("lat"), (int, float)) and isinstance(raw.get("lng"), (int, float)):
+                s["lat"], s["lng"] = raw.get("lat"), raw.get("lng")
+        s["source"] = "hartablocuri" if has_hb else (ctx.get("source_type") or None)
+        s["provenance"] = "Date externe HartaBlocuri — neverificate de PropManage" if has_hb else None
+        # confidence pe criterii REALE de string (nu inventat)
+        ql = (q or "").strip().lower()
+        addr = (b.get("address") or "").lower()
+        name = (b.get("name") or "").lower()
+        s["match_confidence"] = "high" if ql and ql in addr else ("medium" if ql and ql in name else "low")
         items.append(s)
     return {"buildings": items, "total": len(items)}
 

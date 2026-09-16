@@ -18,9 +18,17 @@ import {
   ShieldAlert, CheckCircle2, AlertTriangle, CircleDashed,
   Plus, Trash2, Pencil, ExternalLink, ChevronDown, ChevronUp, Info, Loader2,
   ShieldCheck, ShieldX, Download, Users, Link as LinkIcon, Paperclip, Search,
+  MapPin, X,
 } from "lucide-react";
 import { API } from "../DashShared";
 import { formatApiError } from "../../auth";
+import { PmMiniMap } from "../../components/PmMap";
+
+const CONFIDENCE_META = {
+  high: { label: "Potrivire: Ridicată", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  medium: { label: "Potrivire: Medie", cls: "bg-amber-50 text-amber-700 border-amber-200" },
+  low: { label: "Potrivire: Scăzută", cls: "bg-slate-100 text-slate-600 border-slate-200" },
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STATUS TOKENS (COMPLETE / PARTIAL / MISSING / NOT_VERIFIED)
@@ -287,6 +295,7 @@ const BuildingContextSection = ({ propId, initial, vocab, viewer, onSaved }) => 
   const [busy, setBusy] = useState(false);
   const [neighbours, setNeighbours] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [pendingBuilding, setPendingBuilding] = useState(null);
 
   useEffect(() => {
     setBuilding(initial);
@@ -327,13 +336,19 @@ const BuildingContextSection = ({ propId, initial, vocab, viewer, onSaved }) => 
     finally { setBusy(false); }
   };
 
-  const attachExisting = async (b) => {
-    if (!window.confirm(`Conectezi această proprietate la „${b.name}" (${b.units_registered} unități înregistrate)?`)) return;
+  // Deschide dialogul de confirmare EXPLICITĂ înainte de a asocia building_id.
+  const attachExisting = (b) => setPendingBuilding(b);
+
+  // Asocierea propriu-zisă — DOAR după confirmarea explicită a utilizatorului.
+  const confirmAttach = async () => {
+    const b = pendingBuilding;
+    if (!b) return;
     setBusy(true);
     try {
       const res = await axios.post(`${API}/properties/${propId}/attach-building`, { building_id: b.id });
       setBuilding(res.data.building);
       setSearchOpen(false);
+      setPendingBuilding(null);
       onSaved?.(res.data.building);
     } catch (e) { alert(formatApiError(e)); }
     finally { setBusy(false); }
@@ -481,6 +496,72 @@ const BuildingContextSection = ({ propId, initial, vocab, viewer, onSaved }) => 
             Datele externe (ex. HartaBlocuri) rămân drept referință. Nu sunt importate automat și nu devin
             automat verificate. O clădire validată poate fi conectată ulterior mai multor proprietăți.
           </p>
+        </div>
+      </div>
+
+      {pendingBuilding && (
+        <BuildingConfirmDialog
+          building={pendingBuilding}
+          busy={busy}
+          onConfirm={confirmAttach}
+          onCancel={() => setPendingBuilding(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+// Confirmare EXPLICITĂ a clădirii înainte de asocierea building_id.
+// „Confirm" = aceasta este clădirea locuinței mele — NU că datele tehnice
+// HartaBlocuri sunt verificate de PropManage.
+const BuildingConfirmDialog = ({ building, busy, onConfirm, onCancel }) => {
+  const conf = CONFIDENCE_META[building.match_confidence] || null;
+  const isExternal = building.source === "hartablocuri" || building.provenance;
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" data-testid="building-confirm-dialog">
+      <div className="w-full max-w-md rounded-3xl bg-[#0a0a0b] text-stone-100 border border-white/10 overflow-hidden">
+        <div className="flex items-center justify-between px-5 pt-5">
+          <div className="inline-flex items-center gap-2 text-[11px] uppercase tracking-widest text-[#d4ff3a] font-semibold">
+            <MapPin className="w-3.5 h-3.5" /> Am găsit această clădire
+          </div>
+          <button onClick={onCancel} data-testid="building-confirm-close" className="text-stone-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="px-5 pt-3">
+          <div className="text-xl font-bold" data-testid="building-confirm-name">{building.name}</div>
+          <div className="text-stone-400 text-sm" data-testid="building-confirm-address">{building.address}{building.city ? `, ${building.city}` : ""}</div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {conf && (
+              <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${conf.cls}`} data-testid="building-confirm-confidence">
+                {conf.label}
+              </span>
+            )}
+            {isExternal && (
+              <span className="inline-flex items-center gap-1 text-[11px] text-amber-400/80" data-testid="building-confirm-provenance">
+                <Info className="w-3.5 h-3.5" /> Date HartaBlocuri — externe, neverificate de PropManage
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="px-5 mt-3">
+          <PmMiniMap lat={building.lat} lng={building.lng} label={building.address} height="200px" />
+        </div>
+        <div className="px-5 py-4 mt-1">
+          <p className="text-[11px] text-stone-500 mb-3">
+            Confirmi că aceasta este clădirea locuinței tale? Confirmarea leagă proprietatea de clădire,
+            dar NU marchează datele tehnice ca verificate de PropManage.
+          </p>
+          <div className="flex items-center gap-2">
+            <button onClick={onConfirm} disabled={busy} data-testid="building-confirm-yes"
+              className="flex-1 px-4 py-2.5 rounded-full text-sm font-black text-black disabled:opacity-50" style={{ background: "#d4ff3a" }}>
+              {busy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : "Confirmă clădirea"}
+            </button>
+            <button onClick={onCancel} disabled={busy} data-testid="building-confirm-no"
+              className="px-4 py-2.5 rounded-full text-sm font-bold text-stone-300 border-2 border-white/15">
+              Nu este clădirea mea
+            </button>
+          </div>
         </div>
       </div>
     </div>
