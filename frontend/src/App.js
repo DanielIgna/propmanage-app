@@ -1540,6 +1540,17 @@ const Footer = () => {
             <a href={`mailto:${contactEmail}`} className="hover:text-white transition-colors">Contact</a>
           </div>
         </div>
+        <div className="border-t border-white/5 pt-6 pb-2" data-testid="footer-explore">
+          <div className="text-[11px] text-stone-500 uppercase tracking-wider mb-3">Explorează</div>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-stone-400">
+            <Link to="/design-interior" className="hover:text-[#d4ff3a] transition-colors" data-testid="footer-explore-design">Design interior</Link>
+            <Link to="/imobile-verificate" className="hover:text-[#d4ff3a] transition-colors" data-testid="footer-explore-estate">Imobile Verificate</Link>
+            <Link to="/digital-twin" className="hover:text-[#d4ff3a] transition-colors" data-testid="footer-explore-twin">Digital Twin</Link>
+            <Link to="/marketplace" className="hover:text-[#d4ff3a] transition-colors" data-testid="footer-explore-marketplace">Marketplace specialiști</Link>
+            <Link to="/scorul-casei" className="hover:text-[#d4ff3a] transition-colors" data-testid="footer-explore-audit">Scorul Casei</Link>
+            <Link to="/preturi" className="hover:text-[#d4ff3a] transition-colors" data-testid="footer-explore-preturi">Prețuri lucrări</Link>
+          </div>
+        </div>
         <div className="border-t border-white/5 pt-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="text-[11px] text-stone-500 uppercase tracking-wider">Urmărește-ne</div>
           <div className="flex flex-wrap gap-2" data-testid="footer-socials">

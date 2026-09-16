@@ -11,6 +11,7 @@ import { useSEO } from "../hooks/useSEO";
 import { trackIntent } from "../lib/analytics";
 import { DesignLeadModal } from "../components/DesignLeadModal";
 import { DI_PAGES, DI_STYLES, DI_LOCAL_CITIES } from "../data/designInterior";
+import { getLocalContent } from "../data/designInteriorLocal";
 
 const SITE_URL = "https://propmanage.ro";
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -181,12 +182,13 @@ const StaticDesignPage = ({ page, canonicalPath, trail, breadcrumbNames }) => {
   );
 };
 
-// ── Local (city) page — GATED by SSOT ────────────────────────────────────────
+// ── Local (city) page — INDEX only when unique authored content exists ───────
 const LocalDesignPage = ({ citySlug, cityName }) => {
   const [gate, setGate] = useState(null);
   const [specialists, setSpecialists] = useState(null);
   const [leadOpen, setLeadOpen] = useState(false);
   const path = `/design-interior/${citySlug}`;
+  const content = getLocalContent(citySlug);
   const openLead = () => { trackIntent("design_seo_cta_click"); setLeadOpen(true); };
 
   useEffect(() => {
@@ -195,10 +197,18 @@ const LocalDesignPage = ({ citySlug, cityName }) => {
       .then(r => setSpecialists(Array.isArray(r.data) ? r.data : (r.data?.specialists || []))).catch(() => setSpecialists([]));
   }, [citySlug]); // eslint-disable-line
 
-  const gated = !!(gate && gate.index === false);
+  // Gate: content pages default to index; server confirms. Pages without authored
+  // content have no `content` object → treated as generic (noindex).
+  const gated = gate ? gate.index === false : !content;
+  const seoTitle = content
+    ? `Design interior ${cityName}: proiect, renovare și implementare | PropManage`
+    : `Design interior ${cityName}: designeri verificați | PropManage`;
+  const seoDesc = content
+    ? content.intro.slice(0, 155)
+    : `Design interior în ${cityName}: lucrează cu designeri verificați, cu portofolii și recenzii reale. Proiect + implementare la cheie, plată protejată prin escrow.`;
   useSEO({
-    title: `Design interior ${cityName}: designeri verificați | PropManage`,
-    description: `Design interior în ${cityName}: lucrează cu designeri verificați, cu portofolii și recenzii reale. Proiect + implementare la cheie, plată protejată prin escrow.`,
+    title: seoTitle,
+    description: seoDesc,
     canonical: gated && gate?.canonical ? gate.canonical : `${SITE_URL}${path}`,
     noindex: gated,
     jsonLd: {
@@ -212,6 +222,8 @@ const LocalDesignPage = ({ citySlug, cityName }) => {
           { "@type": "ListItem", "position": 2, "name": "Design interior", "item": `${SITE_URL}/design-interior` },
           { "@type": "ListItem", "position": 3, "name": cityName, "item": `${SITE_URL}${path}` },
         ] },
+        ...(content?.faq?.length ? [{ "@type": "FAQPage", "mainEntity": content.faq.map(f => ({
+          "@type": "Question", "name": f.q, "acceptedAnswer": { "@type": "Answer", "text": f.a } })) }] : []),
       ],
     },
   });
@@ -225,15 +237,19 @@ const LocalDesignPage = ({ citySlug, cityName }) => {
       </div>
       <h1 className="font-serif text-4xl sm:text-5xl tracking-tight mb-5" data-testid="di-h1">Design interior în {cityName}</h1>
       <p className="text-stone-300 text-lg leading-relaxed">
-        Cauți un designer de interior în {cityName}? Pe PropManage lucrezi doar cu specialiști verificați, cu portofolii și recenzii reale. Poți lua doar proiectul de design sau poți merge până la implementare la cheie, cu plată protejată prin escrow.
+        {content ? bold(content.intro) : (
+          <>Cauți un designer de interior în {cityName}? Pe PropManage lucrezi doar cu specialiști verificați, cu portofolii și recenzii reale. Poți lua doar proiectul de design sau poți merge până la implementare la cheie, cu plată protejată prin escrow.</>
+        )}
       </p>
 
       <HeroCTA onLead={openLead} />
 
+      {content && <Sections sections={content.sections} />}
+
       <div className="mt-8 glass-strong rounded-2xl p-6" data-testid="di-local-availability">
         {count === null ? (
           <p className="text-stone-400 text-sm">Se verifică disponibilitatea în {cityName}…</p>
-        ) : count >= 3 ? (
+        ) : count >= 1 ? (
           <div>
             <p className="text-stone-200"><strong className="text-[#d4ff3a]">{count} designeri verificați</strong> activi în {cityName}. Vezi profilurile, portofoliile și recenziile lor înainte să ceri o ofertă.</p>
             <div className="grid sm:grid-cols-2 gap-3 mt-4">
@@ -247,7 +263,7 @@ const LocalDesignPage = ({ citySlug, cityName }) => {
           </div>
         ) : (
           <p className="text-stone-300 text-sm">
-            Momentan avem <strong>{count}</strong> designeri verificați în {cityName} — sub pragul nostru de calitate pentru o pagină locală dedicată. Poți totuși posta o cerere: îți aducem oferte de la designeri verificați care acoperă zona {cityName}.
+            Postează o cerere și îți aducem oferte de la designeri verificați care acoperă zona {cityName}. Vezi profiluri, portofolii și recenzii reale înainte de a alege.
           </p>
         )}
       </div>
@@ -258,7 +274,9 @@ const LocalDesignPage = ({ citySlug, cityName }) => {
 
       <MidCTA onLead={openLead} />
 
-      <Related related={[
+      {content?.faq?.length ? <FAQ faq={content.faq} /> : null}
+
+      <Related related={content?.related || [
         { to: "/design-interior/apartament", label: "Design interior apartament" },
         { to: "/design-interior/pret", label: "Cât costă designul interior" },
         { to: "/design-interior/renovare", label: "Design pentru renovare" },

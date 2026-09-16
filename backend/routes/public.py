@@ -478,7 +478,7 @@ from seo_gate import (  # noqa: E402
 from seo_guides import GUIDE_SLUGS  # noqa: E402
 from seo_problems import PROBLEM_SLUGS  # noqa: E402
 from seo_design import (  # noqa: E402
-    DESIGN_PAGES, DESIGN_STYLES, DESIGN_LOCAL_CITIES, DESIGN_PAGE_SLUGS,
+    DESIGN_PAGES, DESIGN_STYLES, DESIGN_LOCAL_CITIES, DESIGN_PAGE_SLUGS, DESIGN_LOCAL_INDEXABLE,
 )
 
 _SITE_URL = os.environ.get("APP_PUBLIC_URL", "https://propmanage.ro").rstrip("/")
@@ -489,6 +489,7 @@ _CHILD_SITEMAPS = [
     "sitemap-marketplace.xml",
     "sitemap-specialists.xml",
     "sitemap-design.xml",
+    "sitemap-estate.xml",
 ]
 _CITY_SLUG_TO_DB = {v: k for k, v in _CITY_DB_TO_SLUG.items()}
 
@@ -549,14 +550,16 @@ async def compute_marketplace_gate(slug: str) -> dict:
 
 async def compute_design_gate(slug: str) -> dict:
     """Indexability for a single-segment /design-interior/{slug} page.
-    Content pages = always index (unique content). City pages = gated by the SAME
-    SSOT (verified `interior_design` specialists per city ≥ threshold)."""
+    Content pages = always index (unique content). City pages = index ONLY if they
+    have unique authored local content (DESIGN_LOCAL_INDEXABLE); otherwise noindex +
+    canonical to /design-interior. Content sufficiency is the gate, not specialist count."""
     if slug in DESIGN_PAGE_SLUGS:
         return _gate_decision(True, reason="pagină editorială/comercială design")
-    city_db = _CITY_SLUG_TO_DB.get(slug)
-    if city_db and slug in DESIGN_LOCAL_CITIES:
-        count = await _count_verified_specialists("interior_design", city_db)
-        return gate_service_city(count, canonical_parent=f"{_SITE_URL}/design-interior")
+    if slug in DESIGN_LOCAL_CITIES:
+        if slug in DESIGN_LOCAL_INDEXABLE:
+            return _gate_decision(True, reason="conținut local unic (pagină locală editorială)")
+        return _gate_decision(False, canonical=f"{_SITE_URL}/design-interior",
+                              reason="conținut local insuficient (pagină generică) — canonical către părinte")
     return _gate_decision(True, reason="pagină design")
 
 
@@ -664,19 +667,50 @@ async def _specialist_entries(now_iso: str) -> list:
 
 
 async def _design_entries(now_iso: str) -> list:
-    """Design Interior cluster: content + style pages (always index) + GATED local city pages."""
+    """Design Interior cluster: content + style pages (always index) + local city
+    pages that have UNIQUE authored content (DESIGN_LOCAL_INDEXABLE)."""
     entries = []
     for slug, mod in DESIGN_PAGES:
         entries.append(_url_xml(f"/design-interior/{slug}", mod, "monthly", "0.8"))
     for slug, mod in DESIGN_STYLES:
         entries.append(_url_xml(f"/design-interior/stil/{slug}", mod, "monthly", "0.7"))
     for city_slug in DESIGN_LOCAL_CITIES:
-        city_db = _CITY_SLUG_TO_DB.get(city_slug)
-        if not city_db:
-            continue
-        cnt = await _count_verified_specialists("interior_design", city_db)
-        if gate_service_city(cnt)["index"]:
+        if city_slug in DESIGN_LOCAL_INDEXABLE:
             entries.append(_url_xml(f"/design-interior/{city_slug}", now_iso, "weekly", "0.75"))
+    return entries
+
+
+async def _estate_entries(now_iso: str) -> list:
+    """Verified-estate detail pages that are publicly indexable: status=published,
+    NOT demo/seed. Uses the seo_gate listing_is_indexable helper. Demo listings
+    (seed markers) are explicitly excluded so they never enter the sitemap."""
+    from seo_gate import listing_is_indexable
+    entries = []
+    try:
+        cursor = db.verified_estate_listings.find(
+            {"status": "published", "deleted": {"$ne": True}},
+            {"_id": 1, "status": 1, "deleted": 1, "is_demo": 1, "digital_twin_id": 1,
+             "updated_at": 1, "published_at": 1, "created_at": 1},
+        ).limit(5000)
+        async for lst in cursor:
+            if lst.get("is_demo") is True:
+                continue
+            dt = str(lst.get("digital_twin_id") or "")
+            if dt.startswith("demo-"):
+                continue
+            if not listing_is_indexable(lst):
+                continue
+            lid = str(lst["_id"])
+            lastmod = lst.get("updated_at") or lst.get("published_at") or lst.get("created_at")
+            if isinstance(lastmod, datetime):
+                lastmod_str = lastmod.strftime("%Y-%m-%d")
+            elif isinstance(lastmod, str) and len(lastmod) >= 10:
+                lastmod_str = lastmod[:10]
+            else:
+                lastmod_str = now_iso
+            entries.append(_url_xml(f"/imobile-verificate/{lid}", lastmod_str, "weekly", "0.7"))
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"estate sitemap entries failed: {e}")
     return entries
 
 
@@ -689,6 +723,7 @@ async def build_sitemap_xml() -> str:
     entries += await _marketplace_entries(now_iso)
     entries += await _specialist_entries(now_iso)
     entries += await _design_entries(now_iso)
+    entries += await _estate_entries(now_iso)
     return _wrap_urlset(entries)
 
 
@@ -751,6 +786,12 @@ async def public_sitemap_design():
     return FastResponse(content=_wrap_urlset(await _design_entries(now_iso)), media_type="application/xml")
 
 
+@router.get("/public/sitemap-estate.xml")
+async def public_sitemap_estate():
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return FastResponse(content=_wrap_urlset(await _estate_entries(now_iso)), media_type="application/xml")
+
+
 # ---------------------------------------------------------------------------
 # Static files at the domain root (ingress routes non-/api paths to frontend).
 # Root /sitemap.xml = index; children = urlsets. Regenerated at startup + daily.
@@ -765,6 +806,7 @@ async def write_sitemap_file() -> str:
         "sitemap-marketplace.xml": _wrap_urlset(await _marketplace_entries(now_iso)),
         "sitemap-specialists.xml": _wrap_urlset(await _specialist_entries(now_iso)),
         "sitemap-design.xml": _wrap_urlset(await _design_entries(now_iso)),
+        "sitemap-estate.xml": _wrap_urlset(await _estate_entries(now_iso)),
     }
     try:
         _SITEMAP_DIR.mkdir(parents=True, exist_ok=True)

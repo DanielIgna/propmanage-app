@@ -42,26 +42,34 @@ def test_direct_navigation_no_redirect_serves_spa_shell():
 
 
 def test_gate_editorial_index_vs_gated_city_noindex():
-    """Editorial DI pages -> index (self); gated city (<3 designers) -> noindex + parent canonical."""
+    """Editorial DI pages -> index (self). Local city pages: INDEX if they have
+    unique authored content (cluj-napoca), NOINDEX + parent canonical if generic (oradea)."""
     ap = requests.get(f"{API}/public/seo/gate", params={"path": "/design-interior/apartament"}, timeout=15).json()
     assert ap["index"] is True
 
+    # cluj-napoca now has unique authored local content -> INDEX + self-canonical
     cluj = requests.get(f"{API}/public/seo/gate", params={"path": "/design-interior/cluj-napoca"}, timeout=15).json()
-    assert cluj["index"] is False
-    assert cluj["canonical"] == "https://propmanage.ro/design-interior"
+    assert cluj["index"] is True
+
+    # oradea has NO authored content -> NOINDEX + canonical to parent
+    oradea = requests.get(f"{API}/public/seo/gate", params={"path": "/design-interior/oradea"}, timeout=15).json()
+    assert oradea["index"] is False
+    assert oradea["canonical"] == "https://propmanage.ro/design-interior"
 
 
-def test_sitemap_design_has_pages_styles_and_only_gated_cities():
-    """sitemap-design.xml = 14 pages + 9 styles + ONLY cities passing the gate."""
+def test_sitemap_design_has_pages_styles_and_only_content_cities():
+    """sitemap-design.xml = 14 pages + 9 styles + ONLY cities with authored content."""
     r = requests.get(f"{API}/public/sitemap-design.xml", timeout=20)
     assert r.status_code == 200 and "<urlset" in r.text
     locs = {re.sub(r"^https?://[^/]+", "", u) for u in re.findall(r"<loc>([^<]+)</loc>", r.text)}
     # content + style pages always present
     assert "/design-interior/apartament" in locs
     assert "/design-interior/stil/japandi" in locs
-    # gated-out city must NOT be present; passing city must be present
-    assert "/design-interior/cluj-napoca" not in locs, "gated city must be excluded from sitemap"
-    assert "/design-interior/bucuresti" in locs, "gate-passing city should be in sitemap"
+    # cities with authored unique content are present
+    assert "/design-interior/cluj-napoca" in locs, "content city should be in sitemap"
+    assert "/design-interior/bucuresti" in locs, "content city should be in sitemap"
+    # cities WITHOUT authored content must NOT be present
+    assert "/design-interior/oradea" not in locs, "generic city must be excluded from sitemap"
     # hub + editorial guide live in OTHER child sitemaps, not the design child
     assert "/design-interior" not in locs, "hub belongs to sitemap-static, not sitemap-design"
 
@@ -74,25 +82,26 @@ def admin():
     return s
 
 
-def test_cluster_26_equals_design_sitemap_24_plus_hub_and_guide(admin):
-    """Explain 26 (cluster) vs 24 (sitemap-design.xml): the cluster is a logical grouping
-    that also counts the hub /design-interior (sitemap-static) and the editorial guide
-    /ghiduri/cum-alegi-designer-interior (sitemap-content). All 26 are in_sitemap (some child)."""
+def test_design_cluster_all_indexable_and_in_sitemap(admin):
+    """Every design_interior cluster row is indexable and present in SOME sitemap child.
+    The cluster is a logical grouping: design pages/styles/content-cities (sitemap-design)
+    + the hub /design-interior (sitemap-static) + editorial guides (sitemap-content)."""
     pages = admin.get(f"{API}/admin/seo/pages", timeout=30).json()["pages"]
     di_rows = [p for p in pages if p["cluster"] == "design_interior"]
     urls = {p["url"].replace("https://propmanage.ro", "") for p in di_rows}
 
-    # every cluster row is indexable and in SOME sitemap child
     assert all(p["index"] for p in di_rows)
     assert all(p["in_sitemap"] for p in di_rows)
 
-    # the two rows that are NOT in sitemap-design.xml (they live in other children)
+    # hub + editorial guides that live in OTHER child sitemaps
     assert "/design-interior" in urls                          # hub -> sitemap-static
     assert "/ghiduri/cum-alegi-designer-interior" in urls      # guide -> sitemap-content
 
     sm = requests.get(f"{API}/public/sitemap-design.xml", timeout=20).text
     design_locs = {re.sub(r"^https?://[^/]+", "", u) for u in re.findall(r"<loc>([^<]+)</loc>", sm)}
-    # cluster == design sitemap + exactly the hub + the guide
+    # everything in the design sitemap is part of the cluster grouping
+    assert design_locs.issubset(urls)
+    # the extras are the hub + editorial guides (not in the design child)
     extra = urls - design_locs
-    assert extra == {"/design-interior", "/ghiduri/cum-alegi-designer-interior"}, extra
-    assert len(urls) == len(design_locs) + 2
+    assert "/design-interior" in extra
+    assert any(u.startswith("/ghiduri/") for u in extra)

@@ -1135,6 +1135,289 @@ export const GHIDURI = [
     ],
     relatedCity: null,
     relatedCategories: []
+  },
+  {
+    slug: "cat-costa-design-interior-cluj",
+    title: "Cât costă designul interior în Cluj-Napoca? · Ghid de prețuri 2026",
+    h1: "Cât costă designul interior în Cluj-Napoca",
+    description: "Prețurile reale pentru design interior în Cluj: concept, proiect tehnic, randări 3D și implementare. Factorii care influențează costul și cum eviți surprizele.",
+    tag: "Prețuri local",
+    icon: "BookOpen",
+    publishedAt: "2026-06-16",
+    updatedAt: "2026-06-16",
+    readMins: 7,
+    sections: [
+      {
+        heading: "De ce prețul din Cluj e diferit",
+        body: [
+          "Cluj-Napoca are una dintre cele mai scumpe piețe rezidențiale din țară, împinsă de sectorul IT și de cererea mare. Asta se reflectă și în serviciile de design: cererea ridicată și complexitatea proiectelor (apartamente noi compacte, blocuri vechi de reabilitat) influențează prețul.",
+          "Vestea bună: un proiect de design bine făcut **economisește** bani pe șantier, mai ales la un metru pătrat scump — evită cumpărături greșite și refaceri.",
+        ],
+      },
+      {
+        heading: "Ce plătești, de fapt",
+        body: [
+          "Costul se împarte pe etape, iar tu decizi cât de departe mergi:",
+          { type: "list", items: [
+            "Concept de amenajare — moodboard, paletă, plan de mobilare de bază (cost mic, pe cameră)",
+            "Proiect tehnic complet — planuri de execuție, detalii, liste de materiale (calculat pe metru pătrat)",
+            "Randări 3D fotorealiste — vezi rezultatul înainte de execuție",
+            "Implementare la cheie — coordonare cu specialiști verificați (opțional)",
+          ] },
+          { type: "callout", title: "Recomandare", body: "Pentru un apartament clujean cere de la început un deviz pe etape. Poți începe doar cu conceptul și decide ulterior dacă mergi la proiect tehnic și implementare." },
+        ],
+      },
+      {
+        heading: "Factorii care cresc sau scad costul",
+        body: [
+          { type: "list", items: [
+            "Suprafața și numărul de camere",
+            "Starea locuinței (un apartament vechi cere mai multă muncă tehnică)",
+            "Nivelul de detaliu al randărilor",
+            "Dacă incluzi sau nu implementarea",
+          ] },
+          "La blocurile vechi din Mărăști, Gheorgheni sau Grigorescu, un **audit tehnic** înainte de a stabili bugetul îți arată ce trebuie refăcut la instalații — și te ferește de surprize costisitoare.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Cât costă un concept de design pentru un apartament de 2 camere în Cluj?", a: "Conceptul (fără proiect tehnic) pornește de la câteva sute de lei pe cameră. Prețul exact depinde de designer și de câte variante ceri. Postează o cerere pe PropManage pentru oferte reale de la designeri verificați din Cluj." },
+      { q: "Merită proiectul tehnic complet sau e suficient conceptul?", a: "Pentru o simplă redecorare, conceptul poate fi suficient. Pentru o renovare cu intervenții la pereți, instalații sau mobilier pe comandă, proiectul tehnic previne greșeli scumpe pe șantier." },
+      { q: "Pot vedea prețurile înainte să mă decid?", a: "Da. Pe PropManage postezi cererea gratuit și primești oferte de la mai mulți designeri verificați, cu portofolii și recenzii — compari fără obligații." },
+    ],
+    relatedCity: "cluj-napoca",
+    relatedCategories: ["interior_design"],
+    internalLinks: [
+      { label: "Design interior în Cluj-Napoca", to: "/design-interior/cluj-napoca" },
+      { label: "Cât costă designul interior (general)", to: "/design-interior/pret" },
+      { label: "Design pentru renovare", to: "/design-interior/renovare" },
+      { label: "Verifică Scorul Casei", to: "/scorul-casei" },
+      { label: "Design interior — pagina principală", to: "/design-interior" },
+    ],
+  },
+  {
+    slug: "cum-pregatesti-apartament-renovare",
+    title: "Cum pregătești un apartament pentru renovare · Ghid pas cu pas 2026",
+    h1: "Cum pregătești un apartament pentru renovare",
+    description: "Pașii de pregătire înainte de renovare: evaluarea stării, buget, autorizații, ordinea lucrărilor și cum eviți greșelile costisitoare. Ghid practic.",
+    tag: "Renovare",
+    icon: "BookOpen",
+    publishedAt: "2026-06-16",
+    updatedAt: "2026-06-16",
+    readMins: 8,
+    sections: [
+      {
+        heading: "Începe cu o evaluare corectă a stării",
+        body: [
+          "Cea mai frecventă greșeală e să începi renovarea de la finisaje (culori, gresie) fără să știi ce e în spatele pereților. Un apartament vechi poate ascunde instalații electrice depășite, țevi corodate sau umezeală.",
+          "Un **audit tehnic** sau cel puțin o evaluare a stării îți spune ce trebuie refăcut întâi. Vezi și **Scorul Casei** pentru o imagine rapidă.",
+        ],
+      },
+      {
+        heading: "Stabilește bugetul și o rezervă",
+        body: [
+          "Un buget realist include o rezervă de 10–15% pentru surprize (mai ales la apartamentele vechi). Împarte bugetul pe categorii:",
+          { type: "list", items: [
+            "Demolări și pregătire",
+            "Instalații (electrice, sanitare, termice)",
+            "Finisaje (pardoseli, pereți, tavane)",
+            "Mobilier și obiecte sanitare",
+            "Proiectare și, opțional, coordonare execuție",
+          ] },
+        ],
+      },
+      {
+        heading: "Respectă ordinea corectă a lucrărilor",
+        body: [
+          "Ordinea greșită duce la refaceri. Regula de bază: de la structură și instalații către finisaje.",
+          { type: "list", items: [
+            "1. Demolări și modificări de compartimentare",
+            "2. Instalații (trasee electrice, sanitare, încălzire)",
+            "3. Tencuieli, șape, hidroizolații",
+            "4. Finisaje (pardoseli, faianță, zugrăveli)",
+            "5. Montaj mobilier și obiecte",
+          ] },
+          { type: "callout", title: "De reținut", body: "Un proiect de design făcut ÎNAINTE de renovare stabilește exact unde merg prizele, întrerupătoarele și instalațiile — astfel eviți spargeri ulterioare în pereți proaspăt finisați." },
+        ],
+      },
+    ],
+    faq: [
+      { q: "Am nevoie de autorizație pentru renovarea apartamentului?", a: "Pentru lucrări interioare fără modificarea structurii de rezistență, de regulă nu. Pentru intervenții pe pereți structurali sau modificări majore, verifică cerințele locale — un specialist te poate ghida." },
+      { q: "Cât durează pregătirea înainte de a începe efectiv?", a: "Evaluarea stării, bugetul și proiectul de design pot dura câteva săptămâni, dar economisesc timp și bani pe șantier. Nu sări peste etapa de planificare." },
+      { q: "Merită un designer chiar și pentru o renovare mică?", a: "Da — mai ales pentru decizii ireversibile (mutare pereți, instalații). Un concept bine gândit previne cumpărături greșite de mii de lei." },
+    ],
+    relatedCity: null,
+    relatedCategories: ["interior_design"],
+    internalLinks: [
+      { label: "Design pentru renovare", to: "/design-interior/renovare" },
+      { label: "Ce verifici înainte de renovare", to: "/ghiduri/ce-verifici-inainte-de-renovare-apartament" },
+      { label: "Verifică Scorul Casei", to: "/scorul-casei" },
+      { label: "Imobile Verificate", to: "/imobile-verificate" },
+      { label: "Design interior apartament vechi", to: "/design-interior/apartament-vechi" },
+    ],
+  },
+  {
+    slug: "design-interior-vs-amenajare",
+    title: "Design interior vs. amenajare: care e diferența? · Ghid 2026",
+    h1: "Design interior vs. amenajare: care este diferența",
+    description: "Design interior sau amenajare? Ce include fiecare, când ai nevoie de un proiect complet și când e suficientă o amenajare simplă. Explicat clar.",
+    tag: "Comparație",
+    icon: "BookOpen",
+    publishedAt: "2026-06-16",
+    updatedAt: "2026-06-16",
+    readMins: 6,
+    sections: [
+      {
+        heading: "Două lucruri diferite, des confundate",
+        body: [
+          "„Amenajare” și „design interior” se folosesc adesea ca sinonime, dar acoperă lucruri diferite. Confuzia poate duce la așteptări greșite și buget subestimat.",
+        ],
+      },
+      {
+        heading: "Ce înseamnă amenajarea",
+        body: [
+          "Amenajarea se referă în general la partea vizibilă și de suprafață: alegerea mobilierului, a textilelor, a culorilor și a decorațiunilor pentru un spațiu care, structural, rămâne neschimbat.",
+          { type: "list", items: [
+            "Alegerea și dispunerea mobilierului",
+            "Textile, obiecte decorative, iluminat decorativ",
+            "Paletă de culori și accente",
+          ] },
+        ],
+      },
+      {
+        heading: "Ce înseamnă designul interior",
+        body: [
+          "Designul interior este un proces mai amplu, care include și partea funcțională și tehnică: cum circulă oamenii prin spațiu, unde merg instalațiile, cum optimizezi lumina și depozitarea, transformate într-un proiect care poate fi executat.",
+          { type: "list", items: [
+            "Releveu și analiza spațiului",
+            "Plan de mobilare optimizat pe funcțiune și circulație",
+            "Planuri tehnice pentru echipele de execuție",
+            "Randări 3D și liste de materiale pentru bugetare",
+          ] },
+          { type: "callout", title: "Pe scurt", body: "Amenajarea se ocupă de cum arată. Designul interior se ocupă de cum funcționează ȘI cum arată — și e esențial la renovări sau spații atipice." },
+        ],
+      },
+    ],
+    faq: [
+      { q: "Pentru un apartament nou am nevoie de design sau doar de amenajare?", a: "Dacă apartamentul e funcțional și vrei doar să-l mobilezi frumos, amenajarea poate fi suficientă. Dacă vrei să optimizezi compartimentarea, depozitarea sau instalațiile, ai nevoie de design interior." },
+      { q: "Designul interior costă mai mult decât amenajarea?", a: "De regulă da, pentru că include partea tehnică. Dar la o renovare economisește bani prin evitarea greșelilor de execuție." },
+      { q: "Pot începe cu amenajare și continua cu design?", a: "Ideal e invers: designul stabilește structura, apoi amenajarea adaugă stratul decorativ. Un designer poate acoperi ambele." },
+    ],
+    relatedCity: null,
+    relatedCategories: ["interior_design"],
+    internalLinks: [
+      { label: "Ce este designul interior", to: "/ghiduri/ce-este-designul-interior" },
+      { label: "Ce include un proiect de design", to: "/ghiduri/ce-include-un-proiect-de-design-interior" },
+      { label: "Design interior — pagina principală", to: "/design-interior" },
+      { label: "Design interior apartament", to: "/design-interior/apartament" },
+      { label: "Randări 3D & Digital Twin", to: "/design-interior/3d" },
+    ],
+  },
+  {
+    slug: "ce-verifici-inainte-de-renovare-apartament",
+    title: "Ce trebuie verificat înainte de renovarea unui apartament · Ghid 2026",
+    h1: "Ce trebuie verificat înainte de renovarea unui apartament",
+    description: "Checklist tehnic înainte de renovare: instalații, structură, umezeală, izolație și acte. Ce verifici ca să nu ai surprize scumpe pe șantier.",
+    tag: "Checklist tehnic",
+    icon: "BookOpen",
+    publishedAt: "2026-06-16",
+    updatedAt: "2026-06-16",
+    readMins: 7,
+    sections: [
+      {
+        heading: "De ce contează verificarea din start",
+        body: [
+          "Surprizele descoperite după ce ai început renovarea sunt cele mai scumpe. O verificare atentă înainte de a stabili bugetul îți arată ce e ascuns în spatele finisajelor.",
+          "Pentru o evaluare structurată, un **audit tehnic** acoperă sistematic aceste puncte, iar **Digital Twin**-ul îți oferă o imagine 3D a locuinței.",
+        ],
+      },
+      {
+        heading: "Checklist tehnic esențial",
+        body: [
+          { type: "list", items: [
+            "Instalația electrică — vechime, secțiune conductori, tablou, împământare",
+            "Instalația sanitară — starea țevilor, presiune, scurgeri",
+            "Încălzirea — calorifere, centrală, distribuție",
+            "Umezeala și igrasia — pete, mucegai, infiltrații (mai ales parter/ultim etaj)",
+            "Structura — fisuri în pereți, planeitatea pardoselilor",
+            "Izolația termică și fonică — mai ales la apartamentele de colț",
+            "Tâmplăria — ferestre, uși, etanșeitate",
+          ] },
+        ],
+      },
+      {
+        heading: "Actele și situația juridică",
+        body: [
+          "Înainte de o renovare majoră, verifică dacă intervențiile necesită acordul asociației sau autorizații (mai ales pentru pereți structurali). Pentru pereții de rezistență nu se fac modificări fără aviz de specialitate.",
+          { type: "callout", title: "Sfat", body: "Dacă renovezi un apartament pe care abia l-ai cumpărat, cere raportul de audit al locuinței — îți dă lista completă de probleme și priorități înainte să investești în finisaje." },
+        ],
+      },
+    ],
+    faq: [
+      { q: "Cine poate face verificarea tehnică înainte de renovare?", a: "Un specialist tehnic sau un auditor de locuință. Pe PropManage poți comanda un audit tehnic care acoperă sistematic instalațiile, structura și izolațiile." },
+      { q: "Cât costă verificarea față de o renovare greșită?", a: "Verificarea costă o fracțiune din ce ai plăti pentru refacerea unei renovări prost planificate (spargeri în finisaje noi, instalații refăcute). E cea mai bună investiție de la început." },
+      { q: "Verificarea e utilă și la un apartament nou?", a: "Da, deși problemele sunt mai puține. Merită să verifici finisajele de la dezvoltator și traseele de instalații înainte de a personaliza." },
+    ],
+    relatedCity: null,
+    relatedCategories: ["interior_design"],
+    internalLinks: [
+      { label: "Cum pregătești apartamentul pentru renovare", to: "/ghiduri/cum-pregatesti-apartament-renovare" },
+      { label: "Verifică Scorul Casei", to: "/scorul-casei" },
+      { label: "Imobile Verificate — cum funcționează", to: "/ghiduri/imobile-verificate-cum-functioneaza" },
+      { label: "Design pentru renovare", to: "/design-interior/renovare" },
+      { label: "Ce este Digital Twin-ul locuinței", to: "/ghiduri/ce-este-digital-twin-locuinta" },
+    ],
+  },
+  {
+    slug: "compartimentare-cost-amenajare",
+    title: "Cum influențează compartimentarea costul amenajării · Ghid 2026",
+    h1: "Cum influențează compartimentarea costul amenajării",
+    description: "Modificarea compartimentării schimbă radical bugetul unei amenajări. Ce înseamnă pereți structurali vs. despărțitori, ce se poate muta și cum planifici corect.",
+    tag: "Planificare",
+    icon: "BookOpen",
+    publishedAt: "2026-06-16",
+    updatedAt: "2026-06-16",
+    readMins: 7,
+    sections: [
+      {
+        heading: "Compartimentarea = una dintre cele mai mari decizii de buget",
+        body: [
+          "Cum împarți spațiul influențează totul: câtă demolare faci, cât de mult muți instalațiile și cât mobilier pe comandă îți trebuie. O modificare de compartimentare bine gândită poate crește valoarea locuinței; una prost făcută poate scumpi inutil proiectul.",
+        ],
+      },
+      {
+        heading: "Pereți structurali vs. pereți despărțitori",
+        body: [
+          "Distincția e esențială pentru buget și pentru siguranță:",
+          { type: "list", items: [
+            "Pereții structurali (de rezistență) NU se modifică fără proiect și aviz de specialitate — orice intervenție e costisitoare și reglementată",
+            "Pereții despărțitori (nestructurali) se pot muta sau elimina mai ușor, dar implică refacerea instalațiilor și finisajelor din zonă",
+          ] },
+          { type: "callout", title: "Atenție", body: "Nu dărâma niciodată un perete fără să știi dacă e structural. Un specialist confirmă rolul peretelui înainte de orice demolare." },
+        ],
+      },
+      {
+        heading: "Cum planifici ca să controlezi costul",
+        body: [
+          "Un proiect de design stabilește compartimentarea optimă ÎNAINTE de a începe lucrările, ținând cont de circulație, lumină și instalații. Randările 3D și un Digital Twin te ajută să vezi rezultatul înainte să investești.",
+          "Regula practică: cu cât muți mai puțin instalațiile (bucătărie, baie), cu atât costul scade. Repoziționarea băii sau a bucătăriei e printre cele mai scumpe intervenții.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Cât costă mutarea unui perete despărțitor?", a: "Depinde de mărime, materiale și dacă trebuie refăcute instalații și finisaje în zonă. Un deviz corect vine dintr-un proiect de design care ia în calcul toate consecințele." },
+      { q: "Pot transforma un apartament de 2 camere în open-space?", a: "Adesea da, dacă peretele dintre living și bucătărie nu e structural. Un specialist confirmă, iar un designer optimizează noul spațiu." },
+      { q: "De ce e scumpă mutarea băii sau bucătăriei?", a: "Pentru că implică modificarea traseelor de apă, canalizare și ventilație — lucrări tehnice care cer și refacerea hidroizolației și finisajelor." },
+    ],
+    relatedCity: null,
+    relatedCategories: ["interior_design"],
+    internalLinks: [
+      { label: "Design interior apartament", to: "/design-interior/apartament" },
+      { label: "Design pentru renovare", to: "/design-interior/renovare" },
+      { label: "De ce contează măsurătorile înainte de design", to: "/ghiduri/de-ce-conteaza-masuratorile-inainte-de-design" },
+      { label: "Randări 3D & Digital Twin", to: "/design-interior/3d" },
+      { label: "Cum pregătești apartamentul pentru renovare", to: "/ghiduri/cum-pregatesti-apartament-renovare" },
+    ],
   }
 ];
 

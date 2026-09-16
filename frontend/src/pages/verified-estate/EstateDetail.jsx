@@ -6,7 +6,9 @@ import {
   Calendar, FileText, CheckCircle2, Sparkles, Layers, Mail, Phone, User
 } from "lucide-react";
 import axios from "axios";
+import { useSEO } from "../../hooks/useSEO";
 
+const SITE_URL = "https://propmanage.ro";
 const API = process.env.REACT_APP_BACKEND_URL;
 
 const formatPrice = (ron) => {
@@ -86,6 +88,46 @@ export const EstateDetail = () => {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [id]);
+
+  const isDemo = listing?.is_demo === true || String(listing?.digital_twin_id || "").startsWith("demo-");
+  useSEO({
+    title: listing
+      ? `${listing.title} · Imobil Verificat | PropManage`
+      : "Imobil Verificat | PropManage",
+    description: listing
+      ? `${listing.title} — ${listing.rooms ? listing.rooms + " camere, " : ""}${listing.surface_sqm ? listing.surface_sqm + " m², " : ""}${listing.city || ""}. Apartament cu audit tehnic complet și Digital Twin. ${(listing.description || "").slice(0, 90)}`.slice(0, 300)
+      : "Imobil cu audit tehnic verificat și Digital Twin pe PropManage.",
+    canonical: `${SITE_URL}/imobile-verificate/${id}`,
+    ogImage: listing?.cover_image_url || undefined,
+    noindex: isDemo,
+    jsonLd: listing ? {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Product",
+          "name": listing.title,
+          "description": listing.description || `Imobil verificat în ${listing.city || "România"}.`,
+          "image": listing.cover_image_url || undefined,
+          "category": "Real Estate",
+          "offers": {
+            "@type": "Offer",
+            "price": listing.price_ron || 0,
+            "priceCurrency": "RON",
+            "availability": "https://schema.org/InStock",
+            "url": `${SITE_URL}/imobile-verificate/${id}`,
+          },
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Acasă", "item": `${SITE_URL}/` },
+            { "@type": "ListItem", "position": 2, "name": "Imobile Verificate", "item": `${SITE_URL}/imobile-verificate` },
+            { "@type": "ListItem", "position": 3, "name": listing.title, "item": `${SITE_URL}/imobile-verificate/${id}` },
+          ],
+        },
+      ],
+    } : null,
+  });
 
   if (loading) {
     return <div className="min-h-screen bg-[#0a0a0b] flex items-center justify-center text-stone-400" data-testid="detail-loading">Se încarcă...</div>;

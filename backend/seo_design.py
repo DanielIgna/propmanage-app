@@ -42,10 +42,18 @@ DESIGN_STYLES: list[tuple[str, str]] = [
     ("boho", "2026-06-11"),
 ]
 
-# Candidate cities for local Design Interior pages (gated by SSOT at runtime).
+# Candidate cities for local Design Interior pages (valid routes).
 DESIGN_LOCAL_CITIES: list[str] = [
     "bucuresti", "cluj-napoca", "brasov", "oradea", "timisoara", "sibiu", "iasi",
 ]
+
+# Local city pages that have UNIQUE, distinct editorial content authored in
+# frontend/src/data/designInteriorLocal.js. These become INDEX + self-canonical
+# based on CONTENT sufficiency (not specialist count). Cities NOT listed here
+# render a generic template and stay NOINDEX (canonical → /design-interior).
+DESIGN_LOCAL_INDEXABLE: set[str] = {
+    "cluj-napoca", "bucuresti", "timisoara", "brasov",
+}
 
 DESIGN_PAGE_SLUGS = {s for s, _ in DESIGN_PAGES}
 DESIGN_STYLE_SLUGS = {s for s, _ in DESIGN_STYLES}

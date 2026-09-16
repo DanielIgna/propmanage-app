@@ -45,6 +45,7 @@ from routes.public import (
     _marketplace_entries,
     _specialist_entries,
     _design_entries,
+    _estate_entries,
     build_sitemap_index_xml,
 )
 
@@ -75,6 +76,11 @@ GUIDE_CLUSTER = {
     "ce-este-digital-twin-locuinta": "digital_twin",
     "imobile-verificate-cum-functioneaza": "imobile_verificate",
     "cum-alegi-designer-interior": "design_interior",
+    "cat-costa-design-interior-cluj": "design_interior",
+    "cum-pregatesti-apartament-renovare": "design_interior",
+    "design-interior-vs-amenajare": "design_interior",
+    "ce-verifici-inainte-de-renovare-apartament": "design_interior",
+    "compartimentare-cost-amenajare": "design_interior",
 }
 
 # Internally-linked hubs (footer / nav) — used for orphan/coverage heuristic.
@@ -101,6 +107,8 @@ def _classify(path: str):
         return "commercial", "design_interior", True
     if p == "/imobile-verificate":
         return "commercial", "imobile_verificate", True
+    if p.startswith("/imobile-verificate/") and p != "/imobile-verificate/sell":
+        return "listing", "imobile_verificate", True
     if p == "/digital-twin":
         return "commercial", "digital_twin", True
     if p == "/scorul-casei":
@@ -194,6 +202,7 @@ async def _snapshot(force: bool = False):
     market_e = await _marketplace_entries(today)
     spec_e = await _specialist_entries(today)
     design_e = await _design_entries(today)
+    estate_e = await _estate_entries(today)
 
     national, combos = await _indexability_rows()
 
@@ -207,6 +216,7 @@ async def _snapshot(force: bool = False):
         "sitemap-marketplace.xml": _locs(market_e),
         "sitemap-specialists.xml": _locs(spec_e),
         "sitemap-design.xml": _locs(design_e),
+        "sitemap-estate.xml": _locs(estate_e),
     }
     all_indexable_urls = [u for urls in sitemap_children.values() for u in urls]
     total_indexable = len(all_indexable_urls)
@@ -578,6 +588,7 @@ async def seo_sitemap_validate(user: dict = Depends(require_role("admin"))):
         "sitemap-marketplace.xml": _wrap_urlset(await _marketplace_entries(today)),
         "sitemap-specialists.xml": _wrap_urlset(await _specialist_entries(today)),
         "sitemap-design.xml": _wrap_urlset(await _design_entries(today)),
+        "sitemap-estate.xml": _wrap_urlset(await _estate_entries(today)),
     }
     all_urls = []
     child_ok = True
@@ -701,6 +712,9 @@ async def _pages_inventory(snap):
     # marketplace pages that pass the gate (indexable ones)
     for u in snap["sitemap_children"].get("sitemap-marketplace.xml", []):
         rows.append(await _row(u.replace(_SITE_URL, "")))
+    # verified-estate listing pages (published, non-demo) that are in the sitemap
+    for u in snap["sitemap_children"].get("sitemap-estate.xml", []):
+        rows.append(await _row(u.replace(_SITE_URL, ""), page_type="listing", cluster="imobile_verificate"))
     return rows
 
 

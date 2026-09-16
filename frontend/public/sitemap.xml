@@ -20,4 +20,8 @@
     <loc>https://propmanage.ro/sitemap-design.xml</loc>
     <lastmod>2026-09-16</lastmod>
   </sitemap>
+  <sitemap>
+    <loc>https://propmanage.ro/sitemap-estate.xml</loc>
+    <lastmod>2026-09-16</lastmod>
+  </sitemap>
 </sitemapindex>
