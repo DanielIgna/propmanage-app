@@ -1,0 +1,25 @@
+{
+  "summary": "Phase 3 SEO HartaBlocuri Cluster Foundation (read-only) tested end-to-end. 59/59 pre-existing unit tests pass (seo_clusters + truth_layer + typology). Wrote 13 new API integration tests via external URL — all pass. Frontend: admin SEO HartaBlocuri sub-tab renders pilot banner ('5 pregătite · 0 publicate · prag index ≥ 25 blocuri'), 5 cluster cards with NOINDEX / PILOT_PREPARED / NU ÎN SITEMAP badges, expanded view shows canonical, meta, intro, data-limits, and forward links to /cartea-casei /scorul-casei /digital-twin. All existing SEO sub-tabs (Overview, Indexability, URL Inspector, Sitemap, Pages, Clusters, Alerts, GSC) load without errors. CRITICAL SAFETY GUARANTEE VERIFIED: (1) every pilot cluster returns index=false, in_sitemap=false, published=false, status=pilot_prepared, indexability=prepared_noindex; (2) /sitemap.xml and all 6 child sitemaps contain ZERO '/blocuri/' URLs; (3) existing /api/admin/seo/clusters still returns 9 clusters with building_hartablocuri showing pages=0/in_sitemap=0. Truth Layer regression verified (public /api/public/buildings/6aaabeb516469f4cdea48187 still returns truth_layer with era/form/regime/project_family/typology_profiles).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_seo_hartablocuri_phase3_api.py",
+    "/app/backend/tests/test_seo_clusters_iter226.py",
+    "/app/backend/tests/test_hartablocuri_typology_iter225.py",
+    "/app/backend/tests/test_hartablocuri_truth_layer_iter224.py",
+    "/app/test_reports/pytest/iter_phase3_units.xml",
+    "/app/test_reports/pytest/iter_phase3_api.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Detail endpoint returns wrapper {\"cluster\": {...}} while list endpoint returns clusters as bare objects in an array — inconsistent shape between list and detail; consider unwrapping detail or wrapping list items for uniform client parsing.",
+    "Public building endpoint wraps response as {\"building\": {...}} — same wrapper-inconsistency observation for external consumers; documented shapes should be enforced via response_model."
+  ],
+  "updated_files": ["/app/backend/tests/test_seo_hartablocuri_phase3_api.py"],
+  "success_rate": {"backend": "100% (13/13 API + 59/59 units)", "frontend": "100%"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (cookie session — external URL only)",
+  "seed_data_creation": "none (read-only engine, no DB writes)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Phase 3 pilot clusters (/api/admin/seo/hartablocuri-clusters) verified safe: never index=true, never in_sitemap=true. Sitemap has NO /blocuri/ URLs. Any future work that publishes clusters MUST first change status/indexability AND add explicit sitemap generation — currently completely inert. UI subtab is data-testid=seo-tab-hartablocuri-clusters with cards seo-hb-cluster-<id> and toggles seo-hb-cluster-toggle-<id>. Ignored the 3 pre-flagged unrelated harness/data-state tests as instructed."
+}

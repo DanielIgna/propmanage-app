@@ -6763,3 +6763,19 @@ Testat în preview: pagina se încarcă, click → „32 emailuri repuse în coa
 **Integritate confirmată:** 3408 total / 3406 HartaBlocuri / 2 PropManage · 0 raw/import/schema/SEO/sitemap/Marketplace changes.
 
 **BLOCAT (așteaptă aprobare):** Plan Family, structure enrichment, SEO programatic pentru cele 3406 clădiri, sitemap expansion, import production. Componentele/datele SEO pot fi pregătite dar FĂRĂ generare sitemap/pagini.
+
+---
+
+## HartaBlocuri — SEO Cluster Foundation (Faza 3, Pilot) — 2026-06
+
+**Status:** IMPLEMENTAT + TESTAT (E2E iteration_225.json, 0 issues). STOP după Faza 3 — NIMIC publicat.
+
+**Implementat (read-only, NEpublicat):**
+- `seo_clusters.py` — motor clustere SEO peste Truth Layer. 5 clustere pilot Cluj (C1/C4/eră/familie), toate noindex + absente din sitemap.
+- Fiecare cluster: slug/canonical/meta/H1/intro din agregate reale, quality_gate (≥25), data_limits legale, internal linking semantic, provenance neverificat.
+- API `GET /api/admin/seo/hartablocuri-clusters(+/{id})` integrat în SEO Control Center; sub-tab „HartaBlocuri" în AdminSEO.jsx.
+- Teste: test_seo_clusters_iter226.py (24) + 13 API integrare = 100%.
+
+**GARANȚIE:** sitemap/robots/raw/schema/import/Truth Layer/Marketplace/House Health/Digital Twin/OAuth = NESCHIMBATE. Niciun `/blocuri/` în sitemap. Integritate 3408/3406/2.
+
+**BLOCAT (așteaptă aprobare P4):** publicare SEO, sitemap expansion, generare pagini, indexability changes, alte clustere.

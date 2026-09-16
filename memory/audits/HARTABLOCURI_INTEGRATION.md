@@ -98,3 +98,14 @@ Corectitudinea datelor, Contextul clădirii, Admin Import Center, rezolvarea con
 - **Integritate confirmată:** 3408 total / 3406 HartaBlocuri / 2 PropManage · 0 raw modificate · 0 import · 0 schemă · 0 SEO/sitemap/Marketplace.
 - **STOP:** BLOCAT — Plan Family, structure enrichment, SEO programatic, sitemap expansion, import production. Așteaptă aprobare explicită.
 
+
+## 16. SEO Cluster Foundation — Faza 3 (Pilot, READ-ONLY, NEpublicat) — 2026-06
+**Principiu:** layer SEO derivat peste `buildings` + Truth Layer. Zero publicare, zero atingere sitemap/robots/import/raw/schema/Truth Layer/Marketplace/House Health/Digital Twin/OAuth.
+- **Modul:** `/app/backend/seo_clusters.py` — `list_pilot_clusters()`, `get_pilot_cluster(id)`, `build_cluster()`, `PILOT_CLUSTERS` (5). Taxonomie: Localitate · Eră · Formă · Typology Profile · Project Family.
+- **Clustere pilot (Cluj-Napoca):** cluj-panou-p4 (C1, ~785), cluj-turn-inalt (C4, ~114), cluj-comunist-1977-1990 (~907), cluj-interbelic (~82), cluj-proiect-cf1 (~1124). Toate: `index=False`, `in_sitemap=False`, `published=False`, `status=pilot_prepared`, `indexability=prepared_noindex`.
+- **Per cluster:** slug (`/blocuri/<city>/<value>`), canonical self, title/meta_title/meta_description(≤300)/H1/intro din agregate REALE (fără fabricare), distribuții (eră/regim/cartier/familie), confidence, quality_gate (prag ≥25 blocuri, anti thin-content), data_limits (disclaimere risc seismic/clasă energetică/renovare/conformitate — NU se deduc), internal_links (forward: Găsește-ți blocul/Cartea Casei/House Health-Scorul Casei/Audit-Marketplace/Digital Twin; inverse; related_guides reale), provenance (`neverificat`, Typology=Candidate).
+- **API admin:** `GET /api/admin/seo/hartablocuri-clusters` + `/{cluster_id}` (require_role admin). Integrate în SEO Control Center existent.
+- **Frontend:** sub-tab „HartaBlocuri" în `AdminSEO.jsx` (`HartaBlocuriClustersView`) — banner pilot + carduri cu NOINDEX/PILOT_PREPARED/NU ÎN SITEMAP + detaliu expandabil.
+- **Teste:** `tests/test_seo_clusters_iter226.py` (24) + 13 teste API integrare (external URL) — 100% pass. E2E iteration_225.json: backend 100%, frontend 100%, 0 issues.
+- **GARANȚIE verificată:** sitemap.xml + child sitemaps NU conțin `/blocuri/` · clusters existente intacte (building_hartablocuri pages=0) · Truth Layer neschimbat · integritate 3408/3406/2.
+- **STOP:** publicarea SEO, sitemap expansion, generarea de pagini, indexability changes — BLOCATE până la aprobare explicită (P4).
