@@ -6746,3 +6746,20 @@ Testat în preview: pagina se încarcă, click → „32 emailuri repuse în coa
 **Integritate confirmată (preview):** 3408 total / 3406 HartaBlocuri / 2 PropManage · 0 raw fields modified · 0 import changes · 0 schema changes · 0 sitemap/SEO/Marketplace changes.
 
 **BLOCAT explicit (așteaptă aprobare P2):** Project Family, Plan Family, C1/C4 Typology Profiles, SEO, pagini programatice, sitemap expansion, enrichment construction_year. Fără import HartaBlocuri în această fază.
+
+---
+
+## HartaBlocuri — Truth Layer v2.0 (Faza 2: Project Families + C1/C4) — 2026-06
+
+**Status:** IMPLEMENTAT + TESTAT (E2E iteration_224.json, 0 issues). STOP după Faza 2.
+
+**Implementat (read-only, zero scriere DB, raw intact):**
+- Project Families: `derive_project_family()` — normalizare soft coduri cf (cf1/cf2/cf3 + variants), raw păstrat, ambiguu→unknown. 2077 clădiri.
+- Typology Profiles Candidate: C1 (panou P+4 comunist, 1120) + C4 (turn P+10, 114), etichetate `candidate` + disclaimer legal.
+- `truth_layer` extins în public/admin building detail + client Building Context (`_serialize_building`).
+- UI: `DerivedContextBlock` în client HartaBlocuriCard; Familie+profile în Observability modal; Admin Menu link „HartaBlocuri · Import" (/admin/hartablocuri) + „HartaBlocuri · Observability" (/admin/harta-blocuri).
+- Teste: test_hartablocuri_typology_iter225.py (21) + iter224 (23) = 44/44 unit pass.
+
+**Integritate confirmată:** 3408 total / 3406 HartaBlocuri / 2 PropManage · 0 raw/import/schema/SEO/sitemap/Marketplace changes.
+
+**BLOCAT (așteaptă aprobare):** Plan Family, structure enrichment, SEO programatic pentru cele 3406 clădiri, sitemap expansion, import production. Componentele/datele SEO pot fi pregătite dar FĂRĂ generare sitemap/pagini.

@@ -86,3 +86,15 @@ Corectitudinea datelor, Contextul clădirii, Admin Import Center, rezolvarea con
 - **Teste:** `tests/test_hartablocuri_truth_layer_iter224.py` (23/23 pass — ERA/FORM/REGIME/CARTIER/provenance/null-safety).
 - **STOP:** BLOCAT în continuare — Project Family, Plan Family, C1/C4, SEO, sitemap, enrichment. Așteaptă aprobare P2.
 
+## 15. Truth Layer READ MODEL v2.0 — Faza 2 (Project Families + Typology Profiles C1/C4) — 2026-06
+**Principiu:** extensie strict read-only a Truth Layer. Zero scriere DB, raw/provenance intacte, fără estimări.
+- **Project Family (L1)** — `derive_project_family(hb_raw)` normalizează soft codurile „cf" din free-text `raw.proiect`: familie de bază `cf<număr>` (cf1/cf2/cf3), `variants[]` = token-uri complete (cf1d, cf1sd...), `raw_project` păstrat. „cf1?" → `medium`; fără cod cf → `unknown`; familii diferite → `low`; lipsă → `not_available`. Dataset: 2077 clădiri cu familie derivată.
+- **Typology Profiles (L2 · CANDIDATE)** — `derive_typology_profiles(hb_raw, truth_layer)` returnează profilurile candidate satisfăcute (doar matched), etichetate `classification=candidate` + disclaimer „Candidate Typology — neverificat de PropManage. Nu este tipologie oficială, certificare sau diagnostic tehnic".
+  - **C1** „Panou prefabricat P+4 (fond comunist)": era comunistă + structură panouri/prefabricate + `derived_floors==4`. Confidence `high` (sau `medium` dacă structura conține „posibil"). Dataset: **1120** clădiri.
+  - **C4** „Turn de locuit (regim înalt)": `form==turn` + `derived_floors>=10`. Confidence `high`. Dataset: **114** clădiri.
+- **Suprafață extinsă:** `truth_layer.project_family` + `truth_layer.typology_profiles` expuse (non-breaking) în: `GET /api/public/buildings/{id}`, `GET /api/admin/hartablocuri/buildings/{id}`, și `building.truth_layer` din `_serialize_building` (Building Context client: `GET /api/properties/{id}/building-context` + `technical-record`).
+- **UI:** (a) Client Building Context `PropertyTechnicalRecord.jsx` → `DerivedContextBlock` în `HartaBlocuriCard` („Context derivat (neverificat)" — Eră/Formă/Regim/Familie + carduri Candidate Typology, disclaimer legal explicit). (b) Observability modal → rânduri Familie proiect + carduri profil. (c) Admin Menu (`AdminLayoutMetronic.jsx`) → „HartaBlocuri · Observability" (/admin/harta-blocuri) + „HartaBlocuri · Import" (/admin/hartablocuri).
+- **Teste:** `tests/test_hartablocuri_typology_iter225.py` (project_family + C1/C4 + integrare) — 21 teste. Total Truth Layer: 44/44 unit pass. E2E (iteration_224.json): backend 49/50 (1 skip legitim), frontend 100%, 0 issues.
+- **Integritate confirmată:** 3408 total / 3406 HartaBlocuri / 2 PropManage · 0 raw modificate · 0 import · 0 schemă · 0 SEO/sitemap/Marketplace.
+- **STOP:** BLOCAT — Plan Family, structure enrichment, SEO programatic, sitemap expansion, import production. Așteaptă aprobare explicită.
+
