@@ -61,3 +61,12 @@ Building Health, Twin Maturity, PVI, Cartea Casei, Digital Twin, formulele exist
 
 ## 12. De validat înainte de SEO programatic per bloc/cartier
 Corectitudinea datelor, Contextul clădirii, Admin Import Center, rezolvarea conflictelor și fluxul Client Beta end-to-end.
+
+## 13. Securitate (Security Audit 2026-06 — CONDITIONAL PASS, 0 Critical/High)
+- **SEC-001 (rezolvat)**: URL-urile de planuri/poze externe se validează pe **host real** (`hartablocuri.ro` / `www.hartablocuri.ro`), nu substring — respinge `//evil.test/hartablocuri.ro` și `//hartablocuri.ro.evil.com`.
+- **SEC-002 (rezolvat)**: `/api/public/buildings/cities` folosește aggregation + cache 5 min (fără scan complet repetat).
+- **SEC-003 (rezolvat)**: `POST /admin/hartablocuri/import` constrânge `file_path` la `/app/backend/data` (realpath + extensie .xlsx), eroare generică (fără path traversal / file probing).
+- **Hardening**: rezolvarea conflictelor acceptă doar câmpuri din allowlist (`construction_year/floors/number_of_units/neighborhood`) → previne injecția de path în `$set`.
+- Controale confirmate OK: admin endpoints cu `require_role('admin')`; `re.escape` pe q/city (anti NoSQL/ReDoS); paginare mărginită; `ObjectId.is_valid`; public whitelist fără `owner_id`/rezidenți/note; fără `dangerouslySetInnerHTML`; scheme URL forțate http/https; `rel="noreferrer nofollow"` + `target=_blank`.
+- Deschis (P3, neimplementat acum): rate limiting per-IP pe endpoint-urile publice (doar abuz/cost, nu scurgere de date).
+

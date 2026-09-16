@@ -20,6 +20,7 @@ router = APIRouter(prefix="/api", tags=["hartablocuri"])
 public_router = APIRouter(prefix="/api/public", tags=["hartablocuri-public"])
 
 HB_FILE_DEFAULT = "/app/backend/data/hartablocuri_cluj.xlsx"
+HB_DATA_DIR = "/app/backend/data"
 
 
 def _hb(b: dict) -> Optional[dict]:
@@ -90,16 +91,28 @@ async def public_search_buildings(
     return {"buildings": out, "total": total}
 
 
+_CITIES_CACHE = {"data": None, "ts": 0.0}
+_CITIES_TTL = 300  # secunde
+
+
 @public_router.get("/buildings/cities")
 async def public_cities():
-    """Localități disponibile (din HartaBlocuri + PropManage) pentru filtre discovery."""
-    cities = {}
-    async for b in db.buildings.find({}, {"city": 1, "context.external_sources.hartablocuri.raw.city": 1}):
-        c = b.get("city") or (_hb(b) or {}).get("raw", {}).get("city")
-        if c:
-            cities[c] = cities.get(c, 0) + 1
-    ordered = sorted(cities.items(), key=lambda x: -x[1])
-    return {"cities": [{"name": c, "count": n} for c, n in ordered]}
+    """Localități disponibile pentru filtre discovery. Aggregation + cache (evită scan complet repetat)."""
+    import time
+    now = time.time()
+    if _CITIES_CACHE["data"] is not None and (now - _CITIES_CACHE["ts"]) < _CITIES_TTL:
+        return {"cities": _CITIES_CACHE["data"]}
+    pipeline = [
+        {"$project": {"city": {"$ifNull": ["$city", "$context.external_sources.hartablocuri.raw.city"]}}},
+        {"$match": {"city": {"$nin": [None, ""]}}},
+        {"$group": {"_id": "$city", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 100},
+    ]
+    result = [{"name": d["_id"], "count": d["count"]} async for d in db.buildings.aggregate(pipeline)]
+    _CITIES_CACHE["data"] = result
+    _CITIES_CACHE["ts"] = now
+    return {"cities": result}
 
 
 @public_router.get("/buildings/{building_id}")
@@ -134,10 +147,13 @@ class ImportRequest(BaseModel):
 @router.post("/admin/hartablocuri/import")
 async def admin_run_import(body: ImportRequest, user: dict = Depends(require_role("admin"))):
     from hartablocuri_import import run_import
-    path = body.file_path or HB_FILE_DEFAULT
     import os
+    path = os.path.realpath(body.file_path or HB_FILE_DEFAULT)
+    # Constrânge la directorul de date (previne path traversal / citire arbitrară)
+    if os.path.commonpath([path, HB_DATA_DIR]) != HB_DATA_DIR or not path.endswith((".xlsx", ".xls")):
+        raise HTTPException(400, "Fișier invalid. Sunt permise doar fișiere .xlsx din directorul de date.")
     if not os.path.exists(path):
-        raise HTTPException(400, f"Fișierul nu există: {path}. Încarcă-l în {HB_FILE_DEFAULT} întâi.")
+        raise HTTPException(400, "Fișierul de import nu a fost găsit în directorul de date.")
     result = await run_import(path, limit=body.limit, dry_run=body.dry_run, triggered_by=user["id"])
     return result
 
@@ -174,6 +190,10 @@ class ConflictResolve(BaseModel):
     action: str = Field(pattern="^(confirm|reject)$")  # confirm=acceptă HartaBlocuri, reject=păstrează PropManage
 
 
+# Câmpuri de context permise pentru rezolvare (allowlist — previne injecție de path în $set)
+RESOLVABLE_FIELDS = {"construction_year", "floors", "number_of_units", "neighborhood"}
+
+
 @router.get("/admin/hartablocuri/buildings/{building_id}")
 async def admin_building_detail(building_id: str, user: dict = Depends(require_role("admin"))):
     """Detaliu complet bloc pentru Admin: context, proveniență HartaBlocuri, conflicte, typology."""
@@ -205,6 +225,8 @@ async def admin_resolve_conflict(building_id: str, body: ConflictResolve,
     """
     if not ObjectId.is_valid(building_id):
         raise HTTPException(404, "Blocul nu există")
+    if body.field not in RESOLVABLE_FIELDS:
+        raise HTTPException(400, "Câmp de conflict invalid")
     b = await db.buildings.find_one({"_id": ObjectId(building_id)})
     if not b:
         raise HTTPException(404, "Blocul nu există")

@@ -110,11 +110,24 @@ def _parse_uat(uat: Optional[str], oras: Optional[str]) -> tuple[Optional[str], 
     return city, neighborhood
 
 
+ALLOWED_ASSET_HOSTS = {"hartablocuri.ro", "www.hartablocuri.ro"}
+
+
 def _extract_urls(html: Optional[str]) -> list[str]:
+    """Extrage DOAR URL-uri către hostul autorizat hartablocuri.ro (validare pe host, nu substring)."""
     if not html:
         return []
-    urls = re.findall(r'(?:https?:)?//[^\s"\'<>]+hartablocuri\.ro[^\s"\'<>]*', str(html))
-    return sorted({("https:" + u if u.startswith("//") else u) for u in urls})
+    from urllib.parse import urlparse
+    out = set()
+    for raw in re.findall(r'(?:https?:)?//[^\s"\'<>]+', str(html)):
+        full = ("https:" + raw) if raw.startswith("//") else raw
+        try:
+            host = (urlparse(full).hostname or "").lower()
+        except Exception:
+            continue
+        if host in ALLOWED_ASSET_HOSTS:
+            out.add(full)
+    return sorted(out)
 
 
 def parse_workbook(path: str, limit: Optional[int] = None) -> list[dict]:
