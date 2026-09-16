@@ -187,7 +187,8 @@ const NAV_SECTIONS = [
       { id: "ve_admin", label: "Imobile Verificate", icon: Award, badge: "NEW", href: "/admin/imobile-verificate" },
       { id: "house_health", label: "House Health", icon: Heart, badge: "NEW", href: "/admin/house-health" },
       { id: "experience_spaces", label: "Experience Spaces", icon: Sparkles, badge: "BETA", href: "/admin/experience-spaces" },
-      { id: "harta_blocuri", label: "HartaBlocuri", icon: Building2, badge: "OBSERV", href: "/admin/harta-blocuri" },
+      { id: "harta_blocuri", label: "HartaBlocuri · Observability", icon: Building2, badge: "OBSERV", href: "/admin/harta-blocuri" },
+      { id: "hartablocuri_import", label: "HartaBlocuri · Import", icon: Building2, badge: "IMPORT", href: "/admin/hartablocuri" },
     ],
   },
   {

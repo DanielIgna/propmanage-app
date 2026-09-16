@@ -100,6 +100,21 @@ const BuildingDetailModal = ({ id, onClose }) => {
                   <TruthRow label="Eră" value={b.truth_layer.era?.value} level={b.truth_layer.era?.level} confidence={b.truth_layer.era?.confidence} testid="hb-tl-era" />
                   <TruthRow label="Formă" value={b.truth_layer.form?.value} level={b.truth_layer.form?.level} confidence={b.truth_layer.form?.confidence} hint={b.truth_layer.form?.raw_project} testid="hb-tl-form" />
                   <TruthRow label="Regim derivat" value={b.truth_layer.regime?.derived_floors != null ? `${b.truth_layer.regime.derived_floors} etaje` : null} level={b.truth_layer.regime?.level} confidence={b.truth_layer.regime?.confidence} hint={b.truth_layer.regime?.raw} testid="hb-tl-regime" />
+                  <TruthRow label="Familie proiect" value={b.truth_layer.project_family?.family} level={b.truth_layer.project_family?.level} confidence={b.truth_layer.project_family?.confidence} hint={(b.truth_layer.project_family?.variants || []).join(", ") || b.truth_layer.project_family?.raw_project} testid="hb-tl-family" />
+                  {(b.truth_layer.typology_profiles || []).length > 0 && (
+                    <div className="pt-1.5 border-t border-stone-800 space-y-1.5" data-testid="hb-tl-profiles">
+                      {b.truth_layer.typology_profiles.map(p => (
+                        <div key={p.code} className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-2" data-testid={`hb-tl-profile-${p.code}`}>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">Candidate · {p.code}</span>
+                            <span className="text-[11px] font-bold text-stone-200">{p.label}</span>
+                            <span className={`text-[8px] px-1.5 py-0.5 rounded-full border uppercase ${CONF_CLS[p.confidence] || CONF_CLS.unknown}`}>{p.confidence}</span>
+                          </div>
+                          <div className="text-[9px] text-stone-500 mt-0.5">{p.criteria_met?.join(" · ")}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <p className="text-[10px] text-stone-600 pt-1.5 border-t border-stone-800">Valori derivate din datele externe — neverificate de PropManage. Nu constituie diagnostic tehnic.</p>
                 </div>
               </section>

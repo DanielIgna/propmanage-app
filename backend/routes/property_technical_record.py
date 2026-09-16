@@ -40,6 +40,7 @@ from pydantic import BaseModel, Field
 
 from db import db
 from deps import get_current_user
+from hartablocuri_read_layer import build_truth_layer
 from routes.property_dna import _load_property_for
 
 logger = logging.getLogger(__name__)
@@ -184,6 +185,7 @@ def _serialize_building(b: dict) -> dict:
         "context_updated_at": ctx.get("updated_at"),
         "conflicts": ctx.get("conflicts") or [],
         "hartablocuri": _serialize_hartablocuri(hb) if hb else None,
+        "truth_layer": build_truth_layer((hb or {}).get("raw")) if hb else None,
         "created_by": b.get("created_by"),
         "created_at": b.get("created_at"),
     }

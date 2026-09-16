@@ -114,14 +114,101 @@ def build_truth_layer(hb_raw: Optional[dict]) -> Optional[dict]:
     """
     if not hb_raw:
         return None
-    return {
-        "era": _derive_era(hb_raw),
-        "form": _derive_form(hb_raw),
-        "regime": _derive_regime(hb_raw),
-        "neighborhood": _derive_neighborhood(hb_raw),
+    era = _derive_era(hb_raw)
+    form = _derive_form(hb_raw)
+    regime = _derive_regime(hb_raw)
+    neighborhood = _derive_neighborhood(hb_raw)
+    project_family = derive_project_family(hb_raw)
+    tl = {
+        "era": era,
+        "form": form,
+        "regime": regime,
+        "neighborhood": neighborhood,
+        "project_family": project_family,
         "provenance": {
             "source": "hartablocuri",
             "verification_status": "neverificat",
             "verification_note": "Date externe — neverificate de PropManage",
         },
     }
+    tl["typology_profiles"] = derive_typology_profiles(hb_raw, tl)
+    return tl
+
+
+# ───────────────────── PROJECT FAMILY (L1) ─────────────────────
+# Normalizare soft a codurilor de proiect „cf" (cf1, cf1d, cf1sd, cf2, cf3sd...).
+# Familia de bază = cf + număr; variantele (sufixe literale) se păstrează.
+# RAW rămâne intact; ambiguitatea → unknown (fără estimare).
+
+def derive_project_family(hb_raw: dict) -> dict:
+    proiect = hb_raw.get("proiect")
+    base = {"source_field": "proiect", "level": "L1",
+            "raw_project": (str(proiect).strip() if proiect not in (None, "") else None)}
+    if proiect is None or str(proiect).strip() == "":
+        return {**base, "family": None, "variants": [], "confidence": "not_available"}
+    n = _norm(proiect)
+    if n in _UNKNOWN_MARKERS:
+        return {**base, "family": None, "variants": [], "confidence": "unknown"}
+    tokens = re.findall(r"cf\d+[a-z]*", n)
+    if not tokens:
+        # proiect prezent dar fără cod „cf" clar (ex. „cub", „bara cu coridor exterior")
+        return {**base, "family": None, "variants": [], "confidence": "unknown"}
+    uncertain = bool(re.search(r"cf\d+[a-z]*\s*\?", n))  # ex. „cf1?"
+    families = sorted({re.match(r"cf\d+", t).group(0) for t in tokens})
+    variants = sorted(set(tokens))
+    if len(families) == 1:
+        return {**base, "family": families[0], "variants": variants,
+                "confidence": ("medium" if uncertain else "high")}
+    # coduri din familii diferite → ambiguu, nu estimăm
+    return {**base, "family": None, "variants": variants, "confidence": "low"}
+
+
+# ─────────────────── TYPOLOGY PROFILES (L2 · CANDIDATE) ───────────────────
+# Profiluri candidate derivate din faptele Truth Layer deja validate.
+# NU sunt tipologii oficiale, certificări sau diagnostice tehnice.
+
+_DISCLAIMER_TL = ("Candidate Typology — derivat din HartaBlocuri, neverificat de PropManage. "
+                  "Nu este o tipologie oficială, certificare sau diagnostic tehnic.")
+
+_PROFILE_C1 = {
+    "code": "C1",
+    "label": "Panou prefabricat P+4 (fond comunist)",
+    "description": "Bloc din panouri prefabricate, regim P+4, tipic fondului locativ comunist.",
+}
+_PROFILE_C4 = {
+    "code": "C4",
+    "label": "Turn de locuit (regim înalt)",
+    "description": "Bloc tip turn, regim înalt (P+10 sau mai mult).",
+}
+
+
+def derive_typology_profiles(hb_raw: dict, truth_layer: Optional[dict] = None) -> list:
+    """Returnează profilurile candidate (C1/C4) pe care le satisface clădirea.
+    Folosește EXCLUSIV faptele validate (era L0, formă L1, regim L1, structură raw).
+    """
+    tl = truth_layer or {}
+    era = _norm(hb_raw.get("era"))
+    struct = _norm(hb_raw.get("structura"))
+    form = (tl.get("form") or {}).get("value")
+    floors = (tl.get("regime") or {}).get("derived_floors")
+    comunist = "comunist" in era
+    is_panel = ("panou" in struct) or ("prefabric" in struct)
+    profiles = []
+    # C1 — panou prefabricat, era comunistă, regim P+4 (determinist)
+    if comunist and is_panel and floors == 4:
+        profiles.append({
+            **_PROFILE_C1, "matched": True, "level": "L2", "classification": "candidate",
+            "confidence": ("medium" if "posibil" in struct else "high"),
+            "criteria_met": ["era comunistă", "structură panouri prefabricate", "regim P+4 (determinist)"],
+            "disclaimer": _DISCLAIMER_TL,
+        })
+    # C4 — turn de locuit, regim înalt (≥ P+10, determinist)
+    if form == "turn" and floors is not None and floors >= 10:
+        profiles.append({
+            **_PROFILE_C4, "matched": True, "level": "L2", "classification": "candidate",
+            "confidence": "high",
+            "criteria_met": ["formă turn (din proiect)", "regim ≥ P+10 (determinist)"]
+                            + (["era comunistă"] if comunist else []),
+            "disclaimer": _DISCLAIMER_TL,
+        })
+    return profiles

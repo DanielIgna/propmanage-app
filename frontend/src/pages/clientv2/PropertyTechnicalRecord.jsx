@@ -148,7 +148,71 @@ const roomsSummary = (rb) => {
   return Object.entries(map).filter(([k]) => rb[k]).map(([k, l]) => `${rb[k]} × ${l}`).join(" · ") || null;
 };
 
-const HartaBlocuriCard = ({ hb }) => {
+const CONF_LABEL = {
+  high: { t: "certitudine ridicată", cls: "bg-emerald-100 text-emerald-700" },
+  medium: { t: "certitudine medie", cls: "bg-sky-100 text-sky-700" },
+  low: { t: "certitudine redusă", cls: "bg-amber-100 text-amber-700" },
+  unknown: { t: "nedeterminat", cls: "bg-slate-100 text-slate-500" },
+  not_available: { t: "indisponibil", cls: "bg-slate-100 text-slate-400" },
+};
+const DerivedRow = ({ label, value, confidence, hint, testid }) => (
+  <div className="flex items-start justify-between gap-2" data-testid={testid}>
+    <div className="min-w-0">
+      <dt className="text-[10px] text-amber-800">{label}</dt>
+      <dd className="text-[12px] font-bold text-slate-800 break-words">{value ?? "—"}</dd>
+      {hint && <div className="text-[9px] text-amber-700/60 truncate">din: {hint}</div>}
+    </div>
+    {confidence && (
+      <span className={`shrink-0 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full ${(CONF_LABEL[confidence] || CONF_LABEL.unknown).cls}`}>
+        {(CONF_LABEL[confidence] || CONF_LABEL.unknown).t}
+      </span>
+    )}
+  </div>
+);
+
+// Context derivat din datele externe — NU diagnostic tehnic / certificat / risc seismic / conformitate legală.
+const DerivedContextBlock = ({ tl }) => {
+  if (!tl) return null;
+  const profiles = tl.typology_profiles || [];
+  const regimeVal = tl.regime?.derived_floors != null ? `P+${tl.regime.derived_floors}` : null;
+  const hasAny = tl.era?.value || tl.form?.value !== "unknown" || regimeVal || tl.project_family?.family || profiles.length;
+  if (!hasAny) return null;
+  return (
+    <div className="mt-3 pt-3 border-t border-amber-200/60" data-testid="ptr-hb-derived">
+      <div className="flex items-center gap-1.5 mb-2">
+        <Info className="w-3 h-3 text-amber-600" />
+        <span className="text-[10px] font-black uppercase tracking-wider text-amber-800">Context derivat (neverificat)</span>
+      </div>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+        {tl.era?.value && <DerivedRow label="Eră (contextual)" value={tl.era.value} confidence={tl.era.confidence} testid="ptr-hb-derived-era" />}
+        {tl.form?.value && tl.form.value !== "unknown" && <DerivedRow label="Formă (derivată)" value={tl.form.value} confidence={tl.form.confidence} hint={tl.form.raw_project} testid="ptr-hb-derived-form" />}
+        {regimeVal && <DerivedRow label="Regim (derivat)" value={regimeVal} confidence={tl.regime.confidence} hint={tl.regime.raw} testid="ptr-hb-derived-regime" />}
+        {tl.project_family?.family && <DerivedRow label="Familie proiect" value={tl.project_family.family} confidence={tl.project_family.confidence} hint={(tl.project_family.variants || []).join(", ") || null} testid="ptr-hb-derived-family" />}
+      </dl>
+      {profiles.length > 0 && (
+        <div className="mt-3 space-y-1.5" data-testid="ptr-hb-typology-profiles">
+          {profiles.map(p => (
+            <div key={p.code} className="rounded-lg border border-amber-200 bg-white/70 p-2" data-testid={`ptr-hb-profile-${p.code}`}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">Candidate Typology · {p.code}</span>
+                <span className="text-[11px] font-bold text-slate-800">{p.label}</span>
+                <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full ${(CONF_LABEL[p.confidence] || CONF_LABEL.unknown).cls}`}>{(CONF_LABEL[p.confidence] || CONF_LABEL.unknown).t}</span>
+              </div>
+              <div className="text-[10px] text-slate-500 mt-0.5">{p.description}</div>
+              <div className="text-[9px] text-amber-700/70 mt-1">{p.disclaimer}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="mt-2 text-[9px] text-amber-700/70 leading-relaxed">
+        Informații derivate/contextuale din datele externe HartaBlocuri — neverificate de PropManage.
+        NU reprezintă diagnostic tehnic, certificat energetic, evaluare de risc seismic sau conformitate legală.
+      </p>
+    </div>
+  );
+};
+
+const HartaBlocuriCard = ({ hb, truthLayer }) => {
   if (!hb) return null;
   const f = hb.fields || {};
   const rooms = roomsSummary(f.rooms_breakdown);
@@ -181,6 +245,8 @@ const HartaBlocuriCard = ({ hb }) => {
           </div>
         )}
       </dl>
+
+      <DerivedContextBlock tl={truthLayer} />
 
       {(hb.plan_urls || []).length > 0 && (
         <div className="mt-3" data-testid="ptr-hb-plans">
@@ -367,7 +433,7 @@ const BuildingContextSection = ({ propId, initial, vocab, viewer, onSaved }) => 
       </div>
 
       {/* Date externe HartaBlocuri — proveniență vizibilă, neverificate */}
-      {building?.hartablocuri && <HartaBlocuriCard hb={building.hartablocuri} />}
+      {building?.hartablocuri && <HartaBlocuriCard hb={building.hartablocuri} truthLayer={building.truth_layer} />}
 
       {/* Building Neighbours — a doua axă: 1 building → N properties */}
       {building && neighbours && (
