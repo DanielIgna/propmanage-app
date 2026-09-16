@@ -124,6 +124,12 @@ def _classify(path: str):
         return "editorial", "audit", False
     if p == "/devino-francizat":
         return "commercial", "other", True
+    if p in ("/pentru-proprietari", "/cartea-casei"):
+        return "acquisition", "proprietari", True
+    if p == "/devino-specialist" or p == "/pentru-specialisti" or p.startswith("/pentru-specialisti/"):
+        return "acquisition", "specialisti", True
+    if p == "/pentru-designeri":
+        return "acquisition", "designeri", True
     if p == "/marketplace":
         return "marketplace", "marketplace", True
     if p == "/ghiduri":

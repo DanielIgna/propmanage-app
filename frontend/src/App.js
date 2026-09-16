@@ -46,6 +46,7 @@ import { LandingDemo3D } from "./components/LandingDemo3D";
 const PublicDemoPage = lazy(() => import("./pages/PublicDemoPage").then(m => ({ default: m.PublicDemoPage })));
 const AdminAuthHealthPage = lazy(() => import("./pages/admin/AdminAuthHealthPage").then(m => ({ default: m.AdminAuthHealthPage })));
 const ResearchCoveragePage = lazy(() => import("./pages/admin/ResearchCoveragePage"));
+const AcquisitionPage = lazy(() => import("./pages/AcquisitionPage"));
 const AdminSupportInboxPage = lazy(() => import("./pages/admin/AdminSupportInboxPage").then(m => ({ default: m.AdminSupportInboxPage })));
 import { PrivacyPage, TermsPage, CookiePolicyPage } from "./pages/LegalPages";
 const TrustCenterPage = lazy(() => import("./pages/TrustCenterPage").then(m => ({ default: m.TrustCenterPage })));
@@ -1551,6 +1552,15 @@ const Footer = () => {
             <Link to="/preturi" className="hover:text-[#d4ff3a] transition-colors" data-testid="footer-explore-preturi">Prețuri lucrări</Link>
           </div>
         </div>
+        <div className="border-t border-white/5 pt-6 pb-2" data-testid="footer-join">
+          <div className="text-[11px] text-stone-500 uppercase tracking-wider mb-3">Alătură-te PropManage</div>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-stone-400">
+            <Link to="/pentru-proprietari" className="hover:text-[#d4ff3a] transition-colors" data-testid="footer-join-owners">Pentru proprietari</Link>
+            <Link to="/cartea-casei" className="hover:text-[#d4ff3a] transition-colors" data-testid="footer-join-cartea">Cartea Casei</Link>
+            <Link to="/pentru-specialisti" className="hover:text-[#d4ff3a] transition-colors" data-testid="footer-join-specialists">Pentru specialiști</Link>
+            <Link to="/pentru-designeri" className="hover:text-[#d4ff3a] transition-colors" data-testid="footer-join-designers">Pentru designeri</Link>
+          </div>
+        </div>
         <div className="border-t border-white/5 pt-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="text-[11px] text-stone-500 uppercase tracking-wider">Urmărește-ne</div>
           <div className="flex flex-wrap gap-2" data-testid="footer-socials">
@@ -1689,6 +1699,11 @@ function App() {
               <Route path="/franciza" element={<FranchiseDashboard />} />
               <Route path="/devino-francizat" element={<FranchiseApplyPage />} />
               <Route path="/devino-specialist" element={<SpecialistApplyPage />} />
+              <Route path="/pentru-proprietari" element={<AcquisitionPage />} />
+              <Route path="/cartea-casei" element={<AcquisitionPage />} />
+              <Route path="/pentru-specialisti" element={<AcquisitionPage />} />
+              <Route path="/pentru-specialisti/:trade" element={<AcquisitionPage />} />
+              <Route path="/pentru-designeri" element={<AcquisitionPage />} />
               <Route path="/franchise_admin" element={<FranchiseDashboard />} />
               <Route path="/servicii/design-interior" element={<Navigate to="/design-interior" replace />} />
               <Route path="/demo" element={<PublicDemoPage />} />

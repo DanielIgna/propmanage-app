@@ -10,6 +10,7 @@ import {
   TextField, TrustStrip, StepDots, CopyBadge, CJ_GREEN,
 } from "./dashboard/clientjunior/components";
 import { API } from "./DashShared";
+import { useSEO } from "../hooks/useSEO";
 
 // ============================================================================
 // Devino specialist — UX Lab (rută publică /devino-specialist).
@@ -275,6 +276,13 @@ export default function SpecialistApplyPage() {
   const [view, setView] = useState("home"); // home | flow | confirm
   const [trade, setTrade] = useState(null);
   const [requestNumber, setRequestNumber] = useState(null);
+
+  useSEO({
+    title: "Devino specialist PropManage: înregistrare gratuită",
+    description: "Înregistrează-te gratuit ca specialist pe PropManage și primești cereri reale de la proprietari. Profil verificat, plată protejată prin escrow, fără costuri de start.",
+    canonical: "https://propmanage.ro/devino-specialist",
+    noindex: false,
+  });
 
   useEffect(() => { track("se_view"); }, []);
 
