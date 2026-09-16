@@ -24,7 +24,7 @@
     "/app/backend/tests/test_task5_regression_iter187.py (new)"
   ],
   "success_rate": {"backend": "100% (8/8)", "frontend": "100% (all Task 5 UX behaviors + Task 1-4 regressions verified)"},
-  "test_credentials": "client@propmanage.io / Client123! (premium), admin@propmanage.io / 1!nasov01ADMIN. Dynamic FREE users: nudge{ts}{a-c}@example.com — TestPass123!. Cleanup: match ^nudge\\d+.*@example.com$.",
+  "test_credentials": "client@propmanage.io / Client123! (premium), admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>. Dynamic FREE users: nudge{ts}{a-c}@example.com — TestPass123!. Cleanup: match ^nudge\\d+.*@example.com$.",
   "seed_data_creation": "3 FREE users via POST /api/auth/register (with terms/privacy accepted). Left in DB — recommend main agent cleanup on next iter or via regex ^nudge\\d+.*@example\\.com$.",
   "retest_needed": false,
   "should_main_agent_self_test": true,

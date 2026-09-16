@@ -26,7 +26,7 @@
     "/app/backend/tests/test_marketing_growth.py (NEW)"
   ],
   "success_rate": {"backend": "100% (16/16)", "frontend": "100% smoke"},
-  "test_credentials": "Admin: admin@propmanage.io / 1!nasov01ADMIN (worked); Client: client@propmanage.io / Client123! (worked).",
+  "test_credentials": "Admin: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (worked); Client: client@propmanage.io / Client123! (worked).",
   "seed_data_creation": "None. Existing seeded data used (777 users, 490 clients, 263 specialists, 108 requests).",
   "retest_needed": false,
   "main_agent_can_self_test": true,

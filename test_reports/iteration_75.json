@@ -24,7 +24,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_marketing_performance.py (NEW)"],
   "success_rate": {"backend": "100% (27/27)", "frontend": "100% (all testids + flows verified)"},
-  "test_credentials": "Admin: admin@propmanage.io / 1!nasov01ADMIN (worked). Client: client@propmanage.io / Client123! (worked, 403 enforced on all 6 perf endpoints + invalid-id branches).",
+  "test_credentials": "Admin: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (worked). Client: client@propmanage.io / Client123! (worked, 403 enforced on all 6 perf endpoints + invalid-id branches).",
   "seed_data_creation": "Added 2 additional perf-logs to existing Curățenie campaign (impressions:12000 clicks:380 leads:28 spent:260, plus seed logs to reach ≥3 threshold for learnings). After tests: 1 active learnings doc (sample_size 4+) + 1 calibration-applied generated HVAC/Brașov draft. Total perf logs now: 4-5 on Curățenie campaign.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

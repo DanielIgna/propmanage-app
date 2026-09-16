@@ -25,7 +25,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_lead_engine_iter127.py"],
   "success_rate": {"backend": "100% (9/9)", "frontend": "100% (all critical flows)"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (cookie-based POST /api/auth/login)",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (cookie-based POST /api/auth/login)",
   "seed_data_creation": "Câteva lead-uri de test cu prefix qa-g1-*@test.ro în db.lead_magnet_leads și db.leads (source=lead_magnet). Nu poluează datele demo. Pot fi șterse ulterior cu {email: {$regex: '^qa-g1-'}}.",
   "retest_needed": false,
   "should_main_agent_self_test": false,

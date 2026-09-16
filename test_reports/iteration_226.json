@@ -17,7 +17,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_phase4_hartablocuri_iter226.py"],
   "success_rate": {"backend": "100% (23/23)", "frontend": "100%"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (cookie session, external URL)",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (cookie session, external URL)",
   "seed_data_creation": "none (read-only engine, no DB writes)",
   "retest_needed": false,
   "should_main_agent_self_test": false,

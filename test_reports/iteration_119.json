@@ -27,7 +27,7 @@
     "/app/frontend/src/pages/clientv2/PropertyHubV2.jsx (fix: add Check to lucide-react import)"
   ],
   "success_rate": {"backend": "100% (7/7)", "frontend": "100% after fix"},
-  "test_credentials": "client@propmanage.io/Client123!, specialist@propmanage.io/Spec123!, admin@propmanage.io/1!nasov01ADMIN",
+  "test_credentials": "client@propmanage.io/Client123!, specialist@propmanage.io/Spec123!, admin@propmanage.io/<redacted:SEED_ADMIN_PASSWORD>",
   "seed_data_creation": "One completed request '[TEST] Value Loop E2E iter119' inserted via Mongo on client's first property, then confirmed via API. Left as 'confirmed' in DB along with 1 warranty and 1 pvi_history row.",
   "retest_needed": false,
   "should_main_agent_self_test": false,

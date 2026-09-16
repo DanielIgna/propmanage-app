@@ -22,7 +22,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_knowledge_center_iter130.py"],
   "success_rate": {"backend": "100% (18/18)", "frontend": "100%"},
-  "test_credentials": "Founder: danieligna1@gmail.com / Founder2026!kc · Admin: admin@propmanage.io / 1!nasov01ADMIN — both work",
+  "test_credentials": "Founder: danieligna1@gmail.com / Founder2026!kc · Admin: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> — both work",
   "seed_data_creation": "None. Read-only feature; no DB writes.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

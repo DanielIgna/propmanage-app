@@ -32,7 +32,7 @@
     "/app/test_reports/pytest/iter116_val3.xml (NEW)"
   ],
   "success_rate": {"backend": "100% (28/28)", "frontend": "100% (5/5 flows: /franciza-unauth→login, franchise-login→dashboard, dashboard-content, /franciza-as-franchise, logout, admin@/franciza→/admin)"},
-  "test_credentials": "HQ Admin: admin@propmanage.io / 1!nasov01ADMIN; Franchise Admin (cluj): franciza.cluj@propmanage.io / Franciza123!; Client: client@propmanage.io / Client123! — from /app/memory/test_credentials.md",
+  "test_credentials": "HQ Admin: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>; Franchise Admin (cluj): franciza.cluj@propmanage.io / Franciza123!; Client: client@propmanage.io / Client123! — from /app/memory/test_credentials.md",
   "seed_data_creation": "Ephemeral: (a) TEST_fa_<hex>@example.com franchise admin created via POST /admin/tenants/cluj/admins → deleted in cleanup; (b) 3 TEST_xtenant_<tag>_<hex>@example.com public leads via POST /services/arhitectura/leads → deleted in cleanup. Semi-permanent seeds preserved: tenant 'cluj', franciza.cluj@propmanage.io user, lead_cluj_test@example.com lead. Verified via post-run mongo query.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

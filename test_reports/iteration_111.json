@@ -38,7 +38,7 @@
     "/app/backend/tests/test_iter111_tenant_kg_regression.py (new, 26 test cases)"
   ],
   "success_rate": {"backend": "100% (25/25 executed, 1 skipped due to missing DB fixture)", "frontend": "100% (landing + admin login smoke passed)"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (SEED_ADMIN_PASSWORD from backend/.env). client@propmanage.io / Client123!. specialist@propmanage.io / Spec123!. Note: /app/memory/test_credentials.md still says admin=Admin123! but real seeded pw is 1!nasov01ADMIN — doc drift persists from iter110.",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (SEED_ADMIN_PASSWORD from backend/.env). client@propmanage.io / Client123!. specialist@propmanage.io / Spec123!. Note: /app/memory/test_credentials.md still says admin=Admin123! but real seeded pw is <redacted:SEED_ADMIN_PASSWORD> — doc drift persists from iter110.",
   "seed_data_creation": "Created 3 TEST_ users via /api/auth/register (emails: test_reg_*, test_dup_*, test_tenfb_*@example.com) — auto-cleaned by pytest module fixture teardown. Created 1 lead via /api/public/demo-request (regression_*@example.com) — persisted in unified `leads`, not cleaned up (idempotency skips duplicates on same-day retries).",
   "retest_needed": false,
   "should_main_agent_self_test": true,

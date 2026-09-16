@@ -16,7 +16,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_iter114_service_hub_theme.py"],
   "success_rate": {"backend": "100% (18/18)", "frontend": "100% (all critical flows)"},
-  "test_credentials": "Admin: admin@propmanage.io / 1!nasov01ADMIN; Client: client@propmanage.io / Client123! (from /app/memory/test_credentials.md)",
+  "test_credentials": "Admin: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>; Client: client@propmanage.io / Client123! (from /app/memory/test_credentials.md)",
   "seed_data_creation": "Test leads persisted with TEST_ prefix in service_leads + unified leads collection (source=design_exterior/arhitectura, score=45/warm, 20/nurture). Restored default_theme='system' for client role.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

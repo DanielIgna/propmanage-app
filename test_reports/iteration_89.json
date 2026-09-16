@@ -21,13 +21,13 @@
     "App.js has 55 `const X = lazy(...)` (grep confirms). No preloading strategy — first navigation to a route always incurs a chunk fetch. Consider adding hover-based prefetch on nav links (Link.onMouseEnter → import()) OR route-based prefetch for the 4 dashboards (/admin, /client, /specialist, /operator) on the login success handler to hide the first-paint delay after login.",
     "No <ErrorBoundary /> wrapping <Suspense>; if any lazy chunk fails to load (network hiccup, deploy race), user sees a blank div with only the spinner. Wrap Suspense in an ErrorBoundary that offers a «Reîncarcă pagina» button on ChunkLoadError.",
     "Public / catch-all: unknown paths like /xyz render Landing. Better UX would be a dedicated NotFound route (`<Route path=\"*\" element={<NotFound />} />`) so users know they mistyped.",
-    "test_credentials.md still lists Admin password as `Admin123!` but real password is `1!nasov01ADMIN` (from SEED_ADMIN_PASSWORD env). File was flagged in iter88 too — please sync."
+    "test_credentials.md still lists Admin password as `Admin123!` but real password is `<redacted:SEED_ADMIN_PASSWORD>` (from SEED_ADMIN_PASSWORD env). File was flagged in iter88 too — please sync."
   ],
   "updated_files": [
     "/app/backend/tests/test_phase1_regression_iter89.py (new — 10 tests, ~8s runtime, idempotent)"
   ],
   "success_rate": {"backend": "10/10 (100%)", "frontend": "16/16 routes verified (100%) — no lazy-loading regressions"},
-  "test_credentials": "Admin: admin@propmanage.io / 1!nasov01ADMIN | Client: client@propmanage.io / Client123! | Specialist: specialist@propmanage.io / Spec123! | Operator: operator@propmanage.io / Op123! (test_credentials.md still stale)",
+  "test_credentials": "Admin: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> | Client: client@propmanage.io / Client123! | Specialist: specialist@propmanage.io / Spec123! | Operator: operator@propmanage.io / Op123! (test_credentials.md still stale)",
   "seed_data_creation": "None — regression-only run; no data mutations.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

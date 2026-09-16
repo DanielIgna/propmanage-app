@@ -17,7 +17,7 @@
   ],
   "updated_files": [],
   "success_rate": { "backend": "not-tested (47/47 per main agent)", "frontend": "6/6 executed = 100% (1 skipped per brief instruction)" },
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN, client@propmanage.io / Client123!, specialist@propmanage.io / Spec123!. NOTE: /app/memory/test_credentials.md still lists Admin123! for admin which does NOT work — only 1!nasov01ADMIN works. Recommend the main agent updates that file.",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>, client@propmanage.io / Client123!, specialist@propmanage.io / Spec123!. NOTE: /app/memory/test_credentials.md still lists Admin123! for admin which does NOT work — only <redacted:SEED_ADMIN_PASSWORD> works. Recommend the main agent updates that file.",
   "seed_data_creation": "Edited 'basic' plan price 9→12 via admin UI, verified propagation to /house-health/upgrade for client, then restored back to 9.0 via authenticated PATCH /api/admin/house-health/plans/{id} (sandbox left clean).",
   "retest_needed": false,
   "main_agent_can_self_test": true,

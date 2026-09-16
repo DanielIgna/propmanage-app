@@ -17,7 +17,7 @@
     "OPERATOR DESKTOP DOCK: add `whitespace-nowrap` to button labels in BottomNav.jsx desktop dock (line ~61-66) OR shorten operator tabs.js labels ('Digital Twins'→'Twins', 'DT Pro 3D'→'DT Pro'). Currently 'Digital Twins' + badge wrap to 2 lines making dock buttons 64px tall vs ~44px for others.",
     "REVIEW_REQUEST DISCREPANCY: The review_request mentioned testids `tab-desktop-opportunities|jobs|notifications|settings` for specialist dock, but actual testids are prefixed with `spec-tab-` (matches BottomNav dataPrefix='spec-tab'). Similarly operator uses `op-tab-desktop-*`. Not a bug — just an ID naming mismatch in the requirements doc. If test contracts should match request literally, either add data-testids aliases OR update the spec.",
     "OPTIONAL — LIGHT-THEME OPERATOR: 'Digital Twin Pro · Modulul 3D' shortcut card emerald-tinted small label loses contrast on light-mint background; darken text or use olive/#065f46 in light mode.",
-    "HYGIENE (8th iteration): /app/memory/test_credentials.md still lists admin password 'Admin123!' but actual is '1!nasov01ADMIN' — please fix.",
+    "HYGIENE (8th iteration): /app/memory/test_credentials.md still lists admin password 'Admin123!' but actual is '<redacted:SEED_ADMIN_PASSWORD>' — please fix.",
     "OPTIONAL — Specialist mobile KpiCard 'ÎNCASĂRI LUNA ACEASTA' helper text clips; consider min-w-0 flex hack or truncate + tooltip."
   ],
   "critical_code_review_comments": [
@@ -30,7 +30,7 @@
   ],
   "updated_files": [],
   "success_rate": {"backend": "N/A (skipped per request)", "frontend": "95% — 8/8 criteria pass functionally; 1 MEDIUM (dock label wrap) + 1 LOW (KpiCard mobile clip) + 1 LOW (light-theme DT Pro card contrast)"},
-  "test_credentials": "All working: client@propmanage.io/Client123!, specialist@propmanage.io/Spec123!, operator@propmanage.io/Op123!, admin@propmanage.io/1!nasov01ADMIN. NOTE: /app/memory/test_credentials.md STILL LISTS 'Admin123!' incorrectly — 9th consecutive iteration flagging.",
+  "test_credentials": "All working: client@propmanage.io/Client123!, specialist@propmanage.io/Spec123!, operator@propmanage.io/Op123!, admin@propmanage.io/<redacted:SEED_ADMIN_PASSWORD>. NOTE: /app/memory/test_credentials.md STILL LISTS 'Admin123!' incorrectly — 9th consecutive iteration flagging.",
   "seed_data_creation": "None. Read-only navigation + theme toggles + click switches.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

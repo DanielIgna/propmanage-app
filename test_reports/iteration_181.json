@@ -18,7 +18,7 @@
     "/app/backend/tests/test_property_technical_record_iter181.py (new)"
   ],
   "success_rate": {"backend": "100% (21/21)", "frontend": "100% of critical flows"},
-  "test_credentials": "client@propmanage.io / Client123!, admin@propmanage.io / 1!nasov01ADMIN (from /app/memory/test_credentials.md)",
+  "test_credentials": "client@propmanage.io / Client123!, admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (from /app/memory/test_credentials.md)",
   "seed_data_creation": "Test suite creates TEST_iter181 diagnostics on property 6a11d70e600be19667009c93 (FR + RO + admin FR) and deletes them via module-scope teardown. Building context on Skyline Loft A4 is updated with number_of_units=42 during the merge test (non-destructive; construction_year preserved).",
   "retest_needed": false,
   "should_main_agent_self_test": true,

@@ -23,7 +23,7 @@
     "/app/backend/tests/test_ai_governance_iter148.py (new)"
   ],
   "success_rate": {"backend": "100% (8/8)", "frontend": "100% (governance UI + regressions)"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN ; client@propmanage.io / Client123!",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> ; client@propmanage.io / Client123!",
   "seed_data_creation": "Two orchestrator_decisions ledger entries created via /simulate/smoke_fail (test=True) at levels 2 and 4 — by design excluded from snapshot.decisions_24h. smoke_fail_to_qa authority reset to 4 at teardown.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

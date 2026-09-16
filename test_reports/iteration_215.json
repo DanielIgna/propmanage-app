@@ -49,7 +49,7 @@
   ],
   "updated_files": [],
   "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>",
   "seed_data_creation": "None — used existing last-run loop steps (todo_id a8909386..., approval_id e480971b...).",
   "retest_needed": false,
   "should_main_agent_self_test": false,

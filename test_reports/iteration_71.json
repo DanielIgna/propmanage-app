@@ -34,7 +34,7 @@
     "backend": "100% (23/23 pytest + manual DELETE/IT-legal spot checks)",
     "frontend": "100% (all required data-testids verified: marketplace-partners-page, add-mkt-partner, open-mkt-copilot, mkt-row-{id}, pitch/login/edit-{id}, mkt-form-modal, mkt-copilot-panel, run-mkt-copilot, admin-nav-city_partners_list, admin-nav-marketplace_partners_list, copilot-nudges-card, run-nudges, nudge-0/1/2)"
   },
-  "test_credentials": "Same as iter70 - all credentials work. admin@propmanage.io / 1!nasov01ADMIN | ion@blocadmin.ro / owKT6oOYMIyOSM!1A | testing.admin@propmanage.io / TestAdmin123! | client@propmanage.io / Client123! | dev1@team.com / Dev1Pass!.",
+  "test_credentials": "Same as iter70 - all credentials work. admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> | ion@blocadmin.ro / owKT6oOYMIyOSM!1A | testing.admin@propmanage.io / TestAdmin123! | client@propmanage.io / Client123! | dev1@team.com / Dev1Pass!.",
   "seed_data_creation": "Created several TEST_Mkt_* partners in marketplace_partners (each with email TEST_mkt_<uuid>@example.com - prospect/active status, multiple categories). One TEST_Arc_* partner created and immediately archived (status=terminated) to verify DELETE flow. Several TEST_Lead + TEST_PortalLead entries in marketplace_leads. One marketplace_partner user account created via create-login (temp password used in test only, ephemeral). Reports persisted in marketplace_copilot_reports + marketplace_presentations + marketplace_nudges + city_partner_nudges collections.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

@@ -28,7 +28,7 @@
     "/app/backend/tests/test_google_oauth_direct_iter175.py (new)"
   ],
   "success_rate": {"backend": "100% (8/8)", "frontend": "100% (6/6 flows)"},
-  "test_credentials": "Client: client@propmanage.io / Client123! ; Admin: admin@propmanage.io / 1!nasov01ADMIN",
+  "test_credentials": "Client: client@propmanage.io / Client123! ; Admin: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>",
   "seed_data_creation": "Created + deleted one TEST_iter175_<uuid>@example.com user via /api/auth/register + admin cleanup (best-effort).",
   "retest_needed": false,
   "should_main_agent_self_test": true,

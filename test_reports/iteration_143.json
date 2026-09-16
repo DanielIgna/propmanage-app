@@ -20,7 +20,7 @@
   ],
   "updated_files": [],
   "success_rate": { "backend": "N/A (skipped)", "frontend": "100% visual regression pass on tested surfaces" },
-  "test_credentials": "Used /app/memory (implicit) — client@propmanage.io/Client123!, specialist@propmanage.io/Spec123!, admin@propmanage.io/1!nasov01ADMIN — all worked.",
+  "test_credentials": "Used /app/memory (implicit) — client@propmanage.io/Client123!, specialist@propmanage.io/Spec123!, admin@propmanage.io/<redacted:SEED_ADMIN_PASSWORD> — all worked.",
   "seed_data_creation": "Added Beta Issue 'TEST_VISUAL smoke' P2 Bug in /admin/beta-issues, then transitioned to Rezolvat and finally to 'Nu se face' (excluded from Deschise counter). Item may still be visible under 'Nu se face' filter — safe to ignore or hard-delete via API if needed.",
   "retest_needed": false,
   "should_main_agent_self_test": false,

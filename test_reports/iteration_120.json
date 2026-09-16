@@ -28,7 +28,7 @@
     "/app/backend/tests/test_growth_intel_iter120.py (new)"
   ],
   "success_rate": {"backend": "100% (15/15 exec, 1 skip verificat manual)", "frontend": "100%"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN ; client@propmanage.io / Client123!",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> ; client@propmanage.io / Client123!",
   "seed_data_creation": "None — folosit 277 sesiuni reale existente în analytics_sessions.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

@@ -33,7 +33,7 @@
       "result": "PASS — element NOT in DOM (mobile CSS override does not force display)"
     },
     "super_admin_dom_present_and_visible": {
-      "email": "admin@propmanage.io / 1!nasov01ADMIN",
+      "email": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>",
       "tested": ["/admin", "/admin/marketing", "/admin/demo-accounts"],
       "result": "PASS 3/3 — element IS in DOM, bounding rect 178x40 (>0), visible=true. Screenshot confirms badge rendered bottom-right on /admin dashboard.",
       "minor_note": "getComputedStyle(el).display returns 'flex' instead of the requested 'inline-flex'. This is caused by the external https://assets.emergent.sh/scripts/emergent-main.js script normalizing the value AFTER our inline style.setProperty('display','inline-flex','important'). Visually IDENTICAL for a fixed-position element (both flex and inline-flex render the same layout for a self-contained badge). Bounding rect check confirms it renders correctly at 178x40. If strict 'inline-flex' assertion is a hard requirement, main agent could remove the emergent-main.js dependency, but this is cosmetic — badge is fully functional and visible."
@@ -61,7 +61,7 @@
   ],
   "updated_files": [],
   "success_rate": { "backend": "N/A (frontend-only)", "frontend": "100% (7/7 scenarios in review request PASS on the DOM absence/presence requirement)" },
-  "test_credentials": "Used credentials from review request: admin@propmanage.io / 1!nasov01ADMIN, specialist@propmanage.io / Spec123!, client@propmanage.io / Client123!. All 3 authenticated successfully. NOTE: /app/memory/test_credentials.md still shows admin password as 'Admin123!' — should be updated to '1!nasov01ADMIN' to match the current seed.",
+  "test_credentials": "Used credentials from review request: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>, specialist@propmanage.io / Spec123!, client@propmanage.io / Client123!. All 3 authenticated successfully. NOTE: /app/memory/test_credentials.md still shows admin password as 'Admin123!' — should be updated to '<redacted:SEED_ADMIN_PASSWORD>' to match the current seed.",
   "seed_data_creation": "None",
   "retest_needed": false,
   "should_main_agent_self_test": false,

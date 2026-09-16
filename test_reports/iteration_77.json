@@ -12,7 +12,7 @@
   ],
   "action_items": [
     "Inconclusive (please verify visually): the protected-row block-btn/role-btn opacity-30 cursor-not-allowed class check returned False in playwright assertion. Functional protection is enforced backend-side (400 on attempts) and PROTECT badge displays correctly, but the disabled visual styling (opacity-30 cursor-not-allowed) couldn't be confirmed via class selector — may be that the implementation uses different disabled styling (e.g., `disabled` attribute, opacity-40, or pointer-events-none). Non-blocking.",
-    "Update /app/memory/test_credentials.md to include the 6 demo sub-admins (including new general.admin@propmanage.io / Gen!Demo2026Strong) and the correct super-admin password (1!nasov01ADMIN, not Admin123!)."
+    "Update /app/memory/test_credentials.md to include the 6 demo sub-admins (including new general.admin@propmanage.io / Gen!Demo2026Strong) and the correct super-admin password (<redacted:SEED_ADMIN_PASSWORD>, not Admin123!)."
   ],
   "critical_code_review_comments": [
     "/app/backend/routes/admin_accounts.py (181 lines) is clean: master code gate, super_admin gate via is_super_admin(), PROTECTED_EMAIL constant. Properly validates ALLOWED_ROLES/ALLOWED_SCOPES with 400 messages in Romanian. Pydantic enforces min_length=8 for new_password → 422 (correct).",
@@ -25,7 +25,7 @@
     "/app/backend/tests/test_admin_accounts_iter77.py (NEW)"
   ],
   "success_rate": {"backend": "100% (18/18)", "frontend": "100% on critical flows verified"},
-  "test_credentials": "Super: admin@propmanage.io / 1!nasov01ADMIN (login OK, role returned as 'admin'). general.admin@propmanage.io / Gen!Demo2026Strong (new seed, login OK). testing.admin@propmanage.io / Test!Demo2026Strong (non-super 403 path OK). Auth via httpOnly cookies (access_token, refresh_token) — use requests.Session().",
+  "test_credentials": "Super: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (login OK, role returned as 'admin'). general.admin@propmanage.io / Gen!Demo2026Strong (new seed, login OK). testing.admin@propmanage.io / Test!Demo2026Strong (non-super 403 path OK). Auth via httpOnly cookies (access_token, refresh_token) — use requests.Session().",
   "seed_data_creation": "Tests temporarily flip is_active on general.admin then restore; temporarily change role to operator/ops then restore to admin/general; temporarily change password to NewPass2026! then restore to default Gen!Demo2026Strong. No leftover state. Super-admin password and role untouched.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

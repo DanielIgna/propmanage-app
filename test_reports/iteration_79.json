@@ -75,7 +75,7 @@
   ],
   "updated_files": [],
   "success_rate": { "backend": "N/A (frontend-only)", "frontend": "100% (badge logic correct in all 34 correctly-expected scenarios; 4 flagged results were test-expectation issues or unrelated login failure, NOT badge bugs)" },
-  "test_credentials": "Used credentials from problem statement. Note: /app/memory/test_credentials.md is missing partner/demo/marketing/super-admin passwords — recommend updating it with the new demo/sub-admin passwords (Test!Demo2026Strong, Mkt!Demo2026Strong, 1!nasov01ADMIN) so future testing agents don't have to rely on request-embedded credentials.",
+  "test_credentials": "Used credentials from problem statement. Note: /app/memory/test_credentials.md is missing partner/demo/marketing/super-admin passwords — recommend updating it with the new demo/sub-admin passwords (Test!Demo2026Strong, Mkt!Demo2026Strong, <redacted:SEED_ADMIN_PASSWORD>) so future testing agents don't have to rely on request-embedded credentials.",
   "seed_data_creation": "None",
   "retest_needed": false,
   "should_main_agent_self_test": false,

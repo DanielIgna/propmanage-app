@@ -14,7 +14,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_core001_product_intelligence.py"],
   "success_rate": {"backend": "100% (10/10)", "frontend": "100% (all flows verified)"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>",
   "seed_data_creation": "Created snapshots labeled 'TEST_iter154_regress' and 'Snapshot 28.07.2026' via UI; safe to keep per request notes.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

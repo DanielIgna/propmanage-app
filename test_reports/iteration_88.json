@@ -26,7 +26,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_sprint2_iter88.py (created — 21 tests, ~10s runtime)"],
   "success_rate": {"backend": "21/21 (100%)", "frontend": "9/10 verified flows PASS (register categories = 1 KNOWN BUG documented, all other flows including price observatory, invite funnel, wizard price hint, orchestrator 7 playbooks — PASS)"},
-  "test_credentials": "Admin: admin@propmanage.io / 1!nasov01ADMIN (from SEED_ADMIN_PASSWORD env — /app/memory/test_credentials.md STILL lists Admin123!, please update). Client: client@propmanage.io / Client123!. Specialist2: specialist2@propmanage.io / Spec123! (used for marketplace medic test).",
+  "test_credentials": "Admin: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (from SEED_ADMIN_PASSWORD env — /app/memory/test_credentials.md STILL lists Admin123!, please update). Client: client@propmanage.io / Client123!. Specialist2: specialist2@propmanage.io / Spec123! (used for marketplace medic test).",
   "seed_data_creation": "Test file adds/deletes ephemeral price observations (TEST_iter88, TEST_iter88_csv_*). Test dispute was created on request 6b41cd0e0cb92dfd8fdc9fac and immediately deleted after ai_triage verification — request state reverted to disputed=false + escrow_status=held. Marketplace medic test toggled medic_suspended=true → false on specialist2. Frontend UI test added TEST_UI_iter88* and TEST_UI_iter88b price observations — CLEANUP via `db.price_observations.delete_many({service: /^TEST_/})` executed at end (2 rows deleted). Ledger grew with ~14 orchestrator entries during simulate parametrize.",
   "retest_needed": true,
   "main_agent_can_self_test": true,

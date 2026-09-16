@@ -35,7 +35,7 @@
     "/app/backend/tests/test_eo026_beta_gate_iter136.py"
   ],
   "success_rate": {"backend": "100% (24/24)", "frontend": "95% (1 minor UI bug — stray text + toggle regression on PassportCard privacy panel)"},
-  "test_credentials": "client@propmanage.io / Client123! ; admin@propmanage.io / 1!nasov01ADMIN ; TEST_ fresh @gmail.com accounts created dynamically for conversion + stranger-owner tests",
+  "test_credentials": "client@propmanage.io / Client123! ; admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> ; TEST_ fresh @gmail.com accounts created dynamically for conversion + stranger-owner tests",
   "seed_data_creation": "Created 2 fresh @gmail.com test users (test.eo026.<hex>@gmail.com and test.stranger.<hex>@gmail.com) via /api/auth/register for conversion attribution and cross-owner authorization tests. Also inserted several passport_events on slug=gbegxfyz9m (view qr from iPhone UA, leave 42s, share wa, cta_click) and one beta_feedback row for client@propmanage.io (dedupe-updated on 2nd submit). No destructive operations. Passport gbegxfyz9m remains ACTIVE as instructed.",
   "retest_needed": true,
   "main_agent_can_self_test": true,

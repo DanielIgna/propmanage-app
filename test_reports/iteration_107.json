@@ -31,7 +31,7 @@
     "/app/backend/tests/test_site_menu_iter107.py (new)"
   ],
   "success_rate": {"backend": "100% (17/17)", "frontend": "100% (19/19 flows + 1 regression)"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (from backend/.env SEED_ADMIN_PASSWORD). client@propmanage.io / Client123!. /app/memory/test_credentials.md still shows stale Admin123! for admin.",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (from backend/.env SEED_ADMIN_PASSWORD). client@propmanage.io / Client123!. /app/memory/test_credentials.md still shows stale Admin123! for admin.",
   "seed_data_creation": "None. Menu was mutated (companie deactivated, acasa relabeled, order swapped) then restored via POST /api/admin/site-menu/reset in test teardown fixture AND at end of admin UI test. Production menu is intact.",
   "retest_needed": false,
   "should_main_agent_self_test": false,

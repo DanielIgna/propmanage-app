@@ -28,7 +28,7 @@
     "/app/backend/tests/test_dt_p1_consolidation_iter200.py (new)"
   ],
   "success_rate": {"backend": "100% (13/13)", "frontend": "n/a (backend-only run)"},
-  "test_credentials": "client@propmanage.io / Client123! (PREMIUM), admin@propmanage.io / 1!nasov01ADMIN, operator@propmanage.io / Op123!. FREE users dynamically registered via /api/auth/register.",
+  "test_credentials": "client@propmanage.io / Client123! (PREMIUM), admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>, operator@propmanage.io / Op123!. FREE users dynamically registered via /api/auth/register.",
   "seed_data_creation": "Fresh FREE user (free{ts}{hex}@example.com); PREMIUM DT project 'PREMIUM iter200 project' with two .glb models + one PDF plan + one pin (pin cleaned up in-test). Doc uploaded to first client property with related_model_id + related_room_id (not cleaned — carries TEST_related_ids title for future cleanup).",
   "retest_needed": false,
   "should_main_agent_self_test": false,

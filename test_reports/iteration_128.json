@@ -31,7 +31,7 @@
     "/app/backend/tests/test_operations_center_iter128.py"
   ],
   "success_rate": {"backend": "100% (22/22)", "frontend": "100% (all critical flows)"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (cookie session via POST /api/auth/login)",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (cookie session via POST /api/auth/login)",
   "seed_data_creation": "Two test manual payments left in db.manual_payments: (1) 123.45 RON cash 'TEST_iter128 Cash Customer' Ref=TEST_iter128-REF (from backend test) and (2) 77 RON cash 'UI-iter128 Test Customer' Ref=UI-iter128-ref (from Playwright). One 'UI-iter128 win ...' entry in db.daily_wins for today. First lead stage was moved to 'contacted' with next_action 'TEST_iter128 next'. Delete with db.manual_payments.delete_many({customer_name:{$regex:'iter128'}}) and db.daily_wins.delete_many({text:{$regex:'iter128'}}) if pollution matters. No open gaps were assigned — 3 open gaps preserved as instructed.",
   "retest_needed": false,
   "should_main_agent_self_test": false,

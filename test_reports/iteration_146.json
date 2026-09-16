@@ -33,7 +33,7 @@
     "/app/backend/tests/test_community_buildings_iter146.py (new pytest regression suite)"
   ],
   "success_rate": {"backend": "100% (23/23, 1 intentional skip)", "frontend": "100% (F1-F4 flows verified)"},
-  "test_credentials": "client@propmanage.io/Client123!, specialist@propmanage.io/Spec123!, admin@propmanage.io/1!nasov01ADMIN — all working (cookie session).",
+  "test_credentials": "client@propmanage.io/Client123!, specialist@propmanage.io/Spec123!, admin@propmanage.io/<redacted:SEED_ADMIN_PASSWORD> — all working (cookie session).",
   "seed_data_creation": "Test data (TESTITER146 building, 2 hvac maintenance tasks on first 2 client properties, campaign, 1 assigned request, 10 notifications) was created during E2E flow and CLEANED at end. building_id was unset on properties, campaigns/requests deleted, notifications purged.",
   "retest_needed": true,
   "should_main_agent_self_test": true,

@@ -37,7 +37,7 @@
     "/app/backend/tests/test_xos_iter108.py (new)"
   ],
   "success_rate": {"backend": "100% (20/20 pytest)", "frontend": "83% (5/6 admin+client flows). Failure: /admin/business-health page crashes."},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (from backend env SEED_ADMIN_PASSWORD). client@propmanage.io / Client123!. /app/memory/test_credentials.md still lists STALE Admin123!.",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (from backend env SEED_ADMIN_PASSWORD). client@propmanage.io / Client123!. /app/memory/test_credentials.md still lists STALE Admin123!.",
   "seed_data_creation": "None persisted. Test data (banner text, UI rule, disabled discover widget, TEST_ entries) all restored to defaults via API cleanups. Verified rules=[], banner.active=False, xos layout=default after tests. Some TEST_ items remain in menu_clicks analytics counters (harmless, will age out after 30 days) — TEST_analytics_hit + TEST_design_interior appear in admin analytics top.",
   "retest_needed": true,
   "should_main_agent_self_test": true,

@@ -17,7 +17,7 @@
     "/app/backend/tests/test_enterprise_health_iter129.py"
   ],
   "success_rate": {"backend": "100% (13/13)", "frontend": "100%"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN — worked via /api/auth/login (200)",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> — worked via /api/auth/login (200)",
   "seed_data_creation": "None. Registry was mutated during edit/rollback test but restored — 'knowledge' formula is now at version 3 (originally v1) with original weights 0.4/0.3/0.3 intact, expected behavior per D151 (version increments never rewind).",
   "retest_needed": false,
   "main_agent_can_self_test": true,

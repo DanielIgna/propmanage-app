@@ -18,7 +18,7 @@
     "/app/backend/tests/test_learning_engine_iter123.py"
   ],
   "success_rate": {"backend": "100% (19/19)", "frontend": "100%"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN, client@propmanage.io / Client123!",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>, client@propmanage.io / Client123!",
   "seed_data_creation": "2 test opportunities [TEST-iter123] auto-created in Mongo for client 6a11d70d600be19667009c8e (property Skyline Loft A4) — accept + dismiss flows. Auto-cleanup fixture removes them + linked ledger entries + [TEST-iter123] requests after test session.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

@@ -34,7 +34,7 @@
     "backend": "100% (24/24 pytest)",
     "frontend": "100% (all 14 required data-testids verified; gate visibility correct for 3 user types)"
   },
-  "test_credentials": "Super admin: admin@propmanage.io / 1!nasov01ADMIN. Sub-admin: testing.admin@propmanage.io / TestAdmin123!. Strategic contributor: dev1@team.com / Dev1Pass!. Client (non-strategic): client@propmanage.io / Client123!.",
+  "test_credentials": "Super admin: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>. Sub-admin: testing.admin@propmanage.io / TestAdmin123!. Strategic contributor: dev1@team.com / Dev1Pass!. Client (non-strategic): client@propmanage.io / Client123!.",
   "seed_data_creation": "Pytest signed all 6 legal documents as dev1@team.com (collaborator_contracts collection now has 6 accepted contracts for that email). A short-lived NDA test version 'testXXXXXX' was created then deactivated; v1.0 restored as active. legal_documents collection still contains the 6 default v1.0 docs.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

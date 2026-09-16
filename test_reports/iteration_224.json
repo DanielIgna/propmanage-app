@@ -18,7 +18,7 @@
     "/app/backend/tests/test_hartablocuri_phase2_iter226.py (new integration tests)"
   ],
   "success_rate": {"backend": "98% (49/50, 1 legitimate skip)", "frontend": "100% for tested flows"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN and client@propmanage.io / Client123! — both valid",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> and client@propmanage.io / Client123! — both valid",
   "seed_data_creation": "None. Test id 6aaabeb516469f4cdea48187 already exists as a C1 match (cf1 family, comunist era, panel structure, P+4).",
   "retest_needed": false,
   "main_agent_can_self_test": true,

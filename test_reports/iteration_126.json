@@ -15,7 +15,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_first_revenue_iter126.py"],
   "success_rate": {"backend": "100% (7/7)", "frontend": "100%"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (cookie-based via POST /api/auth/login)",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (cookie-based via POST /api/auth/login)",
   "seed_data_creation": "None persisted. Test creates transient draft only if none exist; all TEST_ prefixed data cleaned in fixture teardown. Additionally removed 4 legacy TEST_Draft No Gates listings.",
   "retest_needed": false,
   "should_main_agent_self_test": false,

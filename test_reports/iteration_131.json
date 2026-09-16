@@ -24,7 +24,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_enterprise_visibility_iter131.py"],
   "success_rate": {"backend": "100% (14/14)", "frontend": "100%"},
-  "test_credentials": "Founder: danieligna1@gmail.com / Founder2026!kc — Admin: admin@propmanage.io / 1!nasov01ADMIN",
+  "test_credentials": "Founder: danieligna1@gmail.com / Founder2026!kc — Admin: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>",
   "seed_data_creation": "None. Read-only feature backed by /app/backend/data/*.json — not mutated.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

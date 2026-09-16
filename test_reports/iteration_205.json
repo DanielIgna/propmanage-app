@@ -20,7 +20,7 @@
     "backend": "100% (all endpoints exercised through UI responded correctly; only frontend URL-composition bug)",
     "frontend": "90% (design-render-img still 404s; all other retest items PASS)"
   },
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN ; operator@propmanage.io / Op123!",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> ; operator@propmanage.io / Op123!",
   "seed_data_creation": "Created 2 new design-concept rows on project b786fc0845f14aaa9ea6dee529637fe7 (1 with render ON, 1 with render OFF) — history now shows 5 concepts. Bulk-anchored 2 previously-unresolved projects to property 6a480b1fdc60706d18bdebcf (TEST_DeleteBlocked). Unresolved badge 37→35. No cleanup performed (persistent artefacts safe for future runs).",
   "retest_needed": true,
   "should_main_agent_self_test": true,

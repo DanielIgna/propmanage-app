@@ -21,7 +21,7 @@
   ],
   "updated_files": [],
   "success_rate": {"backend": "not re-tested (13/13 pytest already green)", "frontend": "100%"},
-  "test_credentials": "Client: client@propmanage.io / Client123! · Admin: admin@propmanage.io / 1!nasov01ADMIN",
+  "test_credentials": "Client: client@propmanage.io / Client123! · Admin: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>",
   "seed_data_creation": "none — used existing demo client account (2/10 badges: first_request, first_work).",
   "retest_needed": false,
   "should_main_agent_self_test": false,

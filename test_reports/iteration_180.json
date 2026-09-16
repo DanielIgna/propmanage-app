@@ -27,7 +27,7 @@
     "/app/backend/tests/test_analytics_growth_iter180.py (new)"
   ],
   "success_rate": {"backend": "97.7%", "frontend": "not tested (backend-only per request)"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (from /app/memory/test_credentials.md)",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (from /app/memory/test_credentials.md)",
   "seed_data_creation": "Test fixture creates a TEST_iter180_compare campaign only if fewer than 2 campaigns exist; deleted in fixture teardown. In this run, an existing campaign was already present so no new campaign was created (only 1 existed → 1 new was created and cleaned up).",
   "retest_needed": false,
   "should_main_agent_self_test": true,

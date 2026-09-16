@@ -23,7 +23,7 @@
     "/app/backend/tests/test_iter104_interconnect_yellow.py (nou, 26 teste)"
   ],
   "success_rate": {"backend": "100% (26/26 pytest)", "frontend": "100% (toate 7 pagini + sidebar navs + interconnect UI + ack/toggle flows)"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN ✓ (super admin); testing.admin@propmanage.io / Test!Demo2026Strong ✓ (scoped admin CEO 403 verificat); client@propmanage.io / Client123! ✓ (RBAC 403 pe automation+notification-center+ceo)",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> ✓ (super admin); testing.admin@propmanage.io / Test!Demo2026Strong ✓ (scoped admin CEO 403 verificat); client@propmanage.io / Client123! ✓ (RBAC 403 pe automation+notification-center+ceo)",
   "seed_data_creation": "db.command_center_recos.latest = 5 recomandări Claude (regenerate în test); db.financial_insights.latest generat; db.business_health_history: 1 snapshot azi; db.automation_rules: 3 seed rules; db.automation_executions: 3 rulări noi înregistrate. Zero modificări distructive pe seeded data.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

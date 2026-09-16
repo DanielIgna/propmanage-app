@@ -18,7 +18,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_lead_intel_iter121.py"],
   "success_rate": {"backend": "100% (17/17)", "frontend": "100%"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN și client@propmanage.io / Client123! (din /app/memory/test_credentials.md).",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> și client@propmanage.io / Client123! (din /app/memory/test_credentials.md).",
   "seed_data_creation": "Creat vizitatori de test cu prefix 'testvisitor_iter121_' (ingest intent + hot signals). Test visitor hot cu 82/hot și request_abandoned derivat. Seed lead_scores hot pentru client demo pentru validarea lead_boost în Revenue Hunter. Nu s-a atins date reale (analytics_sessions/events existente).",
   "retest_needed": false,
   "should_main_agent_self_test": false,

@@ -15,7 +15,7 @@
     "/app/backend/tests/test_journey_guardian_iter152.py"
   ],
   "success_rate": {"backend": "100%", "frontend": "100%"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (cookie auth)",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (cookie auth)",
   "seed_data_creation": "During auto-resolve test, temporarily added TEST_ITER152_Partner to mobilier providers then restored empty list; ran guardian afterward so mobilier task is again 'open' — matches the expected steady state.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

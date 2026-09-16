@@ -23,7 +23,7 @@
     "/app/backend/tests/test_gbos_growth_iter145.py"
   ],
   "success_rate": {"backend": "100% (17/17)", "frontend": "100% (F1+F2+F3 all pass)"},
-  "test_credentials": "Client: client@propmanage.io / Client123!; Specialist target: specialist@propmanage.io / Spec123!; Specialist2: specialist2@propmanage.io / Spec123!; Admin: admin@propmanage.io / 1!nasov01ADMIN. Auth is session-cookie based — use requests.Session().",
+  "test_credentials": "Client: client@propmanage.io / Client123!; Specialist target: specialist@propmanage.io / Spec123!; Specialist2: specialist2@propmanage.io / Spec123!; Admin: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>. Auth is session-cookie based — use requests.Session().",
   "seed_data_creation": "None persisted. All test-created requests, maintenance tasks, notifications, and activity_events were purged. Specialist wallet was refunded the 45 RON deducted during regression test (final balance: 800 RON, unchanged).",
   "retest_needed": false,
   "main_agent_can_self_test": true,

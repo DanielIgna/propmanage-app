@@ -24,7 +24,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_iter94_kg_control_tower.py"],
   "success_rate": {"backend": "100% (12/12 pytest)", "frontend": "100% (11/11 review items)"},
-  "test_credentials": "admin@propmanage.io/1!nasov01ADMIN (works — /app/memory/test_credentials.md still says Admin123! which is STALE, flagged for 6th consecutive iteration; recommend updating).",
+  "test_credentials": "admin@propmanage.io/<redacted:SEED_ADMIN_PASSWORD> (works — /app/memory/test_credentials.md still says Admin123! which is STALE, flagged for 6th consecutive iteration; recommend updating).",
   "seed_data_creation": "None. KG backfill was already run by main agent (1625 edges present). My idempotency test ran POST /api/admin/kg/backfill twice — total_new=0 both times, no new data written.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

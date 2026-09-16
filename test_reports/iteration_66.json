@@ -19,7 +19,7 @@
   ],
   "updated_files": [],
   "success_rate": { "backend": "not-tested (39/39 per main agent)", "frontend": "14/14 = 100%" },
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (override; default Admin123! does NOT work for admin), client@propmanage.io / Client123!, specialist@propmanage.io / Spec123!. /app/memory/test_credentials.md lists Admin123! but actual seeded admin uses 1!nasov01ADMIN — flag for credential file update.",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (override; default Admin123! does NOT work for admin), client@propmanage.io / Client123!, specialist@propmanage.io / Spec123!. /app/memory/test_credentials.md lists Admin123! but actual seeded admin uses <redacted:SEED_ADMIN_PASSWORD> — flag for credential file update.",
   "seed_data_creation": "Created admin plan qa_temp_basic (then archived as instructed). Created specialist recommendation 'TEST_QA Spec Rec' on twin 2d0a899...c012 which client subsequently published to marketplace. Test data left as-is (not hard-deleted) per instructions.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

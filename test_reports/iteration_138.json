@@ -32,7 +32,7 @@
     "backend": "100% (29/29)",
     "frontend": "100% for tested public + register flows (5 pages loaded, register+redirect confirmed, 12/12 landing links live, no dead-ends)"
   },
-  "test_credentials": "Newly created dynamic emails 'test_iter138_*@gmail.com' with password 'TestPwd123!'. Fallback: client@propmanage.io/Client123!, admin@propmanage.io/1!nasov01ADMIN.",
+  "test_credentials": "Newly created dynamic emails 'test_iter138_*@gmail.com' with password 'TestPwd123!'. Fallback: client@propmanage.io/Client123!, admin@propmanage.io/<redacted:SEED_ADMIN_PASSWORD>.",
   "seed_data_creation": "Test-only data prefixed 'TEST Iter138 …' created: 1 client user per run, 1 property with 2 documents (foto + factura) + passport enabled, 1 external audit request, 1 inquiry, 1 demo Stripe order. All isolated with unique UUIDs; safe to leave (or purge with existing TEST_ cleanup jobs).",
   "retest_needed": false,
   "should_main_agent_self_test": false,

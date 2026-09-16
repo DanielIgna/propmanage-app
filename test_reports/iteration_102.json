@@ -24,7 +24,7 @@
     "/app/backend/tests/test_design_intelligence_iter102.py (nou, 25 teste)"
   ],
   "success_rate": {"backend": "100% (25/25 pytest)", "frontend": "100% (toate cerințele: KPIs, tabs, targets, proposals cu Impact, filter chips, flash, expand, priority setters, AI analyzer, sidebar navs)"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN ✓; client@propmanage.io / Client123! ✓ (RBAC 403 verificat)",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> ✓; client@propmanage.io / Client123! ✓ (RBAC 403 verificat)",
   "seed_data_creation": "PATCH pe modul resend_dns: progress=55 + notes='TEST_iter102_note' — persistente în db.platform_roadmap. db.design_proposals: ~29 propuneri în pipeline (unele generate în timpul testelor cu source=component_optimizer/layout_optimizer). db.platform_roadmap_analysis: doc _id='latest' cu analiza Claude cea mai recentă. TOKENS LIVE: verificate RESTAURATE la end (primary=#d4ff3a lime brand original) după test apply/rollback.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

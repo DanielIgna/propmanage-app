@@ -36,7 +36,7 @@
     "backend": "100% (16/16 executed pass; 2 skipped due to demo data absence — client already recommended their only completed request, no foreign completed request available; 1 documented xfail on success-manager PB-003 signal visibility)",
     "frontend": "100% on all verifiable surfaces — pb-ambassador-card + progress '1/2', 48 signal chips, Interesat click transitions to ✓, admin growth tab shows all 6 answer cards + 12 demand rows, regression tabs render. Marketplace UI blocked by pre-existing ServiceGate redirect (not PB-003)."
   },
-  "test_credentials": "client@propmanage.io / Client123! · specialist@propmanage.io / Spec123! · admin@propmanage.io / 1!nasov01ADMIN",
+  "test_credentials": "client@propmanage.io / Client123! · specialist@propmanage.io / Spec123! · admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>",
   "seed_data_creation": "None. Test only used existing demo data. Deal signals ('interesat' + 'sustin' on first deal) are idempotent via $addToSet — no data pollution beyond a supporter_ids entry already established in iter168.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

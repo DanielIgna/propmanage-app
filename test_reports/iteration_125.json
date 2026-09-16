@@ -13,7 +13,7 @@
   ],
   "updated_files": [],
   "success_rate": {"backend": "not tested this iter (per request, 29/29 already green)", "frontend": "100% (4/4 flows + regression)"},
-  "test_credentials": "client@propmanage.io / Client123! and admin@propmanage.io / 1!nasov01ADMIN — both worked.",
+  "test_credentials": "client@propmanage.io / Client123! and admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> — both worked.",
   "seed_data_creation": "Persisted DNA attrs on client property 6a11d70e600be19667009c93: year_built=1998 (self_declared), structure_type=caramida (self_declared). Valid demo data per main agent note.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

@@ -29,7 +29,7 @@
     "/app/test_reports/pytest/iter115_tenancy_followup.xml (NEW)"
   ],
   "success_rate": {"backend": "100% (22/22)", "frontend": "n/a (backend-only)"},
-  "test_credentials": "Admin: admin@propmanage.io / 1!nasov01ADMIN; Client: client@propmanage.io / Client123! (from /app/memory/test_credentials.md)",
+  "test_credentials": "Admin: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>; Client: client@propmanage.io / Client123! (from /app/memory/test_credentials.md)",
   "seed_data_creation": "Synthetic lead in `leads` collection: id=TEST_followup_<hex>, email=TEST_followup@example.com, source=design_exterior, segment=warm, stage=new, tenant_id=main, created_at=72h ago. Cleaned in test_cleanup (verified: no residue in leads or lead_followup_log). Also test_d_public_demo_request creates one demo_lead (TEST_demo_regr@example.com) — cleaned externally after test run.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

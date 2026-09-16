@@ -25,7 +25,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_digital_twin_gate_iter185.py (new)"],
   "success_rate": {"backend": "100% (12/12)", "frontend": "100% (locked screen + CTA + pricing nav all pass)"},
-  "test_credentials": "client@propmanage.io / Client123! (premium), admin@propmanage.io / 1!nasov01ADMIN. FREE users dynamically created as free{ts}{hex}@example.com / FreePass123! and cleaned up via mongo fixture teardown.",
+  "test_credentials": "client@propmanage.io / Client123! (premium), admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>. FREE users dynamically created as free{ts}{hex}@example.com / FreePass123! and cleaned up via mongo fixture teardown.",
   "seed_data_creation": "Fresh FREE user via /api/auth/register (terms_accepted+privacy_policy_accepted). hh_subscriptions upserts for pro/basic plans + legacy digital_twin_pro flag on user doc — all reverted/deleted in teardown.",
   "retest_needed": false,
   "should_main_agent_self_test": true,

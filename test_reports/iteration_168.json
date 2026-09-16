@@ -44,7 +44,7 @@
     "backend": "100% (20/20 executed, 1 skipped due to empty buildings collection)",
     "frontend": "~85% — pb-pulse + community-deals + admin north-star + admin CRUD + banners all pass; specialist card missing (existing-user layout drift); marketplace strip blocked by ServiceGate (env-specific)"
   },
-  "test_credentials": "client@propmanage.io / Client123! · specialist@propmanage.io / Spec123! · admin@propmanage.io / 1!nasov01ADMIN",
+  "test_credentials": "client@propmanage.io / Client123! · specialist@propmanage.io / Spec123! · admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>",
   "seed_data_creation": "Test suite created and archived one deal (TEST_pb002_deal) via admin CRUD test; UI test created TEST_pb002_ui_deal — both were archived (status=arhivat, active=false). Community Deal 'Mobilier din Suedia' now has client@propmanage.io in its supporter_ids (idempotent — additional runs won't double-count).",
   "retest_needed": true,
   "main_agent_can_self_test": true,

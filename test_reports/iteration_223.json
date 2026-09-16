@@ -28,7 +28,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_hartablocuri_observability_iter223.py"],
   "success_rate": {"backend": "100% (13/13)", "frontend": "100% — all spec'd data-testids render, all filters/pagination/modal work; only minor non-admin-shell UX polish suggested"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (cookie login), client@propmanage.io / Client123!",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (cookie login), client@propmanage.io / Client123!",
   "seed_data_creation": "None — all tests are read-only per spec. No mutations performed on the 3407 buildings.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

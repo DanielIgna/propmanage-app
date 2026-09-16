@@ -26,7 +26,7 @@
     "DB patch: db.users.update_one({email:'marketing.admin@propmanage.io'},{$set:{role:'marketing_manager'}}) — applied as instructed, but auto-reverted by _enforce_admin_role on next login (see action items)."
   ],
   "success_rate": {"backend": "100% (22/22)", "frontend": "100% verified on /admin/demo-activity"},
-  "test_credentials": "Super: admin@propmanage.io / 1!nasov01ADMIN. Owner: danieligna1@gmail.com / 0108 (NEW protected super-admin, login OK). Marketing demo: marketing.admin@propmanage.io / Mkt!Demo2026Strong (logins OK, role auto-set to 'admin' by _enforce_admin_role on every login). Client: client@propmanage.io / Client123!. Auth via httpOnly cookies (use requests.Session()).",
+  "test_credentials": "Super: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>. Owner: danieligna1@gmail.com / 0108 (NEW protected super-admin, login OK). Marketing demo: marketing.admin@propmanage.io / Mkt!Demo2026Strong (logins OK, role auto-set to 'admin' by _enforce_admin_role on every login). Client: client@propmanage.io / Client123!. Auth via httpOnly cookies (use requests.Session()).",
   "seed_data_creation": "Tests generated ~15 demo_activity_logs rows via marketing.admin calls to /api/admin/marketing/dashboard, /performance/summary, /strategic-partners/cross-ref. No cleanup required (logs are audit data). Password change test set marketing.admin pw to 'Mkt!Demo2026Strong' (same as default → idempotent).",
   "retest_needed": false,
   "main_agent_can_self_test": true,

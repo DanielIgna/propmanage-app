@@ -30,7 +30,7 @@
     "/app/backend/tests/test_pb001_prop_benefits.py (new file — 24 tests)"
   ],
   "success_rate": {"backend": "100% (24/24)", "frontend": "100% (all data-testids found, all tabs render, mobile+desktop deep-links work)"},
-  "test_credentials": "client@propmanage.io / Client123! · admin@propmanage.io / 1!nasov01ADMIN (from /app/memory/test_credentials.md)",
+  "test_credentials": "client@propmanage.io / Client123! · admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (from /app/memory/test_credentials.md)",
   "seed_data_creation": "None persistent — test class created TEST_pb_* campaign, TEST_pb_ref invitee user + payment_transactions + pb_referral_pending + pb_ledger, all cleaned up in-test.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

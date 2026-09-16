@@ -34,7 +34,7 @@
   ],
   "updated_files": [],
   "success_rate": {"backend": "80% (design-concepts POST persists model without object_path; validation, review-queue, bulk-anchor, qa/suggestions, design render endpoints all OK)", "frontend": "60% (Validation PASS, Q&A suggestions PASS, Bulk anchor functional PASS/UI bug; Design Concept wizard opens PASS but result panel unreachable & viewer permanently crashes after concept creation → CRITICAL)"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN ; operator@propmanage.io / Op123!",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> ; operator@propmanage.io / Op123!",
   "seed_data_creation": "1 new design concept created on project 9760343cad7b4acca311bc70e4b29f61 (id 3c998136d55a4a45acb474cf0a0705a0, style Scandinav, render OK — 838KB image/jpeg). ATTENTION: This added a broken concept_05f7db107b38.glb model row to that project — the viewer for 9760343 is now ALSO crashed (was fine before). Two anchor sessions moved 4 unresolved projects to property 6a11d70e600be19667009c93 (Skyline Loft A4) / 6a480b1fdc60706d18bdebcf; unresolved badge 41→37.",
   "retest_needed": true,
   "should_main_agent_self_test": false,

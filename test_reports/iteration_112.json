@@ -27,7 +27,7 @@
     "/app/backend/tests/test_iter112_interior_intelligence.py (new, 21 tests)"
   ],
   "success_rate": {"backend": "100% (21/21)", "frontend": "100% (all data-testids + AI assistant + form submit verified)"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN — worked. /app/memory/test_credentials.md still says 'Admin123!' (doc drift persists since iter110).",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> — worked. /app/memory/test_credentials.md still says 'Admin123!' (doc drift persists since iter110).",
   "seed_data_creation": "Created 1 TEST_ lead via /api/interior-design/leads (email TEST_lead_<hex>@example.com stored as lowercase) and 1 UI lead (test_ui_<hex>@example.com). Both persist in interior_design_leads AND unified `leads` collection. Not auto-cleaned — low volume, safe to leave as regression fixtures.",
   "retest_needed": false,
   "should_main_agent_self_test": false,

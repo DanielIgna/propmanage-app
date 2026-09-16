@@ -15,7 +15,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_entitlements_iter100.py"],
   "success_rate": {"backend": "100% (14/14)", "frontend": "not tested"},
-  "test_credentials": "client@propmanage.io / Client123! and admin@propmanage.io / 1!nasov01ADMIN (from /app/memory/test_credentials.md). Transient FREE user created per session (free{ts}@example.com); cleaned from DB after tests.",
+  "test_credentials": "client@propmanage.io / Client123! and admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (from /app/memory/test_credentials.md). Transient FREE user created per session (free{ts}@example.com); cleaned from DB after tests.",
   "seed_data_creation": "Transient FREE client user per test session (^free[0-9]+@example.com$). Cleaned up via db.users.delete_many after run (2 rows removed).",
   "retest_needed": false,
   "main_agent_can_self_test": true,

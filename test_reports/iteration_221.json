@@ -16,7 +16,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_iter100_hartablocuri.py (new)"],
   "success_rate": {"backend": "100% (14/14)", "frontend": "100% — all discovery testids present and behave per spec"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN via POST /api/auth/login (cookie session) — OK. Public endpoints require no auth.",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> via POST /api/auth/login (cookie session) — OK. Public endpoints require no auth.",
   "seed_data_creation": "None. Import test used dry_run=true (no writes). All read-only.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

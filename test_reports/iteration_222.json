@@ -24,7 +24,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_hartablocuri_conflicts_iter222.py"],
   "success_rate": {"backend": "100% (8/8)", "frontend": "100% — all admin tabs + conflict resolve flow + client PTR HB card render and interact per spec"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (cookie), client@propmanage.io / Client123! (cookie).",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (cookie), client@propmanage.io / Client123! (cookie).",
   "seed_data_creation": "Test attached Skyline Loft A4 (client@propmanage.io) to HB Muscel bloc via /api/properties/{id}/attach-building — persistent side effect (harmless, matches acceptance flow). Manual TEST_ManualBloc_* created by regression test — one new propmanage-only building per run.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

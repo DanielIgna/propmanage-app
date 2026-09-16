@@ -16,7 +16,7 @@
   ],
   "updated_files": [],
   "success_rate": {"backend": "100% (18/18 pytest)", "frontend": "100% (4/4 flows + regression)"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN and client@propmanage.io / Client123! — both worked.",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> and client@propmanage.io / Client123! — both worked.",
   "seed_data_creation": "Registered centrala_termica asset (year=2012, source='self_declared') on client property 6a11d70e600be19667009c93. Valid demo data — safe to keep per main agent note.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

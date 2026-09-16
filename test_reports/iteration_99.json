@@ -19,7 +19,7 @@
   ],
   "action_items": [
     "HIGH — Fix /app/backend/routes/bi_moe.py line 197: change `u.get('rating', 0) / 5` to `(u.get('rating') or 0) / 5`; similar defensive null-coalescing for win_rate and completed if they can also be None. Verify by hitting GET /api/admin/bi/specialist-performance?limit=10 → 200 and BI-MOE Performance tab renders spec-top + spec-bottom.",
-    "OPTIONAL (10th+ iteration) — /app/memory/test_credentials.md still lists admin as 'Admin123!' but actual seed admin password is '1!nasov01ADMIN' (SEED_ADMIN_PASSWORD env). Also add owner super-admin danieligna1@gmail.com/0108 which is used in review requests.",
+    "OPTIONAL (10th+ iteration) — /app/memory/test_credentials.md still lists admin as 'Admin123!' but actual seed admin password is '<redacted:SEED_ADMIN_PASSWORD>' (SEED_ADMIN_PASSWORD env). Also add owner super-admin danieligna1@gmail.com/0108 which is used in review requests.",
     "OPTIONAL — Consider adding a Route path /admin/users (and other tab paths) as thin wrappers that redirect to /admin?tab=users, OR document explicitly in review_requests that tab pages are query-param based (a user hitting /admin/users directly gets bounced to '/'). Current UX works but is a footgun for external QA."
   ],
   "critical_code_review_comments": [

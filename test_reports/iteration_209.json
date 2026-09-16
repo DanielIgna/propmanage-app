@@ -23,7 +23,7 @@
   ],
   "updated_files": [],
   "success_rate": { "backend": "n/a (frontend-only)", "frontend": "Feature 1 100%, Feature 2 100%, Feature 3 100%, Feature 4 code-only (no live data), Regression 100%" },
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN ; client@propmanage.io / Client123! ; specialist@propmanage.io / Spec123!",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> ; client@propmanage.io / Client123! ; specialist@propmanage.io / Spec123!",
   "seed_data_creation": "Feature 1: created/edited/deleted one TEST_ product ('TEST_Parchet stratificat stejar', mp, 90–140 → 95–140, tags: parchet/stejar/lemn); DELETED cleanly at end so catalog remains empty as expected. Feature 3: toggled passport-priv-show_design_concept ON for property 6a11d70e600be19667009c93 (Skyline Loft A4) — left ON at end of test (PATCH 200 confirmed persistence). Feature 2: marked concept 0de3138ff2d1… as preferred in project b786fc0845f14aaa9ea6dee529637fe7 (single-winner enforced — badge moved from prior verified concept 8b85e83… to this one).",
   "retest_needed": false,
   "should_main_agent_self_test": false,

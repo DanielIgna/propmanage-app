@@ -18,7 +18,7 @@
   ],
   "updated_files": [],
   "success_rate": {"backend": "N/A (skipped per request)", "frontend": "100%"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (worked)",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (worked)",
   "seed_data_creation": "None — used the 1 synthetic orphan twin already seeded by main agent. After this test run the orphan count is 0.",
   "retest_needed": false,
   "should_main_agent_self_test": false,

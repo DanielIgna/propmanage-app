@@ -11,7 +11,7 @@
   "critical_code_review_comments": [],
   "updated_files": [],
   "success_rate": {"backend": "N/A (not tested per request)", "frontend": "100%"},
-  "test_credentials": "operator@propmanage.io / Op123!, admin@propmanage.io / 1!nasov01ADMIN",
+  "test_credentials": "operator@propmanage.io / Op123!, admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>",
   "seed_data_creation": "None. Reused existing project b786fc0845f14aaa9ea6dee529637fe7 with real 17.8MB .skp (casa_ionut.skp).",
   "retest_needed": false,
   "main_agent_can_self_test": true,

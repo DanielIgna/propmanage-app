@@ -18,7 +18,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_subscription_lifecycle_iter186.py (new)"],
   "success_rate": {"backend": "100% (14/14)", "frontend": "100% (banner render + CTA nav + dismiss + never_subscribed hidden all pass)"},
-  "test_credentials": "client@propmanage.io / Client123! (premium active), admin@propmanage.io / 1!nasov01ADMIN. Dynamic test users: exp{ts}{hex}@example.com and lifecycle{ts}{hex}@example.com — password TestPass123!, cleaned up via mongo fixture teardown + manual cleanup.",
+  "test_credentials": "client@propmanage.io / Client123! (premium active), admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>. Dynamic test users: exp{ts}{hex}@example.com and lifecycle{ts}{hex}@example.com — password TestPass123!, cleaned up via mongo fixture teardown + manual cleanup.",
   "seed_data_creation": "Fresh users via POST /api/auth/register (terms_accepted+privacy_policy_accepted). hh_subscriptions manipulated directly via mongo upsert (plan basic|pro, status active|cancelled) and aging (expires_at→past). Property created via POST /api/properties with rooms=3 required field. All test data cleaned up in module teardown.",
   "retest_needed": false,
   "should_main_agent_self_test": true,

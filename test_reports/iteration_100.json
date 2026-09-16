@@ -15,7 +15,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_iter100_batch.py (new)"],
   "success_rate": {"backend": "100% (9/9 pytest)", "frontend": "100% (all acceptance criteria + regression)"},
-  "test_credentials": "admin@propmanage.io/1!nasov01ADMIN ✓, operator@propmanage.io/Op123! ✓, client@propmanage.io/Client123! ✓. /app/memory/test_credentials.md still shows admin as 'Admin123!' (env-set is '1!nasov01ADMIN') — same 10th+ iteration flag as before.",
+  "test_credentials": "admin@propmanage.io/<redacted:SEED_ADMIN_PASSWORD> ✓, operator@propmanage.io/Op123! ✓, client@propmanage.io/Client123! ✓. /app/memory/test_credentials.md still shows admin as 'Admin123!' (env-set is '<redacted:SEED_ADMIN_PASSWORD>') — same 10th+ iteration flag as before.",
   "seed_data_creation": "None. LLM insights cached (6h) via 2nd calls; pattern_scan simulate is test=true so no DB writes. Read-only endpoints only.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

@@ -22,7 +22,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_marketing_campaigns.py (NEW)"],
   "success_rate": {"backend": "100% (20/20 new + 16/16 regression)", "frontend": "100% smoke"},
-  "test_credentials": "Admin: admin@propmanage.io / 1!nasov01ADMIN (worked). Client: client@propmanage.io / Client123! (worked, 403 enforced on all 9 admin/marketing/campaigns + auto-triggers endpoints).",
+  "test_credentials": "Admin: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (worked). Client: client@propmanage.io / Client123! (worked, 403 enforced on all 9 admin/marketing/campaigns + auto-triggers endpoints).",
   "seed_data_creation": "None. Used existing 3 campaigns (HVAC/Brașov, Sisteme fotovoltaice/Cluj, Curățenie/Iași). Generated 1 new Curățenie/Iași campaign in test (skip_images=true, ~10s). Test left 1 approved + 1 rejected for regression visibility.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

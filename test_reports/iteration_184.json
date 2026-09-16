@@ -24,7 +24,7 @@
     "/app/backend/tests/test_pricing_basic_iter184.py (new)"
   ],
   "success_rate": {"backend": "100% (9/9)", "frontend": "100% (all critical checks pass)"},
-  "test_credentials": "client@propmanage.io / Client123! (premium), admin@propmanage.io / 1!nasov01ADMIN. FREE users created dynamically as free{ts}{hex}@example.com / FreePass123! and cleaned up after run.",
+  "test_credentials": "client@propmanage.io / Client123! (premium), admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>. FREE users created dynamically as free{ts}{hex}@example.com / FreePass123! and cleaned up after run.",
   "seed_data_creation": "Fresh FREE user created via /api/auth/register (with terms_accepted=true, privacy_policy_accepted=true) during pytest fixture 'free_user'. hh_subscriptions doc upserted directly in Mongo to simulate paid activation. All test-created data cleaned in fixture teardown.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

@@ -31,7 +31,7 @@
     "backend": "100% (14/14 pytest passing including real Claude Sonnet 4.5 cross-ref full flow)",
     "frontend": "100% rendering + integration verified (all 6 expected testids present: strategic-dashboard-page, ecosystem-city, ecosystem-marketplace, coverage-{city}, unmatched-{id}, xref-{id}, recent-{id}, cross-ref-modal). AI roundtrip from UI confirmed succeeded via /opportunities feed even though playwright timeout missed the match-0 render."
   },
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN | client@propmanage.io / Client123! (NOTE: /app/memory/test_credentials.md lists admin password as 'Admin123!' which is OUTDATED — the actual current password is '1!nasov01ADMIN' as specified in the review request and matches the seed_admin run).",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> | client@propmanage.io / Client123! (NOTE: /app/memory/test_credentials.md lists admin password as 'Admin123!' which is OUTDATED — the actual current password is '<redacted:SEED_ADMIN_PASSWORD>' as specified in the review request and matches the seed_admin run).",
   "seed_data_creation": "No new seed data. Tests consumed existing TEST_PortalLead entries by marking them cross_ref_done=true. After this iteration, the unmatched-leads queue is EMPTY ({items:[],count:0}) and the opportunities feed has 6+ entries for lead 'Asociația Bloc B12'. Next testing agent must inject a new city_partner_lead with stage='introduced'/'contacted' and cross_ref_done!=true before re-running the cross-ref full flow test.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

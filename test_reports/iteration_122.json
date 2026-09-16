@@ -21,7 +21,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_marketing_intel_iter122.py"],
   "success_rate": {"backend": "100% (20/20)", "frontend": "100%"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN; client@propmanage.io / Client123!",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>; client@propmanage.io / Client123!",
   "seed_data_creation": "Doar 1 scan nou + 1 playbook nou (edited status='edited', final_message='test editat iter122'). Nu s-au atins date reale de analytics/opportunities.",
   "retest_needed": false,
   "should_main_agent_self_test": false,

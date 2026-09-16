@@ -36,7 +36,7 @@
     "backend": "100% (19/19 pytest)",
     "frontend": "100% (all required selectors found, all flows verified)"
   },
-  "test_credentials": "Super admin: admin@propmanage.io / 1!nasov01ADMIN. Sub-admins (seeded by sub_admin_seed.py): testing.admin@propmanage.io / TestAdmin123!, frontend.admin@propmanage.io / FrontAdmin123!, backend.admin@propmanage.io / BackAdmin123!, security.admin@propmanage.io / SecAdmin123!.",
+  "test_credentials": "Super admin: admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD>. Sub-admins (seeded by sub_admin_seed.py): testing.admin@propmanage.io / TestAdmin123!, frontend.admin@propmanage.io / FrontAdmin123!, backend.admin@propmanage.io / BackAdmin123!, security.admin@propmanage.io / SecAdmin123!.",
   "seed_data_creation": "Tests created ~6 TEST_ prefixed collaborators (one was soft-archived). The seeded 4 base collaborators (Test Dev, Dev 1/2/3) remain. AI Copilot history grew by 2 entries (one from backend pytest, one from UI run).",
   "retest_needed": false,
   "main_agent_can_self_test": true,

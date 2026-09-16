@@ -14,7 +14,7 @@
   ],
   "updated_files": [],
   "success_rate": {"backend": "N/A (skipped per request)", "frontend": "100%"},
-  "test_credentials": "client@propmanage.io / Client123! ; admin@propmanage.io / 1!nasov01ADMIN — both working",
+  "test_credentials": "client@propmanage.io / Client123! ; admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> — both working",
   "seed_data_creation": "None. Admin completitudine minimă restored to 60 after test.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

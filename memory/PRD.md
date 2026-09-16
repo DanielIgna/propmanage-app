@@ -4829,7 +4829,7 @@ SMOKE_BASE_URL=https://propmanage.ro /app/scripts/smoke-test.sh
 
 **Aplicat din raport (COMPLET):**
 - Cicluri de import rupte: `healthcheck_service.py` (extras din routes/admin_healthcheck.py ↔ admin_briefing_digest.py) + `autonomy/snapshots.py` (extras take_autonomy_snapshot/_CACHE din routes/autonomy.py ↔ autopilot.py)
-- Secrete hardcodate ELIMINATE: parola owner "1!nasov01ADMIN" scoasă din 18 fișiere → `SEED_ADMIN_PASSWORD` în backend/.env; `tests/test_config.py` central (env-driven); qa_automation.py fixat la fel
+- Secrete hardcodate ELIMINATE: parola owner "<set via SEED_ADMIN_PASSWORD env — not stored in plaintext>" scoasă din 18 fișiere → `SEED_ADMIN_PASSWORD` în backend/.env; `tests/test_config.py` central (env-driven); qa_automation.py fixat la fel
 - `from models import *` înlocuit cu importuri explicite în 14 fișiere routes/ (+autoflake) → 0 nume nedefinite (pyflakes curat)
 - server.py: 134 importuri → `routes/register.py` (ALL_ROUTERS, ordine păstrată, 805 rute identice)
 - middleware_scope.py: `__import__("datetime")` → import normal
@@ -5022,7 +5022,7 @@ SMOKE_BASE_URL=https://propmanage.ro /app/scripts/smoke-test.sh
 - ScrollToTop global pe schimbare rută (App.js AnalyticsRouteTracker) + scroll reset pe toate BottomNav-urile (deja existent)
 - Deep-links validate: /client?tab=..., /specialist?tab=... + curățare URL
 - Elemente flotante fără suprapuneri (WhatsApp stânga-jos mobil, AI bubble dreapta, BottomNav)
-- Parola admin actualizată în test_credentials.md: admin@propmanage.io / 1!nasov01ADMIN
+- Parola admin actualizată în test_credentials.md: admin@propmanage.io / <set via SEED_ADMIN_PASSWORD env — not stored in plaintext>
 
 ### Business Design System (mandat user: 17 reguli — COMPLET, iter91 12/12 backend + frontend PASS)
 - Constituția UI: `/app/memory/DESIGN_SYSTEM.md`; bibliotecă: `/app/frontend/src/design-system/` (tokens.js + index.jsx)
@@ -5095,7 +5095,7 @@ User a deploiat în producție (propmanage.ro) — modificările noi cer REDEPLO
 - **DS P2 — BIMoePage**: rescris integral — wrap în AdminLayoutMetronic (active="bi_moe", temă slate light/dark în loc de dark glass), TabBar DS cu 8 taburi, ActionBar cu refresh, Overview cu 8 KpiCard + AIInsightCard (llmModule="bi"), Demand/Performance/Candidates pe DataTable, Funnel cu bare standard, Alerts pe CARD + DSBadge.
 - **AI Insights extins**: module noi „users" și „bi" în /api/admin/insights/llm + endpoint nou rule-based GET /api/admin/insights/rule?module=users|bi (instant, cost zero).
 - **Bugfix**: /api/admin/bi/specialist-performance 500 (rating=None la unii specialiști) — coalescing `(u.get("rating") or 0)` în bi_moe.py; verificat 200 cu 372 specialiști evaluați.
-- **test_credentials.md corectat**: admin seed = SEED_ADMIN_PASSWORD env (1!nasov01ADMIN), owner super admin danieligna1@gmail.com/0108 adăugat.
+- **test_credentials.md corectat**: admin seed = SEED_ADMIN_PASSWORD env (<set via SEED_ADMIN_PASSWORD env — not stored in plaintext>), owner super admin danieligna1@gmail.com/0108 adăugat.
 ### Rămase în backlog: AI Insights v2 pe restul modulelor · Operator Dashboard pe DS (P2) · CIP-C · Faza 5 Marketplace Intelligence & Autonomy 2.0 · DNS Resend (blocat pe user) · Redeploy producție
 
 ## Update — Iul 2026 · DATE LEGALE + AI INSIGHTS v2 (Control/Governance) + OPERATOR DS + FAZA 5 v1 — COMPLET (iter100: 9/9 backend + frontend 100% PASS)
@@ -5214,7 +5214,7 @@ User a deploiat în producție (propmanage.ro) — modificările noi cer REDEPLO
 ### Bug-uri fixate (iter 106)
 - SyntaxError Python: ghilimele românești „..." închise cu " ASCII spărgeau string-urile (interior_design.py) — backend nu pornea
 - Ruta /admin/interior-design lipsea din App.js (import existent, Route absent) — adăugată de testing agent
-- /app/memory/test_credentials.md corectat: parola admin reală = SEED_ADMIN_PASSWORD din .env (1!nasov01ADMIN), nu Admin123!
+- /app/memory/test_credentials.md corectat: parola admin reală = SEED_ADMIN_PASSWORD din .env (<set via SEED_ADMIN_PASSWORD env — not stored in plaintext>), nu Admin123!
 
 ### Testare: iteration_106.json — backend 15/15 (100%), frontend 4/4 flows (100%)
 
@@ -5354,7 +5354,7 @@ User a deploiat în producție (propmanage.ro) — modificările noi cer REDEPLO
 - Consumer: SiteNav folosește entry_route pentru maparea /dashboard
 - UI Rules: dropdown-ul de widget-uri citește acum din registru (include specialist)
 ### Bug fixat post-testing: <ExperienceProfilesPanel /> nerandat în XOSBuilderPage (import fără render) — re-aplicat + verificat vizual cu save/restore
-### ATENȚIE RECURENT: /app/memory/test_credentials.md revine la parola STALE Admin123! (a 3-a oară) — parola corectă e SEED_ADMIN_PASSWORD=1!nasov01ADMIN din backend/.env. Re-corectat.
+### ATENȚIE RECURENT: /app/memory/test_credentials.md revine la parola STALE Admin123! (a 3-a oară) — parola corectă e SEED_ADMIN_PASSWORD=<set via SEED_ADMIN_PASSWORD env — not stored in plaintext> din backend/.env. Re-corectat.
 ### Sprint 1 COMPLET (1.1+1.2+1.3). Următorul: Sprint 2 — Consolidare (Config/Content/AI-chat/Leads) — AȘTEAPTĂ APROBARE OWNER.
 
 ## [2026-06-11] Sprint 2 — CONSOLIDATION_PLAN.md livrat (analiză-only)

@@ -18,7 +18,7 @@
     "/app/backend/tests/test_property_technical_record_iter182.py (new)"
   ],
   "success_rate": {"backend": "100% (18/18)", "frontend": "100% of critical flows"},
-  "test_credentials": "client@propmanage.io / Client123!, admin@propmanage.io / 1!nasov01ADMIN (from /app/memory/test_credentials.md)",
+  "test_credentials": "client@propmanage.io / Client123!, admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (from /app/memory/test_credentials.md)",
   "seed_data_creation": "TEST_iter182 diagnostics created on property 6a11d70e600be19667009c93 (electrical/RO, with and without evidence) — cleaned up via module teardown (soft-delete). Skyline Loft A4 building context was temporarily verified then reset to 'unverified' by test_admin_verify_building_and_context_reset (intentional behaviour of any context edit); final state is unverified (expected — matches original iter181 state).",
   "retest_needed": false,
   "should_main_agent_self_test": true,

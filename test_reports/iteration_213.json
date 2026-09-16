@@ -11,7 +11,7 @@
   "critical_code_review_comments": [],
   "updated_files": [],
   "success_rate": {"backend": "N/A (skipped per request)", "frontend": "100%"},
-  "test_credentials": "client@propmanage.io / Client123! · specialist@propmanage.io / Spec123! · admin@propmanage.io / 1!nasov01ADMIN — all worked",
+  "test_credentials": "client@propmanage.io / Client123! · specialist@propmanage.io / Spec123! · admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> — all worked",
   "seed_data_creation": "Created ONE real request via UI wizard: title=TEST_FUNNEL_1787926655, id=6a91988028d4851d65f0616c, category=zugravit, budget=1500 RON. It was then accepted by specialist@propmanage.io (default schedule, 4h estimate, 45 RON lead fee). This is a permanent db.requests write (per instructions the flow is real).",
   "retest_needed": false,
   "should_main_agent_self_test": false,

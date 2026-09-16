@@ -22,7 +22,7 @@
   ],
   "updated_files": [],
   "success_rate": {"backend": "N/A (frontend-only per request)", "frontend": "100% (6/6 review items)"},
-  "test_credentials": "specialist@propmanage.io/Spec123! (works), admin@propmanage.io/1!nasov01ADMIN (works — /app/memory/test_credentials.md still says Admin123! which is STALE, flagged for 5th consecutive iteration).",
+  "test_credentials": "specialist@propmanage.io/Spec123! (works), admin@propmanage.io/<redacted:SEED_ADMIN_PASSWORD> (works — /app/memory/test_credentials.md still says Admin123! which is STALE, flagged for 5th consecutive iteration).",
   "seed_data_creation": "None. All checks are read-only (form modal was opened+closed without saving; copilot panel was opened+closed WITHOUT triggering Claude analysis per instructions).",
   "retest_needed": false,
   "main_agent_can_self_test": true,

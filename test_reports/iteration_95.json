@@ -7,7 +7,7 @@
     "/app/test_reports/pytest/iter95_sprint3.xml"
   ],
   "action_items": [
-    "Update /app/memory/test_credentials.md — Admin password is '1!nasov01ADMIN', NOT 'Admin123!' (stale for 7th consecutive iteration). This continues to be flagged."
+    "Update /app/memory/test_credentials.md — Admin password is '<redacted:SEED_ADMIN_PASSWORD>', NOT 'Admin123!' (stale for 7th consecutive iteration). This continues to be flagged."
   ],
   "critical_code_review_comments": [
     "playbooks_sprint3.py L57-64 — In handle_pattern_scan hotspot scan, per-dispute lookup of request+specialist uses ObjectId(d['request_id']) in a per-doc loop. On growing datasets this is N+1. Consider aggregation with $lookup on requests + $group by specialist_id in a single pipeline. Acceptable at current scale.",
@@ -23,7 +23,7 @@
   ],
   "updated_files": ["/app/backend/tests/test_iter95_sprint3_orchestrator.py"],
   "success_rate": {"backend": "100% (8/8 pytest)", "frontend": "100% (all 3 new playbooks + regression pass, 0 console errors)"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (working). Note: /app/memory/test_credentials.md still says 'Admin123!' — STALE for 7 iterations now.",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (working). Note: /app/memory/test_credentials.md still says 'Admin123!' — STALE for 7 iterations now.",
   "seed_data_creation": "None. Test suite ran ~2 pattern_scan simulates + 1 finance_reconcile + 1 roadmap_advise (all test-mode, no DB writes). Toggle test disabled+re-enabled pattern_hunter (left in enabled=true state as required). All 3 sprint3 playbooks confirmed enabled=true at end.",
   "retest_needed": false,
   "main_agent_can_self_test": true,

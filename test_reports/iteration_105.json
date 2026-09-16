@@ -33,7 +33,7 @@
     "/app/backend/tests/test_iter105_hdi_cao_batch.py (NEW)"
   ],
   "success_rate": {"backend": "100% (27/27)", "frontend": "100% (all critical flows)"},
-  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (super admin, NOT owner); testing.admin@propmanage.io / Test!Demo2026Strong (scoped); client@propmanage.io / Client123!",
+  "test_credentials": "admin@propmanage.io / <redacted:SEED_ADMIN_PASSWORD> (super admin, NOT owner); testing.admin@propmanage.io / Test!Demo2026Strong (scoped); client@propmanage.io / Client123!",
   "seed_data_creation": "Test inserted 201 synthetic demo_activity_logs docs (email='test-sentinel@test.io') to force rate_spike anomaly; deleted after test via finally-block. Automation rule 'request_reminder' enabled during test then restored to enabled=false. Verified post-test: 0 synthetic logs, 0 synthetic anomalies, all 3 automation rules disabled.",
   "retest_needed": false,
   "main_agent_can_self_test": true,
