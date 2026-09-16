@@ -245,6 +245,38 @@ export const DI_PAGES = {
     ],
     related: [R.apart, R.hub, { to: "/probleme-casa/mucegai-igrasie", label: "Mucegai și igrasie: soluții" }],
   },
+  birouri: {
+    cluster: "comercial", tag: "Design birouri",
+    h1: "Design interior birouri",
+    title: "Design interior birouri: amenajare spații de lucru funcționale | PropManage",
+    description: "Amenajarea birourilor: layout eficient, acustică, lumină, zone de colaborare și branding. Design de spații de lucru care cresc productivitatea, cu implementare la cheie.",
+    intro: "Un birou bine gândit influențează direct productivitatea, starea de bine a echipei și imaginea firmei. Designul de birouri echilibrează concentrarea individuală cu colaborarea, într-un layout care susține modul real de lucru.",
+    sections: [
+      { h2: "Ce rezolvă designul de birouri", body: ["Un proiect de amenajare pentru birouri pornește de la modul în care lucrează echipa, nu de la mobilier."], bullets: ["Layout pe zone: concentrare, colaborare, ședințe, relaxare", "Acustică și reducerea zgomotului în open-space", "Lumină naturală și artificială corect dozată", "Integrarea identității vizuale a firmei", "Trasee logice și densitate optimă a posturilor"] },
+      { h2: "Etape și implementare", body: ["Procesul urmează aceeași logică integrată: releveu, concept, proiect tehnic, randări și, opțional, implementare cu specialiști verificați și plată protejată prin escrow."] },
+    ],
+    faq: [
+      { q: "Cât costă amenajarea unui birou?", a: "Se calculează pe metru pătrat și depinde de complexitate, acustică, mobilier și instalații. Un proiect tehnic clar previne costuri suplimentare la execuție." },
+      { q: "Amenajați și spații de coworking sau birouri mici?", a: "Da, de la birouri mici și coworking la sedii de firmă. Proiectul se adaptează la numărul de posturi și la modul de lucru al echipei." },
+    ],
+    related: [R.hub, R.impl, R.d3, { to: "/design-interior/spatii-comerciale", label: "Design spații comerciale" }],
+  },
+  "spatii-comerciale": {
+    cluster: "comercial", tag: "Design spații comerciale",
+    h1: "Design interior spații comerciale",
+    title: "Design spații comerciale: magazine, HoReCa, showroom-uri | PropManage",
+    description: "Amenajarea spațiilor comerciale: magazine, restaurante, cafenele, showroom-uri. Design care crește experiența clientului și vânzările, cu implementare la cheie.",
+    intro: "Într-un spațiu comercial, designul nu e doar estetică — este un instrument de vânzare. Un magazin, un restaurant sau un showroom bine amenajat ghidează clientul, comunică brandul și crește timpul petrecut și conversia.",
+    sections: [
+      { h2: "Ce rezolvă designul comercial", body: ["Un proiect pentru spații comerciale pornește de la experiența clientului și de la obiectivele de business."], bullets: ["Traseul clientului și dispunerea produselor sau a meselor", "Iluminat care pune în valoare produsele sau atmosfera", "Zonarea funcțională: expunere, casă, depozitare, servire", "Materiale rezistente la trafic intens", "Coerență cu identitatea de brand"] },
+      { h2: "Etape și implementare", body: ["Releveu, concept, proiect tehnic, randări și, opțional, implementare la cheie cu specialiști verificați. Astfel, randarea corespunde cu ce se execută, iar plățile sunt protejate prin escrow."] },
+    ],
+    faq: [
+      { q: "Amenajați magazine și spații HoReCa?", a: "Da — magazine, showroom-uri, cafenele și restaurante. Fiecare tip are cerințe proprii de flux, iluminat și materiale, tratate în proiectul tehnic." },
+      { q: "Cât durează un proiect comercial?", a: "Depinde de suprafață și complexitate. Un concept vine rapid; proiectul tehnic complet și implementarea se planifică în funcție de amploarea lucrărilor." },
+    ],
+    related: [R.hub, R.impl, R.d3, { to: "/design-interior/birouri", label: "Design interior birouri" }],
+  },
 };
 
 // ── Style pages (the REAL PropManage style system) ──────────────────────────
@@ -282,6 +314,10 @@ export const DI_STYLES = {
 export const DI_LOCAL_CITIES = {
   bucuresti: "București", "cluj-napoca": "Cluj-Napoca", brasov: "Brașov",
   oradea: "Oradea", timisoara: "Timișoara", sibiu: "Sibiu", iasi: "Iași",
+  floresti: "Florești (Cluj)", baciu: "Baciu (Cluj)", apahida: "Apahida (Cluj)",
+  "marasti-cluj": "Mărăști (Cluj-Napoca)", "gheorgheni-cluj": "Gheorgheni (Cluj-Napoca)",
+  baneasa: "Băneasa (București)", otopeni: "Otopeni (Ilfov)", corbeanca: "Corbeanca (Ilfov)",
+  buftea: "Buftea (Ilfov)", balotesti: "Balotești (Ilfov)",
 };
 
 export const getDesignPage = (slug) => DI_PAGES[slug] || null;

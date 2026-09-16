@@ -85,6 +85,9 @@ GUIDE_CLUSTER = {
     "probleme-tehnice-apartament-inainte-cumparare": "imobile_verificate",
     "verificare-imobil-digital-twin": "imobile_verificate",
     "riscuri-cumparare-apartament-bloc-vechi": "imobile_verificate",
+    "scorul-casei-ce-masoara": "audit",
+    "plan-mentenanta-locuinta": "audit",
+    "cartea-casei-istoric-locuinta": "audit",
 }
 
 # Internally-linked hubs (footer / nav) — used for orphan/coverage heuristic.

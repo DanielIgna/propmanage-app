@@ -27,6 +27,8 @@ DESIGN_PAGES: list[tuple[str, str]] = [
     ("bucatarie", "2026-06-11"),
     ("dormitor", "2026-06-11"),
     ("baie", "2026-06-11"),
+    ("birouri", "2026-06-16"),
+    ("spatii-comerciale", "2026-06-16"),
 ]
 
 # (slug, lastmod) — style landing pages (the REAL PropManage style system)
@@ -42,17 +44,21 @@ DESIGN_STYLES: list[tuple[str, str]] = [
     ("boho", "2026-06-11"),
 ]
 
-# Candidate cities for local Design Interior pages (valid routes).
+# Candidate cities/zones for local Design Interior pages (valid routes).
 DESIGN_LOCAL_CITIES: list[str] = [
     "bucuresti", "cluj-napoca", "brasov", "oradea", "timisoara", "sibiu", "iasi",
+    # Cluj metro-area localities + neighborhoods
+    "floresti", "baciu", "apahida", "marasti-cluj", "gheorgheni-cluj",
+    # București neighborhood + Ilfov localities
+    "baneasa", "otopeni", "corbeanca", "buftea", "balotesti",
 ]
 
-# Local city pages that have UNIQUE, distinct editorial content authored in
-# frontend/src/data/designInteriorLocal.js. These become INDEX + self-canonical
-# based on CONTENT sufficiency (not specialist count). Cities NOT listed here
-# render a generic template and stay NOINDEX (canonical → /design-interior).
+# Local pages with UNIQUE authored content (INDEX). Cities NOT listed here render a
+# generic template and stay NOINDEX (canonical → /design-interior).
 DESIGN_LOCAL_INDEXABLE: set[str] = {
     "cluj-napoca", "bucuresti", "timisoara", "brasov", "iasi", "sibiu", "oradea",
+    "floresti", "baciu", "apahida", "marasti-cluj", "gheorgheni-cluj",
+    "baneasa", "otopeni", "corbeanca", "buftea", "balotesti",
 }
 
 DESIGN_PAGE_SLUGS = {s for s, _ in DESIGN_PAGES}

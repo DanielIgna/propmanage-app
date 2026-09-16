@@ -358,6 +358,367 @@ export const DI_LOCAL_CONTENT = {
       { to: "/scorul-casei", label: "Verifică Scorul Casei tale" },
     ],
   },
+
+  "floresti": {
+    name: "Florești (Cluj)",
+    intro:
+      "Florești este cea mai mare comună din România și principala zonă de expansiune rezidențială a Clujului, cu mii de apartamente noi construite în ultimul deceniu. Este aleasă mai ales de tineri și familii care lucrează în Cluj-Napoca. Aici designul interior înseamnă, în cea mai mare parte, optimizarea apartamentelor noi, adesea compacte. Pe PropManage lucrezi cu designeri verificați, cu proiect legat de execuție prin escrow.",
+    sections: [
+      {
+        h2: "Ce amenajăm în Florești",
+        body: ["Fondul locativ este dominat de ansambluri noi, cu apartamente care cer soluții inteligente de spațiu."],
+        bullets: [
+          "Apartamente noi de 1-2-3 camere în ansambluri rezidențiale",
+          "Open-space living-bucătărie de organizat funcțional",
+          "Necesar mare de depozitare la suprafețe mici",
+          "Amenajări pentru tineri navetiști și familii tinere",
+        ],
+      },
+      {
+        h2: "Nevoi specifice zonei Florești",
+        body: ["Fiind o comună-dormitor cu apartamente în general compacte, prioritatea e maximizarea fiecărui metru pătrat."],
+        bullets: [
+          "Birou de acasă integrat pentru cei care lucrează remote sau în IT",
+          "Depozitare până în tavan și mobilier pe comandă",
+          "Zonă de zi deschisă, dar bine delimitată funcțional",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Merită designul interior pentru un apartament nou din Florești?", a: "Mai ales pentru un apartament compact dintr-un ansamblu nou. Un designer optimizează depozitarea, circulația și zona de zi, evitând cumpărături greșite de mobilier." },
+      { q: "Găsesc designeri care lucrează în Florești?", a: "Da, mulți designeri din Cluj acoperă și Florești. Postează o cerere și primești oferte de la specialiști verificați care lucrează în zonă." },
+    ],
+    related: [
+      { to: "/design-interior/cluj-napoca", label: "Design interior Cluj-Napoca" },
+      { to: "/design-interior/apartament-mic", label: "Design apartament mic" },
+      { to: "/design-interior/apartament", label: "Design interior apartament" },
+      { to: "/scorul-casei", label: "Verifică Scorul Casei tale" },
+    ],
+  },
+
+  "baciu": {
+    name: "Baciu (Cluj)",
+    intro:
+      "Baciu este o comună aflată la nord-vest de Cluj-Napoca, cu o creștere rezidențială accentuată în ultimii ani. Combină case individuale cu ansambluri noi de apartamente, într-un ritm mai liniștit decât orașul. Designul interior aici acoperă atât apartamente noi, cât și case. Pe PropManage lucrezi cu designeri verificați, cu proiect legat de execuție prin escrow.",
+    sections: [
+      {
+        h2: "Ce amenajăm în Baciu",
+        body: ["Zona are un mix echilibrat de locuințe noi și case, fiecare cu nevoi diferite de amenajare."],
+        bullets: [
+          "Apartamente noi în ansambluri rezidențiale",
+          "Case individuale cu logică zi/noapte",
+          "Amenajări pentru familii care caută liniște lângă Cluj",
+        ],
+      },
+      {
+        h2: "Nevoi specifice zonei Baciu",
+        body: ["Proximitatea de Cluj și tipul locuințelor influențează cerințele."],
+        bullets: [
+          "Optimizarea apartamentelor noi și a caselor pe două niveluri",
+          "Soluții practice de depozitare și confort pentru familii",
+          "Coerență între design, buget și execuție",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Se amenajează case în Baciu, nu doar apartamente?", a: "Da. Casele individuale sunt frecvente în zonă și beneficiază de un proiect de design care organizează zonele de zi și noapte și optimizează circulația." },
+      { q: "Aveți designeri care lucrează în Baciu?", a: "Designerii verificați din Cluj acoperă și zona Baciu. Postează o cerere pentru oferte reale." },
+    ],
+    related: [
+      { to: "/design-interior/cluj-napoca", label: "Design interior Cluj-Napoca" },
+      { to: "/design-interior/casa", label: "Design interior casă" },
+      { to: "/design-interior/renovare", label: "Design pentru renovare" },
+      { to: "/imobile-verificate", label: "Imobile Verificate" },
+    ],
+  },
+
+  "apahida": {
+    name: "Apahida (Cluj)",
+    intro:
+      "Apahida este o comună aflată la est de Cluj-Napoca, cu o dezvoltare rezidențială și industrială importantă. Aici găsești case individuale și ansambluri noi, într-o zonă bine conectată la oraș. Designul interior acoperă atât locuințe noi, cât și case de familie. Pe PropManage lucrezi cu designeri verificați, cu proiect legat de execuție prin escrow.",
+    sections: [
+      {
+        h2: "Ce amenajăm în Apahida",
+        body: ["Zona combină ansambluri rezidențiale noi cu case, fiecare cu propriile cerințe."],
+        bullets: [
+          "Apartamente noi în ansambluri",
+          "Case individuale și duplexuri",
+          "Amenajări pentru familii care lucrează în Cluj",
+        ],
+      },
+      {
+        h2: "Nevoi specifice zonei Apahida",
+        body: ["Tipul locuințelor și conexiunea cu orașul modelează prioritățile."],
+        bullets: [
+          "Organizarea eficientă a caselor pe niveluri",
+          "Depozitare și funcționalitate pentru familii",
+          "Legătura clară între proiect și execuție",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Cât costă designul interior în Apahida?", a: "Un concept pornește de la câteva sute de lei pe cameră; proiectul tehnic complet se calculează pe metru pătrat, în funcție de suprafață și complexitate." },
+      { q: "Găsesc designeri pentru Apahida?", a: "Da, designerii verificați din zona Cluj acoperă și Apahida. Postează o cerere pentru oferte." },
+    ],
+    related: [
+      { to: "/design-interior/cluj-napoca", label: "Design interior Cluj-Napoca" },
+      { to: "/design-interior/casa", label: "Design interior casă" },
+      { to: "/design-interior/apartament", label: "Design interior apartament" },
+      { to: "/scorul-casei", label: "Verifică Scorul Casei tale" },
+    ],
+  },
+
+  "marasti-cluj": {
+    name: "Mărăști (Cluj-Napoca)",
+    intro:
+      "Mărăști este unul dintre cele mai dense și mai bine conectate cartiere din Cluj-Napoca, cu blocuri din perioada comunistă și zone comerciale active. Aici designul interior înseamnă în principal optimizarea apartamentelor din blocuri, cu compartimentări rigide de regândit. Pe PropManage lucrezi cu designeri verificați, cu proiect legat de execuție prin escrow.",
+    sections: [
+      {
+        h2: "Ce amenajăm în Mărăști",
+        body: ["Cartierul e dominat de apartamente în blocuri, cu potențial mare de optimizare."],
+        bullets: [
+          "Apartamente în blocuri anii 70-80, cu compartimentări rigide",
+          "Garsoniere și apartamente de 2-3 camere de reorganizat",
+          "Spații mici unde lumina și depozitarea sunt cruciale",
+        ],
+      },
+      {
+        h2: "Nevoi specifice cartierului Mărăști",
+        body: ["Fondul locativ mai vechi cere atenție la partea tehnică înainte de finisaje."],
+        bullets: [
+          "Reabilitarea instalațiilor electrice și sanitare",
+          "Reorganizarea compartimentării pentru lumină și circulație",
+          "Izolație fonică între apartamente",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Merită renovarea unui apartament vechi din Mărăști?", a: "Da, dacă pornești de la o evaluare corectă a stării. Un audit tehnic înainte de finisaje îți arată ce trebuie refăcut la instalații și te ferește de surprize." },
+      { q: "Aveți designeri în zona Mărăști?", a: "Designerii verificați din Cluj acoperă toate cartierele, inclusiv Mărăști. Postează o cerere pentru oferte." },
+    ],
+    related: [
+      { to: "/design-interior/cluj-napoca", label: "Design interior Cluj-Napoca" },
+      { to: "/design-interior/apartament-vechi", label: "Design apartament vechi" },
+      { to: "/design-interior/renovare", label: "Design pentru renovare" },
+      { to: "/scorul-casei", label: "Verifică Scorul Casei tale" },
+    ],
+  },
+
+  "gheorgheni-cluj": {
+    name: "Gheorgheni (Cluj-Napoca)",
+    intro:
+      "Gheorgheni este un cartier rezidențial consacrat din Cluj-Napoca, cu blocuri din anii 70-80, spații verzi și proximitate față de zone comerciale importante. Aici designul interior se concentrează pe modernizarea apartamentelor din blocuri, păstrând confortul cartierului. Pe PropManage lucrezi cu designeri verificați, cu proiect legat de execuție prin escrow.",
+    sections: [
+      {
+        h2: "Ce amenajăm în Gheorgheni",
+        body: ["Cartierul are un fond locativ matur, cu apartamente care beneficiază de modernizare."],
+        bullets: [
+          "Apartamente în blocuri anii 70-80, solide dar de modernizat",
+          "Apartamente de 2-3 camere de reorganizat funcțional",
+          "Amenajări pentru familii stabile și profesioniști",
+        ],
+      },
+      {
+        h2: "Nevoi specifice cartierului Gheorgheni",
+        body: ["Modernizarea apartamentelor mature cere atenție la instalații și finisaje."],
+        bullets: [
+          "Actualizarea instalațiilor înainte de finisaje noi",
+          "Optimizarea depozitării și a zonei de zi",
+          "Confort termic și fonic",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Cât costă modernizarea unui apartament în Gheorgheni?", a: "Depinde de suprafață și de intervenții. Un concept pornește de la câteva sute de lei pe cameră; proiectul tehnic complet se calculează pe metru pătrat." },
+      { q: "Aveți designeri în Gheorgheni?", a: "Da, designerii verificați din Cluj acoperă și cartierul Gheorgheni. Postează o cerere pentru oferte reale." },
+    ],
+    related: [
+      { to: "/design-interior/cluj-napoca", label: "Design interior Cluj-Napoca" },
+      { to: "/design-interior/apartament", label: "Design interior apartament" },
+      { to: "/design-interior/renovare", label: "Design pentru renovare" },
+      { to: "/imobile-verificate", label: "Imobile Verificate" },
+    ],
+  },
+
+  "baneasa": {
+    name: "Băneasa (București)",
+    intro:
+      "Băneasa este o zonă premium din nordul Bucureștiului, cunoscută pentru vile, ansambluri rezidențiale de lux și proximitatea față de pădure și aeroport. Aici designul interior lucrează cu spații generoase și cerințe ridicate de finisaj. Pe PropManage lucrezi cu designeri verificați, cu proiect legat de execuție prin escrow.",
+    sections: [
+      {
+        h2: "Ce amenajăm în Băneasa",
+        body: ["Zona are locuințe premium, de la apartamente în ansambluri noi la vile."],
+        bullets: [
+          "Vile și case individuale cu suprafețe generoase",
+          "Apartamente în ansambluri rezidențiale de lux",
+          "Cerințe ridicate de finisaje și materiale",
+        ],
+      },
+      {
+        h2: "Nevoi specifice zonei Băneasa",
+        body: ["Standardul premium al zonei aduce cerințe aparte."],
+        bullets: [
+          "Materiale nobile și detalii de calitate",
+          "Integrare smart-home și confort acustic",
+          "Coerență între concept, randări și execuție impecabilă",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Ce buget presupune designul într-o vilă din Băneasa?", a: "Proiectul se calculează pe metru pătrat și crește cu nivelul de detaliu și cu materialele alese. Pentru spații mari și finisaje premium, un proiect tehnic complet este esențial." },
+      { q: "Aveți designeri pentru zona Băneasa?", a: "Da, designerii verificați din București acoperă și Băneasa. Postează o cerere pentru oferte de la specialiști cu portofolii reale." },
+    ],
+    related: [
+      { to: "/design-interior/bucuresti", label: "Design interior București" },
+      { to: "/design-interior/casa", label: "Design interior casă" },
+      { to: "/design-interior/stil/classic", label: "Design interior stil clasic" },
+      { to: "/imobile-verificate", label: "Imobile Verificate" },
+    ],
+  },
+
+  "otopeni": {
+    name: "Otopeni (Ilfov)",
+    intro:
+      "Otopeni, oraș aflat imediat la nord de București și cunoscut pentru aeroportul internațional, are o piață rezidențială premium în creștere, cu case și ansambluri noi. Designul interior aici acoperă locuințe moderne, adesea pentru familii și profesioniști. Pe PropManage lucrezi cu designeri verificați, cu proiect legat de execuție prin escrow.",
+    sections: [
+      {
+        h2: "Ce amenajăm în Otopeni",
+        body: ["Fondul locativ este dominat de locuințe noi și case individuale."],
+        bullets: [
+          "Case individuale și duplexuri noi",
+          "Apartamente în ansambluri rezidențiale moderne",
+          "Amenajări pentru familii și profesioniști",
+        ],
+      },
+      {
+        h2: "Nevoi specifice zonei Otopeni",
+        body: ["Locuințele noi cer personalizarea finisajelor și organizarea funcțională."],
+        bullets: [
+          "Organizarea zonelor de zi și noapte în case",
+          "Personalizarea finisajelor la apartamentele noi",
+          "Confort acustic, dat fiind traficul aerian din zonă",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Cât costă designul interior în Otopeni?", a: "Un concept pornește de la câteva sute de lei pe cameră; proiectul tehnic complet se calculează pe metru pătrat, în funcție de suprafață și complexitate." },
+      { q: "Aveți designeri pentru Otopeni?", a: "Da, designerii verificați din București acoperă și Otopeni. Postează o cerere pentru oferte reale." },
+    ],
+    related: [
+      { to: "/design-interior/bucuresti", label: "Design interior București" },
+      { to: "/design-interior/casa", label: "Design interior casă" },
+      { to: "/design-interior/apartament", label: "Design interior apartament" },
+      { to: "/scorul-casei", label: "Verifică Scorul Casei tale" },
+    ],
+  },
+
+  "corbeanca": {
+    name: "Corbeanca (Ilfov)",
+    intro:
+      "Corbeanca este o comună premium din Ilfov, la nord de București, apreciată pentru densitatea mică, vilele spantioase și mediul verde. Designul interior aici lucrează în principal cu case de familie și proprietăți generoase. Pe PropManage lucrezi cu designeri verificați, cu proiect legat de execuție prin escrow.",
+    sections: [
+      {
+        h2: "Ce amenajăm în Corbeanca",
+        body: ["Zona este dominată de case și vile individuale, cu suprafețe mari."],
+        bullets: [
+          "Vile și case individuale cu curte",
+          "Spații generoase de zi și zone de relaxare",
+          "Cerințe ridicate de confort și finisaje",
+        ],
+      },
+      {
+        h2: "Nevoi specifice zonei Corbeanca",
+        body: ["Locuințele mari din mediu verde aduc cerințe aparte."],
+        bullets: [
+          "Legătura dintre interior și grădină/curte",
+          "Materiale naturale și confort termic",
+          "Organizarea logică a caselor pe niveluri",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Ce presupune designul unei vile în Corbeanca?", a: "Un proiect pentru o vilă include organizarea pe niveluri, zonele de zi și noapte, relația cu curtea și un plan de finisaje. Prețul se calculează pe metru pătrat." },
+      { q: "Aveți designeri pentru Corbeanca?", a: "Da, designerii verificați din București acoperă și Corbeanca. Postează o cerere pentru oferte." },
+    ],
+    related: [
+      { to: "/design-interior/bucuresti", label: "Design interior București" },
+      { to: "/design-interior/casa", label: "Design interior casă" },
+      { to: "/design-interior/stil/rustic", label: "Design interior stil rustic" },
+      { to: "/imobile-verificate", label: "Imobile Verificate" },
+    ],
+  },
+
+  "buftea": {
+    name: "Buftea (Ilfov)",
+    intro:
+      "Buftea este un oraș din Ilfov, la nord-vest de București, cu un fond locativ variat, de la case la apartamente, și o zonă cunoscută pentru studiourile de film. Piața este mai accesibilă decât în zonele premium din nord. Designul interior acoperă atât apartamente, cât și case. Pe PropManage lucrezi cu designeri verificați, cu proiect legat de execuție prin escrow.",
+    sections: [
+      {
+        h2: "Ce amenajăm în Buftea",
+        body: ["Zona are un mix de locuințe, de la apartamente la case de familie."],
+        bullets: [
+          "Apartamente în blocuri și ansambluri",
+          "Case individuale de familie",
+          "Amenajări practice, cu buget echilibrat",
+        ],
+      },
+      {
+        h2: "Nevoi specifice zonei Buftea",
+        body: ["Diversitatea locuințelor cere abordări adaptate."],
+        bullets: [
+          "Optimizarea apartamentelor și organizarea caselor",
+          "Soluții practice de depozitare",
+          "Echilibru între cost, funcționalitate și estetică",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Cât costă designul interior în Buftea?", a: "Un concept pornește de la câteva sute de lei pe cameră; proiectul tehnic complet se calculează pe metru pătrat, în funcție de suprafață și complexitate." },
+      { q: "Aveți designeri pentru Buftea?", a: "Da, designerii verificați din zona București-Ilfov acoperă și Buftea. Postează o cerere pentru oferte." },
+    ],
+    related: [
+      { to: "/design-interior/bucuresti", label: "Design interior București" },
+      { to: "/design-interior/apartament", label: "Design interior apartament" },
+      { to: "/design-interior/casa", label: "Design interior casă" },
+      { to: "/scorul-casei", label: "Verifică Scorul Casei tale" },
+    ],
+  },
+
+  "balotesti": {
+    name: "Balotești (Ilfov)",
+    intro:
+      "Balotești este o comună din Ilfov, situată pe DN1 la nord de București, cu o dezvoltare rezidențială în creștere și proximitate față de aeroport. Designul interior aici acoperă case și ansambluri noi, pentru familii care caută liniște lângă oraș. Pe PropManage lucrezi cu designeri verificați, cu proiect legat de execuție prin escrow.",
+    sections: [
+      {
+        h2: "Ce amenajăm în Balotești",
+        body: ["Zona combină ansambluri noi cu case individuale."],
+        bullets: [
+          "Case și duplexuri în ansambluri rezidențiale",
+          "Apartamente noi de personalizat",
+          "Amenajări pentru familii care fac naveta spre București",
+        ],
+      },
+      {
+        h2: "Nevoi specifice zonei Balotești",
+        body: ["Locuințele noi și poziția pe DN1 modelează cerințele."],
+        bullets: [
+          "Organizarea funcțională a caselor pe niveluri",
+          "Personalizarea finisajelor la locuințele noi",
+          "Confort și izolație pentru locuit permanent",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Cât costă designul interior în Balotești?", a: "Un concept pornește de la câteva sute de lei pe cameră; proiectul tehnic complet se calculează pe metru pătrat, în funcție de suprafață și complexitate." },
+      { q: "Aveți designeri pentru Balotești?", a: "Da, designerii verificați din zona București-Ilfov acoperă și Balotești. Postează o cerere pentru oferte." },
+    ],
+    related: [
+      { to: "/design-interior/bucuresti", label: "Design interior București" },
+      { to: "/design-interior/casa", label: "Design interior casă" },
+      { to: "/design-interior/renovare", label: "Design pentru renovare" },
+      { to: "/imobile-verificate", label: "Imobile Verificate" },
+    ],
+  },
 };
 
 export const DI_LOCAL_INDEXABLE = Object.keys(DI_LOCAL_CONTENT);

@@ -1633,6 +1633,162 @@ export const GHIDURI = [
       { label: "Design pentru renovare", to: "/design-interior/renovare" },
       { label: "Verifică Scorul Casei", to: "/scorul-casei" },
     ],
+  },
+  {
+    slug: "scorul-casei-ce-masoara",
+    title: "Scorul Casei: ce măsoară și cum îl îmbunătățești · Ghid 2026",
+    h1: "Scorul Casei: ce măsoară și cum îl îmbunătățești",
+    description: "Ce este Scorul Casei, ce evaluează (instalații, structură, izolație, documente) și cum îl crești prin mentenanță și lucrări prioritizate. Ghid practic.",
+    tag: "Audit locuință",
+    icon: "BookOpen",
+    publishedAt: "2026-06-16",
+    updatedAt: "2026-06-16",
+    readMins: 6,
+    sections: [
+      {
+        heading: "Ce este Scorul Casei",
+        body: [
+          "Scorul Casei este o evaluare a stării reale a locuinței tale — o notă care sintetizează cât de bine stau sistemele importante ale casei. Îți arată, dintr-o privire, unde ești și ce merită rezolvat întâi.",
+          "Este punctul de plecare pentru un plan de mentenanță realist și pentru orice decizie de renovare sau vânzare.",
+        ],
+      },
+      {
+        heading: "Ce evaluează",
+        body: [
+          { type: "list", items: [
+            "Instalațiile electrice și sanitare",
+            "Structura și eventualele fisuri sau tasări",
+            "Izolația termică și confortul energetic",
+            "Umezeala, infiltrațiile și riscul de mucegai",
+            "Documentele și istoricul locuinței",
+          ] },
+          { type: "callout", title: "De reținut", body: "Scorul nu e o notă fixă: se îmbunătățește pe măsură ce rezolvi problemele prioritare. Fiecare lucrare finalizată corect crește scorul." },
+        ],
+      },
+      {
+        heading: "Cum îl îmbunătățești",
+        body: [
+          "Pornește de la recomandările prioritare, rezolvă întâi problemele tehnice (instalații, umezeală), apoi finisajele. Un plan de mentenanță menține scorul ridicat în timp, iar istoricul lucrărilor rămâne în Cartea Casei — util și la o eventuală vânzare.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Cum obțin Scorul Casei?", a: "Pornești de la o evaluare a locuinței. Cu cât ai mai multe date verificate (audit tehnic, documente), cu atât scorul e mai precis." },
+      { q: "Un scor mai mare crește valoarea locuinței?", a: "Da — o locuință cu sisteme verificate și probleme rezolvate e mai atractivă și mai ușor de vândut, mai ales în programul Imobile Verificate." },
+      { q: "Cât de des ar trebui reevaluată casa?", a: "Ideal, odată pe an sau după lucrări importante. Mentenanța regulată menține scorul ridicat și previne problemele scumpe." },
+    ],
+    relatedCity: null,
+    relatedCategories: [],
+    internalLinks: [
+      { label: "Verifică Scorul Casei", to: "/scorul-casei" },
+      { label: "Cum îți faci un plan de mentenanță", to: "/ghiduri/plan-mentenanta-locuinta" },
+      { label: "Cartea Casei: de ce contează istoricul", to: "/ghiduri/cartea-casei-istoric-locuinta" },
+      { label: "Imobile Verificate", to: "/imobile-verificate" },
+      { label: "Ce este Digital Twin-ul locuinței", to: "/ghiduri/ce-este-digital-twin-locuinta" },
+    ],
+  },
+  {
+    slug: "plan-mentenanta-locuinta",
+    title: "Cum îți faci un plan de mentenanță pentru locuință · Ghid 2026",
+    h1: "Cum îți faci un plan de mentenanță pentru locuință",
+    description: "Un plan de mentenanță simplu îți protejează casa și bugetul: verificări sezoniere, revizii la instalații, prevenirea umezelii. Checklist practic pe tot anul.",
+    tag: "Mentenanță",
+    icon: "BookOpen",
+    publishedAt: "2026-06-16",
+    updatedAt: "2026-06-16",
+    readMins: 7,
+    sections: [
+      {
+        heading: "De ce ai nevoie de un plan",
+        body: [
+          "Mentenanța reactivă (repari doar când se strică) e cea mai scumpă. Un plan simplu de verificări periodice previne defecțiunile mari și menține Scorul Casei ridicat.",
+        ],
+      },
+      {
+        heading: "Checklist sezonier",
+        body: [
+          { type: "list", items: [
+            "Primăvara: verifică acoperișul, jgheaburile, fațada și semnele de umezeală",
+            "Vara: revizie la instalația de climatizare și ventilație",
+            "Toamna: verifică centrala termică, caloriferele și etanșeitatea tâmplăriei",
+            "Iarna: monitorizează condensul, umiditatea și izolația",
+            "Anual: revizie electrică și sanitară, curățarea coșurilor/ventilațiilor",
+          ] },
+          { type: "callout", title: "Sfat", body: "Notează fiecare intervenție (dată, ce s-a făcut, cine). Istoricul devine parte din Cartea Casei și îți crește Scorul." },
+        ],
+      },
+      {
+        heading: "De la plan la istoric",
+        body: [
+          "Un plan de mentenanță aplicat constant transformă casa dintr-o sursă de surprize într-un activ îngrijit. Istoricul lucrărilor, păstrat în Cartea Casei, e util și pentru specialiști, și la o eventuală vânzare.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Cât timp îmi ia mentenanța?", a: "Câteva verificări pe sezon, majoritatea rapide. Reviziile la instalații se fac de un specialist o dată pe an. Efortul e mic față de costul unei defecțiuni majore." },
+      { q: "Cum leg mentenanța de Scorul Casei?", a: "Fiecare lucrare corect făcută și documentată menține sau crește scorul. Mentenanța regulată e cea mai simplă cale de a păstra un scor bun." },
+      { q: "Unde țin evidența lucrărilor?", a: "În Cartea Casei — istoricul locuinței într-un singur loc, accesibil când ai nevoie (reparații, vânzare, garanții)." },
+    ],
+    relatedCity: null,
+    relatedCategories: [],
+    internalLinks: [
+      { label: "Verifică Scorul Casei", to: "/scorul-casei" },
+      { label: "Scorul Casei: ce măsoară", to: "/ghiduri/scorul-casei-ce-masoara" },
+      { label: "Cartea Casei: de ce contează istoricul", to: "/ghiduri/cartea-casei-istoric-locuinta" },
+      { label: "Ce probleme tehnice urmărești", to: "/ghiduri/probleme-tehnice-apartament-inainte-cumparare" },
+      { label: "Imobile Verificate", to: "/imobile-verificate" },
+    ],
+  },
+  {
+    slug: "cartea-casei-istoric-locuinta",
+    title: "Cartea Casei: de ce contează istoricul locuinței · Ghid 2026",
+    h1: "Cartea Casei: de ce contează istoricul locuinței",
+    description: "Ce este Cartea Casei, de ce merită să păstrezi istoricul lucrărilor și al documentelor și cum te ajută la mentenanță, garanții și vânzare. Ghid practic.",
+    tag: "Cartea Casei",
+    icon: "BookOpen",
+    publishedAt: "2026-06-16",
+    updatedAt: "2026-06-16",
+    readMins: 6,
+    sections: [
+      {
+        heading: "Ce este Cartea Casei",
+        body: [
+          "Cartea Casei este istoricul digital al locuinței tale: documente, lucrări, revizii, garanții și starea sistemelor, într-un singur loc. E memoria casei — utilă exact când ai nevoie de ea.",
+        ],
+      },
+      {
+        heading: "De ce contează istoricul",
+        body: [
+          { type: "list", items: [
+            "La reparații: specialiștii văd ce s-a făcut și cu ce materiale",
+            "La garanții: găsești rapid facturile și termenele",
+            "La mentenanță: știi când a fost ultima revizie",
+            "La vânzare: un istoric complet crește încrederea și valoarea",
+          ] },
+          { type: "callout", title: "Legătura cu verificarea", body: "În programul Imobile Verificate, istoricul și starea verificată a locuinței (audit + Digital Twin) devin o dovadă pentru cumpărător, nu doar o promisiune." },
+        ],
+      },
+      {
+        heading: "Cum o construiești",
+        body: [
+          "Adaugă treptat documentele și lucrările pe măsură ce apar. Combinată cu un plan de mentenanță și cu Scorul Casei, Cartea Casei transformă locuința într-un activ îngrijit și transparent.",
+        ],
+      },
+    ],
+    faq: [
+      { q: "De ce să țin istoricul locuinței?", a: "Pentru că îți economisește timp și bani la reparații, garanții și vânzare, și crește încrederea unui viitor cumpărător." },
+      { q: "Cum se leagă Cartea Casei de Scorul Casei?", a: "Scorul reflectă starea; Cartea Casei păstrează istoricul care susține scorul. Împreună dau o imagine completă și credibilă a locuinței." },
+      { q: "Ajută la vânzare?", a: "Da. Un istoric complet și un scor bun fac locuința mai atractivă, mai ales listată ca Imobil Verificat cu audit și Digital Twin." },
+    ],
+    relatedCity: null,
+    relatedCategories: [],
+    internalLinks: [
+      { label: "Verifică Scorul Casei", to: "/scorul-casei" },
+      { label: "Scorul Casei: ce măsoară", to: "/ghiduri/scorul-casei-ce-masoara" },
+      { label: "Cum îți faci un plan de mentenanță", to: "/ghiduri/plan-mentenanta-locuinta" },
+      { label: "Imobile Verificate", to: "/imobile-verificate" },
+      { label: "Cum se leagă verificarea de Digital Twin", to: "/ghiduri/verificare-imobil-digital-twin" },
+    ],
   }
 ];
 

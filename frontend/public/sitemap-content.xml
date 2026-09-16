@@ -139,6 +139,24 @@
     <priority>0.75</priority>
   </url>
   <url>
+    <loc>https://propmanage.ro/ghiduri/scorul-casei-ce-masoara</loc>
+    <lastmod>2026-06-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://propmanage.ro/ghiduri/plan-mentenanta-locuinta</loc>
+    <lastmod>2026-06-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://propmanage.ro/ghiduri/cartea-casei-istoric-locuinta</loc>
+    <lastmod>2026-06-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
     <loc>https://propmanage.ro/probleme-casa/infiltratii-acoperis</loc>
     <lastmod>2026-06-11</lastmod>
     <changefreq>monthly</changefreq>

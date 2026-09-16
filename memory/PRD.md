@@ -1,3 +1,30 @@
+## 🔎📈 SEO EXPANSION #3 — Zone/cartiere + enterprise + cluster Audit/Cartea Casei (Iun 2026)
+
+Extindere zone locale + servicii enterprise + editorial audit, doar conținut real. FĂRĂ GSC OAuth/PKCE/Google Login/robots/canonical global/regula marketplace ≥3. Verificat (19 pytest PASS + validate 6/6 green + render screenshots).
+
+**LIVRAT**:
+1. **10 pagini locale noi pe zone/cartiere/localități limitrofe** (`designInteriorLocal.js` + `designInterior.js DI_LOCAL_CITIES` + `seo_design.DESIGN_LOCAL_CITIES/INDEXABLE`), fiecare cu conținut unic factual (context locativ real, nevoi specifice, FAQ, internal links), fără date inventate:
+   - Zona Cluj: **Florești, Baciu, Apahida** (localități limitrofe) + **Mărăști (marasti-cluj), Gheorgheni (gheorgheni-cluj)** (cartiere)
+   - București/Ilfov: **Băneasa** (cartier) + **Otopeni, Corbeanca, Buftea, Balotești** (localități Ilfov)
+   - Toate = INDEX + self-canonical + în sitemap-design; slug-uri de cartier dezambiguizate (`marasti-cluj`, `gheorgheni-cluj`).
+2. **2 pagini de serviciu enterprise** (`DI_PAGES` + `DESIGN_PAGES`): `/design-interior/birouri` (design birouri) și `/design-interior/spatii-comerciale` (magazine/HoReCa/showroom) — conținut B2B real, CTA, FAQ, cross-link.
+3. **Cluster editorial Audit & Cartea Casei — 3 ghiduri noi** (cluster `audit`): `scorul-casei-ce-masoara`, `plan-mentenanta-locuinta`, `cartea-casei-istoric-locuinta`. Leagă Scorul Casei ↔ mentenanță ↔ istoricul locuinței ↔ Imobile Verificate ↔ Digital Twin.
+4. **Hub `/design-interior`**: adăugate serviciile enterprise în topic-graph + secțiune nouă „Zone și localități" (`id-zone-links`) cu cele 10 zone.
+
+**BEFORE → AFTER (arc complet sesiune, preview)**:
+- INDEX: 96 → **126** (+30 total sesiune: 8 + 7 + 15). Acest batch: +15 (10 zone + 2 enterprise + 3 ghiduri audit).
+- NOINDEX: **200 neschimbat** (marketplace thin, regula ≥3).
+- Sitemap: 5 → **6 copii** (static 17 / content 45 / marketplace 7 / specialists 15 / design 42 / estate 0-preview·real-pe-prod).
+- Design Interior: sitemap-design 24 → **42** (16 pagini incl. 2 enterprise + 9 stiluri + 17 zone/orașe) + hub + **14 ghiduri editoriale**.
+- Fix quote (`"` drept → `"`) în conținutul verificare-imobil-digital-twin.
+
+**Rămân NOINDEX + motiv**: 195 marketplace service×oraș + 5 național (<3 specialiști). Zone fără conținut autorat → NOINDEX (mecanism păstrat; momentan toate rutele definite au conținut). Estate detail demo/seed = excluse.
+
+**NEATINS**: GSC OAuth/PKCE, Google Login, robots.txt, canonical global, gate marketplace ≥3. **Necesită redeploy** pentru producție.
+
+---
+
+
 ## 🔎📈 SEO EXPANSION #2 — Design Interior local complet + cluster Imobile Verificate (Iun 2026)
 
 Continuare a expansiunii SEO, doar conținut real justificat. FĂRĂ GSC OAuth/PKCE/Google Login/robots/canonical global/regula marketplace ≥3. Verificat (19 pytest PASS + validate 6/6 green + screenshots render).

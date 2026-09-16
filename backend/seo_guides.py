@@ -32,4 +32,7 @@ GUIDE_SLUGS: list[tuple[str, str]] = [
     ("probleme-tehnice-apartament-inainte-cumparare", "2026-06-16"),
     ("verificare-imobil-digital-twin", "2026-06-16"),
     ("riscuri-cumparare-apartament-bloc-vechi", "2026-06-16"),
+    ("scorul-casei-ce-masoara", "2026-06-16"),
+    ("plan-mentenanta-locuinta", "2026-06-16"),
+    ("cartea-casei-istoric-locuinta", "2026-06-16"),
 ]

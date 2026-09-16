@@ -536,6 +536,8 @@ export default function InteriorDesignLanding() {
               ["/design-interior/baie", "Design baie"],
               ["/design-interior/apartament-2-camere", "Apartament 2 camere"],
               ["/design-interior/apartament-mic", "Apartament mic"],
+              ["/design-interior/birouri", "Design birouri"],
+              ["/design-interior/spatii-comerciale", "Design spații comerciale"],
             ].map(([to, label]) => (
               <Link key={to} to={to} className="px-3.5 py-2.5 rounded-xl border border-stone-100 text-sm font-semibold text-stone-700 hover:border-emerald-300 hover:text-emerald-800 transition-colors" data-testid={`id-topic-${to}`}>{label}</Link>
             ))}
@@ -550,6 +552,12 @@ export default function InteriorDesignLanding() {
           <div className="flex flex-wrap gap-2 not-prose" data-testid="id-city-links">
             {[["bucuresti","București"],["cluj-napoca","Cluj-Napoca"],["brasov","Brașov"],["timisoara","Timișoara"],["iasi","Iași"],["oradea","Oradea"],["sibiu","Sibiu"]].map(([s, l]) => (
               <Link key={s} to={`/design-interior/${s}`} className="px-3 py-1.5 rounded-full bg-stone-50 border border-stone-200 text-xs font-bold text-stone-600 hover:border-emerald-300 hover:text-emerald-800 transition-colors" data-testid={`id-city-${s}`}>{l}</Link>
+            ))}
+          </div>
+          <h3 className="text-base font-black text-stone-900 mb-2 mt-6">Zone și localități</h3>
+          <div className="flex flex-wrap gap-2 not-prose" data-testid="id-zone-links">
+            {[["floresti","Florești"],["baciu","Baciu"],["apahida","Apahida"],["marasti-cluj","Mărăști (Cluj)"],["gheorgheni-cluj","Gheorgheni (Cluj)"],["baneasa","Băneasa"],["otopeni","Otopeni"],["corbeanca","Corbeanca"],["buftea","Buftea"],["balotesti","Balotești"]].map(([s, l]) => (
+              <Link key={s} to={`/design-interior/${s}`} className="px-3 py-1.5 rounded-full bg-stone-50 border border-stone-200 text-xs font-bold text-stone-600 hover:border-emerald-300 hover:text-emerald-800 transition-colors" data-testid={`id-zone-${s}`}>{l}</Link>
             ))}
           </div>
         </article>
