@@ -1,36 +1,53 @@
-"""HartaBlocuri — SEO Cluster Foundation (Faza 3) · READ-ONLY.
+"""HartaBlocuri — National SEO Cluster ENGINE (county-agnostic) · READ-ONLY.
 
-Layer SEO derivat peste `buildings` + Truth Layer. NU publică pagini, NU atinge
-sitemap/robots/import/raw/schema. Agregă date REALE în clustere cu substanță și
-pregătește metadata pentru viitoare pagini de cluster (fără indexare automată).
+Motor de descoperire clustere peste `buildings` + Truth Layer. County-agnostic:
+Romania → Județ → Localitate → Cartier → Eră → Tipologie → Project Family → Building.
+NU hardcoda județul. Datasetul Cluj populează prima instanță; alt județ = doar date noi.
 
-Taxonomie SEO (read-only): Localitate · Eră · Formă · Typology Profile · Project Family.
-Provenance păstrat: „Date externe — neverificate de PropManage." Typology = Candidate.
-NU deduce clasă energetică / risc seismic / renovare / conformitate legală.
+State machine indexabilitate (data-driven): BLOCKED / CANDIDATE / PREPARED / INDEX / NOINDEX.
+Doar clusterele INDEX intră în sitemap. Fără pagini goale/subțiri/doorway. Fără statistici inventate.
+NU atinge raw/schema/import/Truth Layer/Marketplace/House Health/Digital Twin/OAuth.
 """
 from __future__ import annotations
 
 import re
+import time
 import unicodedata
 from collections import Counter
 
 from db import db
 from hartablocuri_read_layer import build_truth_layer
 
-_SITE_URL = None  # rezolvat lazy din routes.public pentru a evita import circular
+_SITE_URL = None
 
-# Prag minim de substanță pentru eligibilitate index (calitate, anti thin-content)
-MIN_BUILDINGS_INDEX = 25
+# Praguri quality gate (substanță reală, anti thin-content)
+MIN_INDEX = 30      # substanță solidă → auto-publish INDEX
+MIN_PREPARED = 10   # substanță parțială → PREPARED (noindex, publicabil ulterior)
 
-# Ghiduri relevante pentru linking semantic (există în seo_guides / sitemap)
+BASE = "/blocuri"
+
+_PLACEHOLDER = {"", "none", "necunoscut", "necunoscuta", "nedeterminat", "n/a", "na",
+                "ansambluri noi", "imobile interbelice/antebelice", "de adaugat"}
+
+ERA_LABEL = {
+    "comunist 1950-1969": "Comunist timpuriu (1950–1969)",
+    "comunist 1968-1979": "Comunist (1968–1979)",
+    "comunist 1977-1990": "Comunist târziu (1977–1990)",
+    "post-1990": "Post-1990",
+    "interbelic/antebelic": "Interbelic / antebelic",
+}
+FORM_LABEL = {"bara": "Bloc bară", "turn": "Bloc turn", "drept": "Bloc drept",
+              "cruce": "Bloc cruce", "mixt": "Bloc mixt"}
+TYP_LABEL = {"C1": "Panou prefabricat P+4 (fond comunist)", "C4": "Turn de locuit (regim înalt)"}
+TYP_SLUG = {"C1": "panou-prefabricat-p4", "C4": "turn-inalt"}
+TYP_LEVEL = {"C1": "L2", "C4": "L2"}
+
 _RELATED_GUIDES = [
     ("riscuri-cumparare-apartament-bloc-vechi", "Riscuri la cumpărarea unui apartament în bloc vechi"),
     ("cartea-casei-istoric-locuinta", "Cartea Casei — istoricul locuinței"),
     ("scorul-casei-ce-masoara", "Scorul Casei — ce măsoară"),
     ("plan-mentenanta-locuinta", "Plan de mentenanță pentru locuință"),
 ]
-
-# Linking semantic PropManage (forward). Ținte reale, publice.
 _FORWARD_LINKS = [
     {"key": "building_discovery", "label": "Găsește-ți blocul", "href": "/#gaseste-blocul"},
     {"key": "cartea_casei", "label": "Cartea Casei", "href": "/cartea-casei"},
@@ -38,6 +55,15 @@ _FORWARD_LINKS = [
     {"key": "audit_specialist", "label": "Audit / Specialiști", "href": "/marketplace"},
     {"key": "digital_twin", "label": "Digital Twin", "href": "/digital-twin"},
 ]
+
+# Puncte de monetizare (conceptual, folosind infrastructura existentă; fără prețuri noi)
+MONETIZATION = {
+    "free": {"label": "Informații publice / contextuale", "href": None},
+    "lead": {"label": "Creare cont · Adaugă locuința · Cartea Casei", "href": "/cartea-casei"},
+    "paid": {"label": "House Health · Audit · Digital Twin · documentație", "href": "/scorul-casei"},
+    "specialist": {"label": "Lead specialist · solicitare · serviciu", "href": "/marketplace"},
+    "property": {"label": "Servicii pentru asociații · lucrări · mentenanță", "href": "/marketplace"},
+}
 
 
 def _site_url() -> str:
@@ -48,247 +74,328 @@ def _site_url() -> str:
     return _SITE_URL
 
 
-def _slugify(s: str) -> str:
+def _slug(s: str) -> str:
     s = unicodedata.normalize("NFKD", str(s or ""))
     s = "".join(c for c in s if not unicodedata.combining(c)).lower()
     s = re.sub(r"[^a-z0-9]+", "-", s).strip("-")
     return re.sub(r"-+", "-", s)
 
 
-# ─────────────────── DEFINIȚII CLUSTERE PILOT (5) ───────────────────
-# Fiecare pilot: locality (db+slug), dimension, value label/slug, matcher(raw, tl)->bool.
-_CLUJ = {"db": "Cluj-Napoca", "slug": "cluj-napoca", "label": "Cluj-Napoca"}
+def _blocked(v) -> bool:
+    return v is None or str(v).strip().lower() in _PLACEHOLDER
 
 
-def _m_c1(raw, tl):
-    return any(p["code"] == "C1" for p in (tl.get("typology_profiles") or []))
-
-
-def _m_c4(raw, tl):
-    return any(p["code"] == "C4" for p in (tl.get("typology_profiles") or []))
-
-
-def _m_era(value):
-    def f(raw, tl):
-        return (raw.get("era") or "").strip().lower() == value
-    return f
-
-
-def _m_family(fam):
-    def f(raw, tl):
-        return (tl.get("project_family") or {}).get("family") == fam
-    return f
-
-
-PILOT_CLUSTERS = [
-    {
-        "id": "cluj-panou-p4", "locality": _CLUJ, "dimension": "typology_profile",
-        "value_label": "Panou prefabricat P+4 (fond comunist)", "value_slug": "panou-prefabricat-p4",
-        "classification_level": "L2", "confidence_source": "typology",
-        "matcher": _m_c1,
-        "intro_lead": "blocuri din panouri prefabricate, regim P+4, tipice fondului locativ comunist",
-    },
-    {
-        "id": "cluj-turn-inalt", "locality": _CLUJ, "dimension": "typology_profile",
-        "value_label": "Turn de locuit (regim înalt)", "value_slug": "turn-inalt",
-        "classification_level": "L2", "confidence_source": "typology",
-        "matcher": _m_c4,
-        "intro_lead": "blocuri tip turn cu regim înalt (P+10 sau mai mult)",
-    },
-    {
-        "id": "cluj-comunist-1977-1990", "locality": _CLUJ, "dimension": "era",
-        "value_label": "Eră comunistă 1977–1990", "value_slug": "comunist-1977-1990",
-        "classification_level": "L0", "confidence_source": "era",
-        "matcher": _m_era("comunist 1977-1990"),
-        "intro_lead": "blocuri construite în perioada comunistă târzie (1977–1990)",
-    },
-    {
-        "id": "cluj-interbelic", "locality": _CLUJ, "dimension": "era",
-        "value_label": "Eră interbelică / antebelică", "value_slug": "interbelic-antebelic",
-        "classification_level": "L0", "confidence_source": "era",
-        "matcher": _m_era("interbelic/antebelic"),
-        "intro_lead": "imobile din perioada interbelică / antebelică",
-    },
-    {
-        "id": "cluj-proiect-cf1", "locality": _CLUJ, "dimension": "project_family",
-        "value_label": "Familie de proiect cf1", "value_slug": "proiect-cf1",
-        "classification_level": "L1", "confidence_source": "project_family",
-        "matcher": _m_family("cf1"),
-        "intro_lead": "blocuri din familia de proiect cf1 (cod de proiect normalizat soft)",
-    },
-]
-
-
-def _slug_path(cdef: dict) -> str:
-    return f"/blocuri/{cdef['locality']['slug']}/{cdef['value_slug']}"
-
-
-def _confidence_summary(items: list, source: str) -> dict:
-    c = Counter()
-    for tl in items:
-        if source == "typology":
-            profs = tl.get("typology_profiles") or []
-            c[profs[0]["confidence"]] += 1 if profs else 0
-        elif source == "era":
-            c[(tl.get("era") or {}).get("confidence")] += 1
-        elif source == "project_family":
-            c[(tl.get("project_family") or {}).get("confidence")] += 1
-    return {k: v for k, v in c.items() if k}
-
-
-async def _load_hb_buildings():
-    """Încarcă blocurile HartaBlocuri (read-only) + Truth Layer derivat la citire."""
-    out = []
-    async for b in db.buildings.find({"context.external_sources.hartablocuri": {"$exists": True}}):
-        raw = ((b.get("context") or {}).get("external_sources") or {}).get("hartablocuri", {}).get("raw") or {}
-        city = b.get("city") or raw.get("city")
-        out.append({"id": str(b["_id"]), "city": city, "raw": raw,
-                    "tl": build_truth_layer(raw), "neighborhood": (b.get("context") or {}).get("neighborhood") or raw.get("neighborhood")})
-    return out
-
-
-def _aggregate(cdef: dict, buildings: list) -> dict:
-    loc_db = cdef["locality"]["db"]
-    loc_norm = _slugify(loc_db)
-    matched = []
-    for b in buildings:
-        if _slugify(b["city"] or "") != loc_norm:
-            continue
-        if cdef["matcher"](b["raw"], b["tl"]):
-            matched.append(b)
-    count = len(matched)
-    tls = [b["tl"] for b in matched]
-    era_dist = Counter((b["raw"].get("era") or "necunoscut") for b in matched)
-    form_dist = Counter((b["tl"]["form"]["value"]) for b in matched)
-    floors_dist = Counter((b["tl"]["regime"]["derived_floors"]) for b in matched)
-    nbh_dist = Counter((b["neighborhood"] or "necunoscut") for b in matched)
-    family_dist = Counter((b["tl"]["project_family"]["family"] or "necunoscut") for b in matched)
+# ─────────────────────── EXTRACT FACTS (per clădire) ───────────────────────
+def _facts(b: dict) -> dict:
+    ctx = b.get("context") or {}
+    raw = (ctx.get("external_sources") or {}).get("hartablocuri", {}).get("raw") or {}
+    tl = build_truth_layer(raw) or {}
+    county = raw.get("judet") or "Cluj"
+    locality = b.get("city") or raw.get("city")
+    nbh = ctx.get("neighborhood") or raw.get("neighborhood")
+    era = (raw.get("era") or "").strip().lower() or None
+    form = (tl.get("form") or {}).get("value")
+    floors = (tl.get("regime") or {}).get("derived_floors")
+    family = (tl.get("project_family") or {}).get("family")
+    profiles = [p["code"] for p in (tl.get("typology_profiles") or [])]
+    lat = ctx.get("lat") if isinstance(ctx.get("lat"), (int, float)) else raw.get("lat")
+    lng = ctx.get("lng") if isinstance(ctx.get("lng"), (int, float)) else raw.get("lng")
     return {
-        "building_count": count,
-        "localities": [{"name": loc_db, "count": count}],
-        "era_distribution": [{"value": k, "count": v} for k, v in era_dist.most_common(6)],
-        "form_distribution": [{"value": k, "count": v} for k, v in form_dist.most_common(6)],
-        "floors_distribution": [{"value": (f"P+{k}" if isinstance(k, int) else "nedeterminat"), "count": v}
-                                for k, v in floors_dist.most_common(6)],
-        "neighborhood_distribution": [{"value": k, "count": v} for k, v in nbh_dist.most_common(8)],
-        "project_family_distribution": [{"value": k, "count": v} for k, v in family_dist.most_common(6)],
-        "confidence": _confidence_summary(tls, cdef["confidence_source"]),
-        "sample_building_ids": [b["id"] for b in matched[:6]],
+        "id": str(b["_id"]), "name": b.get("name"), "address": b.get("address"),
+        "county": county, "locality": locality, "neighborhood": nbh,
+        "era": era, "form": form, "floors": floors, "family": family, "profiles": profiles,
+        "lat": lat, "lng": lng, "tl": tl,
     }
 
 
-def _build_content(cdef: dict, agg: dict) -> dict:
-    loc = cdef["locality"]["label"]
-    n = agg["building_count"]
-    vlabel = cdef["value_label"]
-    lead = cdef["intro_lead"]
-    is_candidate = cdef["classification_level"] == "L2"
-    cand_tag = " (Candidate Typology · derivat din HartaBlocuri)" if is_candidate else ""
-    title = f"{vlabel} în {loc} — {n} blocuri în baza de referință"
-    meta_title = f"{vlabel} · {loc} | PropManage"
+# ─────────────────────── REGISTRY / DISCOVERY ───────────────────────
+class _Cand:
+    __slots__ = ("slug", "dim", "level", "county", "locality", "value_label", "value_key",
+                 "count", "ids", "era", "floors", "nbh", "family", "form", "conf")
+
+    def __init__(self, slug, dim, level, county, locality, value_label, value_key):
+        self.slug = slug; self.dim = dim; self.level = level
+        self.county = county; self.locality = locality
+        self.value_label = value_label; self.value_key = value_key
+        self.count = 0; self.ids = []
+        self.era = Counter(); self.floors = Counter(); self.nbh = Counter()
+        self.family = Counter(); self.form = Counter(); self.conf = Counter()
+
+    def add(self, f, conf_source):
+        self.count += 1
+        if len(self.ids) < 8:
+            self.ids.append({"id": f["id"], "name": f["name"], "address": f["address"],
+                             "lat": f["lat"], "lng": f["lng"]})
+        self.era[f["era"] or "necunoscut"] += 1
+        self.floors[f["floors"]] += 1
+        if f["neighborhood"]:
+            self.nbh[f["neighborhood"]] += 1
+        if f["family"]:
+            self.family[f["family"]] += 1
+        if f["form"]:
+            self.form[f["form"]] += 1
+        # confidence pentru dimensiunea definitorie
+        if conf_source == "era":
+            self.conf[(f["tl"].get("era") or {}).get("confidence")] += 1
+        elif conf_source == "typology":
+            profs = f["tl"].get("typology_profiles") or []
+            if profs:
+                self.conf[profs[0]["confidence"]] += 1
+        elif conf_source == "project_family":
+            self.conf[(f["tl"].get("project_family") or {}).get("confidence")] += 1
+        elif conf_source == "form":
+            self.conf[(f["tl"].get("form") or {}).get("confidence")] += 1
+
+
+def _era_slug(era):
+    return "era-" + _slug(era)
+
+
+def discover(facts: list) -> dict:
+    reg: dict[str, _Cand] = {}
+
+    def get(slug, dim, level, county, locality, label, key):
+        c = reg.get(slug)
+        if c is None:
+            c = _Cand(slug, dim, level, county, locality, label, key)
+            reg[slug] = c
+        return c
+
+    for f in facts:
+        county, loc = f["county"], f["locality"]
+        if _blocked(county):
+            continue
+        cs = _slug(county)
+        # 1) județ
+        get(f"{BASE}/{cs}", "county", "L0", county, None, f"Județul {county}", county).add(f, "era")
+        if _blocked(loc):
+            continue
+        ls = _slug(loc)
+        lp = f"{BASE}/{cs}/{ls}"
+        # 2) localitate
+        get(lp, "locality", "L0", county, loc, loc, loc).add(f, "era")
+        # 3) localitate × eră
+        if not _blocked(f["era"]):
+            get(f"{lp}/{_era_slug(f['era'])}", "locality_era", "L0", county, loc,
+                f"{ERA_LABEL.get(f['era'], f['era'])} · {loc}", f["era"]).add(f, "era")
+        # 4) localitate × cartier
+        if not _blocked(f["neighborhood"]):
+            get(f"{lp}/cartier-{_slug(f['neighborhood'])}", "locality_neighborhood", "L0",
+                county, loc, f"{f['neighborhood']} · {loc}", f["neighborhood"]).add(f, "era")
+        # 5) localitate × formă
+        if f["form"] and f["form"] != "unknown":
+            get(f"{lp}/{_slug(FORM_LABEL.get(f['form'], f['form']))}", "locality_form", "L1",
+                county, loc, f"{FORM_LABEL.get(f['form'], f['form'])} · {loc}", f["form"]).add(f, "form")
+        # 6) localitate × project family
+        if f["family"]:
+            get(f"{lp}/proiect-{_slug(f['family'])}", "locality_project_family", "L1",
+                county, loc, f"Familie proiect {f['family']} · {loc}", f["family"]).add(f, "project_family")
+        # 7) localitate × tipologie + 8) eră × tipologie (county-wide)
+        for code in f["profiles"]:
+            get(f"{lp}/tip-{TYP_SLUG.get(code, _slug(code))}", "locality_typology", TYP_LEVEL.get(code, "L2"),
+                county, loc, f"{TYP_LABEL.get(code, code)} · {loc}", code).add(f, "typology")
+            if not _blocked(f["era"]):
+                get(f"{BASE}/{cs}/{_era_slug(f['era'])}/tip-{TYP_SLUG.get(code, _slug(code))}",
+                    "era_typology", TYP_LEVEL.get(code, "L2"), county, None,
+                    f"{TYP_LABEL.get(code, code)} · {ERA_LABEL.get(f['era'], f['era'])}", code).add(f, "typology")
+    return reg
+
+
+# ─────────────────────── QUALITY / STATE ───────────────────────
+def _quality_score(c: _Cand) -> int:
+    vol = min(1.0, c.count / MIN_INDEX)
+    # completitudine: câte distribuții au >1 valoare (diferențiere)
+    rich = sum(1 for d in (c.era, c.floors, c.nbh, c.family, c.form) if len([k for k in d if k not in (None, "necunoscut")]) >= 1)
+    completeness = min(1.0, rich / 5)
+    return int(round(vol * 65 + completeness * 35))
+
+
+def _state(c: _Cand, score: int) -> tuple[str, bool, bool]:
+    if _blocked(c.value_key):
+        return "BLOCKED", False, False
+    if c.count == 0:
+        return "BLOCKED", False, False
+    if c.count >= MIN_INDEX and score >= 55:
+        return "INDEX", True, True
+    if c.count >= MIN_PREPARED:
+        return "PREPARED", False, False
+    return "CANDIDATE", False, False
+
+
+# ─────────────────────── MATERIALIZE ───────────────────────
+def _dist(counter: Counter, fmt=None, top=6):
+    return [{"value": (fmt(k) if fmt else (k if k is not None else "nedeterminat")), "count": v}
+            for k, v in counter.most_common(top)]
+
+
+def _content(c: _Cand, state: str) -> dict:
+    n = c.count
+    label = c.value_label
+    loc_ctx = c.locality or c.county
+    cand = " (Candidate Typology · derivat din HartaBlocuri)" if c.level == "L2" else ""
+    title = f"{label} — {n} blocuri în baza de referință"
+    h1 = label
+    meta_title = f"{label} | PropManage HartaBlocuri"
     meta_description = (
-        f"{n} blocuri din {loc} identificate ca {lead}, pe baza datelor externe HartaBlocuri "
+        f"{n} blocuri în {loc_ctx} din categoria „{label}” pe baza datelor externe HartaBlocuri "
         f"(neverificate de PropManage). Vezi contextul clădirii și pornește Cartea Casei."
     )[:300]
-    h1 = f"{vlabel} în {loc}"
     intro = (
-        f"În baza de referință PropManage pentru {loc} sunt {n} blocuri identificate ca {lead}{cand_tag}. "
-        f"Datele provin din sursa externă HartaBlocuri și sunt neverificate de PropManage — le confirmi tu "
+        f"În baza de referință PropManage sunt {n} blocuri asociate cu „{label}”{cand}. "
+        f"Datele provin din sursa externă HartaBlocuri și sunt neverificate de PropManage — le confirmi "
         f"la conectarea apartamentului. Poți prelua contextul clădirii, porni Cartea Casei și evalua "
         f"starea locuinței cu Scorul Casei (House Health A→G)."
     )
-    return {"title": title, "meta_title": meta_title, "meta_description": meta_description,
-            "h1": h1, "intro": intro}
-
-
-def _quality_gate(agg: dict) -> dict:
-    n = agg["building_count"]
-    passes = n >= MIN_BUILDINGS_INDEX and len(agg["localities"]) >= 1
-    reason = (f"{n} blocuri (≥{MIN_BUILDINGS_INDEX})" if passes
-              else f"doar {n} blocuri (<{MIN_BUILDINGS_INDEX}) — risc thin content")
-    return {"passes": passes, "min_buildings": MIN_BUILDINGS_INDEX, "reason": reason}
-
-
-def build_cluster(cdef: dict, buildings: list) -> dict:
-    agg = _aggregate(cdef, buildings)
-    content = _build_content(cdef, agg)
-    gate = _quality_gate(agg)
-    path = _slug_path(cdef)
-    canonical = f"{_site_url()}{path}"
-    # PILOT: pregătit, NEpublicat. Nu intră în sitemap, indexabilitate reținută până la aprobare.
-    index_state = "prepared_noindex"
-    index_reason = (f"pilot pregătit — {gate['reason']}; neaprobat pentru publicare"
-                    if gate["passes"]
-                    else f"pilot pregătit — {gate['reason']}; neeligibil index")
     return {
-        "id": cdef["id"],
+        "title": title, "h1": h1, "meta_title": meta_title, "meta_description": meta_description,
+        "intro": intro,
+        "what_it_means": "Datele descriu caracteristici observate ale fondului construit (eră, formă, regim, familie de proiect).",
+        "what_it_does_not_mean": ("NU reprezintă clasă/performanță energetică, risc seismic, siguranță "
+                                  "structurală, necesitate de renovare, eligibilitate de finanțare sau conformitate legală."),
+    }
+
+
+def _materialize(c: _Cand) -> dict:
+    score = _quality_score(c)
+    state, index, in_sitemap = _state(c, score)
+    path = c.slug
+    aggregates = {
+        "building_count": c.count,
+        "era_distribution": _dist(c.era),
+        "floors_distribution": _dist(c.floors, fmt=lambda k: f"P+{k}" if isinstance(k, int) else "nedeterminat"),
+        "neighborhood_distribution": _dist(c.nbh, top=8),
+        "project_family_distribution": _dist(c.family),
+        "form_distribution": _dist(c.form),
+        "confidence": {k: v for k, v in c.conf.items() if k},
+        "sample_buildings": c.ids[:6],
+    }
+    out = {
+        "id": _slug(path.replace(BASE + "/", "")),
         "cluster": "building_hartablocuri",
-        "dimension": cdef["dimension"],
-        "value_label": cdef["value_label"],
-        "locality": cdef["locality"]["label"],
+        "dimension": c.dim,
+        "level": c.level,
+        "county": c.county,
+        "locality": c.locality,
+        "value_label": c.value_label,
         "slug": path,
         "url": path,
-        "canonical": canonical,
-        "classification_level": cdef["classification_level"],
+        "canonical": f"{_site_url()}{path}",
+        "state": state,
+        "index": index,
+        "in_sitemap": in_sitemap,
+        "quality_score": score,
+        "quality_gate": {"passes": state in ("INDEX", "PREPARED"),
+                         "min_index": MIN_INDEX, "min_prepared": MIN_PREPARED},
+        "index_reason": _reason(state, c.count, score),
+        "building_count": c.count,
+        "aggregates": aggregates,
         "provenance": {
-            "source": "hartablocuri",
-            "verification_status": "neverificat",
+            "source": "hartablocuri", "verification_status": "neverificat",
             "verification_note": "Date externe — neverificate de PropManage",
-            "typology_note": ("Candidate Typology · derivat din HartaBlocuri"
-                              if cdef["classification_level"] == "L2" else None),
+            "typology_note": "Candidate Typology · derivat din HartaBlocuri" if c.level == "L2" else None,
         },
-        "content": content,
-        "aggregates": agg,
         "data_limits": [
             "Date externe HartaBlocuri — neverificate de PropManage.",
             "Typology Profile este clasificare candidate (L2), nu tipologie oficială sau certificare.",
-            "Nu se deduc clasă energetică, risc seismic, siguranță structurală, necesitate de renovare "
-            "sau conformitate legală din aceste date.",
+            "Nu se deduc clasă/performanță energetică, risc seismic, siguranță structurală, "
+            "necesitate de renovare, eligibilitate de finanțare sau conformitate legală.",
         ],
         "internal_links": {
             "forward": _FORWARD_LINKS,
-            "inverse": [
-                {"from": "/probleme-casa", "reason": "hub editorial → cluster relevant"},
-                {"from": "/ghiduri", "reason": "ghiduri relevante → cluster"},
-            ],
             "related_guides": [{"slug": s, "title": t, "href": f"/ghiduri/{s}"} for s, t in _RELATED_GUIDES],
             "building_context_samples": [
-                {"building_id": bid, "href": f"/register?binvite={bid}"}
-                for bid in agg["sample_building_ids"]
+                {"building_id": s["id"], "name": s["name"], "href": f"{BASE}/cladire/{s['id']}"} for s in c.ids[:6]
             ],
+            "parents": _parents(path),
         },
-        "quality_gate": gate,
-        "index": False,               # PILOT — niciodată index automat
-        "indexability": index_state,
-        "index_reason": index_reason,
-        "in_sitemap": False,          # NU se publică în sitemap
-        "published": False,
-        "status": "pilot_prepared",
+        "monetization": MONETIZATION,
     }
+    if state in ("INDEX", "PREPARED"):
+        out["content"] = _content(c, state)
+    return out
 
 
-async def list_pilot_clusters() -> dict:
-    buildings = await _load_hb_buildings()
-    clusters = [build_cluster(c, buildings) for c in PILOT_CLUSTERS]
+def _reason(state, count, score):
+    if state == "INDEX":
+        return f"substanță solidă — {count} blocuri (≥{MIN_INDEX}), scor {score} → publicat"
+    if state == "PREPARED":
+        return f"substanță parțială — {count} blocuri ({MIN_PREPARED}–{MIN_INDEX - 1}) → pregătit, noindex"
+    if state == "BLOCKED":
+        return "valoare placeholder/necunoscută → exclus"
+    return f"substanță insuficientă — {count} blocuri (<{MIN_PREPARED}) → candidate, noindex"
+
+
+def _parents(path: str) -> list:
+    segs = path.strip("/").split("/")  # blocuri, county, locality, leaf...
+    parents = []
+    acc = ""
+    for s in segs[:-1]:
+        acc += "/" + s
+        if acc != BASE:
+            parents.append(acc)
+    return parents
+
+
+# ─────────────────────── CACHE + PUBLIC API ───────────────────────
+_CACHE = {"ts": 0.0, "clusters": None}
+_TTL = 120.0
+
+
+async def _load_facts() -> list:
+    return [_facts(b) async for b in db.buildings.find({"context.external_sources.hartablocuri": {"$exists": True}})]
+
+
+async def all_clusters(force: bool = False) -> list:
+    now = time.time()
+    if not force and _CACHE["clusters"] is not None and (now - _CACHE["ts"]) < _TTL:
+        return _CACHE["clusters"]
+    facts = await _load_facts()
+    reg = discover(facts)
+    clusters = [_materialize(c) for c in reg.values()]
+    clusters.sort(key=lambda x: (-x["building_count"], x["slug"]))
+    _CACHE["clusters"] = clusters
+    _CACHE["ts"] = now
+    return clusters
+
+
+async def summary() -> dict:
+    clusters = await all_clusters()
+    by_state = Counter(c["state"] for c in clusters)
     return {
-        "generated_at": None,
-        "total_clusters": len(clusters),
-        "published": 0,
-        "prepared": len(clusters),
-        "min_buildings_index": MIN_BUILDINGS_INDEX,
-        "note": ("Clustere pilot pregătite (read-only). Neindexate, absente din sitemap. "
-                 "Publicarea necesită aprobare explicită."),
-        "clusters": clusters,
+        "total": len(clusters),
+        "by_state": dict(by_state),
+        "index": by_state["INDEX"], "prepared": by_state["PREPARED"],
+        "candidate": by_state["CANDIDATE"], "noindex": by_state["NOINDEX"],
+        "blocked": by_state["BLOCKED"],
+        "in_sitemap": sum(1 for c in clusters if c["in_sitemap"]),
+        "min_index": MIN_INDEX, "min_prepared": MIN_PREPARED,
+        "counties": sorted({c["county"] for c in clusters if c["county"]}),
     }
 
 
-async def get_pilot_cluster(cluster_id: str) -> dict | None:
-    buildings = await _load_hb_buildings()
-    cdef = next((c for c in PILOT_CLUSTERS if c["id"] == cluster_id), None)
-    if not cdef:
-        return None
-    return build_cluster(cdef, buildings)
+async def index_cluster_urls() -> list[str]:
+    return [c["slug"] for c in await all_clusters() if c["in_sitemap"]]
 
 
-def pilot_slugs() -> list[str]:
-    return [_slug_path(c) for c in PILOT_CLUSTERS]
+async def get_cluster_by_slug(slug: str) -> dict | None:
+    slug = "/" + slug.strip("/")
+    for c in await all_clusters():
+        if c["slug"] == slug:
+            return c
+    return None
+
+
+async def list_clusters(state: str = None, county: str = None, dimension: str = None,
+                        limit: int = 500) -> list:
+    out = []
+    for c in await all_clusters():
+        if state and c["state"] != state:
+            continue
+        if county and _slug(c["county"] or "") != _slug(county):
+            continue
+        if dimension and c["dimension"] != dimension:
+            continue
+        out.append(c)
+        if len(out) >= limit:
+            break
+    return out

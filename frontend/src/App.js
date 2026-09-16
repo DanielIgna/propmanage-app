@@ -58,6 +58,9 @@ const CommunityPage = lazy(() => import("./pages/CommunityPage"));
 import { GDPRAuditBadge } from "./components/GDPRAuditBadge";
 import { TrustStrip } from "./components/TrustStrip";
 const DigitalTwinPage = lazy(() => import("./pages/DigitalTwinPage"));
+const BlocuriExplorer = lazy(() => import("./pages/BlocuriPublic").then(m => ({ default: m.BlocuriExplorer })));
+const BlocuriBuildingDetail = lazy(() => import("./pages/BlocuriPublic").then(m => ({ default: m.BlocuriBuildingDetail })));
+const BlocuriCluster = lazy(() => import("./pages/BlocuriPublic").then(m => ({ default: m.BlocuriCluster })));
 const ReportApprovalPage = lazy(() => import("./pages/ReportApprovalPage"));
 const KYCPage = lazy(() => import("./pages/KYCPage"));
 const EstateBrowse = lazy(() => import("./pages/verified-estate/EstateBrowse").then(m => ({ default: m.EstateBrowse })));
@@ -1724,6 +1727,9 @@ function App() {
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/privacy/notices" element={<PrivacyNoticesPage />} />
               <Route path="/digital-twin" element={<DigitalTwinPage />} />
+              <Route path="/blocuri" element={<BlocuriExplorer />} />
+              <Route path="/blocuri/cladire/:id" element={<BlocuriBuildingDetail />} />
+              <Route path="/blocuri/*" element={<BlocuriCluster />} />
               <Route path="/report-respond/:token" element={<ReportApprovalPage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/cookies" element={<CookiePolicyPage />} />

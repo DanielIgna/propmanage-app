@@ -793,21 +793,21 @@ async def seo_clusters(user: dict = Depends(require_role("admin"))):
 # 6b) HARTABLOCURI SEO CLUSTER PILOT (Faza 3, READ-ONLY, NEpublicat)
 # ---------------------------------------------------------------------------
 @router.get("/admin/seo/hartablocuri-clusters")
-async def seo_hartablocuri_clusters(user: dict = Depends(require_role("admin"))):
-    """Clustere SEO pilot HartaBlocuri (localitate × eră/typology/family). Read-only.
-    Date agregate reale, neindexate, absente din sitemap — necesită aprobare pentru publicare.
-    """
-    from seo_clusters import list_pilot_clusters
+async def seo_hartablocuri_clusters(state: str = None, county: str = None, dimension: str = None,
+                                    user: dict = Depends(require_role("admin"))):
+    """Clustere SEO HartaBlocuri (county-agnostic). Read-only. INDEX intră în sitemap;
+    PREPARED/CANDIDATE rămân noindex; BLOCKED excluse. Filtre: state/county/dimension."""
+    from seo_clusters import summary as cl_summary, list_clusters
     from datetime import datetime, timezone
-    data = await list_pilot_clusters()
-    data["generated_at"] = datetime.now(timezone.utc).isoformat()
-    return data
+    s = await cl_summary()
+    rows = await list_clusters(state=state, county=county, dimension=dimension)
+    return {"generated_at": datetime.now(timezone.utc).isoformat(), **s, "clusters": rows}
 
 
-@router.get("/admin/seo/hartablocuri-clusters/{cluster_id}")
-async def seo_hartablocuri_cluster_detail(cluster_id: str, user: dict = Depends(require_role("admin"))):
-    from seo_clusters import get_pilot_cluster
-    c = await get_pilot_cluster(cluster_id)
+@router.get("/admin/seo/hartablocuri-clusters/detail")
+async def seo_hartablocuri_cluster_detail(slug: str, user: dict = Depends(require_role("admin"))):
+    from seo_clusters import get_cluster_by_slug
+    c = await get_cluster_by_slug(slug)
     if not c:
         raise HTTPException(404, "Cluster inexistent")
     return {"cluster": c}

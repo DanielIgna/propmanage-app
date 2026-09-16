@@ -137,7 +137,90 @@ async def public_building_detail(building_id: str):
     } if hb else None
     # Truth Layer READ MODEL — derivat pur la citire (nu se salvează în DB)
     card["truth_layer"] = build_truth_layer(hb_raw) if hb else None
+    if hb:
+        ctx = b.get("context") or {}
+        card["lat"] = ctx.get("lat") if isinstance(ctx.get("lat"), (int, float)) else hb_raw.get("lat")
+        card["lng"] = ctx.get("lng") if isinstance(ctx.get("lng"), (int, float)) else hb_raw.get("lng")
+        card["county"] = hb_raw.get("judet")
+        card["plan_urls"] = hb.get("plan_urls") or []
+        from seo_clusters import MONETIZATION
+        card["monetization"] = MONETIZATION
+        card["cta"] = {"add_property": f"/register?binvite={card['id']}", "cartea_casei": "/cartea-casei",
+                       "house_health": "/scorul-casei", "digital_twin": "/digital-twin", "marketplace": "/marketplace"}
+        if card["lat"] and card["lng"]:
+            card["google_maps_url"] = f"https://www.google.com/maps/search/?api=1&query={card['lat']},{card['lng']}"
     return {"building": card}
+
+
+# ============= PUBLIC MAP + SEO CLUSTERS =============
+
+@public_router.get("/maps/config")
+async def public_maps_config():
+    """Config strat de cartografiere (abstraction). Cheia din env; feature flag + fallback."""
+    import os
+    key = os.environ.get("GOOGLE_MAPS_API_KEY", "").strip()
+    return {"provider": "google" if key else "fallback", "enabled": bool(key),
+            "api_key": key or None, "fallback": not bool(key),
+            "attribution": "HartaBlocuri (date) · Google Maps (cartografiere)"}
+
+
+@public_router.get("/blocuri/map")
+async def public_map_markers(
+    city: Optional[str] = Query(None, max_length=80),
+    era: Optional[str] = Query(None, max_length=60),
+    typology: Optional[str] = Query(None, max_length=8),
+    limit: int = Query(2000, ge=1, le=5000),
+):
+    """Markeri hartă din coordonatele existente HartaBlocuri (fără geocoding)."""
+    q = {"context.external_sources.hartablocuri": {"$exists": True}}
+    if city:
+        q["city"] = {"$regex": re.escape(city), "$options": "i"}
+    out = []
+    async for b in db.buildings.find(q):
+        if len(out) >= limit:
+            break
+        ctx = b.get("context") or {}
+        hb = _hb(b) or {}
+        raw = hb.get("raw") or {}
+        lat = ctx.get("lat") if isinstance(ctx.get("lat"), (int, float)) else raw.get("lat")
+        lng = ctx.get("lng") if isinstance(ctx.get("lng"), (int, float)) else raw.get("lng")
+        if not (isinstance(lat, (int, float)) and isinstance(lng, (int, float))):
+            continue
+        if era and (raw.get("era") or "").strip().lower() != era.strip().lower():
+            continue
+        tl = build_truth_layer(raw) or {}
+        if typology and not any(p["code"] == typology.upper() for p in (tl.get("typology_profiles") or [])):
+            continue
+        out.append({
+            "id": str(b["_id"]), "name": b.get("name"), "address": b.get("address"),
+            "lat": lat, "lng": lng, "city": b.get("city"),
+            "era": raw.get("era"),
+            "floors": (tl.get("regime") or {}).get("derived_floors"),
+            "profiles": [p["code"] for p in (tl.get("typology_profiles") or [])],
+            "href": f"/blocuri/cladire/{b['_id']}",
+        })
+    return {"markers": out, "total": len(out)}
+
+
+@public_router.get("/blocuri/clusters")
+async def public_clusters(county: Optional[str] = Query(None, max_length=60)):
+    """Clustere SEO publice — DOAR cele INDEX (publicate)."""
+    from seo_clusters import list_clusters
+    rows = await list_clusters(state="INDEX", county=county)
+    slim = [{"slug": c["slug"], "value_label": c["value_label"], "dimension": c["dimension"],
+             "county": c["county"], "locality": c["locality"], "building_count": c["building_count"]}
+            for c in rows]
+    return {"clusters": slim, "total": len(slim)}
+
+
+@public_router.get("/blocuri/cluster")
+async def public_cluster_detail(slug: str = Query(..., max_length=300)):
+    """Detaliu cluster public — doar dacă este INDEX (publicat)."""
+    from seo_clusters import get_cluster_by_slug
+    c = await get_cluster_by_slug(slug)
+    if not c or c["state"] != "INDEX":
+        raise HTTPException(404, "Cluster indisponibil")
+    return {"cluster": c}
 
 
 # ============= ADMIN IMPORT CONTROL =============

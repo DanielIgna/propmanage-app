@@ -490,6 +490,7 @@ _CHILD_SITEMAPS = [
     "sitemap-specialists.xml",
     "sitemap-design.xml",
     "sitemap-estate.xml",
+    "sitemap-blocuri.xml",
 ]
 _CITY_SLUG_TO_DB = {v: k for k, v in _CITY_DB_TO_SLUG.items()}
 
@@ -727,6 +728,18 @@ async def _estate_entries(now_iso: str) -> list:
     return entries
 
 
+async def _blocuri_entries(now_iso: str) -> list:
+    """HartaBlocuri SEO clusters — DOAR cele INDEX (trec quality gate). Additive, non-destructiv."""
+    entries = []
+    try:
+        from seo_clusters import index_cluster_urls
+        for path in await index_cluster_urls():
+            entries.append(_url_xml(path, now_iso, "weekly", "0.6"))
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"blocuri sitemap entries failed: {e}")
+    return entries
+
+
 async def build_sitemap_xml() -> str:
     """Flat urlset with ALL gate-passing URLs (served at /api/public/sitemap.xml)."""
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -737,6 +750,7 @@ async def build_sitemap_xml() -> str:
     entries += await _specialist_entries(now_iso)
     entries += await _design_entries(now_iso)
     entries += await _estate_entries(now_iso)
+    entries += await _blocuri_entries(now_iso)
     return _wrap_urlset(entries)
 
 
@@ -805,6 +819,12 @@ async def public_sitemap_estate():
     return FastResponse(content=_wrap_urlset(await _estate_entries(now_iso)), media_type="application/xml")
 
 
+@router.get("/public/sitemap-blocuri.xml")
+async def public_sitemap_blocuri():
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return FastResponse(content=_wrap_urlset(await _blocuri_entries(now_iso)), media_type="application/xml")
+
+
 # ---------------------------------------------------------------------------
 # Static files at the domain root (ingress routes non-/api paths to frontend).
 # Root /sitemap.xml = index; children = urlsets. Regenerated at startup + daily.
@@ -820,6 +840,7 @@ async def write_sitemap_file() -> str:
         "sitemap-specialists.xml": _wrap_urlset(await _specialist_entries(now_iso)),
         "sitemap-design.xml": _wrap_urlset(await _design_entries(now_iso)),
         "sitemap-estate.xml": _wrap_urlset(await _estate_entries(now_iso)),
+        "sitemap-blocuri.xml": _wrap_urlset(await _blocuri_entries(now_iso)),
     }
     try:
         _SITEMAP_DIR.mkdir(parents=True, exist_ok=True)
