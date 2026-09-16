@@ -144,6 +144,9 @@ export default function PublicPassportPage() {
             {p.heating && <span className="glass px-3 py-1.5 rounded-full inline-flex items-center gap-1.5"><Flame className="w-3.5 h-3.5 text-[#d4ff3a]" /> {String(p.heating).replace(/_/g, " ")}</span>}
           </div>
           {data.last_updated && <div className="mt-2 text-[11px] text-stone-500" data-testid="passport-updated">Ultima actualizare: {fmtDate(data.last_updated)}</div>}
+          <p className="mt-3 text-[10px] leading-relaxed text-stone-500 max-w-2xl" data-testid="passport-legal-disclaimer">
+            Pașaport digital PropManage — profil de încredere bazat pe date documentate în platformă. Nu este certificat energetic, audit energetic, expertiză tehnică sau pașaport de renovare reglementat.
+          </p>
         </header>
 
         {/* scores */}

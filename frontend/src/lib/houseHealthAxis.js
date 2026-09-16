@@ -17,6 +17,15 @@ export const AXIS_DISCLAIMER =
   "Legea 372/2005 (modificată prin Legea 238/2024) și Directiva (UE) 2024/1275 (EPBD), " +
   "dar PropManage nu emite certificări legale.";
 
+// Clarificare vizibilă: A→G (cadru de produs) ≠ clasele energetice A–G reglementate.
+export const AXIS_NOT_ENERGY_CLASS =
+  "Etapele A→G sunt un cadru de produs PropManage și nu reprezintă clasele energetice A–G.";
+
+// Clarificare vizibilă: Cartea Casei (dosar digital PropManage) ≠ Cartea tehnică a construcției.
+export const CARTEA_CASEI_DISCLAIMER =
+  "Cartea Casei PropManage este un dosar digital al informațiilor, documentelor și istoricului " +
+  "locuinței. Nu înlocuiește Cartea tehnică a construcției sau documentația legală obligatorie.";
+
 // Cele 7 capitole A→G. Fiecare mapează pe funcții EXISTENTE (target) + itemi reali din
 // Completeness (items). `target` e interpretat de UI: "section:<hubSectionId>" sau
 // "action:<actionName>" (openHealth / openTwin / openPropManager).
@@ -54,7 +63,7 @@ export const HOUSE_HEALTH_AXIS = [
     homepageVerb: "Înțelege performanța energetică",
     question: "Cât de eficientă energetic este casa?",
     why: "Performanța energetică influențează costurile, confortul termic și valoarea locuinței.",
-    evidence: "Certificat de performanță energetică, analiză termică.",
+    evidence: "Certificat de performanță energetică (emis de un auditor energetic autorizat — nu de PropManage), analiză termică.",
     nextHint: "Adaugă certificatul energetic sau comandă o analiză termică.",
     legal: "Legea 372/2005 (mod. Legea 238/2024) + Directiva (UE) 2024/1275 — performanță energetică. DPE A–G (Franța) folosit doar ca exemplu internațional, nu ca echivalent legal.",
     items: ["certificat_energetic"],
@@ -67,7 +76,7 @@ export const HOUSE_HEALTH_AXIS = [
     homepageVerb: "Verifică sănătatea și siguranța",
     question: "Este casa sigură și sănătoasă?",
     why: "Calitatea aerului, umiditatea, siguranța electrică și radonul afectează direct sănătatea celor care locuiesc.",
-    evidence: "Scor House Health, raport de inspecție / audit tehnic.",
+    evidence: "Scor House Health (autoevaluare de produs), plus rapoarte de la specialiști, unde există.",
     nextHint: "Generează scorul House Health sau comandă o inspecție.",
     legal: "Directiva (UE) 2024/1275 — calitatea mediului interior; norme RO de siguranță electrică.",
     items: ["audit"],
@@ -82,7 +91,7 @@ export const HOUSE_HEALTH_AXIS = [
     why: "Instalațiile mapate și un jurnal de mentenanță previn avariile și prelungesc viața echipamentelor.",
     evidence: "Instalații/echipamente înregistrate, jurnal de mentenanță, garanții active.",
     nextHint: "Înregistrează instalațiile majore și pornește jurnalul de mentenanță.",
-    legal: "Directiva (UE) 2024/1275 — sistemele tehnice ale clădirii.",
+    legal: "Directiva (UE) 2024/1275 — sistemele tehnice ale clădirii. Modernizarea sau înlocuirea sistemelor tehnice poate necesita evaluare, documentație sau intervenția unui specialist autorizat, în funcție de lucrare și de cerințele aplicabile.",
     items: ["assets", "maintenance", "warranty"],
     target: "section:twin",
   },
@@ -102,13 +111,13 @@ export const HOUSE_HEALTH_AXIS = [
   {
     code: "G",
     key: "twin",
-    title: "Digital Twin & Pașaport (rezultate)",
+    title: "Digital Twin & Pașaport digital al locuinței",
     homepageVerb: "Construiește memoria digitală a casei",
     question: "Cum arată progresul și cum îl pot arăta altora?",
     why: "Digital Twin-ul și pașaportul transformă tot ce ai documentat într-o memorie vie, ușor de partajat.",
-    evidence: "Proiect Digital Twin, pașaportul proprietății, pregătire pentru tranzacție.",
+    evidence: "Proiect Digital Twin, pașaportul digital PropManage al locuinței (profil de încredere bazat pe informațiile documentate în platformă), pregătire pentru tranzacție.",
     nextHint: "Pornește sau validează Digital Twin-ul casei.",
-    legal: "Directiva (UE) 2024/1275 — pașaportul de renovare (folosit ca analog de produs).",
+    legal: "Pașaportul digital PropManage al locuinței este un profil digital bazat pe informațiile documentate în platformă și NU reprezintă un pașaport de renovare reglementat (renovation passport, EPBD). PropManage nu emite renovation passport.",
     items: ["twin"],
     target: "action:openTwin",
   },
@@ -118,7 +127,7 @@ export const STATE_META = {
   verificat: {
     label: "Verificat",
     tone: "emerald",
-    hint: "Toate elementele acestui capitol sunt documentate în PropManage. Nu înlocuiește verificările legale sau diagnosticele obligatorii.",
+    hint: "«Verificat» = complet documentat în PropManage; nu înseamnă verificare sau certificare legală.",
   },
   documentat: {
     label: "Documentat",

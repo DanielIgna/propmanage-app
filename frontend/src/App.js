@@ -1149,7 +1149,7 @@ const AdminTrust = () => {
     { icon: FileCheck, t: "Verificare specialiști", d: "Asigurări, certificări, documente legale — totul scanat și validat manual." },
     { icon: Gavel, t: "Mediere dispute", d: "Sistem de arbitraj imparțial. Refund, release sau request more info." },
     { icon: Award, t: "Quality control", d: "Audit lunar al lucrărilor, validare 3D model, rating real timp." },
-    { icon: Shield, t: "Audit certificat extern", d: "Standard de audit verificat extern pentru fiecare proprietate premium." },
+    { icon: Shield, t: "Audit de calitate al lucrărilor", d: "Verificare independentă a calității lucrărilor executate prin platformă. Nu este audit energetic sau expertiză tehnică legală." },
   ];
 
   return (

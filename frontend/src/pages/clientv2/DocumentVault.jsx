@@ -393,6 +393,9 @@ export const DocumentVaultCard = ({ prop }) => {
         <div className="flex-1">
           <div className="text-sm font-black text-slate-900">Cartea casei</div>
           <div className="text-[11px] text-slate-400">memoria permanentă a proprietății</div>
+          <div className="text-[9px] text-slate-400 mt-0.5 leading-snug" data-testid="vault-legal-note">
+            Dosar digital PropManage — nu înlocuiește Cartea tehnică a construcției sau documentația legală obligatorie.
+          </div>
         </div>
         {compl && (
           <div className="text-right" data-testid="vault-score">

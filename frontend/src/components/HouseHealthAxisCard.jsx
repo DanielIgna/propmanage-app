@@ -6,7 +6,7 @@ import axios from "axios";
 import { ChevronRight, ChevronDown, Info, Sparkles, Check } from "lucide-react";
 import { API } from "../pages/DashShared";
 import {
-  HOUSE_HEALTH_AXIS, STATE_META, AXIS_DISCLAIMER,
+  HOUSE_HEALTH_AXIS, STATE_META, AXIS_DISCLAIMER, AXIS_NOT_ENERGY_CLASS,
   deriveChapterState, chapterForNextStep,
 } from "../lib/houseHealthAxis";
 
@@ -47,6 +47,7 @@ export const HouseHealthAxisCard = ({ prop, actions, goSection }) => {
         <div className="flex-1 min-w-0">
           <div className="text-sm font-black text-slate-900 leading-none">Harta casei tale (A→G)</div>
           <div className="text-[10px] text-slate-400 mt-0.5">Cele 7 capitole ale sănătății și stării locuinței</div>
+          <div className="text-[9px] text-slate-400 mt-0.5" data-testid="hh-axis-not-energy-class">{AXIS_NOT_ENERGY_CLASS}</div>
         </div>
         <button onClick={() => setShowLegal(v => !v)} data-testid="hh-axis-legal-toggle"
           className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0" aria-label="Notă legală">
@@ -138,6 +139,7 @@ export const HouseHealthAxisPreview = ({ onCta }) => (
       <div className="flex-1 min-w-0">
         <div className="text-sm font-black text-slate-900 leading-none">Drumul casei tale, de la A la G</div>
         <div className="text-[10px] text-slate-400 mt-0.5">iată ce vei construi, pas cu pas</div>
+        <div className="text-[9px] text-slate-400 mt-0.5">{AXIS_NOT_ENERGY_CLASS}</div>
       </div>
     </div>
     <div className="mt-3 space-y-1.5">
@@ -186,6 +188,7 @@ export const HouseHealthAxisSnapshot = ({ completeness, theme = "light" }) => {
         <div className="flex-1 min-w-0">
           <div className={`text-sm font-medium ${dark ? "text-stone-100 print:text-black" : "text-slate-900 font-black"}`}>Sănătatea casei · A→G</div>
           <div className={`text-[10px] ${dark ? "text-stone-500 print:text-slate-600" : "text-slate-400"}`}>progresul celor 7 capitole ale locuinței</div>
+          <div className={`text-[9px] ${dark ? "text-stone-600 print:text-slate-600" : "text-slate-400"}`}>{AXIS_NOT_ENERGY_CLASS}</div>
         </div>
       </div>
       <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
