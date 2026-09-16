@@ -29,6 +29,8 @@ DESIGN_PAGES: list[tuple[str, str]] = [
     ("baie", "2026-06-11"),
     ("birouri", "2026-06-16"),
     ("spatii-comerciale", "2026-06-16"),
+    ("cabinete-medicale", "2026-06-16"),
+    ("saloane", "2026-06-16"),
 ]
 
 # (slug, lastmod) — style landing pages (the REAL PropManage style system)
@@ -51,6 +53,8 @@ DESIGN_LOCAL_CITIES: list[str] = [
     "floresti", "baciu", "apahida", "marasti-cluj", "gheorgheni-cluj",
     # București neighborhood + Ilfov localities
     "baneasa", "otopeni", "corbeanca", "buftea", "balotesti",
+    # București neighborhoods (batch 3)
+    "militari", "titan", "pipera",
 ]
 
 # Local pages with UNIQUE authored content (INDEX). Cities NOT listed here render a
@@ -59,6 +63,7 @@ DESIGN_LOCAL_INDEXABLE: set[str] = {
     "cluj-napoca", "bucuresti", "timisoara", "brasov", "iasi", "sibiu", "oradea",
     "floresti", "baciu", "apahida", "marasti-cluj", "gheorgheni-cluj",
     "baneasa", "otopeni", "corbeanca", "buftea", "balotesti",
+    "militari", "titan", "pipera",
 }
 
 DESIGN_PAGE_SLUGS = {s for s, _ in DESIGN_PAGES}

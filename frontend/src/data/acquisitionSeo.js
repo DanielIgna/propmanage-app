@@ -136,6 +136,9 @@ export const ACQUISITION_PAGES = {
       { to: "/pentru-specialisti/constructor", label: "Constructor pe PropManage" },
       { to: "/pentru-specialisti/auditor-energetic", label: "Auditor energetic pe PropManage" },
       { to: "/pentru-specialisti/hvac", label: "Specialist HVAC pe PropManage" },
+      { to: "/pentru-specialisti/zugrav", label: "Zugrav pe PropManage" },
+      { to: "/pentru-specialisti/tamplar", label: "Tâmplar pe PropManage" },
+      { to: "/pentru-specialisti/montator-gresie-faianta", label: "Montator gresie-faianță" },
     ],
   },
 
@@ -329,6 +332,123 @@ export const ACQUISITION_PAGES = {
       { to: "/pentru-specialisti", label: "Toate meseriile pe PropManage" },
       { to: "/pentru-specialisti/auditor-energetic", label: "Auditor energetic pe PropManage" },
       { to: "/pentru-specialisti/instalator", label: "Instalator pe PropManage" },
+      { to: "/marketplace", label: "Marketplace specialiști" },
+    ],
+  },
+
+  "specialist-zugrav": {
+    audience: "specialist",
+    path: "/pentru-specialisti/zugrav",
+    badge: "Zugrav",
+    h1: "Zugrav pe PropManage: cereri pentru zugrăveli și finisaje pereți",
+    title: "Zugrav PropManage: găsește clienți, înregistrare gratuită",
+    description: "Ești zugrav? Înregistrează-te gratuit și primești cereri pentru zugrăveli, glet, tapet și reparații de pereți. Plată protejată prin escrow.",
+    intro: "Ca zugrav pe PropManage primești cereri pentru zugrăveli, glet și finisaje decorative — de la apartamente proaspăt renovate, la refreshuri rapide înainte de mutare sau vânzare. Proprietarii vin la tine cu lucrări concrete.",
+    cta: CTA_SPECIALIST,
+    sections: [
+      {
+        h2: "Ce lucrări primești ca zugrav",
+        body: ["Cererile acoperă pregătirea și finisarea pereților și tavanelor."],
+        bullets: [
+          "Zugrăveli complete pentru apartamente și case",
+          "Glet, amorsare și pregătirea suprafețelor",
+          "Vopsele decorative și tehnici speciale",
+          "Montaj tapet și fototapet",
+          "Reparații de pereți și retușuri înainte de mutare sau vânzare",
+        ],
+      },
+      {
+        h2: "De ce cererea e constantă",
+        body: ["Zugrăveala e printre ultimele etape ale oricărei renovări și una dintre cele mai cerute lucrări la pregătirea unei locuințe pentru închiriere sau vânzare. Proprietarii caută un zugrav de încredere, cu lucrări curate."],
+      },
+    ],
+    faq: [
+      { q: "Ce fel de cereri primesc?", a: "Zugrăveli după renovare, refreshuri rapide și pregătiri pentru vânzare sau închiriere — lucrări concrete de la proprietari verificați." },
+      { q: "Cum îmi construiesc reputația?", a: "Prin recenzii reale. Lucrările curate și livrate la timp îți aduc mai multe cereri." },
+      { q: "Costă înregistrarea?", a: "Nu, înregistrarea ca specialist este gratuită." },
+    ],
+    related: [
+      { to: "/pentru-specialisti", label: "Toate meseriile pe PropManage" },
+      { to: "/pentru-specialisti/montator-gresie-faianta", label: "Montator gresie-faianță" },
+      { to: "/pentru-specialisti/constructor", label: "Constructor pe PropManage" },
+      { to: "/marketplace", label: "Marketplace specialiști" },
+    ],
+  },
+
+  "specialist-tamplar": {
+    audience: "specialist",
+    path: "/pentru-specialisti/tamplar",
+    badge: "Tâmplar",
+    h1: "Tâmplar pe PropManage: cereri pentru mobilier pe comandă",
+    title: "Tâmplar PropManage: găsește clienți pentru mobilier | Gratuit",
+    description: "Ești tâmplar sau faci mobilier pe comandă? Înregistrează-te gratuit și primești cereri pentru dulapuri, bucătării, uși și tâmplărie din lemn. Escrow inclus.",
+    intro: "Ca tâmplar pe PropManage primești cereri pentru mobilier pe comandă — dulapuri, bucătării, dressinguri, uși și tâmplărie din lemn. Multe cereri vin cu un proiect de design gata, deci specificații clare.",
+    cta: CTA_SPECIALIST,
+    sections: [
+      {
+        h2: "Ce lucrări primești ca tâmplar",
+        body: ["Cererile acoperă mobilierul și tâmplăria realizată la comandă."],
+        bullets: [
+          "Mobilier de bucătărie pe comandă",
+          "Dulapuri, dressinguri și biblioteci integrate",
+          "Uși interioare și tâmplărie din lemn",
+          "Mobilier pentru spații mici, croit pe dimensiuni",
+          "Elemente de mobilier pentru proiecte de design",
+        ],
+      },
+      {
+        h2: "Avantajul proiectelor cu design",
+        body: ["Multe cereri vin dintr-un proiect de design interior, ceea ce înseamnă dimensiuni exacte, materiale specificate și mai puține surprize. Plata pe etape prin escrow reduce riscul pentru ambele părți."],
+      },
+    ],
+    faq: [
+      { q: "Primesc doar bucătării sau și alt mobilier?", a: "Toată gama de mobilier pe comandă: bucătării, dulapuri, dressinguri, biblioteci, uși. Alegi proiectele care ți se potrivesc." },
+      { q: "Lucrez pe baza proiectelor de design?", a: "Da, frecvent. Cererile din proiecte de design vin cu specificații clare, ceea ce face producția mai predictibilă." },
+      { q: "Costă înregistrarea?", a: "Nu, înregistrarea ca specialist este gratuită." },
+    ],
+    related: [
+      { to: "/pentru-specialisti", label: "Toate meseriile pe PropManage" },
+      { to: "/design-interior/apartament", label: "Design interior apartament" },
+      { to: "/pentru-specialisti/constructor", label: "Constructor pe PropManage" },
+      { to: "/marketplace", label: "Marketplace specialiști" },
+    ],
+  },
+
+  "specialist-montator-gresie-faianta": {
+    audience: "specialist",
+    path: "/pentru-specialisti/montator-gresie-faianta",
+    badge: "Montator gresie-faianță",
+    h1: "Montator gresie-faianță pe PropManage: cereri pentru băi și bucătării",
+    title: "Montator gresie-faianță PropManage: găsește clienți | Gratuit",
+    description: "Montezi gresie și faianță? Înregistrează-te gratuit și primești cereri pentru băi, bucătării și hidroizolații. Plată protejată prin escrow.",
+    intro: "Ca montator de gresie și faianță pe PropManage primești cereri pentru amenajarea băilor și bucătăriilor, placări și hidroizolații. Renovările generează sistematic astfel de lucrări, iar proprietarii caută execuție precisă.",
+    cta: CTA_SPECIALIST,
+    sections: [
+      {
+        h2: "Ce lucrări primești",
+        body: ["Cererile acoperă placările ceramice și pregătirea suprafețelor."],
+        bullets: [
+          "Placare cu gresie și faianță în băi și bucătării",
+          "Hidroizolații înainte de placare",
+          "Șape și pregătirea suprafețelor",
+          "Placări decorative și formate mari",
+          "Reparații și înlocuiri punctuale",
+        ],
+      },
+      {
+        h2: "De ce cererea e mare",
+        body: ["Renovarea băilor și a bucătăriilor e printre cele mai frecvente lucrări din apartamente. O placare corectă, cu hidroizolație bună, e esențială — de aceea proprietarii caută un montator verificat."],
+      },
+    ],
+    faq: [
+      { q: "Primesc și lucrări de hidroizolație?", a: "Da. Hidroizolația corectă înainte de placare e parte din lucrare și un motiv important pentru care proprietarii caută un specialist verificat." },
+      { q: "Cum mă diferențiez?", a: "Prin calitatea execuției și recenziile reale. O placare precisă îți aduce recomandări și cereri noi." },
+      { q: "Costă înregistrarea?", a: "Nu, înregistrarea ca specialist este gratuită." },
+    ],
+    related: [
+      { to: "/pentru-specialisti", label: "Toate meseriile pe PropManage" },
+      { to: "/pentru-specialisti/instalator", label: "Instalator pe PropManage" },
+      { to: "/pentru-specialisti/zugrav", label: "Zugrav pe PropManage" },
       { to: "/marketplace", label: "Marketplace specialiști" },
     ],
   },

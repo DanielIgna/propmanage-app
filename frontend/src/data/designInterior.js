@@ -277,6 +277,38 @@ export const DI_PAGES = {
     ],
     related: [R.hub, R.impl, R.d3, { to: "/design-interior/birouri", label: "Design interior birouri" }],
   },
+  "cabinete-medicale": {
+    cluster: "comercial", tag: "Design cabinete medicale",
+    h1: "Design interior cabinete medicale",
+    title: "Design cabinete medicale: clinici, stomatologie, cabinete | PropManage",
+    description: "Amenajarea cabinetelor medicale și stomatologice: fluxuri pacient, norme igienico-sanitare, materiale lavabile, săli de așteptare. Design funcțional cu implementare la cheie.",
+    intro: "Un cabinet medical bine amenajat inspiră încredere pacienților și respectă cerințele stricte de igienă și funcționalitate. Designul echilibrează normele sanitare cu o atmosferă primitoare, într-un spațiu care susține actul medical.",
+    sections: [
+      { h2: "Ce rezolvă designul de cabinete medicale", body: ["Un proiect medical pornește de la fluxuri, norme și experiența pacientului."], bullets: ["Fluxuri clare: recepție, sală de așteptare, cabinete, sterilizare", "Materiale lavabile și rezistente, conforme cerințelor sanitare", "Iluminat corect pentru actul medical și pentru confort", "Izolare fonică între cabinete pentru intimitate", "Branding medical discret și primitor"] },
+      { h2: "Etape și implementare", body: ["Releveu, concept, proiect tehnic, randări și, opțional, implementare la cheie cu specialiști verificați. Proiectul ține cont de cerințele specifice cabinetelor stomatologice, clinicilor și cabinetelor de specialitate."] },
+    ],
+    faq: [
+      { q: "Amenajați cabinete stomatologice și clinici?", a: "Da — de la cabinete individuale la clinici cu mai multe specialități. Fiecare are cerințe proprii de flux, sterilizare și dotări, tratate în proiectul tehnic." },
+      { q: "Țineți cont de normele sanitare?", a: "Da. Proiectul integrează cerințele de igienă, materialele lavabile și fluxurile corecte, esențiale pentru autorizarea și funcționarea unui cabinet medical." },
+    ],
+    related: [R.hub, R.impl, { to: "/design-interior/spatii-comerciale", label: "Design spații comerciale" }, { to: "/design-interior/saloane", label: "Design saloane de înfrumusețare" }],
+  },
+  "saloane": {
+    cluster: "comercial", tag: "Design saloane",
+    h1: "Design interior saloane de înfrumusețare",
+    title: "Design saloane: coafură, cosmetică, spa, frizerii | PropManage",
+    description: "Amenajarea saloanelor de înfrumusețare: posturi de lucru, oglinzi și iluminat, zone de spălare, atmosferă și branding. Design care crește experiența clientului, cu implementare la cheie.",
+    intro: "Într-un salon de înfrumusețare, ambianța și funcționalitatea sunt parte din serviciu. Un design bun organizează posturile de lucru, iluminatul și zonele de spălare, creând o atmosferă care fidelizează clienții și reflectă brandul.",
+    sections: [
+      { h2: "Ce rezolvă designul de saloane", body: ["Un proiect pentru salon pornește de la experiența clientului și de la fluxul de lucru."], bullets: ["Posturi de lucru ergonomice și dispunere eficientă", "Oglinzi și iluminat care pun în valoare serviciul", "Zone de spălare și instalații corect poziționate", "Atmosferă și branding coerent cu identitatea salonului", "Materiale rezistente la umiditate și trafic intens"] },
+      { h2: "Etape și implementare", body: ["Releveu, concept, proiect tehnic, randări și, opțional, implementare la cheie cu specialiști verificați. Proiectul se adaptează tipului de salon: coafură, cosmetică, frizerie, unghii sau spa."] },
+    ],
+    faq: [
+      { q: "Amenajați frizerii, saloane de cosmetică și spa?", a: "Da — fiecare tip de salon are cerințe proprii de posturi, instalații și atmosferă, tratate în proiectul tehnic." },
+      { q: "Cât durează un proiect pentru salon?", a: "Un concept vine rapid; proiectul tehnic complet și implementarea se planifică în funcție de suprafață și de amploarea lucrărilor la instalații." },
+    ],
+    related: [R.hub, R.impl, { to: "/design-interior/spatii-comerciale", label: "Design spații comerciale" }, { to: "/design-interior/cabinete-medicale", label: "Design cabinete medicale" }],
+  },
 };
 
 // ── Style pages (the REAL PropManage style system) ──────────────────────────
@@ -318,6 +350,7 @@ export const DI_LOCAL_CITIES = {
   "marasti-cluj": "Mărăști (Cluj-Napoca)", "gheorgheni-cluj": "Gheorgheni (Cluj-Napoca)",
   baneasa: "Băneasa (București)", otopeni: "Otopeni (Ilfov)", corbeanca: "Corbeanca (Ilfov)",
   buftea: "Buftea (Ilfov)", balotesti: "Balotești (Ilfov)",
+  militari: "Militari (București)", titan: "Titan (București)", pipera: "Pipera (București)",
 };
 
 export const getDesignPage = (slug) => DI_PAGES[slug] || null;

@@ -14,6 +14,8 @@ ACQ_PATHS = [
     "/pentru-specialisti/electrician", "/pentru-specialisti/instalator",
     "/pentru-specialisti/constructor", "/pentru-specialisti/auditor-energetic",
     "/pentru-specialisti/hvac",
+    "/pentru-specialisti/zugrav", "/pentru-specialisti/tamplar",
+    "/pentru-specialisti/montator-gresie-faianta",
     "/pentru-designeri", "/devino-specialist",
 ]
 

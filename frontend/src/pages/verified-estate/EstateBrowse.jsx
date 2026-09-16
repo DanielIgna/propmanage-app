@@ -368,6 +368,29 @@ export const EstateBrowse = () => {
         </div>
       </section>
 
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-8" data-testid="estate-guides">
+        <h2 className="font-serif text-3xl md:text-4xl tracking-tight mb-2">Ghiduri pentru o cumpărare sigură</h2>
+        <p className="text-stone-400 mb-8 max-w-2xl">Tot ce trebuie să știi înainte să cumperi un apartament — verificare, documente, audit tehnic și Digital Twin.</p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            ["/ghiduri/verificare-apartament-inainte-de-cumparare", "Verificarea apartamentului înainte de cumpărare"],
+            ["/ghiduri/ce-documente-verifici-cumparare-apartament", "Ce documente verifici la cumpărare"],
+            ["/ghiduri/probleme-tehnice-apartament-inainte-cumparare", "Ce probleme tehnice urmărești"],
+            ["/ghiduri/riscuri-cumparare-apartament-bloc-vechi", "Riscuri la cumpărarea într-un bloc vechi"],
+            ["/ghiduri/imobile-verificate-cum-functioneaza", "Cum funcționează Imobile Verificate"],
+            ["/ghiduri/audit-tehnic-apartament-pret", "Audit tehnic apartament: preț"],
+            ["/ghiduri/ce-este-digital-twin-locuinta", "Ce este Digital Twin-ul locuinței"],
+            ["/ghiduri/verificare-imobil-digital-twin", "Cum se leagă verificarea de Digital Twin"],
+          ].map(([to, label], i) => (
+            <Link key={i} to={to} data-testid={`estate-guide-${i}`}
+              className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 flex items-start justify-between gap-3 hover:bg-white/[0.06] hover:border-emerald-400/40 transition group">
+              <span className="text-sm text-stone-200 leading-snug">{label}</span>
+              <ArrowRight className="w-4 h-4 text-stone-500 flex-shrink-0 mt-0.5 group-hover:text-emerald-400 transition" />
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-16">
         <NextStep
           dark

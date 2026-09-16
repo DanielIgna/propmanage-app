@@ -243,6 +243,16 @@ const Hero = () => {
             {cta2Text}
           </a>
         </div>
+        <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm" data-testid="hero-audience-links">
+          <span className="text-stone-500">Intri ca:</span>
+          <Link to="/pentru-proprietari" onClick={trackClick} className="text-stone-300 hover:text-[#d4ff3a] transition-colors inline-flex items-center gap-1.5 font-medium" data-testid="hero-cta-owners">
+            Proprietar <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+          <span className="text-stone-700">·</span>
+          <Link to="/pentru-specialisti" onClick={trackClick} className="text-stone-300 hover:text-[#d4ff3a] transition-colors inline-flex items-center gap-1.5 font-medium" data-testid="hero-cta-specialists">
+            Specialist <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </motion.div>
 
       {/* Stats strip */}

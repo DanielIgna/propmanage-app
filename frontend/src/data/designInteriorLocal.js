@@ -719,6 +719,117 @@ export const DI_LOCAL_CONTENT = {
       { to: "/imobile-verificate", label: "Imobile Verificate" },
     ],
   },
+
+  "militari": {
+    name: "Militari (București)",
+    intro:
+      "Militari este unul dintre cele mai populate cartiere din vestul Bucureștiului (sectorul 6), cu blocuri dense din perioada comunistă și, la limita cu Ilfov, ansambluri noi precum Militari Residence. Aici designul interior înseamnă în principal optimizarea apartamentelor compacte și modernizarea locuințelor din blocuri. Pe PropManage lucrezi cu designeri verificați, cu proiect legat de execuție prin escrow.",
+    sections: [
+      {
+        h2: "Ce amenajăm în Militari",
+        body: ["Fondul locativ combină blocuri consacrate cu ansambluri noi la marginea orașului."],
+        bullets: [
+          "Apartamente în blocuri (Gorjului, Lujerului, Veteranilor, Apusului) de optimizat",
+          "Apartamente noi în ansamblurile de la limita cu Ilfov",
+          "Garsoniere și apartamente de 2 camere pentru navetiști",
+          "Necesar mare de depozitare la suprafețe mici",
+        ],
+      },
+      {
+        h2: "Nevoi specifice cartierului Militari",
+        body: ["Densitatea și tipul apartamentelor modelează prioritățile."],
+        bullets: [
+          "Reabilitarea instalațiilor în blocurile mai vechi înainte de finisaje",
+          "Optimizarea apartamentelor compacte din ansamblurile noi",
+          "Izolație fonică, dat fiind traficul intens din zonă",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Merită designul interior pentru un apartament din Militari?", a: "Da, mai ales pentru apartamentele compacte. Un designer optimizează depozitarea, circulația și lumina, evitând cumpărături greșite de mobilier." },
+      { q: "Aveți designeri în zona Militari?", a: "Designerii verificați din București acoperă și Militari. Postează o cerere pentru oferte reale." },
+    ],
+    related: [
+      { to: "/design-interior/bucuresti", label: "Design interior București" },
+      { to: "/design-interior/apartament-mic", label: "Design apartament mic" },
+      { to: "/design-interior/renovare", label: "Design pentru renovare" },
+      { to: "/imobile-verificate", label: "Imobile Verificate" },
+    ],
+  },
+
+  "titan": {
+    name: "Titan (București)",
+    intro:
+      "Titan este unul dintre cele mai mari și mai verzi cartiere din estul Bucureștiului (sectorul 3), cu blocuri din anii 60-80 și Parcul Titan (IOR) în centru. Fondul locativ matur și spațiile verzi îl fac popular pentru familii. Aici designul interior se concentrează pe modernizarea apartamentelor din blocuri. Pe PropManage lucrezi cu designeri verificați, cu proiect legat de execuție prin escrow.",
+    sections: [
+      {
+        h2: "Ce amenajăm în Titan",
+        body: ["Cartierul are un fond locativ solid, cu apartamente care beneficiază de modernizare."],
+        bullets: [
+          "Apartamente în blocuri anii 60-80, solide dar de actualizat",
+          "Apartamente de 2-3 camere de reorganizat funcțional",
+          "Amenajări pentru familii, aproape de parc și zone verzi",
+          "Modernizări de băi și bucătării",
+        ],
+      },
+      {
+        h2: "Nevoi specifice cartierului Titan",
+        body: ["Fondul locativ matur cere atenție la instalații și finisaje."],
+        bullets: [
+          "Actualizarea instalațiilor electrice și sanitare înainte de finisaje",
+          "Optimizarea depozitării și a zonei de zi",
+          "Confort termic și fonic în apartamentele vechi",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Cât costă modernizarea unui apartament în Titan?", a: "Un concept pornește de la câteva sute de lei pe cameră; proiectul tehnic complet se calculează pe metru pătrat, în funcție de suprafață și intervenții." },
+      { q: "Aveți designeri în Titan?", a: "Da, designerii verificați din București acoperă și cartierul Titan. Postează o cerere pentru oferte." },
+    ],
+    related: [
+      { to: "/design-interior/bucuresti", label: "Design interior București" },
+      { to: "/design-interior/apartament", label: "Design interior apartament" },
+      { to: "/design-interior/renovare", label: "Design pentru renovare" },
+      { to: "/scorul-casei", label: "Verifică Scorul Casei tale" },
+    ],
+  },
+
+  "pipera": {
+    name: "Pipera (București)",
+    intro:
+      "Pipera este principalul hub de business din nordul Bucureștiului și una dintre cele mai active zone rezidențiale noi, cu ansambluri moderne alese mai ales de tineri profesioniști din corporate și IT. Aici designul interior înseamnă personalizarea apartamentelor noi, adesea compacte, cu accent pe funcționalitate. Pe PropManage lucrezi cu designeri verificați, cu proiect legat de execuție prin escrow.",
+    sections: [
+      {
+        h2: "Ce amenajăm în Pipera",
+        body: ["Fondul locativ e dominat de apartamente noi din ansambluri rezidențiale."],
+        bullets: [
+          "Apartamente noi de 1-2-3 camere în ansambluri moderne",
+          "Open-space living-bucătărie de organizat funcțional",
+          "Studiouri și apartamente pentru tineri profesioniști",
+          "Personalizarea finisajelor la predarea de la dezvoltator",
+        ],
+      },
+      {
+        h2: "Nevoi specifice zonei Pipera",
+        body: ["Profilul tânăr și corporate al zonei aduce cerințe recurente."],
+        bullets: [
+          "Birou de acasă integrat pentru cei care lucrează remote sau hibrid",
+          "Depozitare inteligentă la suprafețe compacte",
+          "Izolație fonică, dat fiind densitatea și traficul din zonă",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Cât costă designul interior în Pipera?", a: "Un concept pornește de la câteva sute de lei pe cameră; proiectul tehnic complet se calculează pe metru pătrat. Personalizarea finisajelor la un apartament nou beneficiază mult de un proiect din faza de predare." },
+      { q: "Aveți designeri în Pipera?", a: "Da, designerii verificați din București acoperă și zona Pipera. Postează o cerere pentru oferte reale." },
+    ],
+    related: [
+      { to: "/design-interior/bucuresti", label: "Design interior București" },
+      { to: "/design-interior/apartament", label: "Design interior apartament" },
+      { to: "/design-interior/apartament-mic", label: "Design apartament mic" },
+      { to: "/design-interior/3d", label: "Randări 3D / Digital Twin" },
+    ],
+  },
 };
 
 export const DI_LOCAL_INDEXABLE = Object.keys(DI_LOCAL_CONTENT);
