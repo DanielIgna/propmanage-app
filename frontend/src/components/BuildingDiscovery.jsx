@@ -18,20 +18,23 @@ export const BuildingDiscovery = () => {
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState(false);
   const timer = useRef(null);
+  const reqId = useRef(0);
 
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
     if (q.trim().length < 2) { setResults([]); setTotal(0); setTouched(false); return; }
     setLoading(true);
     setTouched(true);
+    const myReq = ++reqId.current;
     timer.current = setTimeout(async () => {
       try {
         const r = await fetch(`${API}/public/buildings/search?q=${encodeURIComponent(q.trim())}&limit=8`);
         const d = await r.json();
+        if (myReq !== reqId.current) return; // ignoră răspuns învechit
         setResults(d.buildings || []);
         setTotal(d.total || 0);
-      } catch { setResults([]); }
-      finally { setLoading(false); }
+      } catch { if (myReq === reqId.current) setResults([]); }
+      finally { if (myReq === reqId.current) setLoading(false); }
     }, 350);
     return () => timer.current && clearTimeout(timer.current);
   }, [q]);

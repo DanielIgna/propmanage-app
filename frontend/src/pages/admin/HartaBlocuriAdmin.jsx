@@ -136,11 +136,15 @@ const BuildingsTab = () => {
   const [status, setStatus] = useState("all");
   const [data, setData] = useState({ buildings: [], total: 0 });
   const [loading, setLoading] = useState(false);
+  const reqId = React.useRef(0);
 
   const load = useCallback(() => {
     setLoading(true);
+    const myReq = ++reqId.current;
     axios.get(`${API}/admin/hartablocuri/buildings`, { params: { q, source, status, page_size: 30 } })
-      .then(r => setData(r.data)).catch(() => {}).finally(() => setLoading(false));
+      .then(r => { if (myReq === reqId.current) setData(r.data); })
+      .catch(() => {})
+      .finally(() => { if (myReq === reqId.current) setLoading(false); });
   }, [q, source, status]);
   useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [load]);
 

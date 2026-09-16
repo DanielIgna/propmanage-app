@@ -328,16 +328,14 @@ async def _find_existing_building(db, rec: dict) -> Optional[dict]:
     async for b in db.buildings.find({"context.norm_address": norm_addr}):
         ctx = b.get("context") or {}
         cand_is_hb = bool((ctx.get("external_sources") or {}).get("hartablocuri"))
+        # NU uni niciodată două blocuri HartaBlocuri distincte de la aceeași adresă.
+        # Idempotența pe același record e deja garantată de source_record_id (mai sus).
+        if cand_is_hb:
+            continue
         blat, blng = ctx.get("lat"), ctx.get("lng")
         has_coords = isinstance(blat, (int, float)) and isinstance(blng, (int, float))
         near = has_coords and _haversine_m(blat, blng, rec["lat"], rec["lng"]) <= 60
         same_name = bool(norm_name) and _norm(b.get("name")) == norm_name
-        # același nume + adresă → același bloc DOAR dacă și coordonatele sunt apropiate
-        # (nume/adrese placeholder ex. „Bloc număr necunoscut" / „Strada ?? nr. X" pot repeta)
-        if same_name and (near or not has_coords):
-            return b
-        if cand_is_hb:
-            continue  # NU uni două blocuri HartaBlocuri distincte de la aceeași adresă
         # candidat PropManage (manual) la aceeași adresă → match cross-source
         if near:
             return b
@@ -368,6 +366,8 @@ def _merge_context(existing_ctx: dict, rec: dict, ext: dict) -> tuple[dict, list
     ext_sources["hartablocuri"] = ext
     ctx["external_sources"] = ext_sources
 
+    # Coordonatele nu produc conflicte acționabile (diferențe minuscule) — se completează doar dacă lipsesc
+    _NO_CONFLICT_FIELDS = {"lat", "lng"}
     for cfield, rkey in _CONTEXT_MAP.items():
         rval = rec.get(rkey)
         if rval in (None, ""):
@@ -375,7 +375,7 @@ def _merge_context(existing_ctx: dict, rec: dict, ext: dict) -> tuple[dict, list
         cur = ctx.get(cfield)
         if cur in (None, ""):
             ctx[cfield] = rval  # completează gol → non-destructiv
-        elif str(cur) != str(rval):
+        elif str(cur) != str(rval) and cfield not in _NO_CONFLICT_FIELDS:
             if not any(c.get("field") == cfield and c.get("hartablocuri_value") == rval for c in conflicts):
                 conflicts.append({
                     "field": cfield, "propmanage_value": cur, "hartablocuri_value": rval,

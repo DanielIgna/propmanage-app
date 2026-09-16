@@ -139,7 +139,6 @@ async def admin_run_import(body: ImportRequest, user: dict = Depends(require_rol
     if not os.path.exists(path):
         raise HTTPException(400, f"Fișierul nu există: {path}. Încarcă-l în {HB_FILE_DEFAULT} întâi.")
     result = await run_import(path, limit=body.limit, dry_run=body.dry_run, triggered_by=user["id"])
-    result.pop("error_samples", None) if False else None
     return result
 
 
@@ -158,7 +157,8 @@ async def admin_stats(user: dict = Depends(require_role("admin"))):
     both = await db.buildings.count_documents({
         "context.external_sources.hartablocuri": {"$exists": True},
         "source": {"$ne": "hartablocuri_import"}})
-    conflicts = await db.buildings.count_documents({"context.conflicts.0": {"$exists": True}})
+    conflicts = await db.buildings.count_documents(
+        {"context.conflicts": {"$elemMatch": {"status": "review"}}})
     return {
         "total_buildings": total,
         "with_hartablocuri": hb,
@@ -279,7 +279,7 @@ async def admin_list_buildings(
     elif source == "propmanage":
         conds.append({"context.external_sources.hartablocuri": {"$exists": False}})
     if status == "conflict":
-        conds.append({"context.conflicts.0": {"$exists": True}})
+        conds.append({"context.conflicts": {"$elemMatch": {"status": "review"}}})
     elif status != "all":
         conds.append({"context.verification_status": status})
     query = {"$and": conds} if conds else {}
@@ -288,12 +288,13 @@ async def admin_list_buildings(
     out = []
     async for b in db.buildings.find(query).skip(skip).limit(page_size):
         ctx = b.get("context") or {}
+        open_conflicts = [c for c in (ctx.get("conflicts") or []) if c.get("status") == "review"]
         out.append({
             "id": str(b["_id"]), "name": b.get("name"), "address": b.get("address"),
             "city": b.get("city"), "neighborhood": ctx.get("neighborhood"),
             "source": _source_of(b),
             "verification_status": ctx.get("verification_status", "unverified"),
-            "conflicts_count": len(ctx.get("conflicts") or []),
+            "conflicts_count": len(open_conflicts),
             "residents_count": await db.properties.count_documents({"building_id": str(b["_id"])}),
         })
     return {"buildings": out, "total": total, "page": page, "page_size": page_size}
