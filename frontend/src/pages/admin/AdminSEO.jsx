@@ -19,6 +19,7 @@ const SUB_TABS = [
   { id: "sitemap", label: "Sitemap", icon: ListChecks },
   { id: "pages", label: "Pages", icon: FileText },
   { id: "clusters", label: "Clusters", icon: Layers },
+  { id: "hartablocuri-clusters", label: "HartaBlocuri", icon: Building2 },
   { id: "alerts", label: "Alerts", icon: AlertTriangle },
   { id: "gsc", label: "GSC", icon: BarChart3 },
 ];
@@ -227,6 +228,11 @@ export const AdminSEO = () => {
         </div>
       )}
 
+      {/* ---------------- HARTABLOCURI SEO CLUSTER PILOT ---------------- */}
+      {tab === "hartablocuri-clusters" && data && (
+        <HartaBlocuriClustersView data={data} isDark={isDark} txt={txt} muted={muted} border={border} rowBorder={rowBorder} />
+      )}
+
       {/* ---------------- ALERTS ---------------- */}
       {tab === "alerts" && data && (
         <div className="space-y-4" data-testid="seo-alerts">
@@ -259,6 +265,91 @@ export const AdminSEO = () => {
     </div>
   );
 };
+
+// ── HartaBlocuri SEO Cluster Pilot (read-only, NEpublicat) ──────────────────
+const CONF_PILL = {
+  high: "bg-emerald-500/15 text-emerald-500", medium: "bg-sky-500/15 text-sky-500",
+  low: "bg-amber-500/15 text-amber-500", unknown: "bg-slate-500/15 text-slate-400",
+  not_available: "bg-slate-500/10 text-slate-400",
+};
+const HartaBlocuriClustersView = ({ data, isDark, txt, muted, border, rowBorder }) => {
+  const [open, setOpen] = useState(null);
+  return (
+    <div className="space-y-4" data-testid="seo-hb-clusters">
+      <div className="rounded-lg bg-amber-500/10 border border-amber-500/25 px-4 py-3 text-sm text-amber-500 flex items-start gap-2" data-testid="seo-hb-pilot-banner">
+        <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+        <span>{data.note} · <b>{data.prepared}</b> pregătite · <b>{data.published}</b> publicate · prag index ≥ {data.min_buildings_index} blocuri.</span>
+      </div>
+      <div className="space-y-3">
+        {data.clusters.map((c) => {
+          const a = c.aggregates || {};
+          const isOpen = open === c.id;
+          const conf = c.aggregates?.confidence || {};
+          return (
+            <div key={c.id} className={`rounded-xl border ${border} ${isDark ? "bg-slate-900" : "bg-white"}`} data-testid={`seo-hb-cluster-${c.id}`}>
+              <button onClick={() => setOpen(isOpen ? null : c.id)} className="w-full text-left p-4" data-testid={`seo-hb-cluster-toggle-${c.id}`}>
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="min-w-0">
+                    <div className={`font-semibold ${txt}`}>{c.value_label} · {c.locality}</div>
+                    <div className={`text-xs font-mono ${muted} truncate`}>{c.slug}</div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge ok={c.index} />
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-500/15 text-slate-400 uppercase">{c.status}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${c.in_sitemap ? "bg-emerald-500/15 text-emerald-500" : "bg-slate-500/15 text-slate-400"}`}>{c.in_sitemap ? "IN SITEMAP" : "NU ÎN SITEMAP"}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-xs">
+                  <div className={muted}>Clădiri: <span className={`font-bold ${txt}`}>{a.building_count}</span></div>
+                  <div className={muted}>Dimensiune: <span className={`font-bold ${txt}`}>{c.dimension}</span></div>
+                  <div className={muted}>Nivel: <span className={`font-bold ${txt}`}>{c.classification_level}</span></div>
+                  <div className={muted}>Gate: <span className={`font-bold ${c.quality_gate?.passes ? "text-emerald-500" : "text-amber-500"}`}>{c.quality_gate?.passes ? "PASS" : "THIN"}</span></div>
+                </div>
+                <div className={`text-[11px] mt-2 ${muted}`}>Motiv: {c.index_reason}</div>
+              </button>
+              {isOpen && (
+                <div className={`border-t ${rowBorder} p-4 space-y-3 text-xs`} data-testid={`seo-hb-cluster-detail-${c.id}`}>
+                  <div><span className={muted}>Canonical:</span> <span className={`font-mono ${txt}`}>{c.canonical}</span></div>
+                  <div><span className={muted}>Meta title:</span> <span className={txt}>{c.content?.meta_title}</span></div>
+                  <div><span className={muted}>Meta description:</span> <span className={txt}>{c.content?.meta_description}</span></div>
+                  <div><span className={muted}>H1:</span> <span className={txt}>{c.content?.h1}</span></div>
+                  <div><span className={muted}>Intro:</span> <span className={txt}>{c.content?.intro}</span></div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(conf).map(([k, v]) => (
+                      <span key={k} className={`px-2 py-0.5 rounded-full ${CONF_PILL[k] || CONF_PILL.unknown}`}>{k}: {v}</span>
+                    ))}
+                  </div>
+                  {(a.era_distribution || []).length > 0 && (
+                    <div><span className={muted}>Distribuție eră:</span> <span className={txt}>{a.era_distribution.map(e => `${e.value} (${e.count})`).join(" · ")}</span></div>
+                  )}
+                  {(a.floors_distribution || []).length > 0 && (
+                    <div><span className={muted}>Distribuție regim:</span> <span className={txt}>{a.floors_distribution.map(e => `${e.value} (${e.count})`).join(" · ")}</span></div>
+                  )}
+                  {(a.neighborhood_distribution || []).length > 0 && (
+                    <div><span className={muted}>Cartiere:</span> <span className={txt}>{a.neighborhood_distribution.map(e => `${e.value} (${e.count})`).join(" · ")}</span></div>
+                  )}
+                  <div className="rounded-lg bg-amber-500/5 border border-amber-500/20 p-2 space-y-1">
+                    {(c.data_limits || []).map((l, i) => <div key={i} className="text-amber-500/90">• {l}</div>)}
+                  </div>
+                  <div>
+                    <div className={`font-semibold ${txt} mb-1`}>Linking semantic</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(c.internal_links?.forward || []).map(l => (
+                        <span key={l.key} className="px-2 py-0.5 rounded-full bg-[#d4ff3a]/15 text-[#8a9a1f] dark:text-[#d4ff3a]">{l.label} → {l.href}</span>
+                      ))}
+                    </div>
+                    <div className={`mt-1.5 ${muted}`}>Ghiduri: {(c.internal_links?.related_guides || []).map(g => g.slug).join(", ")}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 
 // ── Indexability matrix ─────────────────────────────────────────────────────
 const IndexabilityView = ({ data, isDark, rowBorder, txt, muted, border }) => {

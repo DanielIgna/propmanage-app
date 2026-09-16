@@ -16,7 +16,7 @@ import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse, Response, RedirectResponse
 from pydantic import BaseModel
 
@@ -787,6 +787,30 @@ async def seo_clusters(user: dict = Depends(require_role("admin"))):
     agg["design_interior"]["note"] = "Pregătit pentru SEO Expansion Batch 2 — Design Interior."
 
     return {"generated_at": snap["generated_at"], "clusters": list(agg.values())}
+
+
+# ---------------------------------------------------------------------------
+# 6b) HARTABLOCURI SEO CLUSTER PILOT (Faza 3, READ-ONLY, NEpublicat)
+# ---------------------------------------------------------------------------
+@router.get("/admin/seo/hartablocuri-clusters")
+async def seo_hartablocuri_clusters(user: dict = Depends(require_role("admin"))):
+    """Clustere SEO pilot HartaBlocuri (localitate × eră/typology/family). Read-only.
+    Date agregate reale, neindexate, absente din sitemap — necesită aprobare pentru publicare.
+    """
+    from seo_clusters import list_pilot_clusters
+    from datetime import datetime, timezone
+    data = await list_pilot_clusters()
+    data["generated_at"] = datetime.now(timezone.utc).isoformat()
+    return data
+
+
+@router.get("/admin/seo/hartablocuri-clusters/{cluster_id}")
+async def seo_hartablocuri_cluster_detail(cluster_id: str, user: dict = Depends(require_role("admin"))):
+    from seo_clusters import get_pilot_cluster
+    c = await get_pilot_cluster(cluster_id)
+    if not c:
+        raise HTTPException(404, "Cluster inexistent")
+    return {"cluster": c}
 
 
 # ---------------------------------------------------------------------------
