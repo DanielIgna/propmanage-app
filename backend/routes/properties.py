@@ -50,6 +50,12 @@ async def list_properties(user: dict = Depends(get_current_user)):
         out.append(s)
     return out
 
+@router.get("/properties/mine")
+async def list_my_properties(user: dict = Depends(get_current_user)):
+    """Alias legacy pentru /api/properties — deleagă la aceeași logică/authz.
+    Definit ÎNAINTE de /properties/{prop_id} ca „mine" să nu fie tratat ca ObjectId."""
+    return await list_properties(user)
+
 @router.get("/properties/{prop_id}")
 async def get_property(prop_id: str, user: dict = Depends(get_current_user)):
     doc = await db.properties.find_one({"_id": ObjectId(prop_id)})

@@ -181,7 +181,7 @@ class ListingCreate(BaseModel):
 class ListingPatch(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    price_ron: Optional[float] = None
+    price_ron: Optional[float] = Field(default=None, ge=0, le=1_000_000_000)
     cover_image_url: Optional[str] = None
     gallery: Optional[List[str]] = None
     digital_twin_id: Optional[str] = None

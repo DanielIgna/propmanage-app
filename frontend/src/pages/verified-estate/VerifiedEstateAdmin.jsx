@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   ShieldCheck, Box, FileText, AlertTriangle, CheckCircle2, Archive,
-  Eye, Sparkles, Building2, Loader2, ExternalLink, Mail, RefreshCcw, Banknote, Trophy
+  Eye, Sparkles, Building2, Loader2, ExternalLink, Mail, RefreshCcw, Banknote, Trophy, Pencil
 } from "lucide-react";
 import axios from "axios";
 
@@ -23,7 +23,7 @@ const GateChip = ({ ok, label }) => (
   </span>
 );
 
-const ListingCard = ({ item, onPublish, onArchive, onMarkSold, busy }) => {
+const ListingCard = ({ item, onPublish, onArchive, onMarkSold, onEditPrice, busy }) => {
   const gates = item.gates_status || {};
   const canPublish = Object.values(gates).every(g => g?.ok);
   return (
@@ -37,8 +37,15 @@ const ListingCard = ({ item, onPublish, onArchive, onMarkSold, busy }) => {
         <div className="flex-1 min-w-0">
           <div className="font-medium text-sm leading-tight line-clamp-2 mb-1">{item.title}</div>
           <div className="text-[11px] text-stone-400">{item.city}</div>
-          <div className="text-[11px] font-medium text-[#d4ff3a] mt-0.5">
-            {Number(item.price_ron).toLocaleString("ro-RO")} RON · {item.transaction_type === "rent" ? "Închiriere" : "Vânzare"}
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-[11px] font-medium text-[#d4ff3a]" data-testid={`kanban-price-${item.id}`}>
+              {Number(item.price_ron).toLocaleString("ro-RO")} RON · {item.transaction_type === "rent" ? "Închiriere" : "Vânzare"}
+            </span>
+            <button onClick={() => onEditPrice(item)} disabled={busy === item.id}
+              className="inline-flex items-center gap-0.5 text-[10px] text-stone-400 hover:text-[#d4ff3a] transition-colors"
+              data-testid={`kanban-edit-price-${item.id}`} title="Editează preț">
+              <Pencil className="w-3 h-3" /> Editează
+            </button>
           </div>
         </div>
       </div>
@@ -88,6 +95,39 @@ const StatCard = ({ icon: Icon, color, value, label }) => (
   </div>
 );
 
+const PriceEditModal = ({ item, onCancel, onSave, busy }) => {
+  const [val, setVal] = useState(String(item.price_ron ?? ""));
+  const num = parseFloat(val);
+  const valid = val.trim() !== "" && !Number.isNaN(num) && num >= 0;
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4" data-testid="price-edit-modal">
+      <div className="w-full max-w-sm rounded-2xl bg-[#0e0e10] border border-white/10 text-white p-5">
+        <div className="text-sm font-semibold mb-1">Editează prețul</div>
+        <div className="text-[11px] text-stone-400 mb-4 line-clamp-2">{item.title}</div>
+        <label className="text-[11px] text-stone-400">Preț (RON)</label>
+        <input
+          type="number" min="0" step="1" value={val}
+          onChange={(e) => setVal(e.target.value)}
+          data-testid="price-edit-input"
+          className="w-full mt-1 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/10 text-sm outline-none focus:border-[#d4ff3a]"
+          placeholder="ex. 285000" autoFocus
+        />
+        {!valid && val.trim() !== "" && (
+          <div className="text-[11px] text-red-400 mt-1" data-testid="price-edit-error">Introdu o valoare numerică &ge; 0.</div>
+        )}
+        <div className="flex items-center gap-2 mt-4">
+          <button onClick={() => onSave(item.id, num)} disabled={!valid || busy === item.id}
+            className="flex-1 pm-btn pm-btn-primary pm-btn-sm justify-center disabled:opacity-50" data-testid="price-edit-save">
+            {busy === item.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Salvează"}
+          </button>
+          <button onClick={onCancel} disabled={busy === item.id}
+            className="pm-btn pm-btn-ghost pm-btn-sm" data-testid="price-edit-cancel">Anulează</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const VerifiedEstateAdmin = () => {
   const [tab, setTab] = useState("kanban");
   const [stats, setStats] = useState(null);
@@ -97,6 +137,7 @@ export const VerifiedEstateAdmin = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(null);
+  const [priceEdit, setPriceEdit] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -156,6 +197,21 @@ export const VerifiedEstateAdmin = () => {
     try {
       await axios.post(`${API}/api/verified-estate/admin/listings/${item.id}/mark-sold`, { sale_price_ron: v }, { withCredentials: true });
       await load();
+    } catch (err) {
+      const data = err?.response?.data?.detail;
+      alert(typeof data === "string" ? data : JSON.stringify(data, null, 2));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const savePrice = async (id, price) => {
+    setBusy(id);
+    try {
+      await axios.patch(`${API}/api/verified-estate/admin/listings/${id}`, { price_ron: price }, { withCredentials: true });
+      setPriceEdit(null);
+      await load();
+      alert("Preț actualizat.");
     } catch (err) {
       const data = err?.response?.data?.detail;
       alert(typeof data === "string" ? data : JSON.stringify(data, null, 2));
@@ -232,7 +288,7 @@ export const VerifiedEstateAdmin = () => {
                   {stageItems.length === 0 ? (
                     <div className="text-center text-xs text-stone-600 py-8">Niciun listing</div>
                   ) : (
-                    stageItems.map(it => <ListingCard key={it.id} item={it} onPublish={publish} onArchive={archive} onMarkSold={markSold} busy={busy} />)
+                    stageItems.map(it => <ListingCard key={it.id} item={it} onPublish={publish} onArchive={archive} onMarkSold={markSold} onEditPrice={setPriceEdit} busy={busy} />)
                   )}
                 </div>
               );
@@ -310,6 +366,9 @@ export const VerifiedEstateAdmin = () => {
           </div>
         )}
       </div>
+      {priceEdit && (
+        <PriceEditModal item={priceEdit} busy={busy} onCancel={() => setPriceEdit(null)} onSave={savePrice} />
+      )}
     </div>
   );
 };
