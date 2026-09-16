@@ -1,3 +1,23 @@
+## 🔎📈 SEO EXPANSION #5 — Task-uri reportate + batch 2 meserii + QA achiziție (Iun 2026)
+
+Task-urile reportate + batch 2 meserii + cele 5 verificări cerute. FĂRĂ atingeri la Client Beta/OAuth/GSC/robots/canonical global/regula marketplace ≥3. Verificat: 24 pytest PASS + validate 6/6 green + testing_agent frontend 11/11 PASS (inclusiv cele 5 checks) + compile clean.
+
+**LIVRAT**:
+1. **Cartiere București** (design local, INDEX + conținut unic): `/design-interior/militari` (sector 6, blocuri dense + Militari Residence), `/design-interior/titan` (sector 3, blocuri anii 60-80 + Parcul IOR), `/design-interior/pipera` (hub business + ansambluri noi, corporate/IT). Adăugate în DESIGN_LOCAL_CITIES/INDEXABLE + hub „Zone și localități".
+2. **Pagini enterprise**: `/design-interior/cabinete-medicale` (norme sanitare, fluxuri pacient) + `/design-interior/saloane` (posturi, iluminat, zone spălare). Adăugate în DI_PAGES + DESIGN_PAGES + hub topic-graph.
+3. **Batch 2 meserii** (acquisition, conținut DISTINCT per profesie): `/pentru-specialisti/zugrav`, `/tamplar`, `/montator-gresie-faianta`. Pillar `/pentru-specialisti` listează acum 8 meserii. CTA → /devino-specialist.
+4. **Bloc 8 ghiduri „cumpărare sigură"** pe `/imobile-verificate` (`estate-guides`, `estate-guide-0..7`) — internal linking către clusterul editorial imobile+audit, pentru timp pe site și conversie.
+5. **CTA achiziție pe homepage** (`hero-audience-links`): „Proprietar" → /pentru-proprietari, „Specialist" → /pentru-specialisti.
+
+**Cele 5 verificări QA (toate PASS)**: (1) /pentru-proprietari — clar ce primește proprietarul, CTA→/register; (2) /cartea-casei — explică realmente conceptul, CTA→/register; (3) /pentru-specialisti — evident pentru profesioniști, CTA→/devino-specialist; (4) /pentru-specialisti/electrician — conținut real despre electrician, distinct de instalator/HVAC, CTA OK; (5) /pentru-designeri — clar diferită de /design-interior comercial (vorbește designerului care intră în platformă).
+
+**BEFORE → AFTER (preview)**: INDEX 136 → **144** (+8: 3 cartiere + 2 enterprise + 3 meserii). NOINDEX **200 neschimbat**. Sitemap: static 30, content 45, marketplace 7, specialists 15, design 47, estate 0-preview → **6 copii, 144 URL, validate green**.
+
+**NEATINS**: Client Beta, Google OAuth/GSC/PKCE, Google Login, robots.txt, canonical global, regula marketplace ≥3. **Necesită redeploy** pentru producție.
+
+---
+
+
 ## 🔎📈 SEO EXPANSION #4 — Achiziție proprietari / specialiști / designeri (Iun 2026)
 
 Sistem SEO de achiziție (batch 1), conform fazelor cerute: AUDIT → PROPUNERE → VALIDARE utilizator (aprobat 1a/2a/3a) → IMPLEMENTARE. FĂRĂ doorway/scaled content: fiecare pagină are conținut unic, non-templat. FĂRĂ Client Beta/Google OAuth/GSC/robots/canonical global/regula marketplace ≥3. Verificat: 24 pytest PASS + validate 6/6 green + testing_agent frontend 37/37 PASS + compile clean.
