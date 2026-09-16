@@ -1,3 +1,19 @@
+## 🐞 FIX GSC OAuth #3 — invalid_grant = PKCE fără code_verifier (Iun 2026) · CAUZĂ REALĂ
+
+**Cauza exactă**: authorization_url (generat de google-auth-oauthlib în fix #2) conținea **PKCE** — `code_challenge` + `code_challenge_method=S256`. Odată trimis un challenge, Google IMPUNE `code_verifier` la token exchange. POST-ul direct httpx (fix #2) NU trimitea `code_verifier` → Google răspunde `invalid_grant` pentru ORICE cod real. Nu era double-consumption, nici redirect_uri, nici client_secret (proba cod-fals → invalid_grant, nu invalid_client), nici scope.
+
+**Fix (root-cause, minim)** în `routes/admin_seo.py`:
+- `oauth/start`: nu mai folosește `Flow`; generează manual `code_verifier` (86 chars) + `code_challenge` S256, îl pune în state-ul JWT SEMNAT (`cv`), construiește auth_url manual cu code_challenge.
+- `callback`: extrage `cv` din state și îl trimite ca `code_verifier` în POST-ul direct la `oauth2.googleapis.com/token`. PKCE round-trip complet (challenge↔verifier confirmat prin SHA256).
+- Diagnostic sigur păstrat (`detail=<cod Google>` + `last_error`, fără secrete). Neatins: login, demo-reset, gate/canonical/robots/sitemap.
+
+**Verificat pe PREVIEW**: auth_url are code_challenge S256; state poartă verifier; challenge==SHA256(verifier); callback cu cod fals → invalid_grant (așteptat pentru cod fals) DAR acum trimite code_verifier → cu cod REAL Google acceptă. Teste: iter220 (9, guard PKCE) + iter218 + iter219 = **19 PASS**. Servicii RUNNING; gate neschimbat.
+
+**⚠️ REDEPLOY necesar pe propmanage.ro** (prod rulează încă fix #2 fără code_verifier). După redeploy → „Conectează cu Google" → token exchange reușește → refresh_token persistat → `connected`.
+
+---
+
+
 ## 🐞 FIX GSC OAuth #2 — token_exchange pică pe producție (Iun 2026)
 
 **Simptom (prod)**: după consimțământ Google reușit, callback-ul redirecta cu `reason=token_exchange` (confirmat din header-ul `Location` de Fondator), documentul GSC NU se scria → „Not connected".
