@@ -152,3 +152,12 @@ Integrare aditivă a bazei externe HartaBlocuri Cluj în entitatea `buildings` e
 **Next roadmap (NU implementat)**: Import CSV/Excel catalog · Materiale structurate în ofertă · Insignă „Amenajare planificată" Pașaport · Comparație partajabilă · (nuanță) ofertă zero-tap.
 
 **Conflict marcat pentru Fondator**: lista de „next action items neimplementate" din directivă includea itemi deja livrați (comparație-câștigător, concept-în-pașaport, notificare validare, materiale parteneri, parțial ofertă-un-tap). Consemnat starea reală pe baza codului; de confirmat reducerea listei de roadmap.
+
+## 2026-06 — Map Unification (Imobile Verificate) + Building Confirmation (v1.0)
+- **Provider hartă unificat:** creat `frontend/src/components/PmMap.jsx` (hook `useMapsConfig` din `/api/public/maps/config`; `PmMarkersMap` multi-marker; `PmMiniMap` single-marker preview). Google Maps când `GOOGLE_MAPS_ENABLED=true` + cheie; altfel fallback Leaflet pe tiles OpenStreetMap (fără cheie). `EstateMapView.jsx` rescris să folosească `PmMarkersMap`.
+- **Fix „API KEY REQUIRED":** cauza = tiles CartoDB (`basemaps.cartocdn.com/dark_all`) care cer acum înregistrare. Înlocuite cu OSM standard (`tile.openstreetmap.org`) în fallback. Harta din `/imobile-verificate` funcționează acum în Preview fără cheie.
+- **Confirmare explicită a clădirii:** `PropertyTechnicalRecord.jsx` — `attachExisting` nu mai face `window.confirm`; deschide `BuildingConfirmDialog` (nume, adresă, badge confidence Ridicată/Medie/Scăzută, notă proveniență HartaBlocuri „neverificat", preview mini-map, butoane „Confirmă clădirea" / „Nu este clădirea mea"). `attach-building` se apelează DOAR după confirmare explicită.
+- **Backend aditiv (read-only):** `property_technical_record.py` `search_buildings_for_ptr` întoarce acum `source`, `provenance`, `match_confidence` (criteriu real de string: query în adresă=high, în nume=medium, altfel low) + fallback lat/lng din raw HartaBlocuri.
+- **Boundary intact:** listările Estate rămân public (vânzare, intenționat), harta publică HartaBlocuri = doar centroizi agregați, GIS privat = authz server-side (401/403/200).
+- **Teste (iter 228):** backend 100% (8/8), frontend 100%. Cancel dialog → zero mutații. Fără regresii pe SEO/sitemap/HartaBlocuri/Marketplace/House Health/Digital Twin/Google Maps secrets/authz.
+- **Observație (out-of-scope, neatinsă):** `/api/properties/mine` întoarce 500 (alias legacy; `/api/properties` funcționează).

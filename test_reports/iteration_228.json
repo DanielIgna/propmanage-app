@@ -1,0 +1,25 @@
+{
+  "summary": "Iter 228 — GIS map unify + building-confirmation flow. All 8 backend regression tests PASS (property GIS 401/403/200 boundary, public /api/public/blocuri/map aggregated with no exact coords, /api/public/maps/config=fallback/enabled:false/api_key:null, /api/buildings/search returns Bloc A1 hartablocuri high-confidence with lat=46.76485/lng=23.603, sitemap-blocuri.xml 200 with 66 <loc>, verified-estate/listings public with lat/lng). Frontend: /imobile-verificate Hartă toggle renders Leaflet OSM fallback (24 tiles, no 'API KEY REQUIRED'), 2 lime markers with popups (title, city/address, price, 'Vezi detalii →'). Building-confirmation dialog verified on TEST_Phase4 Villa Updated → Dosar Tehnic → Contextul clădirii → Conectează → search 'Aleea Muscel nr. 19' → Conectează. All required data-testids present (building-confirm-dialog/name/address/confidence/provenance/yes/no + pm-minimap-fallback + 'Deschide în Google Maps' link). Cancel via 'Nu este clădirea mea' closes dialog and building_id remains None (no mutation). ALL GREEN.",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "/api/properties/mine", "issue": "Returns 500 for authenticated client (server error). Not part of this test scope but observed. Legacy alias endpoint — /api/properties works fine."}
+  ]},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_gis_confirm_iter228.py",
+    "/app/test_reports/pytest/iter228.xml"
+  ],
+  "action_items": [
+    "(Optional) Investigate /api/properties/mine 500 — separate from this iteration's scope."
+  ],
+  "critical_code_review_comments": [
+    "PropertyTechnicalRecord.jsx (~1200 lines) exceeds 700-line guideline — consider splitting BuildingContextSection, AttachBuildingSearchBox and BuildingConfirmDialog into their own modules.",
+    "EstateMapView/PmMap correctly gate Google Maps behind /api/public/maps/config (fallback in Preview) — no key leak."
+  ],
+  "updated_files": ["/app/backend/tests/test_gis_confirm_iter228.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "client@propmanage.io / Client123!, specialist@propmanage.io / Spec123! (both valid)",
+  "seed_data_creation": "None — used existing TEST_Phase4 Villa Updated (id 6a11e52b560e699c1ce22e9d) property that has no building_id. Cancelled dialog so no data was mutated.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Building confirmation dialog is inside Dosar Tehnic → Contextul clădirii subtab (not the default Proprietatea subtab). Property list uses a <select> at top of the property card; use select_option(value=<id>) to switch. Only ptr-attach-toggle appears when building_id is None. /api/properties/mine returns 500 — use /api/properties instead."
+}
