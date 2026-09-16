@@ -50,7 +50,8 @@ nume, adresă, localitate, cartier/UAT, lat/lng, an finalizare, regim înălțim
 
 ## 9. Frontend
 - Homepage: `components/BuildingDiscovery.jsx` — „Găsește-ți blocul" → `/register?binvite=<id>`.
-- Admin: `/admin/hartablocuri` (`pages/admin/HartaBlocuriAdmin.jsx`) — tab-uri Overview / Loturi Import / Blocuri / Conflicte.
+- Admin (Import Center, cu mutații): `/admin/hartablocuri` (`pages/admin/HartaBlocuriAdmin.jsx`) — Overview / Loturi Import / Blocuri / Conflicte (nelegat în meniu, unealtă operațională).
+- Admin (Observability, READ-ONLY v1): `/admin/harta-blocuri` (`pages/admin/HartaBlocuriObservability.jsx`) — intrare de meniu „HartaBlocuri" în secțiunea IMOBILE (Business Administration). Overview + tabel paginat + search + filtre sursă/status + building detail read-only. Fără mutații. Stare „Acces interzis" pentru non-admin.
 - Client: `PropertyTechnicalRecord.jsx` — cardul HartaBlocuri în „Contextul clădirii".
 
 ## 10. Flux Client Beta

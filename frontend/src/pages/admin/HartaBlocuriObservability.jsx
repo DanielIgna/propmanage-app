@@ -118,9 +118,14 @@ export const HartaBlocuriObservability = () => {
   const [data, setData] = useState({ buildings: [], total: 0, page_size: 25 });
   const [loading, setLoading] = useState(false);
   const [detailId, setDetailId] = useState(null);
+  const [forbidden, setForbidden] = useState(false);
   const reqId = React.useRef(0);
 
-  useEffect(() => { axios.get(`${API}/admin/hartablocuri/stats`).then(r => setStats(r.data)).catch(() => {}); }, []);
+  useEffect(() => {
+    axios.get(`${API}/admin/hartablocuri/stats`)
+      .then(r => setStats(r.data))
+      .catch(e => { if (e?.response?.status === 403 || e?.response?.status === 401) setForbidden(true); });
+  }, []);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -133,6 +138,18 @@ export const HartaBlocuriObservability = () => {
   useEffect(() => { setPage(1); }, [q, source, status]);
 
   const totalPages = Math.max(1, Math.ceil((data.total || 0) / (data.page_size || 25)));
+
+  if (forbidden) {
+    return (
+      <div className="min-h-screen bg-stone-950 text-stone-100 flex items-center justify-center p-6" data-testid="hb-observability-forbidden">
+        <div className="text-center max-w-sm">
+          <ShieldCheck className="w-10 h-10 text-stone-600 mx-auto mb-3" />
+          <h1 className="text-lg font-bold">Acces interzis</h1>
+          <p className="text-sm text-stone-400 mt-1">Această pagină este disponibilă doar administratorilor.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100" data-testid="hb-observability-page">

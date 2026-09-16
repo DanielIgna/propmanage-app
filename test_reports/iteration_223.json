@@ -1,0 +1,37 @@
+{
+  "summary": "Iter223 — HartaBlocuri Observability (READ-ONLY /admin/harta-blocuri). BACKEND (13/13 pytest via /app/backend/tests/test_hartablocuri_observability_iter223.py). Auth guards: /api/admin/hartablocuri/{stats,buildings,buildings/{id}} → 403 pentru client (correct). Stats overview returns EXACT DB state: total_buildings=3407, with_hartablocuri=3406, propmanage_only=1, localities=21, neighborhoods=14, with_construction_year=1168, with_floors=3280, with_units=2900, incomplete=2276, matched_both_sources=0 — consistency check with_hb+propmanage==total ✅. List endpoint returns all required fields (id, name, address, city, neighborhood, construction_year, floors, units, source, verification_status, residents_count). Filters source=hartablocuri (3406) / propmanage (1) / all / status; q=Muscel returns 22 rows all matching. Pagination page 1↔2 no overlap. Detail endpoint returns id/name/address/context/source/verification_status/residents_count/hartablocuri. REGRESSIONS all green: /api/public/buildings/search?q=Muscel returns matches (no auth). /api/public/sitemap.xml still returns 200 with no /blocuri/ /cladiri/ /cluj/bloc/ URL prefixes (no explosion in count). /api/admin/seo/overview still 200. FRONTEND (Playwright, 1440x2000, admin cookie login): /admin/harta-blocuri loads hb-observability-page with READ-ONLY v1 badge. All 10 stat cards render real values matching DB: hb-obs-total=3407, hb-obs-hb=3406 (amber), hb-obs-pm=1 (green), hb-obs-localities=21, hb-obs-neighborhoods=14, hb-obs-incomplete=2276, hb-obs-with-year=1168, hb-obs-with-floors=3280, hb-obs-with-units=2900, hb-obs-both=0. Table hb-obs-table shows 25 rows per page (Localitate/Adresă/Bloc/An/Etaje/Unități/Sursă with amber HARTABLOCURI / green PROPMANAGE badges/Status). Skyline Loft A4 = the singular PropManage row, status='unverified' (NOT auto-verified — spec compliant). hb-obs-search 'Muscel' → count=22. hb-obs-source=propmanage → 1; hb-obs-hartablocuri → 3406; hb-obs-status=verified → 0 (no auto-verified). hb-obs-page shows 'Pagina 1 / 137', hb-obs-count='3407 clădiri'. hb-obs-next/prev navigate correctly. Click row → hb-obs-detail-modal opens with Identitate/Date disponibile/Proveniență sections; for HB row (Bloc A1, Aleea Muscel 19) hb-obs-detail-external note 'Date externe HartaBlocuri — neverificate de PropManage' appears; NO edit/delete/import/resolve buttons in modal. hb-obs-detail-close closes it. Menu entry harta_blocuri configured in AdminLayoutMetronic.jsx L190 in secțiunea 'properties'/IMOBILE with badge 'OBSERV' and href /admin/harta-blocuri (verified in source). Route registered in App.js L1752.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Non-admin direct navigation to /admin/harta-blocuri",
+        "issue": "Client role can visit /admin/harta-blocuri and sees the empty shell (stats show —, table 'Niciun rezultat'). Backend correctly returns 403 (no data leak) but the axios .catch(() => {}) silently swallows the 403 without redirecting or showing 'Acces interzis'. Not a security issue (data is protected) but a minor UX inconsistency — other /admin pages redirect non-admins.",
+        "affected_selectors": ["hb-observability-page"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_hartablocuri_observability_iter223.py",
+    "/app/test_reports/pytest/iter223_results.xml"
+  ],
+  "action_items": [
+    "(Optional, non-blocking) Add a client-side admin-role guard on /admin/harta-blocuri route or render an 'Acces interzis' state when GET /admin/hartablocuri/stats returns 403, instead of the empty '—' shell."
+  ],
+  "critical_code_review_comments": [
+    "HartaBlocuriObservability.jsx uses `axios.get(...).catch(() => {})` for both stats and buildings — silent failure means users cannot distinguish 'no data' from '403/500'. Consider surfacing a small error/empty-state.",
+    "HartaBlocuriObservability.jsx: source badge dictionary uses `SOURCE_BADGE[b.source] || SOURCE_BADGE.hartablocuri` as fallback — if backend ever returns an unexpected source, propmanage rows would be mislabeled as HartaBlocuri. Fallback to a neutral 'unknown' badge is safer.",
+    "hartablocuri.py admin_list_buildings performs `count_documents({building_id: ...})` inside the async-for loop → N+1 problem on residents_count (25 extra queries per page). Consider $lookup or batch aggregation.",
+    "hartablocuri.py admin_stats issues 9 separate count_documents() calls sequentially on ~3400 docs → could be a single $facet aggregation to reduce latency.",
+    "Dead-code comment from iter222 still present: L142 in earlier file inspection had `result.pop('error_samples', None) if False else None` — verify cleanup (not in current file view; may have been removed)."
+  ],
+  "updated_files": ["/app/backend/tests/test_hartablocuri_observability_iter223.py"],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "100% — all spec'd data-testids render, all filters/pagination/modal work; only minor non-admin-shell UX polish suggested"},
+  "test_credentials": "admin@propmanage.io / 1!nasov01ADMIN (cookie login), client@propmanage.io / Client123!",
+  "seed_data_creation": "None — all tests are read-only per spec. No mutations performed on the 3407 buildings.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "DB state confirmed exact: 3407 buildings (3406 HB + 1 PropManage=Skyline Loft A4). Observability page /admin/harta-blocuri is READ-ONLY (distinct from /admin/hartablocuri which is the Import Center — DO NOT confuse). Menu entry at AdminLayoutMetronic.jsx L190 requires expanding the 'IMOBILE' collapsible section in the sidebar (may need clicking chevron rather than label). Sitemap regression: still no building URLs, count under 3000. SEO overview endpoint unchanged.",
+  "rca of the issue": "No blocking issues. Only non-critical UX polish: /admin/harta-blocuri has no client-side role guard — non-admin users see an empty shell instead of 'access denied' (backend properly returns 403; no data leak)."
+}
