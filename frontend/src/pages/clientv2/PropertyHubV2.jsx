@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Building2, Box, HeartPulse, Clock, Wallet, Settings2, CreditCard, Dna, Fingerprint, Wrench, FileText, Share2, CalendarClock, Radio, Sparkles, Check, Gauge, Layers, Plus, ShieldCheck, ClipboardList } from "lucide-react";
+import { Building2, Box, HeartPulse, Clock, Wallet, Settings2, CreditCard, Dna, Fingerprint, Wrench, FileText, Share2, CalendarClock, Radio, Sparkles, Check, Gauge, Layers, Plus, ShieldCheck, ClipboardList, MapPin } from "lucide-react";
 import { API } from "../DashShared";
 import { formatApiError } from "../../auth";
 import { GREEN, GREEN_SOFT, ListItem, Sheet, CTA, AmountInput } from "./ui";
@@ -589,6 +590,7 @@ const HouseStatusPanel = ({ prop, onNextStep }) => {
 };
 
 export const PropertyHubV2 = ({ user, prop, properties, setSelectedPropId, actions, initialSection, sectionNonce }) => {
+  const navigate = useNavigate();
   const [section, setSection] = useState("rezumat");
   // Deep-link din Acasă (CTA activare document) → deschide direct „Cartea casei" + derulează la ea pe mobil
   useEffect(() => {
@@ -674,6 +676,7 @@ export const PropertyHubV2 = ({ user, prop, properties, setSelectedPropId, actio
           <div className={`hidden ${section === "twin" ? "lg:block" : ""} mt-4 space-y-2`} data-testid="hub-twin-links">
             <ListItem icon={Box} label="Digital Twin" sub="locuința ta în 3D" onClick={() => { import("../../lib/analytics").then(({ trackIntent }) => trackIntent("twin_viewed")).catch(() => {}); actions.openTwin(); }} testid="v2-hub-twin-desktop" />
             <ListItem icon={HeartPulse} label="House Health" sub="scor + recomandări" onClick={() => { import("../../lib/analytics").then(({ trackIntent }) => trackIntent("audit_viewed")).catch(() => {}); actions.openHealth(); }} testid="v2-hub-health-desktop" />
+            <ListItem icon={MapPin} label="Harta locuinței" sub="GIS privat · locația ta pe hartă" onClick={() => navigate(`/property/${prop.id}/gis`)} testid="v2-hub-gis-desktop" />
           </div>
           <div className={`hidden ${section === "istoric" ? "lg:block" : ""} mt-4`} data-testid="hub-istoric-links">
             <ListItem icon={Clock} label="Timeline" sub="istoricul complet al proprietății" onClick={actions.openPropTimeline} testid="v2-hub-timeline-desktop" />
@@ -689,6 +692,7 @@ export const PropertyHubV2 = ({ user, prop, properties, setSelectedPropId, actio
       {/* Acces rapid — doar mobil (desktopul are sub-nav + panou) */}
       <div className="mt-4 space-y-2 lg:hidden">
         <ListItem icon={Box} label="Digital Twin" sub="locuința ta în 3D" onClick={() => { import("../../lib/analytics").then(({ trackIntent }) => trackIntent("twin_viewed")).catch(() => {}); actions.openTwin(); }} testid="v2-hub-twin" />
+        <ListItem icon={MapPin} label="Harta locuinței" sub="GIS privat · locația ta pe hartă" onClick={() => navigate(`/property/${prop.id}/gis`)} testid="v2-hub-gis" />
         <ListItem icon={HeartPulse} label="House Health" sub="scor + recomandări" onClick={() => { import("../../lib/analytics").then(({ trackIntent }) => trackIntent("audit_viewed")).catch(() => {}); actions.openHealth(); }} testid="v2-hub-health" />
         <ListItem icon={Clock} label="Timeline" sub="istoricul proprietății" onClick={actions.openPropTimeline} testid="v2-hub-timeline" />
         <ListItem icon={Wallet} label="Plăți & Portofel" sub={`sold ${(user?.wallet_balance ?? 0).toFixed(0)} RON`} onClick={actions.openWallet} testid="v2-hub-wallet" />
