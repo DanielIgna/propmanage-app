@@ -635,13 +635,20 @@ async def startup():
             replace_existing=True,
             misfire_grace_time=900,
         )
-        scheduler.add_job(
-            reset_demo_accounts,
-            CronTrigger(hour=2, minute=0, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
-            id="demo_accounts_reset",
-            replace_existing=True,
-            misfire_grace_time=3600,
-        )
+        # Demo account reset — DESTRUCTIVE (delete_many). Gated behind SEED_DEMO_DATA
+        # (existing convention: production runs with SEED_DEMO_DATA != 'true'), so it
+        # NEVER runs in production and cannot delete real customer data.
+        if (os.environ.get("SEED_DEMO_DATA") or "").strip().lower() == "true":
+            scheduler.add_job(
+                reset_demo_accounts,
+                CronTrigger(hour=2, minute=0, timezone=pytz.timezone(BUCHAREST_TZ_NAME)),
+                id="demo_accounts_reset",
+                replace_existing=True,
+                misfire_grace_time=3600,
+            )
+            logger.info("[scheduler] demo_accounts_reset ENABLED (SEED_DEMO_DATA=true)")
+        else:
+            logger.info("[scheduler] demo_accounts_reset DISABLED (production-safe, SEED_DEMO_DATA!=true)")
         # IT Sprint Health Digest — weekly AI-powered founder email (default Sun 18:00 Europe/Bucharest)
         try:
             _digest_settings = await _it_digest_get_settings()
