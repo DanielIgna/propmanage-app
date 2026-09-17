@@ -33,7 +33,7 @@ DEFAULT_SETTINGS = {
         "linkedin": "",
     },
     "pricing": {
-        "audit_ron": 350.0,
+        "audit_ron": 2400.0,
         "twin_ron": 950.0,
         "commission_pct": 2.5,
     },

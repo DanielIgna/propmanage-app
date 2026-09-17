@@ -786,7 +786,7 @@ export const GHIDURI = [
     slug: "audit-tehnic-apartament-pret",
     title: "Cât costă un audit tehnic de apartament · Preț și ce include · 2026",
     h1: "Cât costă un audit tehnic de apartament în 2026",
-    description: "Prețul unui audit tehnic de apartament în România: 350 RON. Ce verifică specialistul (electric, sanitar, umiditate, structură), cât durează și când merită să-l comanzi.",
+    description: "Prețul unui audit tehnic de apartament în România: 2.400 RON. Ce verifică specialistul (electric, sanitar, umiditate, structură), cât durează și când merită să-l comanzi.",
     tag: "Audit Tehnic",
     icon: "ShieldCheck",
     publishedAt: "2026-07-26",
@@ -796,11 +796,11 @@ export const GHIDURI = [
       {
         heading: "Răspuns scurt: cât costă",
         body: [
-          "Un audit tehnic complet de apartament costă pe PropManage **350 RON** — preț fix, indiferent de oraș. Auditul durează 60-90 de minute la fața locului și se încheie cu un raport scris cu toate problemele identificate, prioritizate după risc și cost de remediere.",
+          "Un audit tehnic complet de apartament costă pe PropManage **2.400 RON** — preț fix, indiferent de oraș. Auditul durează 60-90 de minute la fața locului și se încheie cu un raport scris cu toate problemele identificate, prioritizate după risc și cost de remediere.",
           {
             type: "callout",
             title: "De ce merită",
-            body: "Un singur defect ascuns descoperit la timp (instalație electrică veche, țevi de plumb, igrasie mascată) poate economisi între 5.000 și 40.000 RON. Auditul de 350 RON este cea mai ieftină asigurare pe care o poți cumpăra pentru locuința ta."
+            body: "Un singur defect ascuns descoperit la timp (instalație electrică veche, țevi de plumb, igrasie mascată) poate economisi între 5.000 și 40.000 RON. Auditul de 2.400 RON este cea mai ieftină asigurare pe care o poți cumpăra pentru locuința ta."
           }
         ]
       },
@@ -837,7 +837,7 @@ export const GHIDURI = [
           {
             type: "list",
             items: [
-              "**Pasul 1**: Comanzi online auditul (350 RON, plată securizată prin Stripe)",
+              "**Pasul 1**: Comanzi online auditul (2.400 RON, plată securizată prin Stripe)",
               "**Pasul 2**: Ești contactat în maxim 24h pentru programare",
               "**Pasul 3**: Specialistul verificat vine la adresă (60-90 min)",
               "**Pasul 4**: Primești raportul scris cu probleme + priorități + costuri estimate de remediere",
@@ -867,7 +867,7 @@ export const GHIDURI = [
       },
       {
         q: "Care e diferența dintre audit și Digital Twin?",
-        a: "Auditul (350 RON) = evaluarea stării tehnice cu raport scris. Digital Twin (950 RON) = harta digitală permanentă a locuinței: planuri, instalații mapate, documente, istoric intervenții. Împreună formează pachetul complet pentru un Imobil Verificat."
+        a: "Auditul (2.400 RON) = evaluarea stării tehnice cu raport scris. Digital Twin (950 RON) = harta digitală permanentă a locuinței: planuri, instalații mapate, documente, istoric intervenții. Împreună formează pachetul complet pentru un Imobil Verificat."
       }
     ],
     relatedCity: null,
@@ -927,7 +927,7 @@ export const GHIDURI = [
               "**Modificările neautorizate** — ziduri demolate fără autorizație = probleme la revânzare și risc structural"
             ]
           },
-          "Un **audit tehnic profesionist costă 350 RON** și se face la vizionare, înainte de antecontract. Funcționează pentru orice apartament, inclusiv anunțuri de pe Storia sau Imobiliare.ro."
+          "Un **audit tehnic profesionist costă 2.400 RON** și se face la vizionare, înainte de antecontract. Funcționează pentru orice apartament, inclusiv anunțuri de pe Storia sau Imobiliare.ro."
         ]
       },
       {
@@ -950,7 +950,7 @@ export const GHIDURI = [
     faq: [
       {
         q: "Cât costă să verific un apartament înainte de cumpărare?",
-        a: "Verificările pe care le faci singur sunt gratuite (checklist-ul nostru cu 25 de puncte te ghidează). Un audit tehnic profesionist cu specialist, umidometru și termoviziune costă 350 RON pe PropManage — și se amortizează din prima problemă descoperită."
+        a: "Verificările pe care le faci singur sunt gratuite (checklist-ul nostru cu 25 de puncte te ghidează). Un audit tehnic profesionist cu specialist, umidometru și termoviziune costă 2.400 RON pe PropManage — și se amortizează din prima problemă descoperită."
       },
       {
         q: "Pot cere audit tehnic pentru un apartament găsit pe Storia sau Imobiliare.ro?",
@@ -1083,7 +1083,7 @@ export const GHIDURI = [
           {
             type: "list",
             items: [
-              "**Pasul 1 — Auditul (350 RON)**: specialist verificat evaluează apartamentul: instalații, umiditate, structură, documente",
+              "**Pasul 1 — Auditul (2.400 RON)**: specialist verificat evaluează apartamentul: instalații, umiditate, structură, documente",
               "**Pasul 2 — Digital Twin (950 RON)**: locuința e mapată digital — planuri, instalații, arhivă documente",
               "**Pasul 3 — Remedieri**: primești lista problemelor; minim 90% din recomandările critice trebuie rezolvate",
               "**Pasul 4 — Publicare**: apartamentul primește **Trust Score** (A+/A/B) și apare în lista Imobilelor Verificate",
@@ -1097,7 +1097,7 @@ export const GHIDURI = [
         heading: "Cum funcționează pentru cumpărători",
         body: [
           "Fiecare Imobil Verificat afișează public: **Trust Score-ul** (A+/A/B), raportul de audit, procentul de recomandări rezolvate și accesul la Digital Twin. Vezi exact ce cumperi, înainte de vizionare.",
-          "**Ai găsit un apartament pe Storia care NU e verificat?** Poți comanda auditul nostru pentru orice apartament de pe piață (350 RON) — specialistul merge la vizionare și îți spune adevărul despre starea lui, înainte să semnezi."
+          "**Ai găsit un apartament pe Storia care NU e verificat?** Poți comanda auditul nostru pentru orice apartament de pe piață (2.400 RON) — specialistul merge la vizionare și îți spune adevărul despre starea lui, înainte să semnezi."
         ]
       },
       {
@@ -1118,7 +1118,7 @@ export const GHIDURI = [
     faq: [
       {
         q: "Cât costă să-mi listez apartamentul ca Imobil Verificat?",
-        a: "Pachetul complet costă 1.300 RON (audit tehnic 350 + Digital Twin 950). La vânzare se aplică un comision de 2,5%, din care se scade costul Digital Twin-ului — deci twin-ul îl primești practic gratuit."
+        a: "Pachetul complet costă 3.350 RON (audit tehnic 2.400 + Digital Twin 950). La vânzare se aplică un comision de 2,5%, din care se scade costul Digital Twin-ului — deci twin-ul îl primești practic gratuit."
       },
       {
         q: "Ce este Trust Score-ul?",
@@ -1130,7 +1130,7 @@ export const GHIDURI = [
       },
       {
         q: "Pot cumpăra un apartament care nu e în programul Imobile Verificate?",
-        a: "Da — și îți recomandăm să comanzi auditul independent (350 RON) pentru orice apartament de pe Storia, Imobiliare.ro sau OLX, înainte de antecontract. Specialistul nostru merge la vizionare și îți livrează raportul în 48h."
+        a: "Da — și îți recomandăm să comanzi auditul independent (2.400 RON) pentru orice apartament de pe Storia, Imobiliare.ro sau OLX, înainte de antecontract. Specialistul nostru merge la vizionare și îți livrează raportul în 48h."
       }
     ],
     relatedCity: null,

@@ -39,7 +39,7 @@ logger = logging.getLogger("propmanage.verified_estate")
 FEATURE_FLAG = os.environ.get("FEATURE_VERIFIED_ESTATE", "true").lower() == "true"
 
 # Pricing (RON) — admin-configurable via env vars
-PRICE_AUDIT_RON = float(os.environ.get("VE_PRICE_AUDIT_RON", "350"))
+PRICE_AUDIT_RON = float(os.environ.get("VE_PRICE_AUDIT_RON", "2400"))
 PRICE_TWIN_RON = float(os.environ.get("VE_PRICE_TWIN_RON", "950"))
 COMMISSION_PCT = float(os.environ.get("VE_COMMISSION_PCT", "2.5"))
 

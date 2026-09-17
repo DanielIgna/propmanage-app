@@ -42,7 +42,7 @@ CHECKLIST_HTML = """
 <p><b>3. Instalații:</b> vârsta instalației electrice + împământare · tablou cu siguranțe automate · presiune și culoare apă · țevi (PEX/PPR vs plumb/oțel) · centrală (vârstă+revizie) sau punct termic · verificare gaz la zi</p>
 <p><b>4. Interior & finisaje:</b> umiditate/mucegai (colțuri, spatele mobilei) · ferestre și izolare fonică · pardoseli drepte · uși/feronerie · igrasie la baie</p>
 <p><b>5. Zonă & costuri:</b> costuri lunare reale (întreținere iarnă!) · vecini/liniște la ore diferite · parcare · dezvoltări viitoare în zonă</p>
-<p style="margin-top:14px;"><b>Recomandare:</b> pentru siguranță maximă, comandă un <b>audit tehnic profesionist</b> înainte de semnare — costă 350 RON și poate identifica probleme de zeci de mii de RON.</p>
+<p style="margin-top:14px;"><b>Recomandare:</b> pentru siguranță maximă, comandă un <b>audit tehnic profesionist</b> înainte de semnare — costă 2.400 RON și poate identifica probleme de zeci de mii de RON.</p>
 """
 
 
@@ -119,7 +119,7 @@ async def submit_lead_magnet(payload: dict = Body(...)):
               </div>
               <p><b>Principalele riscuri identificate:</b></p>
               <ul style="color:#e8e8ec;">{risks_html}</ul>
-              <p>Scorul este orientativ, calculat din răspunsurile tale. Pentru o evaluare exactă (cu verificări instrumentale: termoviziune, prize, tablou, umiditate), recomandăm un <b>audit tehnic profesionist — 350 RON</b>.</p>
+              <p>Scorul este orientativ, calculat din răspunsurile tale. Pentru o evaluare exactă (cu verificări instrumentale: termoviziune, prize, tablou, umiditate), recomandăm un <b>audit tehnic profesionist — 2.400 RON</b>.</p>
               <p><a href="https://propmanage.ro/imobile-verificate/sell" style="background:#d4ff3a; color:#000; padding:10px 22px; border-radius:999px; text-decoration:none; font-weight:bold;">Programează auditul →</a></p>
             """
             subject = f"Scorul casei tale: {score}/100 · {verdict}"

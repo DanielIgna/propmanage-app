@@ -163,7 +163,7 @@ export default function BuyingChecklistPage() {
         <div className="glass-strong rounded-3xl p-8 text-center mt-8" data-testid="checklist-audit-cta">
           <h2 className="font-serif text-2xl mb-2">Nu verifica singur. Trimite un specialist.</h2>
           <p className="text-stone-400 text-sm mb-5 max-w-md mx-auto">
-            Audit tehnic profesionist înainte de cumpărare — 350 RON. Funcționează și pentru apartamente găsite pe Storia sau Imobiliare.ro.
+            Audit tehnic profesionist înainte de cumpărare — 2.400 RON. Funcționează și pentru apartamente găsite pe Storia sau Imobiliare.ro.
           </p>
           <Link to="/imobile-verificate/sell" className="inline-block bg-[#d4ff3a] text-black px-7 py-2.5 rounded-full text-sm font-semibold hover:bg-[#bfe632] transition">
             Comandă audit înainte de cumpărare →

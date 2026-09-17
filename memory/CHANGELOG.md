@@ -178,3 +178,18 @@ Integrare aditivă a bazei externe HartaBlocuri Cluj în entitatea `buildings` e
 - **UI:** RON principal + „≈ XX.XXX EUR" + „Calculat la cursul BNR din DD.MM.YYYY" în: card public (`EstateBrowse`), detaliu (`EstateDetail`), card admin + preview live în `PriceEditModal` (`VerifiedEstateAdmin`). EUR NU e editabil.
 - **Fișiere:** `backend/bnr_exchange_rate.py` (nou), `backend/routes/verified_estate.py`, `frontend/.../EstateBrowse.jsx`, `EstateDetail.jsx`, `VerifiedEstateAdmin.jsx`.
 - **Teste (curl + screenshot):** seed OK; RON→EUR corect; public == admin (aceeași valoare/curs/dată); price_eur manual ignorat; no-rate→EUR ascuns; cache same-day (fără request repetat); fallback la ultimul curs; authz intact (client PATCH=403). Fără regresii: properties/mine 200, GIS 200, sitemap-blocuri 200, listings 200. HartaBlocuri/GIS/SEO/Marketplace/House Health/Digital Twin neschimbate. Fără deploy/publish.
+
+## 2026-06 — Corecție Preț Audit (350→2.400 RON) + Hartă Responsive Mobile (v1.0)
+### Obj1 — Preț Audit Tehnic 350 → 2.400 RON
+- Conținut public/SEO: `frontend/src/data/ghiduri.js` (11 mențiuni: descriere structured-data, „răspuns scurt", pași, CTA, FAQ; bundle recalculat 1.300→**3.350** = audit 2.400 + Twin 950).
+- Pagini: `BuyingChecklistPage.jsx`, `HealthScorePage.jsx`.
+- Emailuri backend: `routes/lead_magnets.py` (x2).
+- Config preț: `routes/app_settings.py` default `audit_ron` 350→2400; `routes/verified_estate.py` default `VE_PRICE_AUDIT_RON` 350→2400; **DB `app_settings.pricing.audit_ron` actualizat 350→2400** (sursa citită de UI dinamic via `/api/app-settings/public` — `SellMyProperty` afișează acum 2.400).
+- Admin docs: `AdminDocumentation.jsx` (valori default 2.400).
+- NEATINSE: Twin 950, comision 2.5%, logica Stripe, abonamente, produse. Range-uri non-audit păstrate (PRAM 350-600, DIF 200-350). Bundle audit+twin = calcul dinamic (2400+950=3350).
+### Obj2 — Hartă vizibilă pe MOBILE
+- Cauză: `BlocuriPublic.jsx` randează o hartă Google proprie DOAR când `cfg.enabled` (Google activ). În Preview/mobil (fără cheie) cădea pe `FallbackMap` = o LISTĂ de carduri, NU o hartă → „nu văd harta".
+- Fix: `/blocuri` folosește acum `PmMarkersMap` (Google când activ + fallback OSM Leaflet fără cheie, responsive `height: clamp(320px,60vh,520px)`, lățime 100%). Markere = centroizi agregați (aproximativi), notă „Date externe HartaBlocuri — neverificate", fără coordonate exacte (boundary public păstrat).
+- „Imobile Verificate" (`EstateMapView`) deja folosea `PmMarkersMap` (OSM fallback) — verificat pe mobil.
+- Homepage „Găsește-ți blocul" (`BuildingDiscovery`) rămâne căutare-by-design; harta interactivă publică e la `/blocuri`.
+- Verificat: tiles OSM se încarcă (18), markere afișate, fără scroll orizontal, provenance vizibil. Fără regresii: sitemap-blocuri 200, listings 200 (EUR intact), properties/mine 200, GIS 200. Fără deploy/publish.

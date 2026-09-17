@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useLocation, Link } from "react-router-dom";
 import axios from "axios";
 import { Building2, MapPin, ArrowRight, Info, ExternalLink, Search, Layers, Home, ShieldCheck } from "lucide-react";
+import { PmMarkersMap } from "../components/PmMap";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -116,7 +117,18 @@ export const BlocuriExplorer = () => {
         </div>
 
         <div className="mt-6">
-          {cfg?.enabled ? <GoogleMap areas={areas} apiKey={cfg.api_key} /> : <FallbackMap areas={areas} />}
+          <PmMarkersMap
+            points={(areas || []).filter(a => a.lat && a.lng).map((a, i) => ({
+              id: `area-${i}`, lat: a.lat, lng: a.lng,
+              title: (a.neighborhood && a.neighborhood !== "—") ? a.neighborhood : a.city,
+              subtitle: `${a.city} · ${a.count} blocuri · zonă aproximativă · Date externe HartaBlocuri — neverificate de PropManage`,
+            }))}
+            height="clamp(320px, 60vh, 520px)"
+            emptyLabel="Nicio zonă cu coordonate pentru filtrul curent."
+          />
+          <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-amber-400/80">
+            <Info className="w-3.5 h-3.5" /> Hartă contextuală (zone agregate, aproximativă). Coordonatele exacte sunt private.
+          </div>
         </div>
 
         {clusters.length > 0 && (

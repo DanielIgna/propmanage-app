@@ -235,7 +235,7 @@ export default function HealthScorePage() {
 
             <div className="glass-strong rounded-3xl p-8 text-center" data-testid="hs-audit-cta">
               <h2 className="font-serif text-2xl mb-2">Vrei evaluarea exactă, făcută de un specialist?</h2>
-              <p className="text-stone-400 text-sm mb-5 max-w-md mx-auto">Audit tehnic profesionist la fața locului — 350 RON. Identifică probleme care pot costa zeci de mii de RON.</p>
+              <p className="text-stone-400 text-sm mb-5 max-w-md mx-auto">Audit tehnic profesionist la fața locului — 2.400 RON. Identifică probleme care pot costa zeci de mii de RON.</p>
               <Link to="/imobile-verificate/sell" className="inline-block bg-[#d4ff3a] text-black px-7 py-2.5 rounded-full text-sm font-semibold hover:bg-[#bfe632] transition">
                 Programează auditul →
               </Link>

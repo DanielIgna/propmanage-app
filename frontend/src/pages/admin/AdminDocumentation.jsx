@@ -120,7 +120,7 @@ const TOPICS = [
     status: { created: ["28 butoane principale documentate (incl. Autonomy/Auto-Match/Activity/Briefing)", "Limbaj simplu, fără jargon tehnic", "Sugestie când se folosește + când se actualizează"], todo: ["Adăugare screenshot animat pentru fiecare buton (GIF/Lottie)", "Versiune video 60-90 secunde per zonă", "Tooltip cu link către manualul respectiv direct în UI"] },
     content: [
       { h: "Dashboard → 'Snapshot acum' (Control Administrare)", p: "Salvează manual configurarea curentă (prețuri, link-uri sociale, SEO) ca punct de recuperare. Folosește înainte de o schimbare majoră. ACTUALIZEAZĂ când: vrei să testezi un set nou de prețuri sau înainte de ședință de planificare." },
-      { h: "Dashboard → 'Reset la valori implicite'", p: "Resetează TOATE setările la valorile din cod (350 RON audit, 950 RON twin, 2.5% comision). Folosește DOAR dacă cineva a stricat configurarea și nu mai funcționează nimic. NU folosi la întâmplare — vei pierde link-urile sociale și setările SEO." },
+      { h: "Dashboard → 'Reset la valori implicite'", p: "Resetează TOATE setările la valorile din cod (2.400 RON audit, 950 RON twin, 2.5% comision). Folosește DOAR dacă cineva a stricat configurarea și nu mai funcționează nimic. NU folosi la întâmplare — vei pierde link-urile sociale și setările SEO." },
       { h: "AI Control Center → 'Activează/Dezactivează ecosistem'", p: "Kill-switch global pentru toate cele 7 module AI noi. Dezactivează dacă AI-ul costă prea mulți tokeni sau dacă e o eroare la provider. Modulele legacy (Concierge, Investigator) continuă să funcționeze." },
       { h: "AI Control Center → 'Reset memorii'", p: "Șterge amintirile AI pentru un user (sau '*' pentru toți). Folosește la cerere GDPR sau dacă cineva și-a schimbat preferințele și AI-ul răspunde cu date vechi." },
       { h: "QA Copilot → 'Sesiune nouă'", p: "Începi o sesiune de testare manuală. ALEGE rolul testat (client/specialist/admin) ca AI-ul să știe contextul. Folosește când vrei să verifici un flow nou sau un bug raportat de utilizator." },
@@ -326,7 +326,7 @@ const TOPICS = [
     content: [
       {
         h: "Ziua 1 · Verificări tehnice",
-        p: "1. Verifică https://phased-document.emergent.host răspunde 200. 2. Login admin → /admin/settings-control: confirmă prețurile (350/950/2.5%). 3. Setează 1-2 link-uri sociale reale dacă ai. 4. Verifică /api/app-settings/public răspunde corect (Network tab). 5. Postează în Facebook Sharing Debugger (developers.facebook.com/tools/debug) URL-ul prod ca să Facebook actualizeze cache-ul OG."
+        p: "1. Verifică https://phased-document.emergent.host răspunde 200. 2. Login admin → /admin/settings-control: confirmă prețurile (2.400/950/2.5%). 3. Setează 1-2 link-uri sociale reale dacă ai. 4. Verifică /api/app-settings/public răspunde corect (Network tab). 5. Postează în Facebook Sharing Debugger (developers.facebook.com/tools/debug) URL-ul prod ca să Facebook actualizeze cache-ul OG."
       },
       {
         h: "Ziua 2 · LinkedIn Launch Post",
