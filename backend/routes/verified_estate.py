@@ -40,7 +40,7 @@ FEATURE_FLAG = os.environ.get("FEATURE_VERIFIED_ESTATE", "true").lower() == "tru
 
 # Pricing (RON) — admin-configurable via env vars
 PRICE_AUDIT_RON = float(os.environ.get("VE_PRICE_AUDIT_RON", "2400"))
-PRICE_TWIN_RON = float(os.environ.get("VE_PRICE_TWIN_RON", "950"))
+PRICE_TWIN_RON = float(os.environ.get("VE_PRICE_TWIN_RON", "15000"))
 COMMISSION_PCT = float(os.environ.get("VE_COMMISSION_PCT", "2.5"))
 
 router = APIRouter(prefix="/api/verified-estate", tags=["verified-estate"])

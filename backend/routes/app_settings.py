@@ -34,8 +34,8 @@ DEFAULT_SETTINGS = {
     },
     "pricing": {
         "audit_ron": 2400.0,
-        "twin_ron": 950.0,
-        "commission_pct": 2.5,
+        "twin_ron": 15000.0,
+        "commission_pct": 0.0,
     },
     "contact": {
         "email": "contact@propmanage.ro",

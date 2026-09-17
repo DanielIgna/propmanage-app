@@ -43,6 +43,8 @@ def _public_card(b: dict) -> dict:
     ctx = b.get("context") or {}
     hb = _hb(b) or {}
     raw = hb.get("raw") or {}
+    _lat = ctx.get("lat") if isinstance(ctx.get("lat"), (int, float)) else raw.get("lat")
+    _lng = ctx.get("lng") if isinstance(ctx.get("lng"), (int, float)) else raw.get("lng")
     return {
         "id": str(b["_id"]),
         "name": b.get("name"),
@@ -52,6 +54,10 @@ def _public_card(b: dict) -> dict:
         "construction_year": ctx.get("construction_year"),
         "floors": ctx.get("floors"),
         "units": ctx.get("number_of_units"),
+        # GRANIȚĂ PUBLIC/PRIVAT: doar coordonate APROXIMATE (~1km, rotunjite la 2 zecimale)
+        # pentru discovery pe hartă. Coordonatele exacte rămân private (doar în GIS autentificat).
+        "lat_approx": round(_lat, 2) if isinstance(_lat, (int, float)) else None,
+        "lng_approx": round(_lng, 2) if isinstance(_lng, (int, float)) else None,
         "source": _source_of(b),
         "source_label": {"both": "PropManage + HartaBlocuri", "hartablocuri": "HartaBlocuri",
                          "propmanage": "PropManage"}[_source_of(b)],

@@ -193,3 +193,15 @@ Integrare aditivă a bazei externe HartaBlocuri Cluj în entitatea `buildings` e
 - „Imobile Verificate" (`EstateMapView`) deja folosea `PmMarkersMap` (OSM fallback) — verificat pe mobil.
 - Homepage „Găsește-ți blocul" (`BuildingDiscovery`) rămâne căutare-by-design; harta interactivă publică e la `/blocuri`.
 - Verificat: tiles OSM se încarcă (18), markere afișate, fără scroll orizontal, provenance vizibil. Fără regresii: sitemap-blocuri 200, listings 200 (EUR intact), properties/mine 200, GIS 200. Fără deploy/publish.
+
+## 2026-06 — Client Beta Mini-Map + Aliniere Pricing (Twin 15.000 / Bundle 17.400 / Comision 0%) (v1.0)
+### Mini-hartă Client Beta „Găsește-ți blocul" (BuildingDiscovery)
+- Adăugată mini-hartă responsive sub căutarea text (păstrată): `PmMarkersMap`, `height: clamp(220px,40vh,340px)` (nu full-screen). Markere apăsabile → fluxul existent `/register?binvite={id}`. Afișează sursă + „Date externe — neverificate".
+- BOUNDARY: backend `_public_card` (`hartablocuri.py`) expune DOAR `lat_approx`/`lng_approx` (rotunjite la 2 zecimale ≈1km). Coordonatele exacte NU sunt publice (doar în GIS autentificat).
+- Fișiere: `backend/routes/hartablocuri.py`, `frontend/src/components/BuildingDiscovery.jsx`.
+### Origine preț 17.400 RON + aliniere pricing (confirmat de user)
+- 17.400 = `bundle_ron = audit_ron + twin_ron` (calcul în `/api/verified-estate/pricing`, NU hardcodat). Provine din DB `app_settings.pricing`. Valori CANONICE confirmate de user: **Audit 2.400 · Digital Twin 15.000 · Comision 0% · Bundle 17.400 (automat)**.
+- Preview era divergent (twin 950 / comision 2,5% / bundle 3.350). Aliniat la canonical: DB Preview `app_settings.pricing` → twin 15000, commission 0; default-uri cod `app_settings.py` DEFAULT_SETTINGS + `verified_estate.py` `PRICE_TWIN_RON`=15000; texte SEO `ghiduri.js` (twin 950→15.000, bundle 3.350→17.400, eliminat claim „comision 2,5% / twin gratuit"); `AdminDocumentation.jsx` (15.000/0%).
+- Verificat UI `/imobile-verificate/sell`: Doar Audit 2.400 · Audit+Twin 17.400 · Doar Twin 15.000 · badge „Comision 0%". `/pricing` = bundle 17.400. Zero contradicții numerice între SEO/UI/DB.
+- FLAG (nemodificat, decizie de conținut a userului): naratiunea de marketing „Comision 2.5%" din `WhyUsPage.jsx` (secțiunea de comparație 2.5% vs 5-6%) + meta titles/descriptions SEO încă spun 2.5%. Nu am rescris acest value-prop (nu e un câmp de preț; userul gestionează comisionul din admin).
+- Regresie: buildings/search 200, blocuri/map 200, sitemap-blocuri 200, properties/mine 200, GIS 200. Fără deploy/publish. Notă: DB Live avea deja twin 15.000/comision 0 (17.400 corect); default-urile de cod se aplică pe Live după un redeploy reușit.

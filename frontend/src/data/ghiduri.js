@@ -841,7 +841,7 @@ export const GHIDURI = [
               "**Pasul 2**: Ești contactat în maxim 24h pentru programare",
               "**Pasul 3**: Specialistul verificat vine la adresă (60-90 min)",
               "**Pasul 4**: Primești raportul scris cu probleme + priorități + costuri estimate de remediere",
-              "**Pasul 5** (opțional): Poți adăuga Digital Twin (950 RON) — harta digitală completă a locuinței"
+              "**Pasul 5** (opțional): Poți adăuga Digital Twin (15.000 RON) — harta digitală completă a locuinței"
             ]
           },
           "Vrei întâi o estimare gratuită? Folosește calculatorul **Scorul Casei Tale** — 12 întrebări, 2 minute, scor instant."
@@ -867,7 +867,7 @@ export const GHIDURI = [
       },
       {
         q: "Care e diferența dintre audit și Digital Twin?",
-        a: "Auditul (2.400 RON) = evaluarea stării tehnice cu raport scris. Digital Twin (950 RON) = harta digitală permanentă a locuinței: planuri, instalații mapate, documente, istoric intervenții. Împreună formează pachetul complet pentru un Imobil Verificat."
+        a: "Auditul (2.400 RON) = evaluarea stării tehnice cu raport scris. Digital Twin (15.000 RON) = harta digitală permanentă a locuinței: planuri, instalații mapate, documente, istoric intervenții. Împreună formează pachetul complet pentru un Imobil Verificat."
       }
     ],
     relatedCity: null,
@@ -977,7 +977,7 @@ export const GHIDURI = [
     slug: "ce-este-digital-twin-locuinta",
     title: "Ce este un Digital Twin al locuinței · Ghid pentru proprietari · 2026",
     h1: "Ce este un Digital Twin al locuinței tale",
-    description: "Digital Twin = copia digitală completă a locuinței: planuri, instalații mapate, documente, istoric intervenții. Ce include, cât costă (950 RON) și de ce crește valoarea proprietății.",
+    description: "Digital Twin = copia digitală completă a locuinței: planuri, instalații mapate, documente, istoric intervenții. Ce include, cât costă (15.000 RON) și de ce crește valoarea proprietății.",
     tag: "Digital Twin",
     icon: "Box",
     publishedAt: "2026-07-26",
@@ -1014,7 +1014,7 @@ export const GHIDURI = [
       {
         heading: "Cât costă și cum se face",
         body: [
-          "Crearea Digital Twin-ului costă **950 RON** pe PropManage și include vizita unui specialist care măsoară, fotografiază și mapează locuința. Durează 2-3 ore pentru un apartament standard. În pachet cu auditul tehnic (**bundle 1.300 RON**) primești și evaluarea completă a stării tehnice.",
+          "Crearea Digital Twin-ului costă **15.000 RON** pe PropManage și include vizita unui specialist care măsoară, fotografiază și mapează locuința. Durează 2-3 ore pentru un apartament standard. În pachet cu auditul tehnic (**bundle 17.400 RON**) primești și evaluarea completă a stării tehnice.",
           "**Bonus la vânzare**: dacă vinzi apartamentul prin programul Imobile Verificate, costul Digital Twin-ului se **scade din comisionul de vânzare** — practic îl primești înapoi."
         ]
       },
@@ -1084,13 +1084,13 @@ export const GHIDURI = [
             type: "list",
             items: [
               "**Pasul 1 — Auditul (2.400 RON)**: specialist verificat evaluează apartamentul: instalații, umiditate, structură, documente",
-              "**Pasul 2 — Digital Twin (950 RON)**: locuința e mapată digital — planuri, instalații, arhivă documente",
+              "**Pasul 2 — Digital Twin (15.000 RON)**: locuința e mapată digital — planuri, instalații, arhivă documente",
               "**Pasul 3 — Remedieri**: primești lista problemelor; minim 90% din recomandările critice trebuie rezolvate",
               "**Pasul 4 — Publicare**: apartamentul primește **Trust Score** (A+/A/B) și apare în lista Imobilelor Verificate",
               "**Pasul 5 — Vânzare**: comision de doar **2,5%** la vânzare, din care se SCADE costul Digital Twin-ului"
             ]
           },
-          "Pachetul complet (audit + twin) costă **1.300 RON** — și se recuperează prin vânzare mai rapidă, preț mai bun și deducerea twin-ului din comision."
+          "Pachetul complet (audit + twin) costă **17.400 RON** — și se recuperează prin vânzare mai rapidă și preț mai bun."
         ]
       },
       {
@@ -1118,7 +1118,7 @@ export const GHIDURI = [
     faq: [
       {
         q: "Cât costă să-mi listez apartamentul ca Imobil Verificat?",
-        a: "Pachetul complet costă 3.350 RON (audit tehnic 2.400 + Digital Twin 950). La vânzare se aplică un comision de 2,5%, din care se scade costul Digital Twin-ului — deci twin-ul îl primești practic gratuit."
+        a: "Pachetul complet costă 17.400 RON (audit tehnic 2.400 + Digital Twin 15.000)."
       },
       {
         q: "Ce este Trust Score-ul?",

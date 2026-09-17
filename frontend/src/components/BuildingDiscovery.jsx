@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Building2, MapPin, ArrowRight, ShieldCheck, Info } from "lucide-react";
+import { PmMarkersMap } from "./PmMap";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -76,6 +77,23 @@ export const BuildingDiscovery = () => {
             {touched && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }} className="mt-3 space-y-2 overflow-hidden">
+                {!loading && results.some((b) => b.lat_approx && b.lng_approx) && (
+                  <div data-testid="discovery-mini-map">
+                    <PmMarkersMap
+                      points={results.filter((b) => b.lat_approx && b.lng_approx).map((b) => ({
+                        id: b.id, lat: b.lat_approx, lng: b.lng_approx,
+                        title: b.name,
+                        subtitle: `${b.address || ""}${b.neighborhood ? ` · ${b.neighborhood}` : ""} · locație aproximativă${b.source !== "propmanage" ? " · date externe HartaBlocuri" : ""}`,
+                        href: `/register?binvite=${b.id}`, hrefLabel: "Conectează",
+                      }))}
+                      height="clamp(220px, 40vh, 340px)"
+                      emptyLabel="Blocurile găsite nu au coordonate."
+                    />
+                    <p className="mt-1.5 text-[10px] text-stone-600 flex items-center gap-1">
+                      <Info className="w-3 h-3" /> Locații aproximative (~1&nbsp;km). Coordonatele exacte sunt private, disponibile după conectare.
+                    </p>
+                  </div>
+                )}
                 {loading && (
                   <div className="text-sm text-stone-500 py-6 text-center" data-testid="discovery-loading">Căutăm blocuri…</div>
                 )}
