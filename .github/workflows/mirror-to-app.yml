@@ -1,0 +1,48 @@
+name: Mirror to propmanage-app
+
+# One-way sync: DanielIgna/propmanage-online (source of truth)
+#            → DanielIgna/propmanage-app (mirror)
+#
+# Requires repo secret MIRROR_TOKEN on propmanage-online:
+# a PAT with Contents: Read and write on propmanage-app.
+# See .github/GITHUB_ACTIONS_SETUP.md
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: mirror-to-app
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    name: Push branches and tags to propmanage-app
+    if: github.repository == 'DanielIgna/propmanage-online'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Clone all refs from propmanage-online
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone --bare "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" source.git
+
+      - name: Mirror to DanielIgna/propmanage-app
+        env:
+          MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MIRROR_TOKEN}" ]; then
+            echo "::error::Missing secret MIRROR_TOKEN. Create a PAT with Contents: Read and write on DanielIgna/propmanage-app, then add it as repository secret MIRROR_TOKEN on propmanage-online. See .github/GITHUB_ACTIONS_SETUP.md"
+            exit 1
+          fi
+          cd source.git
+          git push --force \
+            "https://x-access-token:${MIRROR_TOKEN}@github.com/DanielIgna/propmanage-app.git" \
+            "refs/heads/*:refs/heads/*" \
+            "refs/tags/*:refs/tags/*"
