@@ -104,7 +104,10 @@ export const SiteNav = () => {
   return (
     <>
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? "py-3" : "py-6"}`}>
-        <div className={`max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-2 ${scrolled ? "glass-strong rounded-full sm:mx-6 sm:px-6" : ""}`}>
+        <div
+          className={`max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-2 ${scrolled ? "glass-strong rounded-full sm:px-6" : ""}`}
+          data-testid="site-navigation-bar"
+        >
           <div className="flex items-center gap-2">
             <button
               onClick={() => setDrawerOpen(true)}

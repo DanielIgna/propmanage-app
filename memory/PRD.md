@@ -1,3 +1,13 @@
+## 🐞 FIX NAVIGAȚIE — centrare meniu la derulare (18 septembrie 2026)
+
+**Problemă raportată**: pe pagini lungi, bara superioară se alinia spre stânga după derulare, în loc să rămână centrată.
+
+**Rezolvare**: în `frontend/src/components/SiteNav.jsx` a fost eliminată marginea responsivă care suprascria `mx-auto` în starea de scroll. Bara păstrează acum centrarea reală atât înainte, cât și după derulare.
+
+**Verificat**: Playwright pe preview la 1920px, după scroll — spațiu stânga 320px / spațiu dreapta 320px, PASS.
+
+---
+
 ## 🔎📈 SEO EXPANSION #5 — Task-uri reportate + batch 2 meserii + QA achiziție (Iun 2026)
 
 Task-urile reportate + batch 2 meserii + cele 5 verificări cerute. FĂRĂ atingeri la Client Beta/OAuth/GSC/robots/canonical global/regula marketplace ≥3. Verificat: 24 pytest PASS + validate 6/6 green + testing_agent frontend 11/11 PASS (inclusiv cele 5 checks) + compile clean.
