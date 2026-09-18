@@ -24,6 +24,8 @@ on:
 jobs:
   smoke-test:
     name: 🔥 Pre-Deploy Dashboard Health Check
+    # Live preview E2E belongs on the source repo, not the GitHub mirror.
+    if: github.repository == 'DanielIgna/propmanage-online'
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -49,7 +51,9 @@ jobs:
           SMOKE_BASE_URL: ${{ vars.SMOKE_BASE_URL || 'https://phased-document.preview.emergentagent.com' }}
           SMOKE_ADMIN_EMAIL: ${{ vars.SMOKE_ADMIN_EMAIL || 'admin@propmanage.io' }}
           SMOKE_ADMIN_PASSWORD: ${{ secrets.SMOKE_ADMIN_PASSWORD || 'Admin123!' }}
-        run: python tests/test_dashboards_smoke.py
+        run: |
+          set -o pipefail
+          python tests/test_dashboards_smoke.py 2>&1 | tee /tmp/smoke.log
 
       - name: Upload artifacts on failure
         if: failure()
