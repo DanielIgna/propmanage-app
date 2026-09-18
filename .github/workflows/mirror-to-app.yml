@@ -1,0 +1,69 @@
+name: Mirror to propmanage-app
+
+# One-way sync: DanielIgna/propmanage-online (source of truth)
+#            → DanielIgna/propmanage-app (mirror)
+#
+# Requires repo secret MIRROR_TOKEN on propmanage-online:
+# a PAT on propmanage-app with Contents + Workflows: Read and write.
+# See .github/GITHUB_ACTIONS_SETUP.md
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: mirror-to-app
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    name: Push branches and tags to propmanage-app
+    if: github.repository == 'DanielIgna/propmanage-online'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Clone all refs from propmanage-online
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone --bare "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" source.git
+
+      - name: Mirror to DanielIgna/propmanage-app
+        env:
+          MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MIRROR_TOKEN}" ]; then
+            echo "::error::Missing secret MIRROR_TOKEN. Create a PAT with Contents + Workflows: Read and write on DanielIgna/propmanage-app, then add it as repository secret MIRROR_TOKEN on propmanage-online."
+            exit 1
+          fi
+
+          http_code="$(curl -sS -o /tmp/repo.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${MIRROR_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/DanielIgna/propmanage-app)"
+          if [ "${http_code}" != "200" ]; then
+            echo "::error::MIRROR_TOKEN cannot access DanielIgna/propmanage-app (HTTP ${http_code}). Edit the PAT: Repository access must include propmanage-app, not only propmanage-online. Then Re-run."
+            cat /tmp/repo.json || true
+            exit 1
+          fi
+          can_push="$(python3 -c 'import json; print(json.load(open("/tmp/repo.json")).get("permissions",{}).get("push", False))')"
+          echo "Token push access on propmanage-app: ${can_push}"
+          if [ "${can_push}" != "True" ]; then
+            echo "::error::MIRROR_TOKEN authenticates but cannot push to DanielIgna/propmanage-app. Edit the PAT: Contents=Read and write, Workflows=Read and write, repository=propmanage-app. Then Re-run."
+            exit 1
+          fi
+
+          cd source.git
+          git push --force \
+            "https://x-access-token:${MIRROR_TOKEN}@github.com/DanielIgna/propmanage-app.git" \
+            "refs/heads/*:refs/heads/*" \
+            "refs/tags/*:refs/tags/*" \
+          || {
+            echo "::error::git push returned 403. If the PAT already has Contents write, add Workflows: Read and write — GitHub blocks new .github/workflows files without it. Update the same PAT, then Re-run."
+            exit 1
+          }

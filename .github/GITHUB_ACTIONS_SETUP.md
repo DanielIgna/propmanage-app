@@ -1,4 +1,46 @@
-# GitHub Actions Setup — Smoke Test Workflow
+# GitHub Actions Setup
+
+## Mirror propmanage-online → propmanage-app
+
+`propmanage-online` este sursa de adevăr. Workflow-ul `.github/workflows/mirror-to-app.yml` copiază automat toate branch-urile și tag-urile spre `DanielIgna/propmanage-app` la fiecare push (și manual, din tab-ul Actions).
+
+Nu șterge branch-uri care există doar pe `propmanage-app` (de exemplu `chore/local-dev-setup` rămâne acolo până îl ștergi tu).
+
+### Secret obligatoriu
+
+`GITHUB_TOKEN` nu poate scrie într-un alt repo. Pe **propmanage-online** trebuie secretul `MIRROR_TOKEN`.
+
+1. Creează un fine-grained PAT: <https://github.com/settings/personal-access-tokens/new>
+   - Resource owner: `DanielIgna`
+   - Repository access: **Only select repositories** → `propmanage-app` (nu `propmanage-online`)
+   - Repository permissions:
+     - **Contents: Read and write**
+     - **Workflows: Read and write** (obligatoriu — push-ul copiază fișiere `.github/workflows`)
+     - **Metadata: Read** (se activează singur)
+   - Expiration: cât vrei (recomandat 1 an, apoi reînnoiești)
+2. Copiază token-ul.
+3. În **propmanage-online** → Settings → Secrets and variables → Actions → New repository secret:
+   - Name: `MIRROR_TOKEN`
+   - Value: token-ul de la pasul 2
+4. Push workflow-ul pe `main` în `propmanage-online` (remote `emergent`).
+5. Rulează o dată **Actions → Mirror to propmanage-app → Run workflow** ca să verifici.
+
+Dacă PAT-ul există deja: **Settings → Developer settings → Fine-grained tokens → tokenul tău → Edit** și adaugă `propmanage-app` + permisiunile de mai sus. Nu trebuie secret nou dacă e același token.
+
+### 403 `Permission to propmanage-app.git denied to DanielIgna`
+
+Token-ul e valid, dar n-are write pe destinație. Cauze uzuale:
+- PAT-ul e legat de `propmanage-online` în loc de `propmanage-app`
+- Contents e doar **Read**, nu **Read and write**
+- lipsește **Workflows: Read and write**
+
+După corectare: Actions → job-ul eșuat → **Re-run jobs**.
+
+După asta, fiecare `git push` pe `propmanage-online` actualizează și `propmanage-app`.
+
+---
+
+# Smoke Test Workflow
 
 Acest fișier explică cum activezi smoke test-ul automat în GitHub după ce conectezi repo-ul cu "Save to GitHub".
 

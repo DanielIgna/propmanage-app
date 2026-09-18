@@ -16,6 +16,14 @@ Or as standalone script (no pytest needed):
 import asyncio
 import os
 import sys
+from pathlib import Path
+
+# GitHub Actions runs: python backend/tests/test_dashboards_smoke.py
+# sys.path[0] is this folder, so `from tests.test_config` needs backend/ on path.
+_BACKEND_ROOT = Path(__file__).resolve().parents[1]
+if str(_BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_ROOT))
+
 from tests.test_config import OWNER_ADMIN_PASSWORD
 
 # Read env or fall back to preview URL
