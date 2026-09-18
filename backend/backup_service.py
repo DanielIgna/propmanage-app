@@ -28,8 +28,14 @@ from db import db
 
 logger = logging.getLogger("propmanage.backup")
 
-BACKUP_DIR = Path(os.environ.get("BACKUP_DIR", "/app/backups"))
-BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+_BACKEND_ROOT = Path(__file__).resolve().parent
+_backup_raw = (os.environ.get("BACKUP_DIR") or "").strip()
+BACKUP_DIR = Path(_backup_raw) if _backup_raw else (_BACKEND_ROOT / "backups")
+try:
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+except OSError:
+    BACKUP_DIR = _BACKEND_ROOT / "backups"
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
 # Keep last N backups locally (older ones are auto-deleted to save disk)
 LOCAL_RETENTION = 7

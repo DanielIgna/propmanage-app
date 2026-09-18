@@ -38,6 +38,15 @@ function init() {
   const currentHost = window.location.host;
   if (configuredHost === currentHost) return; // nothing to do
 
+  const hostnameOf = (host) => (host.split(":")[0] || "").toLowerCase();
+  const isLoopback = (host) => {
+    const h = hostnameOf(host);
+    return h === "localhost" || h === "127.0.0.1" || h === "[::1]" || h === "::1";
+  };
+  // Local CRA (:3000) + uvicorn (:8001) is expected. Blind same-origin rewrite
+  // is only for Emergent ingress, where /api/* is routed to the backend.
+  if (isLoopback(configuredHost) || isLoopback(currentHost)) return;
+
   // Only activate if the configured host is the public custom domain
   // (likely propmanage.ro or another custom). On preview / emergent.host
   // domain, the configured URL would normally be the same.

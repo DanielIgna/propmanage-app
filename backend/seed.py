@@ -218,8 +218,9 @@ async def seed():
 
     # Write test credentials (parola admin REALĂ din env — sursa driftului recurent)
     admin_pw = os.environ.get("SEED_ADMIN_PASSWORD", "Admin123!")
-    creds_path = Path("/app/memory/test_credentials.md")
-    creds_path.parent.mkdir(exist_ok=True)
+    repo_root = Path(__file__).resolve().parents[1]
+    creds_path = repo_root / "memory" / "test_credentials.md"
+    creds_path.parent.mkdir(parents=True, exist_ok=True)
     creds_path.write_text(f"""# PropManage Test Credentials
 
 ## Demo Accounts (Pre-seeded, idempotent)

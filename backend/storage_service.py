@@ -25,8 +25,24 @@ logger = logging.getLogger("propmanage.storage")
 
 MB = 1024 * 1024
 CONFIG_ID = "global"
-HH_DIR = Path("/app/backend/uploads/house_health")
-DT_DIR = Path(os.environ.get("DT_UPLOAD_DIR") or "/app/backend/uploads/digital_twin")
+_BACKEND_ROOT = Path(__file__).resolve().parent
+
+
+def _data_dir(env_key: str, *rel: str) -> Path:
+    """Resolve a writable data directory; fall back to backend-relative paths on local macOS."""
+    fallback = _BACKEND_ROOT.joinpath(*rel)
+    raw = (os.environ.get(env_key) or "").strip()
+    candidate = Path(raw) if raw else fallback
+    try:
+        candidate.mkdir(parents=True, exist_ok=True)
+        return candidate
+    except OSError:
+        fallback.mkdir(parents=True, exist_ok=True)
+        return fallback
+
+
+HH_DIR = _data_dir("HH_UPLOAD_DIR", "uploads", "house_health")
+DT_DIR = _data_dir("DT_UPLOAD_DIR", "uploads", "digital_twin")
 
 DEFAULT_CONFIG = {
     "id": CONFIG_ID,

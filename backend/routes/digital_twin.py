@@ -46,14 +46,14 @@ from email_service import (
     send_email_with_attachments,
 )
 from services import notify, log_event
+import storage_service
 
 router = APIRouter(prefix="/api/digital-twin", tags=["digital-twin"])
 
 
 # ----------------- storage config -----------------
 
-UPLOAD_ROOT = Path(os.environ.get("DT_UPLOAD_DIR") or "/app/backend/uploads/digital_twin")
-UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
+UPLOAD_ROOT = storage_service.DT_DIR
 
 ALLOWED_EXTS = {".glb", ".gltf", ".skp", ".dae", ".obj", ".fbx", ".stl", ".ply"}
 ALLOWED_PLAN_EXTS = {".pdf"}
@@ -61,7 +61,6 @@ ALLOWED_PLAN_EXTS = {".pdf"}
 DOWNLOAD_ONLY_EXTS = {".skp"}
 # Extensions Blender can auto-convert to .glb headless on Linux
 BLENDER_CONVERT_EXTS = {".dae", ".obj", ".fbx", ".stl", ".ply"}
-import storage_service  # noqa: E402 — ST-001: limite dinamice + cote DT (bucket separat)
 
 PLAN_TYPES = {"floorplan", "section", "elevation", "detail", "site", "other"}
 
