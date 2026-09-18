@@ -215,6 +215,29 @@ class ExternalAuditCreate(BaseModel):
 
 # ----------------- Helpers -----------------
 
+async def _resolve_listing_geo(doc: dict) -> dict:
+    """Read-time location for a listing. Building coords are a display fallback, never copied."""
+    from location_resolver import public_listing_geo_fields, resolve_listing_map_location
+    prop = None
+    building = None
+    pid = doc.get("property_id")
+    bid = doc.get("building_id")
+    if pid:
+        try:
+            prop = await db.properties.find_one({"_id": ObjectId(pid)})
+            if prop and not bid:
+                bid = prop.get("building_id")
+        except Exception:
+            prop = None
+    if bid:
+        try:
+            building = await db.buildings.find_one({"_id": ObjectId(bid)})
+        except Exception:
+            building = None
+    resolved = resolve_listing_map_location(doc, prop, building)
+    return public_listing_geo_fields(resolved)
+
+
 def _serialize_listing(doc: dict) -> dict:
     """Serialize a Mongo listing doc for API responses."""
     out = serialize_doc(doc) if doc else None
@@ -236,6 +259,17 @@ def _serialize_listing(doc: dict) -> dict:
         out["trust_score"] = "B"
     else:
         out["trust_score"] = "C"
+    return out
+
+
+async def _serialize_listing_public(doc: dict, rate_info=None) -> dict:
+    out = _serialize_listing(doc)
+    geo = await _resolve_listing_geo(doc)
+    out["lat"] = geo.get("lat")
+    out["lng"] = geo.get("lng")
+    out["location"] = geo.get("location")
+    if rate_info is not None:
+        return _with_eur(out, rate_info)
     return out
 
 
@@ -306,7 +340,7 @@ async def list_public_listings(
 
     cursor = db.verified_estate_listings.find(query).sort("published_at", -1).skip(skip).limit(limit)
     rate_info = await get_eur_ron_rate()
-    items = [_with_eur(_serialize_listing(d), rate_info) async for d in cursor]
+    items = [await _serialize_listing_public(d, rate_info) async for d in cursor]
     total = await db.verified_estate_listings.count_documents(query)
     return {"items": items, "total": total, "skip": skip, "limit": limit}
 
@@ -322,7 +356,7 @@ async def get_listing(listing_id: str):
     if not doc:
         raise HTTPException(404, "Listing not found")
     rate_info = await get_eur_ron_rate()
-    return _with_eur(_serialize_listing(doc), rate_info)
+    return await _serialize_listing_public(doc, rate_info)
 
 
 @router.post("/inquiries")
@@ -423,7 +457,24 @@ async def admin_create_listing(body: ListingCreate, user: dict = Depends(require
         "view_count": 0,
         "inquiry_count": 0,
     })
+    if payload.get("lat") is not None and payload.get("lng") is not None and not payload.get("location"):
+        payload["location"] = {
+            "lat": payload["lat"], "lng": payload["lng"],
+            "source": "manual", "verification_status": "neverificat",
+            "derived_from": "admin_input", "method": "manual",
+        }
     await db.verified_estate_listings.insert_one(payload)
+    if payload.get("lat") is None:
+        try:
+            from routes.geocoding import apply_geocoding_to_entity
+            await apply_geocoding_to_entity(
+                "listing", payload,
+                address=payload.get("address") or "",
+                city=payload.get("city"),
+            )
+            payload = await db.verified_estate_listings.find_one({"_id": payload["_id"]}) or payload
+        except Exception as e:
+            logger.warning(f"listing geocode skipped: {type(e).__name__}")
     return _serialize_listing(payload)
 
 
@@ -441,7 +492,7 @@ async def admin_list_listings(
         query["status"] = status
     cursor = db.verified_estate_listings.find(query).sort("updated_at", -1).skip(skip).limit(limit)
     rate_info = await get_eur_ron_rate()
-    items = [_with_eur(_serialize_listing(d), rate_info) async for d in cursor]
+    items = [await _serialize_listing_public(d, rate_info) async for d in cursor]
     total = await db.verified_estate_listings.count_documents(query)
     return {"items": items, "total": total, "skip": skip, "limit": limit}
 

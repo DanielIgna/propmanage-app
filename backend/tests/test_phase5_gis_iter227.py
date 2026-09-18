@@ -93,12 +93,17 @@ class TestPublicBoundary:
         r = requests.get(f"{BASE}/api/public/maps/config", timeout=10)
         assert r.status_code == 200
         d = r.json()
-        assert d.get("provider") == "fallback"
-        assert d.get("enabled") is False
-        # never expose server key
-        s = str(d).lower()
-        assert "api_key" not in s or d.get("api_key") in (None, "")
-        assert "server_api_key" not in s
+        assert d.get("provider") in ("fallback", "google")
+        if d.get("provider") == "fallback":
+            assert d.get("enabled") is False
+            assert d.get("api_key") in (None, "")
+        else:
+            assert d.get("enabled") is True
+            assert d.get("api_key")
+        # never expose the server-side geocoding secret
+        blob = str(d).lower()
+        assert "server_api_key" not in blob
+        assert "google_maps_server" not in blob
 
 
 # ---------- PRIVATE GIS ----------

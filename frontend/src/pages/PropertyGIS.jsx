@@ -78,6 +78,11 @@ export const PropertyGISPage = () => {
         <h1 className="text-3xl sm:text-4xl font-bold">{b?.name || "Locuința mea"}</h1>
         <p className="text-stone-400 mt-2">{b?.address}</p>
         <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-amber-400/80"><Info className="w-3.5 h-3.5" /> {gis.provenance_note}</div>
+        {loc?.derived && (
+          <div className="mt-1 text-[11px] text-stone-500" data-testid="property-gis-derived">
+            {loc.provenance_label || "Locație derivată din clădire · neverificată"}
+          </div>
+        )}
 
         <div className="mt-6">
           <PropertyMap lat={loc?.lat} lng={loc?.lng} apiKey={cfg?.api_key} enabled={cfg?.enabled} />

@@ -93,9 +93,13 @@ def test_public_maps_config_fallback():
     r = requests.get(f"{BASE_URL}/api/public/maps/config", timeout=20)
     assert r.status_code == 200, r.text[:200]
     data = r.json()
-    assert data.get("provider") == "fallback", f"provider={data.get('provider')}"
-    assert data.get("enabled") is False, f"enabled={data.get('enabled')}"
-    assert data.get("api_key") in (None, ""), f"api_key leaked={data.get('api_key')}"
+    assert data.get("provider") in ("fallback", "google"), f"provider={data.get('provider')}"
+    blob = str(data).lower()
+    assert "server_api_key" not in blob
+    assert "google_maps_server" not in blob
+    if data.get("provider") == "fallback":
+        assert data.get("enabled") is False
+        assert data.get("api_key") in (None, "")
 
 
 # ---------- PTR building search ----------

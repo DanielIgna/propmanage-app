@@ -65,7 +65,7 @@ const GoogleMarkersMap = ({ points, apiKey, height }) => {
         const link = p.href
           ? `<a href="${esc(p.href)}" style="display:inline-block;background:#0a0a0b;color:#fff;font-size:12px;padding:4px 10px;border-radius:999px;text-decoration:none;">${esc(p.hrefLabel || "Vezi detalii")} →</a>`
           : "";
-        const html = `<div style="font-family:inherit;min-width:160px;"><div style="font-weight:600;margin-bottom:2px;">${esc(p.title)}</div><div style="font-size:12px;color:#666;margin-bottom:6px;">${esc(p.subtitle || "")}</div>${p.price ? `<div style="font-family:monospace;margin-bottom:6px;">${esc(p.price)}</div>` : ""}${link}</div>`;
+        const html = `<div style="font-family:inherit;min-width:160px;"><div style="font-weight:600;margin-bottom:2px;">${esc(p.title)}</div><div style="font-size:12px;color:#666;margin-bottom:6px;">${esc(p.subtitle || "")}</div>${p.price ? `<div style="font-family:monospace;margin-bottom:6px;">${esc(p.price)}</div>` : ""}${p.provenanceLabel ? `<div style="font-size:11px;color:#a8a29e;margin-bottom:6px;">${esc(p.provenanceLabel)}</div>` : ""}${link}</div>`;
         const iw = new maps.InfoWindow({ content: html });
         mk.addListener("click", () => iw.open(map, mk));
       });
@@ -102,6 +102,7 @@ const LeafletMarkersMap = ({ points, height }) => {
               <div className="font-semibold mb-1">{p.title}</div>
               {p.subtitle && <div className="text-xs text-stone-500 mb-2">{p.subtitle}</div>}
               {p.price && <div className="font-mono text-base mb-2" style={{ color: "#0a0a0b" }}>{p.price}</div>}
+              {p.provenanceLabel && <div className="text-[11px] text-stone-500 mb-2">{p.provenanceLabel}</div>}
               {p.href && (
                 <a href={p.href} className="inline-block bg-[#0a0a0b] text-white text-xs px-3 py-1.5 rounded-full" data-testid={`pm-popup-link-${p.id}`}>
                   {p.hrefLabel || "Vezi detalii"} →

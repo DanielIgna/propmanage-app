@@ -29,6 +29,12 @@ async def create_property(data: PropertyIn, user: dict = Depends(require_role("c
     res = await db.properties.insert_one(doc)
     doc["id"] = str(res.inserted_id)
     doc.pop("_id", None)
+    # Non-blocking geocoding — never fails property creation.
+    try:
+        from routes.geocoding import schedule_geocode_property
+        schedule_geocode_property(doc["id"], data.address)
+    except Exception:  # noqa: BLE001
+        logger.warning("property geocode schedule skipped")
     return doc
 
 @router.get("/properties")

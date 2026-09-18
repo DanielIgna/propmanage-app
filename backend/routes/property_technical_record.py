@@ -168,6 +168,16 @@ def _serialize_building(b: dict) -> dict:
         "neighborhood": ctx.get("neighborhood"),
         "lat": ctx.get("lat"),
         "lng": ctx.get("lng"),
+        "location_source": (
+            "hartablocuri" if hb else
+            ((ctx.get("external_sources") or {}).get("google_geocoding") or {}).get("source_name")
+            or ctx.get("source_type")
+        ),
+        "location_verification_status": (
+            (hb or {}).get("verification_status")
+            or ((ctx.get("external_sources") or {}).get("google_geocoding") or {}).get("verification_status")
+            or ctx.get("verification_status", "unverified")
+        ),
         "construction_year": ctx.get("construction_year"),
         "building_type": ctx.get("building_type"),
         "building_type_label": BUILDING_TYPES.get(ctx.get("building_type") or ""),
@@ -239,21 +249,26 @@ async def _documentation_status(prop_id: str) -> dict:
 async def property_gis(prop_id: str, user: dict = Depends(get_current_user)):
     """PRIVATE Property GIS — DOAR pentru owner/admin (authz server-side via _load_property_for → 403).
     Livrează coordonate EXACTE + context complet, spre deosebire de discovery-ul public agregat."""
+    from location_resolver import resolve_property_map_location
     prop = await _load_property_for(user, prop_id)  # 403 dacă nu e proprietarul
     b = await _load_building_for_property(prop)
     b_ctx = (b or {}).get("context") or {}
     hb = (b_ctx.get("external_sources") or {}).get("hartablocuri")
     hb_raw = (hb or {}).get("raw") or {}
+    resolved = resolve_property_map_location(prop, b)
     blat = b_ctx.get("lat") if isinstance(b_ctx.get("lat"), (int, float)) else hb_raw.get("lat")
     blng = b_ctx.get("lng") if isinstance(b_ctx.get("lng"), (int, float)) else hb_raw.get("lng")
-    plat = prop.get("lat") if isinstance(prop.get("lat"), (int, float)) else blat
-    plng = prop.get("lng") if isinstance(prop.get("lng"), (int, float)) else blng
+    plat = resolved.get("lat") if resolved.get("available") else None
+    plng = resolved.get("lng") if resolved.get("available") else None
     twin = await db.twins.find_one({"property_id": prop_id})
     docs = await _documentation_status(prop_id)
     layers = []
     if plat and plng:
         layers.append({"id": "L0", "label": "Locație proprietate", "type": "point",
-                       "lat": plat, "lng": plng})
+                       "lat": plat, "lng": plng,
+                       "source": resolved.get("source"),
+                       "verification_status": resolved.get("verification_status"),
+                       "derived": bool(resolved.get("derived"))})
     if b and blat and blng:
         layers.append({"id": "L1", "label": "Clădire", "type": "point", "lat": blat, "lng": blng,
                        "building_id": str(b["_id"]), "name": b.get("name")})
@@ -279,10 +294,22 @@ async def property_gis(prop_id: str, user: dict = Depends(get_current_user)):
     from seo_clusters import MONETIZATION
     gmaps = (f"https://www.google.com/maps/search/?api=1&query={plat},{plng}"
              if (plat and plng) else None)
+    loc_out = None
+    if resolved.get("available"):
+        loc_out = {
+            "lat": resolved["lat"],
+            "lng": resolved["lng"],
+            "source": resolved.get("source"),
+            "verification_status": resolved.get("verification_status"),
+            "derived_from": resolved.get("derived_from"),
+            "method": resolved.get("method"),
+            "derived": bool(resolved.get("derived")),
+            "provenance_label": resolved.get("provenance_label"),
+        }
     return {
         "property_id": prop_id,
         "authorized": True,
-        "location": {"lat": plat, "lng": plng} if (plat and plng) else None,
+        "location": loc_out,
         "google_maps_url": gmaps,
         "building": _serialize_building(b) if b else None,
         "layers": layers,
@@ -336,6 +363,11 @@ async def attach_or_create_building_context(
     bid = str(res.inserted_id)
     await db.properties.update_one({"_id": ObjectId(prop_id)}, {"$set": {"building_id": bid}})
     doc["_id"] = res.inserted_id
+    try:
+        from routes.geocoding import schedule_geocode_building
+        schedule_geocode_building(bid, address, data.city)
+    except Exception:  # noqa: BLE001
+        logger.warning("ptr building geocode schedule skipped")
     return {"building": _serialize_building(doc), "attached": True, "created": True}
 
 

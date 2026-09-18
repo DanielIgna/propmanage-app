@@ -21,11 +21,20 @@ export const EstateMapView = ({ items }) => {
       price: formatPrice(it.price_ron),
       href: `/imobile-verificate/${it.id}`,
       hrefLabel: "Vezi detalii",
+      derived: Boolean(it.location?.derived),
+      provenanceLabel: it.location?.provenance_label || (it.location?.derived ? "Locație derivată · neverificată" : null),
     }));
+
+  const hasDerived = points.some((p) => p.derived);
 
   return (
     <div data-testid="estate-map-view">
       <PmMarkersMap points={points} height="70vh" emptyLabel="Niciun imobil cu coordonate geografice." />
+      {hasDerived && (
+        <p className="text-[11px] text-stone-500 mt-2 px-1" data-testid="estate-map-derived-note">
+          Unele locații sunt derivate din clădire (HartaBlocuri / geocoding) și neverificate.
+        </p>
+      )}
     </div>
   );
 };

@@ -126,6 +126,11 @@ async def create_building(data: BuildingIn, user: dict = Depends(require_role("c
     if data.property_id and ObjectId.is_valid(data.property_id):
         await db.properties.update_one(
             {"_id": ObjectId(data.property_id), "owner_id": user["id"]}, {"$set": {"building_id": bid}})
+    try:
+        from routes.geocoding import schedule_geocode_building
+        schedule_geocode_building(bid, data.address, data.city)
+    except Exception:  # noqa: BLE001
+        logger.warning("building geocode schedule skipped")
     return {"id": bid, "name": data.name, "address": data.address, "city": data.city}
 
 

@@ -162,12 +162,19 @@ async def public_maps_config():
     """Config strat de cartografiere (abstraction). Cheia din env; feature flag + fallback.
     NOTĂ: cheia server-side (GOOGLE_MAPS_SERVER_API_KEY) NU se expune niciodată clientului."""
     import os
+    from geocoding import server_key_configured
     enabled = os.environ.get("GOOGLE_MAPS_ENABLED", "").strip().lower() in ("1", "true", "yes")
     key = os.environ.get("GOOGLE_MAPS_API_KEY", "").strip()
     active = bool(enabled and key)
-    return {"provider": "google" if active else "fallback", "enabled": active,
-            "api_key": key if active else None, "fallback": not active,
-            "attribution": "HartaBlocuri (date) · Google Maps (cartografiere)"}
+    return {
+        "provider": "google" if active else "fallback",
+        "enabled": active,
+        "api_key": key if active else None,
+        "fallback": not active,
+        "attribution": "HartaBlocuri (date) · Google Maps (cartografiere)",
+        # Presence flag only — never the server secret, never the raw env name value.
+        "geocoding_configured": server_key_configured(),
+    }
 
 
 @public_router.get("/blocuri/map")
