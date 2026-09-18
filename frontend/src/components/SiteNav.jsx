@@ -119,7 +119,7 @@ export const SiteNav = () => {
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#d4ff3a] to-[#a8e028] flex items-center justify-center">
                 <Building2 className="w-4 h-4 text-black" strokeWidth={2.5} />
               </div>
-              <span className="font-serif text-lg sm:text-xl font-semibold tracking-tight">PropManage</span>
+              <span className="font-serif text-lg sm:text-xl font-semibold tracking-tight">PropManage Test xxxx</span>
             </a>
           </div>
 
