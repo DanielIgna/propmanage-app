@@ -75,7 +75,7 @@ app = FastAPI(title="PropManage API")
 # Default regex auto-permits both preview (*.preview.emergentagent.com) AND the production
 # custom domain (*.propmanage.ro) so cookies/credentials work cross-origin out of the box.
 _raw_origins = os.environ.get("CORS_ORIGINS", "*").strip()
-_default_origin_regex = r"^https?://(.*\.)?(propmanage\.ro|propmanage\.io|preview\.emergentagent\.com|emergentagent\.com)$"
+_default_origin_regex = r"^https?://(.*\.)?(propmanage\.ro|propmanage\.io|pages\.dev|workers\.dev|preview\.emergentagent\.com|emergentagent\.com)$"
 _origin_regex = os.environ.get("CORS_ORIGIN_REGEX") or _default_origin_regex
 if _raw_origins == "*" or not _raw_origins:
     # Use empty allow_origins + regex so allow_credentials=True can still work
@@ -108,6 +108,7 @@ from starlette.responses import JSONResponse as _JSONResponse  # noqa: E402
 # Sufixe de host permise: domeniile produsului + infrastructura de preview
 # (ingress-ul Emergent rescrie Origin către *.emergentcf.cloud).
 _CSRF_ALLOWED_SUFFIXES = ("propmanage.ro", "propmanage.io",
+                          "pages.dev", "workers.dev",
                           "preview.emergentagent.com", "emergentagent.com",
                           "emergentcf.cloud", "localhost")
 
