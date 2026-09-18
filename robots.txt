@@ -1,0 +1,26 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/admin
+Disallow: /api/admin/
+Disallow: /client
+Disallow: /specialist$
+Disallow: /specialist/
+Disallow: /operator
+Disallow: /dashboard
+Disallow: /auth/callback
+Disallow: /payment-success
+Disallow: /report-respond/
+Disallow: /property/
+Disallow: /account
+Disallow: /my-home
+
+# Slow down aggressive crawlers, allow Google/Bing full speed
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10
+
+Sitemap: https://propmanage.ro/sitemap.xml

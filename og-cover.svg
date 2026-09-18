@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0a0b"/>
+      <stop offset="0.6" stop-color="#1a1a1f"/>
+      <stop offset="1" stop-color="#0a0a0b"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.85" cy="0.15" r="0.6">
+      <stop offset="0" stop-color="#d4ff3a" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#d4ff3a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- Brand dot + name -->
+  <g transform="translate(80, 88)">
+    <circle cx="14" cy="14" r="14" fill="#d4ff3a"/>
+    <text x="46" y="22" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="700" fill="#fff">PropManage</text>
+  </g>
+
+  <!-- Headline -->
+  <g transform="translate(80, 210)">
+    <text x="0" y="0" font-family="Georgia, serif" font-size="76" font-weight="400" fill="#fff" letter-spacing="-2">Property Operating</text>
+    <text x="0" y="84" font-family="Georgia, serif" font-size="76" font-weight="400" fill="#d4ff3a" letter-spacing="-2">System pentru</text>
+    <text x="0" y="168" font-family="Georgia, serif" font-size="76" font-weight="400" fill="#fff" letter-spacing="-2">proprietari moderni.</text>
+  </g>
+
+  <!-- Pills row -->
+  <g transform="translate(80, 460)" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="500">
+    <g>
+      <rect x="0" y="0" width="200" height="44" rx="22" fill="none" stroke="#d4ff3a" stroke-opacity="0.5"/>
+      <text x="100" y="29" text-anchor="middle" fill="#d4ff3a">Digital Twin</text>
+    </g>
+    <g transform="translate(216, 0)">
+      <rect x="0" y="0" width="210" height="44" rx="22" fill="none" stroke="#fff" stroke-opacity="0.25"/>
+      <text x="105" y="29" text-anchor="middle" fill="#fff">Plăți Escrow</text>
+    </g>
+    <g transform="translate(442, 0)">
+      <rect x="0" y="0" width="230" height="44" rx="22" fill="none" stroke="#fff" stroke-opacity="0.25"/>
+      <text x="115" y="29" text-anchor="middle" fill="#fff">AI Concierge</text>
+    </g>
+    <g transform="translate(688, 0)">
+      <rect x="0" y="0" width="260" height="44" rx="22" fill="none" stroke="#fff" stroke-opacity="0.25"/>
+      <text x="130" y="29" text-anchor="middle" fill="#fff">Specialiști verificați</text>
+    </g>
+  </g>
+
+  <!-- Footer -->
+  <text x="80" y="580" font-family="Inter, system-ui, sans-serif" font-size="18" fill="#888893">propmanage.io  ·  demo live · pentru proprietari, specialiști, operatori</text>
+</svg>

@@ -11,7 +11,13 @@ export default {
       });
     }
 
-    if (backendUrl && (url.pathname === "/api" || url.pathname.startsWith("/api/"))) {
+    if (
+      backendUrl &&
+      (url.pathname === "/api" ||
+        url.pathname.startsWith("/api/") ||
+        url.pathname === "/uploads" ||
+        url.pathname.startsWith("/uploads/"))
+    ) {
       const target = new URL(`${url.pathname}${url.search}`, backendUrl);
       const headers = new Headers(request.headers);
       headers.delete("Host");

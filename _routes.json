@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "include": [
+    "/api/*",
+    "/uploads/*",
+    "/backend/*",
+    "/memory/*",
+    "/docs/*",
+    "/enterprise/*",
+    "/worker/*",
+    "/functions/*",
+    "/package.json",
+    "/yarn.lock",
+    "/wrangler.jsonc"
+  ],
+  "exclude": ["/static/*"]
+}
