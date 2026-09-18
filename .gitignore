@@ -61,6 +61,13 @@ chainlit.md
 # Deployment
 .vercel
 .emergent/
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.tmp-npm-cache/
+.tmp-yarn-cache/
+.tmp-yarn-cli/
+.tmp-wrangler-dist/
 
 # Data and databases
 agenthub/agents/youtube/db
