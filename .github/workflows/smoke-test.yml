@@ -43,11 +43,13 @@ jobs:
           playwright install --with-deps chromium
 
       - name: Run dashboard smoke test
+        working-directory: backend
         env:
+          PYTHONPATH: ${{ github.workspace }}/backend
           SMOKE_BASE_URL: ${{ vars.SMOKE_BASE_URL || 'https://phased-document.preview.emergentagent.com' }}
           SMOKE_ADMIN_EMAIL: ${{ vars.SMOKE_ADMIN_EMAIL || 'admin@propmanage.io' }}
           SMOKE_ADMIN_PASSWORD: ${{ secrets.SMOKE_ADMIN_PASSWORD || 'Admin123!' }}
-        run: python backend/tests/test_dashboards_smoke.py
+        run: python tests/test_dashboards_smoke.py
 
       - name: Upload artifacts on failure
         if: failure()
