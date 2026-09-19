@@ -114,6 +114,11 @@ async def detect_opportunities(building_id: str) -> list:
 
 @router.post("/buildings")
 async def create_building(data: BuildingIn, user: dict = Depends(require_role("client"))):
+    from building_identity import granular_create_guard
+    blocked = await granular_create_guard(
+        db, name=data.name, address=data.address, city=data.city)
+    if blocked:
+        raise HTTPException(409, blocked)
     dup = await db.buildings.find_one({"name": {"$regex": f"^{re.escape(data.name)}$", "$options": "i"},
                                        "address": {"$regex": f"^{re.escape(data.address)}$", "$options": "i"}})
     if dup:
@@ -154,10 +159,16 @@ async def join_building(building_id: str, body: dict, user: dict = Depends(requi
     property_id = body.get("property_id")
     if not property_id or not ObjectId.is_valid(property_id):
         raise HTTPException(400, "property_id este obligatoriu")
+    from building_identity import confirmation_payload
+    payload = confirmation_payload(user, property_id, building_id)
     r = await db.properties.update_one(
-        {"_id": ObjectId(property_id), "owner_id": user["id"]}, {"$set": {"building_id": building_id}})
+        {"_id": ObjectId(property_id), "owner_id": user["id"]},
+        {"$set": {"building_id": building_id, "building_link": payload["building_link"]}})
     if r.matched_count == 0:
         raise HTTPException(404, "Property not found")
+    await db.buildings.update_one(
+        {"_id": ObjectId(building_id)},
+        {"$push": {"context.external_sources.client.observations": payload["observation"]}})
     try:
         from orchestrator.engine import emit_signal
         await emit_signal("resident_joined", {"building_id": building_id, "owner_id": user["id"]})
@@ -168,6 +179,7 @@ async def join_building(building_id: str, body: dict, user: dict = Depends(requi
 
 @router.get("/buildings/mine")
 async def my_buildings(user: dict = Depends(require_role("client"))):
+    from building_identity import identity_profile
     my_props = [p async for p in db.properties.find({"owner_id": user["id"]})]
     building_ids = sorted({p.get("building_id") for p in my_props if p.get("building_id")})
     out = []
@@ -183,6 +195,7 @@ async def my_buildings(user: dict = Depends(require_role("client"))):
                           "author_name": a.get("author_name"), "created_at": a["created_at"]}
                          async for a in db.building_announcements.find({"building_id": bid})
                          .sort("created_at", -1).limit(3)]
+        mine_for_b = next((p for p in my_props if p.get("building_id") == bid), None)
         out.append({
             "id": bid, "name": b["name"], "address": b.get("address"), "city": b.get("city"),
             "members_count": len(owners),
@@ -192,6 +205,7 @@ async def my_buildings(user: dict = Depends(require_role("client"))):
             "opportunities": await detect_opportunities(bid),
             "campaigns": campaigns,
             "announcements": announcements,
+            "identity_profile": identity_profile(b, property_doc=mine_for_b),
         })
     return {"buildings": out, "me": user["id"],
             "my_properties": [{"id": str(p["_id"]), "name": p.get("name"),

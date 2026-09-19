@@ -1,6 +1,18 @@
 # PropManage — CHANGELOG (Knowledge Sync · Digital Twin)
 
-Rol: jurnal cronologic al schimbărilor semnificative + sincronizărilor de cunoștințe. Documentele canonice (sursa de adevăr) rămân: `audits/PROPERTY_TWIN_CANONICAL_v1.0.md` (Digital Twin) și `audits/MASTER_PLATFORM_STATE.md` (stare platformă). Separă mereu: LIVE/DEPLOYED · PREVIEW/BUILT · PLANNED/NEXT · IDEA/FUTURE.
+Rol: jurnal cronologic al schimbărilor semnificative + sincronizărilor de cunoștințe. Documentele canonice (sursa de adevăr) rămân: `audits/PROPERTY_TWIN_CANONICAL_v1.0.md` (Digital Twin), `audits/FAZA_10C_DOCUMENT_PROPERTY_SUPPORT.md` (Document↔Property 10C) și `audits/MASTER_PLATFORM_STATE.md` (stare platformă). Separă mereu: LIVE/DEPLOYED · PREVIEW/BUILT · PLANNED/NEXT · IDEA/FUTURE.
+
+---
+
+## 2026-09 · FAZA 10C — DOCUMENT_PROPERTY_SUPPORT — CLOSED / PASS — PREVIEW/BUILT (payload-only)
+
+Orchestrator pur Document↔Property peste 9C. Fără persistare, fără endpoint, fără UI.
+
+**Knowledge Center (canonic):** `memory/audits/FAZA_10C_DOCUMENT_PROPERTY_SUPPORT.md` (categoria Platform Audits). Înregistrat în `SSOT_REGISTRY` + `CANONICAL_SYSTEM_REGISTRY` + `INDEX.md`.
+
+**Cod:** `backend/document_property_support.py` · teste `backend/tests/test_document_property_support_iter238.py` (42 passed). Regression izolată 197 passed. Combined 239. 9C și Evidence Contract neschimbate.
+
+**Reguli păstrate:** SUPPORTING ≠ VERIFIED; 8↔8D este singurul PARTIAL acceptat; G10↔8D rămâne INDETERMINATE. Next (neimplementat): Document↔Building · Operator Review · Identity Gate.
 
 ---
 

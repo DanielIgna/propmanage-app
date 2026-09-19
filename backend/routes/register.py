@@ -163,6 +163,7 @@ from routes.community_buildings import router as community_buildings_router
 from routes.building_admin import router as building_admin_router
 from routes.hartablocuri import router as hartablocuri_router, public_router as hartablocuri_public_router
 from routes.geocoding import router as geocoding_router
+from routes.building_identity import router as building_identity_router
 from routes.launch_sentinel import router as launch_sentinel_router
 from routes.prop_benefits import user_router as prop_benefits_user_router, admin_router as prop_benefits_admin_router
 from routes.storage import user_router as storage_user_router, admin_router as storage_admin_router
@@ -346,6 +347,7 @@ ALL_ROUTERS = (
     hartablocuri_router,
     hartablocuri_public_router,
     geocoding_router,
+    building_identity_router,
     launch_sentinel_router,
     prop_benefits_user_router,
     prop_benefits_admin_router,

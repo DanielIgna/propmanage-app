@@ -344,11 +344,19 @@ async def attach_or_create_building_context(
         b = await db.buildings.find_one({"_id": existing["_id"]})
         return {"building": _serialize_building(b), "attached": True, "created": False}
 
-    # Creează building nou minimal — non-destructiv, refolosește adresa proprietății
-    name = (data.name or prop.get("name") or "Clădire").strip()
-    address = (data.address or prop.get("address") or "").strip()
-    if not address:
+    # Building identity must be building-level. Do not copy Property sc/ap into a new Building.
+    name = (data.name or "").strip() or None
+    address = (data.address or "").strip() or None
+    from building_identity import granular_create_guard
+    proposed_name = name or (prop.get("name") or "Clădire").strip()
+    proposed_address = address or (prop.get("address") or "").strip()
+    blocked = await granular_create_guard(
+        db, name=proposed_name, address=proposed_address, city=data.city or prop.get("city"))
+    if blocked:
+        raise HTTPException(409, blocked)
+    if not proposed_address:
         raise HTTPException(400, "Adresa clădirii este obligatorie")
+    name, address = proposed_name, proposed_address
     doc = {
         "name": name,
         "address": address,
@@ -659,6 +667,7 @@ async def _compute_transaction_readiness(prop_id: str, prop: dict) -> dict:
         {"property_id": prop_id, "deleted": {"$ne": True}, "superseded": {"$ne": True}}
     ).to_list(500)
     cats = {d.get("category") for d in docs}
+    # Legacy role-verified list (uploader admin/operator). This does NOT mean content_verified.
     verified_docs = [d for d in docs if d.get("verification_status") == "verified"]
 
     assets_active = await db.property_assets.count_documents(
@@ -775,7 +784,7 @@ async def _compute_transaction_readiness(prop_id: str, prop: dict) -> dict:
         "id": "verification",
         "label": "Verificare documente",
         "status": st,
-        "detail": f"{len(verified_docs)} documente verificate",
+        "detail": f"{len(verified_docs)} documente acceptate în fluxul actual",
     })
 
     # 8. Building context
@@ -866,6 +875,7 @@ async def technical_record(prop_id: str, user: dict = Depends(get_current_user))
         {"property_id": prop_id, "status": "active"}
     )
 
+    # Legacy role-verified count (uploader admin/operator). This does NOT mean content_verified.
     verified_docs = sum(1 for d in docs if d.get("verification_status") == "verified")
 
     property_core = {

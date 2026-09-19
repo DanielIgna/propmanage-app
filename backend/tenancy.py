@@ -90,6 +90,7 @@ TIER3_SYSTEM_OPS = {
     "client_copilot_cache", "it_copilot_reports", "marketplace_copilot_reports",
     "marketplace_intel_recos", "ai_documents", "ab_experiments",
     "audit_anomalies", "automation_executions", "kg_entity_registry",
+    "hartablocuri_source_records", "import_batches",
 }
 
 

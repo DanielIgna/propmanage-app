@@ -1,10 +1,138 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Building2, Users, Search, Plus, Sparkles, Check, Megaphone } from "lucide-react";
+import { Building2, Users, Search, Plus, Sparkles, Check, Megaphone, ExternalLink } from "lucide-react";
 import { API } from "../pages/DashShared";
 import { formatApiError } from "../auth";
 import { GREEN, CTA, Sheet } from "../pages/clientv2/ui";
 import { trackIntent } from "../lib/analytics";
+
+const hbField = (label, value) => {
+  if (value === null || value === undefined || value === "") return null;
+  return (
+    <div className="flex justify-between gap-3 text-[11px]">
+      <span className="text-slate-400">{label}</span>
+      <span className="font-bold text-slate-700 text-right">{String(value)}</span>
+    </div>
+  );
+};
+
+const CandidateCard = ({ candidate, propertyId, stair, apartment, onDone }) => {
+  const [loading, setLoading] = useState(false);
+  const hb = candidate.hartablocuri || {};
+  const fields = hb.fields || {};
+  const confirm = async (yes) => {
+    setLoading(true);
+    try {
+      if (yes) {
+        await axios.post(`${API}/buildings/identity/confirm`, {
+          property_id: propertyId,
+          building_id: candidate.building_id,
+          stair: stair || undefined,
+          apartment: apartment || undefined,
+          resolver_status: candidate.status,
+          matched_by: candidate.matched_by,
+        });
+        trackIntent("building_identity_confirmed");
+      } else {
+        await axios.post(`${API}/buildings/identity/reject`, {
+          property_id: propertyId,
+          building_id: candidate.building_id,
+        });
+        trackIntent("building_identity_rejected");
+      }
+      onDone();
+    } catch (e) { alert(formatApiError(e)); }
+    finally { setLoading(false); }
+  };
+  return (
+    <div className="mt-3 rounded-3xl border-2 border-amber-100 bg-amber-50/50 p-4" data-testid={`bh-identity-candidate-${candidate.building_id}`}>
+      <div className="text-[11px] font-black uppercase tracking-wider text-amber-700">
+        Am identificat o posibilă clădire asociată adresei dvs.
+      </div>
+      <div className="mt-2 text-sm font-black text-slate-900">{candidate.name || "Clădire"}</div>
+      <div className="text-[11px] text-slate-500">{candidate.address}</div>
+      {(candidate.differences || []).length > 0 && (
+        <p className="mt-2 text-[11px] text-slate-500">
+          Adresa dvs. poate diferi de sursa externă
+          {(candidate.differences || []).filter(d => d.field === "address_number").map(d =>
+            ` (${d.client} vs. ${d.hartablocuri})`).join("")}.
+        </p>
+      )}
+      <div className="mt-3 space-y-1 rounded-2xl bg-white/80 p-3">
+        <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Date externe disponibile</div>
+        {hbField("Regim", fields.height_regime)}
+        {hbField("Lift", fields.lift)}
+        {hbField("Scări", fields.stairs)}
+        {hbField("Apartamente", fields.apartments)}
+        {hbField("An estimat", fields.year_estimated)}
+        {hbField("Structură", fields.structure)}
+        {hbField("Eră / tipologie", fields.era || fields.project)}
+        {(hb.plans || []).length > 0 && (
+          <div className="pt-1 text-[11px] text-slate-500">Plan disponibil · referință externă HartaBlocuri</div>
+        )}
+      </div>
+      <p className="mt-2 text-[11px] text-slate-500">{hb.disclaimer || "Aceste informații provin din HartaBlocuri și nu au fost verificate de PropManage."}</p>
+      <div className="mt-3 flex gap-2">
+        <button disabled={loading} onClick={() => confirm(true)} data-testid="bh-identity-confirm"
+          className="flex-1 py-2.5 rounded-full text-xs font-black text-white" style={{ background: GREEN }}>
+          Acesta este blocul meu
+        </button>
+        <button disabled={loading} onClick={() => confirm(false)} data-testid="bh-identity-reject"
+          className="flex-1 py-2.5 rounded-full bg-white border border-slate-200 text-xs font-bold text-slate-500">
+          Nu este blocul meu
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const BloculMeuProfile = ({ profile }) => {
+  if (!profile) return null;
+  const hb = (profile.observations || {}).hartablocuri;
+  const fields = (hb && hb.fields) || {};
+  const loc = profile.display_location || {};
+  const plans = (hb && hb.plans) || [];
+  return (
+    <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5" data-testid="bh-blocul-meu">
+      <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Date despre clădire</div>
+      <div className="mt-2 space-y-1">
+        {hbField("Adresă", fields.address || profile.canonical?.address)}
+        {hbField("Cartier", fields.neighborhood)}
+        {hbField("Regim înălțime", fields.height_regime)}
+        {hbField("Lift", fields.lift)}
+        {hbField("Scări", fields.stairs)}
+        {hbField("Niveluri", fields.levels)}
+        {hbField("Apartamente", fields.apartments)}
+        {hbField("An estimat", fields.year_estimated)}
+        {hbField("Categorie / eră", fields.era)}
+        {hbField("Structură", fields.structure)}
+        {hbField("Tipologie / proiect", fields.project)}
+      </div>
+      {plans.length > 0 && (
+        <div className="mt-2 space-y-1">
+          {plans.map((p, i) => (
+            <a key={p.url || i} href={p.url} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1 text-[11px] font-bold" style={{ color: GREEN }}
+              data-testid={`bh-plan-${i}`}>
+              <ExternalLink className="w-3 h-3" /> Plan HartaBlocuri (sursă originală, neverificat)
+            </a>
+          ))}
+        </div>
+      )}
+      {loc.derived && loc.provenance_label && (
+        <p className="mt-2 text-[10px] text-slate-400">{loc.provenance_label}</p>
+      )}
+      {profile.disclaimer && (
+        <p className="mt-2 text-[11px] font-semibold text-amber-700">{profile.disclaimer}</p>
+      )}
+      {profile.relation?.confirmation_status === "declared" && (
+        <p className="mt-1 text-[10px] text-slate-400">
+          Ați confirmat că proprietatea aparține acestei clădiri. Datele tehnice rămân neverificate.
+        </p>
+      )}
+    </div>
+  );
+};
 
 const ConnectSheet = ({ properties, onClose, onDone }) => {
   const [q, setQ] = useState("");
@@ -12,6 +140,7 @@ const ConnectSheet = ({ properties, onClose, onDone }) => {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ name: "", address: "", city: "", property_id: properties[0]?.id || "" });
   const [loading, setLoading] = useState(false);
+  const [guard, setGuard] = useState(null);
 
   useEffect(() => {
     if (q.trim().length < 2) { setResults([]); return; }
@@ -38,7 +167,14 @@ const ConnectSheet = ({ properties, onClose, onDone }) => {
       await axios.post(`${API}/buildings`, form);
       trackIntent("building_created");
       onDone();
-    } catch (e2) { alert(formatApiError(e2)); }
+    } catch (e2) {
+      const detail = e2?.response?.data?.detail;
+      if (detail && typeof detail === "object" && detail.created === false) {
+        setGuard(detail);
+      } else {
+        alert(formatApiError(e2));
+      }
+    }
     finally { setLoading(false); }
   };
 
@@ -74,14 +210,36 @@ const ConnectSheet = ({ properties, onClose, onDone }) => {
               + Blocul meu nu există — îl creez
             </button>
           </>
+        ) : guard ? (
+          <div className="space-y-2" data-testid="bh-create-guard">
+            <p className="text-xs font-bold text-amber-700">{guard.message}</p>
+            {(guard.granularity?.stair || guard.granularity?.apartment) && (
+              <p className="text-[11px] text-slate-500">
+                {guard.granularity.stair ? `Scara ${guard.granularity.stair}` : ""}
+                {guard.granularity.stair && guard.granularity.apartment ? " · " : ""}
+                {guard.granularity.apartment ? `Apartament ${guard.granularity.apartment}` : ""}
+                {" "}rămân pe proprietate, nu pe clădire.
+              </p>
+            )}
+            {(guard.candidates || []).map(c => (
+              <CandidateCard key={c.building_id} candidate={c} propertyId={form.property_id}
+                stair={guard.granularity?.stair} apartment={guard.granularity?.apartment}
+                onDone={onDone} />
+            ))}
+            {(guard.candidates || []).length === 0 && (
+              <p className="text-[11px] text-slate-400">Introduceți numele și adresa clădirii fără scară sau apartament.</p>
+            )}
+            <button type="button" onClick={() => setGuard(null)} className="w-full py-2 text-xs font-bold text-slate-400">← Modifică adresa clădirii</button>
+          </div>
         ) : (
           <form onSubmit={create} className="space-y-3">
             <input required minLength={3} placeholder="Numele blocului (ex: Bloc A4, Aviației 22)" value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" data-testid="bh-create-name" />
-            <input required minLength={3} placeholder="Adresa" value={form.address}
+            <input required minLength={3} placeholder="Adresa clădirii (fără scară / apartament)" value={form.address}
               onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" data-testid="bh-create-address" />
+            <p className="text-[10px] text-slate-400">Scara și apartamentul rămân pe proprietate. Ex: „Aleea Negoiu nr. 8”, nu „8D sc 2 ap 25”.</p>
             <input placeholder="Orașul (opțional)" value={form.city}
               onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" data-testid="bh-create-city" />
@@ -151,9 +309,37 @@ export const BuildingHub = ({ properties = [], onRequestsChanged }) => {
   const [invitePreview, setInvitePreview] = useState(null);
   const [joinPropId, setJoinPropId] = useState("");
   const [copiedInvite, setCopiedInvite] = useState(null);
+  const [candidates, setCandidates] = useState([]);
 
   const load = () => axios.get(`${API}/buildings/mine`).then(r => setData(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!data) return;
+    const linked = new Set((data.my_properties || []).filter(p => p.building_id).map(p => p.id));
+    const unlinked = (properties || []).filter(p => p.id && p.address && !linked.has(p.id));
+    if (unlinked.length === 0) { setCandidates([]); return; }
+    let cancelled = false;
+    Promise.all(unlinked.slice(0, 3).map(p =>
+      axios.post(`${API}/buildings/identity/resolve`, {
+        address: p.address,
+        city: p.city || undefined,
+        property_id: p.id,
+      }).then(r => ({ property: p, result: r.data })).catch(() => null)
+    )).then(rows => {
+      if (cancelled) return;
+      const found = [];
+      (rows || []).forEach(row => {
+        if (!row) return;
+        const stair = row.result?.query?.stair;
+        (row.result?.candidates || []).forEach(c => {
+          found.push({ ...c, propertyId: row.property.id, stair });
+        });
+      });
+      setCandidates(found);
+    });
+    return () => { cancelled = true; };
+  }, [data, properties]);
 
   useEffect(() => {
     const bid = localStorage.getItem("pm_building_invite");
@@ -233,6 +419,10 @@ export const BuildingHub = ({ properties = [], onRequestsChanged }) => {
           </div>
         </div>
       )}
+      {candidates.length > 0 && candidates.map(c => (
+        <CandidateCard key={`${c.propertyId}-${c.building_id}`} candidate={c}
+          propertyId={c.propertyId} stair={c.stair} onDone={() => { setCandidates([]); load(); }} />
+      ))}
       {buildings.length === 0 ? (
         <button onClick={() => setShowConnect(true)} data-testid="bh-empty-cta"
           className="mt-3 w-full rounded-3xl border-2 border-dashed border-slate-200 bg-white p-5 text-left">
@@ -254,6 +444,7 @@ export const BuildingHub = ({ properties = [], onRequestsChanged }) => {
               {copiedInvite === b.id ? "Copiat" : "Invită vecini"}
             </button>
           </div>
+          <BloculMeuProfile profile={b.identity_profile} />
           {b.is_admin && (
             <a href="/administrator" data-testid={`bh-admin-link-${b.id}`}
               className="mt-3 flex items-center justify-between rounded-2xl bg-slate-900 px-4 py-3 text-white">

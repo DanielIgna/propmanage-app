@@ -18,7 +18,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from db import db
 from deps import get_current_user
 from routes.property_dna import _load_property_for
-from routes.property_documents import _completeness
+from routes.property_documents import _completeness, document_contributes_to_completeness
 from storage_client import get_object
 
 router = APIRouter(prefix="/api", tags=["property_passport"])
@@ -62,8 +62,8 @@ async def _trust_score(prop_id: str) -> dict:
         {"property_id": prop_id, "deleted": {"$ne": True}, "superseded": {"$ne": True}},
         {"category": 1, "provenance": 1, "verification_status": 1},
     ).to_list(500)
-    documented = [d for d in docs if d.get("provenance") == "documented" or d.get("verification_status") == "verified"]
-    cats = Counter(d.get("category") for d in docs)
+    documented = [d for d in docs if document_contributes_to_completeness(d)]
+    cats = Counter(d.get("category") for d in documented)
     twin = await db.twins.find_one({"property_id": prop_id}, {"status": 1})
     works = await db.requests.count_documents({"property_id": prop_id, "status": "confirmed"})
     warranties = await db.warranties.count_documents({"property_id": prop_id, "status": "active"})
@@ -205,7 +205,13 @@ async def _public_payload(prop: dict, request: Request) -> dict:
         "photo_url": f"/api/public/passport/{slug}/photo" if has_photo else None,
         "scores": {
             "trust": trust,
-            "completeness": {"score": compl["score"], "next_step": compl["next_step"], "docs_count": compl["docs_count"], "items": compl["items"]} if privacy["show_scores"] else None,
+            "completeness": {
+                "score": compl["score"], "next_step": compl["next_step"],
+                "docs_count": compl["docs_count"], "items": compl["items"],
+                "contributing_docs_count": compl.get("contributing_docs_count", 0),
+                "declared_unverified_count": compl.get("declared_unverified_count", 0),
+                "score_basis": compl.get("score_basis"),
+            } if privacy["show_scores"] else None,
             "maintenance": _maintenance_score(prop) if privacy["show_scores"] else None,
         },
         "badges": badges,

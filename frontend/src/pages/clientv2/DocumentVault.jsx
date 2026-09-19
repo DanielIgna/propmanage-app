@@ -13,7 +13,9 @@ import { StorageUsageCard } from "../../components/StorageUsageCard";
 const CAT_ICONS = { foto: ImageIcon, video: ImageIcon };
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString("ro-RO", { day: "numeric", month: "short", year: "numeric" }) : "—");
 const fmtSize = (b) => (b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
-const SOURCE_LABEL = { owner_upload: "Declarat de proprietar", specialist: "Adăugat de specialist", platform: "Verificat de platformă" };
+const SOURCE_LABEL = { owner_upload: "Declarat de proprietar", specialist: "Adăugat de specialist", platform: "Acceptat de platformă" };
+const ROLE_VERIFIED_HINT =
+  "Documentul a fost acceptat în fluxul actual al platformei pe baza rolului/provenienței. Acest statut nu confirmă autenticitatea sau conținutul documentului.";
 
 // ── Celebrarea primului document — moment semnătură (EO CX-2) ────────────────
 const MemoryCelebration = ({ score, onClose }) => (
@@ -26,9 +28,13 @@ const MemoryCelebration = ({ score, onClose }) => (
       </div>
       <h2 className="mt-6 text-3xl font-black text-white leading-tight">Casa ta are acum memorie.</h2>
       <p className="mt-3 text-sm text-lime-100/80">Istoria proprietății tale a început oficial. Fiecare document rămâne salvat permanent în cartea casei.</p>
-      {score != null && (
+      {score != null && score > 0 ? (
         <div className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-bold" data-testid="celebration-score">
-          <BadgeCheck className="w-4 h-4 text-[#d4ff3a]" /> Casa ta e {score}% documentată
+          <BadgeCheck className="w-4 h-4 text-[#d4ff3a]" /> Completitudine acceptată: {score}%
+        </div>
+      ) : (
+        <div className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-bold" data-testid="celebration-score">
+          <BadgeCheck className="w-4 h-4 text-[#d4ff3a]" /> Document adăugat — încă neverificat
         </div>
       )}
       <button onClick={onClose} data-testid="celebration-continue"
@@ -224,8 +230,11 @@ const DocSheet = ({ docId, onClose, onChanged }) => {
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-[#F0FBF4] text-[#166534]">
           <ShieldCheck className="w-3 h-3" /> {SOURCE_LABEL[d.source] || d.source}
         </span>
-        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide ${d.verification_status === "verified" ? "bg-[#d4ff3a] text-black" : "bg-slate-100 text-slate-500"}`}>
-          {d.verification_status === "verified" ? "Verificat" : "Neverificat"}
+        <span
+          title={d.verification_status === "verified" ? ROLE_VERIFIED_HINT : undefined}
+          data-testid="vault-doc-role-status"
+          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide ${d.verification_status === "verified" ? "bg-[#d4ff3a] text-black" : "bg-slate-100 text-slate-500"}`}>
+          {d.verification_status === "verified" ? "Acceptat de platformă" : "Neverificat"}
         </span>
         <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-slate-100 text-slate-500">
           {d.provenance === "documented" ? "Documentat" : "Declarat"}
@@ -400,7 +409,10 @@ export const DocumentVaultCard = ({ prop }) => {
         {compl && (
           <div className="text-right" data-testid="vault-score">
             <div className="text-xl font-black" style={{ color: GREEN }}>{compl.score}%</div>
-            <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">documentată</div>
+            <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">acceptată</div>
+            <div className="text-[9px] text-slate-400" data-testid="vault-docs-split">
+              {compl.docs_count ?? 0} adăugate · {compl.contributing_docs_count ?? 0} acceptate
+            </div>
           </div>
         )}
       </div>
@@ -417,8 +429,12 @@ export const DocumentVaultCard = ({ prop }) => {
           data-testid="vault-next-step"
           className="mt-3 w-full flex items-center gap-2 p-3 rounded-2xl bg-[#F0FBF4] border border-[#D2F2DC] text-left">
           <Sparkles className="w-4 h-4 shrink-0 text-[#166534]" />
-          <span className="flex-1 text-xs font-bold text-slate-700">Pasul următor: {nextStep.label}</span>
-          <span className="shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full text-black" style={{ background: "#d4ff3a" }}>+{nextStep.expected_gain}%</span>
+          <span className="flex-1 text-xs font-bold text-slate-700">
+            {nextStep.declared_pending ? `${nextStep.label} — adăugat, neverificat` : `Pasul următor: ${nextStep.label}`}
+          </span>
+          {!nextStep.declared_pending && (
+            <span className="shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full text-black" style={{ background: "#d4ff3a" }}>+{nextStep.expected_gain}%</span>
+          )}
         </button>
       )}
 

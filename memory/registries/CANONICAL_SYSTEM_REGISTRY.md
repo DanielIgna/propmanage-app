@@ -3,7 +3,7 @@
 **Artifact Type**: REGISTRY
 **Owner**: Fondator (danieligna1@gmail.com)
 **Status**: LIVE
-**Last update**: Iun 2026 (creat ca livrabil al Governance Hardening post-Task 8R)
+**Last update**: 2026-09-19 (adăugat Document↔Property Support 10C; rândurile Task 7/8/8R rămân neschimbate)
 **Purpose**: Registrul canonic sistem → implementare. Răspunde la întrebarea „există deja?" ÎNAINTE de orice implementare. Complementar cu `SSOT_REGISTRY.md` (topic → document) și `FUNCTION_MAP.md` (capabilități → status).
 **Schema**: Sistem · Implementare canonică · Source of Truth · Rute API · Consumer frontend · Docs KC · Status · Verificat ultima dată
 
@@ -38,6 +38,8 @@
 | Property DNA (knowledge layer) | `property_dna.py` | proiecție read-only (Capability Map) | `GET /api/properties/{id}/dna` | DNA UI | `STRATEGIC_AUDIT_PROPERTY_TWIN_2026-08-28.md` §2 | CANONICAL — motoarele AI citesc DNA, nu structura fizică | Aug 2026 |
 | Knowledge Graph (relații) | `kg/links.py`, `routes/kg.py` | `db.entity_links` | `kg.link/unlink/links_of` (admin) | — | `PROPERTY_TWIN_CANONICAL_v1.0.md` §3 | CANONICAL — relațiile canonice (nu FK împrăștiate) | Aug 2026 |
 | Trust Model 015 (provenance) | `source`/`confidence`/`verification_status` pe assets/DNA/`digital_twin_models` | câmpuri pe documente | via PATCH model/asset | Trust badges | `PROPERTY_TWIN_CANONICAL_v1.0.md` §4 | CANONICAL — INFERRED→DOCUMENTED→VERIFIED; AI nu setează verified | Aug 2026 |
+| Document↔Property Support (Faza 10C) | `backend/document_property_support.py` | payload-only (fără colecție DB) | **niciun endpoint** | **niciun UI** | `memory/audits/FAZA_10C_DOCUMENT_PROPERTY_SUPPORT.md` | CANONICAL — orchestrator pur peste 9C; SUPPORTING≠VERIFIED; fără winner | 2026-09-19 (42+197 teste) |
+| Claim Matching (Faza 9C) | `backend/claim_matching.py` | MatchResult in-process (fără colecție DB) | **niciun endpoint public** | **niciun UI** | `memory/audits/FAZA_10C_DOCUMENT_PROPERTY_SUPPORT.md` (10C este consumatorul înregistrat; 9C nu are încă doc KC propriu) | CANONICAL — singurul comparator Evidence↔Claim | 2026-09-19 |
 
 ## Cum adaugi un rând
 1. Verifică că sistemul NU are deja rând (sau că rândul existent trebuie actualizat, nu duplicat).

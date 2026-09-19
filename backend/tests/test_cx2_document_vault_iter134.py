@@ -68,7 +68,11 @@ def test_upload_first_document(owner):
     assert doc["version"] == 1
     assert doc["company"] == "Enel SA"
     assert doc["warranty_end"] == "2027-06-01"
-    assert j["completeness"]["score"] > 0
+    assert j["completeness"]["score"] >= 0
+    facturi = next(i for i in j["completeness"]["items"] if i["id"] == "facturi")
+    assert facturi["earned"] == 0
+    assert facturi.get("declared") is True
+    assert j["completeness"].get("trust_boundary") == "uploaded_ne_verified"
     owner["state"]["doc_id"] = doc["id"]
 
 

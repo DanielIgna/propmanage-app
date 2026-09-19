@@ -2,7 +2,7 @@
 
 **Artifact Type**: REGISTRY
 **Owner**: Fondator (danieligna1@gmail.com)
-**Last Review**: 2026-02-06
+**Last Review**: 2026-09-19
 **Schema**: Topic · OwnerDocument · AuthorityTier · Status · LastReview · Notes
 **Purpose**: Enumerates the Single-Source-of-Truth mapping for every governance topic on PropManage. For any listed topic, the row's `OwnerDocument` is the canonical statement — any other document that references the topic must defer to it.
 
@@ -32,3 +32,4 @@
 | Canonical System Registry | memory/registries/CANONICAL_SYSTEM_REGISTRY.md | Enterprise Standard | Active | 2026-06 | Registrul sistem → implementare canonică (SoT, rute, DB, consumeri). Obligatoriu în preflight. |
 | Preflight Gate (pre-implementare) | memory/prompts/PREFLIGHT_GATE.md | Enterprise Standard | Active | 2026-06 | Poartă obligatorie: Knowledge before Code, Change Intent, Conflict Protocol, politica de audit. Post-Task 8R. |
 | Property Twin Architecture (2D+3D · Anchor) | memory/audits/PROPERTY_TWIN_CANONICAL_v1.0.md | Enterprise Standard | Active | 2026-06 | Taxonomie umbrelă 2D(`twins`)+3D(`digital_twin_projects`). P0/P1/P0.1 Property Anchor = PRODUCTION-LIVE. §9: Next Stage I/II/III (AI Design Concepts, validare profesională, Q&A grounded, ancorare în masă, comparație, ofertă din concept validat, notificare, materiale reale/City Partners, catalog admin, alegere câștigător, concept în pașaport, ofertă cu poze) = DELIVERED IN PREVIEW (redeploy Fondator pt. LIVE). Reguli integritate + City Partner Products + known issue `.skp`/Trimble + next roadmap. Deprecă orice referință la `twins` ca „legacy/migrat". |
+| DOCUMENT_PROPERTY_SUPPORT (Faza 10C) | memory/audits/FAZA_10C_DOCUMENT_PROPERTY_SUPPORT.md | Enterprise Standard | Active | 2026-09-19 | Orchestrator pur Document↔Property. Status CLOSED / PASS. SUPPORTING ≠ VERIFIED. 9C rămâne singurul comparator. Fără persistare / endpoint / UI. G10↔8D rămâne INDETERMINATE. |

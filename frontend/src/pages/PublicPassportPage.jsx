@@ -153,7 +153,7 @@ export default function PublicPassportPage() {
         {data.scores.completeness && (
           <section className="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-3" data-testid="passport-scores">
             <ScoreRing value={trust.score} label="Scor de încredere" sub="doar dovezi verificabile" testid="passport-trust-score" />
-            <ScoreRing value={data.scores.completeness.score} label="Casă documentată" sub={`${data.scores.completeness.docs_count} documente în cartea casei`} testid="passport-completeness" />
+            <ScoreRing value={data.scores.completeness.score} label="Completitudine acceptată" sub={`${data.scores.completeness.docs_count ?? 0} adăugate · ${data.scores.completeness.contributing_docs_count ?? 0} acceptate`} testid="passport-completeness" />
             {data.scores.maintenance
               ? <ScoreRing value={data.scores.maintenance.score} label={data.scores.maintenance.label} sub={data.scores.maintenance.source} testid="passport-maintenance" />
               : <div className="glass rounded-3xl p-5 text-center hidden sm:block"><Sparkles className="w-6 h-6 mx-auto text-[#d4ff3a]" /><div className="mt-2 text-xs text-stone-400">Istoria acestei case se scrie pe PropManage</div></div>}

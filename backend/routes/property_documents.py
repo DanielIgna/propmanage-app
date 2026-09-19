@@ -15,6 +15,8 @@ from fastapi.responses import Response
 
 from db import db
 from deps import get_current_user
+from document_fact_extraction import extract_for_vault_upload, fields_for_new_document_version
+from evidence_semantics import vault_document_semantics
 from event_bus import emit
 from routes.property_dna import _load_property_for
 from storage_client import get_object, put_object
@@ -48,15 +50,42 @@ DOC_FIELDS = [
     "id", "property_id", "title", "category", "category_label", "filename", "content_type", "size",
     "building_system", "room", "doc_date", "uploaded_at", "author_name", "company", "specialist_id",
     "source", "provenance", "warranty_start", "warranty_end", "supplier", "tags", "notes",
-    "related_request_id", "related_asset_id", "related_model_id", "related_room_id", "verification_status", "version", "prev_version_id", "history",
+    "related_request_id", "related_asset_id", "related_model_id", "related_room_id", "verification_status",
+    "declared_category", "version", "prev_version_id", "history",
+    "extracted_facts", "extraction_status",
 ]
+
+def declared_category_of(doc: dict) -> str:
+    """User-selected category. Existing rows use `category`; new rows also store declared_category."""
+    return (doc.get("declared_category") or doc.get("category") or "") or ""
+
+
+def document_contributes_to_completeness(doc: dict) -> bool:
+    """CONTRIBUTING ≠ VERIFIED (Evidence Contract).
+
+    Client declared + unverified documents are stored but do not earn completeness points.
+    Current platform process is unchanged for:
+      * verification_status == verified  → role_verified (legacy role state, not content_verified)
+      * provenance == documented         → privileged_declared (may contribute, not content_verified)
+    """
+    if doc.get("deleted") or doc.get("superseded"):
+        return False
+    status = str(doc.get("verification_status") or "").lower()
+    provenance = str(doc.get("provenance") or "").lower()
+    if status == "verified":
+        return True
+    if provenance == "documented":
+        return True
+    return False
 
 
 def _out(d: dict) -> dict:
     d = dict(d)
     d["id"] = str(d.pop("_id"))
     d["category_label"] = CATEGORIES.get(d.get("category"), d.get("category"))
-    return {k: d.get(k) for k in DOC_FIELDS}
+    out = {k: d.get(k) for k in DOC_FIELDS}
+    out["contract"] = vault_document_semantics(d)
+    return out
 
 
 async def _load_doc_for(user: dict, doc_id: str) -> dict:
@@ -70,13 +99,37 @@ async def _load_doc_for(user: dict, doc_id: str) -> dict:
     return doc
 
 
+def _category_presence(docs: list) -> tuple[Counter, Counter]:
+    present, trusted = Counter(), Counter()
+    for d in docs:
+        cat = declared_category_of(d)
+        if not cat:
+            continue
+        present[cat] += 1
+        if document_contributes_to_completeness(d):
+            trusted[cat] += 1
+    return present, trusted
+
+
+def _doc_item(iid, label, earned, mx, action, *, declared: bool):
+    presence = "trusted" if earned > 0 else ("declared_only" if declared else "none")
+    return {
+        "id": iid, "label": label, "earned": earned, "max": mx,
+        "done": earned >= mx, "action": action,
+        "declared": declared, "presence": presence,
+    }
+
+
 # ── Property Completeness Score (0–100) — semnale REALE, zero estimări ──────
+# Document-category points require trusted documentation (verified or documented).
+# Mere client uploads (declared + unverified) count as presence, not score.
 async def _completeness(prop_id: str, prop: dict) -> dict:
     docs = await db.property_documents.find(
         {"property_id": prop_id, "deleted": {"$ne": True}, "superseded": {"$ne": True}}
     ).to_list(500)
-    cats = Counter(d.get("category") for d in docs)
-    photos = cats.get("foto", 0)
+    present, trusted = _category_presence(docs)
+    photos = trusted.get("foto", 0)
+    photos_declared = present.get("foto", 0)
 
     twin = await db.twins.find_one({"property_id": prop_id})
     assets = await db.property_assets.count_documents({"property_id": prop_id, "status": "active"})
@@ -87,34 +140,50 @@ async def _completeness(prop_id: str, prop: dict) -> dict:
 
     items = []
 
-    def add(iid, label, earned, mx, action):
-        items.append({"id": iid, "label": label, "earned": earned, "max": mx, "done": earned >= mx, "action": action})
+    def add_doc(iid, label, earned, mx, action, *cats):
+        declared = any(present.get(c) for c in cats)
+        items.append(_doc_item(iid, label, earned, mx, action, declared=declared))
 
-    add("act_proprietate", "Act de proprietate", 10 if cats.get("act_proprietate") else 0, 10, "upload:act_proprietate")
-    add("cadastru", "Cadastru / Carte funciară", 6 if cats.get("cadastru") else 0, 6, "upload:cadastru")
-    add("certificat_energetic", "Certificat energetic", 6 if cats.get("certificat_energetic") else 0, 6, "upload:certificat_energetic")
-    add("plan_tehnic", "Plan / schiță tehnică", 6 if cats.get("plan_tehnic") else 0, 6, "upload:plan_tehnic")
-    add("foto", "Fotografii ale casei (min. 3)", 7 if photos >= 3 else (3 if photos else 0), 7, "upload:foto")
-    add("garantii_manuale", "Garanții / manuale echipamente", 5 if (cats.get("garantie") or cats.get("manual")) else 0, 5, "upload:garantie")
-    add("facturi", "Facturi / contracte lucrări", 5 if (cats.get("factura") or cats.get("contract")) else 0, 5, "upload:factura")
+    def add(iid, label, earned, mx, action):
+        items.append(_doc_item(iid, label, earned, mx, action, declared=False))
+
+    add_doc("act_proprietate", "Act de proprietate", 10 if trusted.get("act_proprietate") else 0, 10, "upload:act_proprietate", "act_proprietate")
+    add_doc("cadastru", "Cadastru / Carte funciară", 6 if trusted.get("cadastru") else 0, 6, "upload:cadastru", "cadastru")
+    add_doc("certificat_energetic", "Certificat energetic", 6 if trusted.get("certificat_energetic") else 0, 6, "upload:certificat_energetic", "certificat_energetic")
+    add_doc("plan_tehnic", "Plan / schiță tehnică", 6 if trusted.get("plan_tehnic") else 0, 6, "upload:plan_tehnic", "plan_tehnic")
+    add_doc("foto", "Fotografii ale casei (min. 3)", 7 if photos >= 3 else (3 if photos else 0), 7, "upload:foto", "foto")
+    add_doc("garantii_manuale", "Garanții / manuale echipamente", 5 if (trusted.get("garantie") or trusted.get("manual")) else 0, 5, "upload:garantie", "garantie", "manual")
+    add_doc("facturi", "Facturi / contracte lucrări", 5 if (trusted.get("factura") or trusted.get("contract")) else 0, 5, "upload:factura", "factura", "contract")
     add("twin", "Digital Twin validat", 12 if (twin or {}).get("status") == "approved" else (5 if twin else 0), 12, "twin")
     add("assets", "Instalații mapate (min. 3)", 12 if assets >= 3 else (6 if assets else 0), 12, "assets")
     add("dna_attrs", "Atribute DNA completate (min. 3)", 6 if dna_attrs >= 3 else (3 if dna_attrs else 0), 6, "dna")
     add("works", "Prima lucrare prin platformă", 10 if works_confirmed else 0, 10, "request")
     add("warranty", "Garanție activă", 5 if warranties else 0, 5, "request")
     add("maintenance", "Jurnal de mentenanță", 5 if maint else 0, 5, "maintenance")
-    add("audit", "Raport de inspecție / audit tehnic", 5 if cats.get("raport_inspectie") else 0, 5, "upload:raport_inspectie")
+    add_doc("audit", "Raport de inspecție / audit tehnic", 5 if trusted.get("raport_inspectie") else 0, 5, "upload:raport_inspectie", "raport_inspectie")
 
     score = sum(i["earned"] for i in items)
     missing = sorted([i for i in items if not i["done"]], key=lambda i: i["max"] - i["earned"], reverse=True)
     next_step = None
     if missing:
         m = missing[0]
-        next_step = {"id": m["id"], "label": m["label"], "action": m["action"], "expected_gain": m["max"] - m["earned"]}
+        next_step = {
+            "id": m["id"], "label": m["label"], "action": m["action"],
+            "expected_gain": m["max"] - m["earned"],
+            "declared_pending": bool(m.get("declared") and m.get("presence") == "declared_only"),
+        }
+    contributing_n = sum(1 for d in docs if document_contributes_to_completeness(d))
+    declared_unverified_n = len(docs) - contributing_n
     return {
         "property_id": prop_id, "score": score, "max": 100, "items": items,
-        "missing": [{"id": m["id"], "label": m["label"], "gain": m["max"] - m["earned"]} for m in missing[:6]],
-        "next_step": next_step, "docs_count": len(docs), "photos_count": photos,
+        "missing": [{"id": m["id"], "label": m["label"], "gain": m["max"] - m["earned"],
+                     "declared_pending": bool(m.get("declared") and m.get("presence") == "declared_only")}
+                    for m in missing[:6]],
+        "next_step": next_step, "docs_count": len(docs), "photos_count": photos_declared,
+        "contributing_docs_count": contributing_n,
+        "declared_unverified_count": declared_unverified_n,
+        "score_basis": "accepted_documentation",
+        "trust_boundary": "uploaded_ne_verified",
     }
 
 
@@ -178,6 +247,7 @@ async def upload_document(
         "owner_id": str(prop.get("owner_id")),
         "title": (title or "").strip() or (file.filename or "Document").rsplit(".", 1)[0],
         "category": category,
+        "declared_category": category,
         "filename": file.filename,
         "content_type": content_type,
         "size": len(data),
@@ -211,6 +281,25 @@ async def upload_document(
     }
     ins = await db.property_documents.insert_one(doc)
     doc["_id"] = ins.inserted_id
+    try:
+        extracted = extract_for_vault_upload(
+            data,
+            content_type=content_type,
+            declared_category=category,
+            source_document=str(ins.inserted_id),
+        )
+        doc["extracted_facts"] = extracted["extracted_facts"]
+        doc["extraction_status"] = extracted["extraction_status"]
+        await db.property_documents.update_one(
+            {"_id": ins.inserted_id},
+            {"$set": {
+                "extracted_facts": extracted["extracted_facts"],
+                "extraction_status": extracted["extraction_status"],
+            }},
+        )
+    except Exception:  # noqa: BLE001
+        doc["extracted_facts"] = []
+        doc["extraction_status"] = "failed"
 
     await storage_service.add_usage(owner_id, len(data), "personal")
     if content_type.startswith("video/"):
@@ -316,6 +405,8 @@ async def update_document(doc_id: str, body: dict = Body(...), user: dict = Depe
     if not changes:
         return {"document": _out(doc)}
     sets = {k: v["new"] for k, v in changes.items()}
+    if "category" in sets:
+        sets["declared_category"] = sets["category"]
     entry = {"at": datetime.now(timezone.utc).isoformat(), "by": user.get("name"), "event": "edit",
              "changes": {k: [v["old"], v["new"]] for k, v in changes.items()}}
     await db.property_documents.update_one({"_id": doc["_id"]}, {"$set": sets, "$push": {"history": entry}})
@@ -340,7 +431,7 @@ async def upload_new_version(doc_id: str, file: UploadFile = File(...), user: di
     path = f"propmanage/properties/{doc['property_id']}/{uuid.uuid4().hex}.{ext}"
     result = await asyncio.to_thread(put_object, path, data, ALLOWED_EXT[ext])
     now = datetime.now(timezone.utc).isoformat()
-    new_doc = {**{k: doc.get(k) for k in doc if k != "_id"}}
+    new_doc = fields_for_new_document_version(doc)
     new_doc.update({
         "filename": file.filename, "content_type": ALLOWED_EXT[ext], "size": len(data),
         "storage_path": result["path"], "uploaded_at": now, "version": (doc.get("version") or 1) + 1,
@@ -349,6 +440,25 @@ async def upload_new_version(doc_id: str, file: UploadFile = File(...), user: di
     })
     ins = await db.property_documents.insert_one(new_doc)
     new_doc["_id"] = ins.inserted_id
+    try:
+        extracted = extract_for_vault_upload(
+            data,
+            content_type=ALLOWED_EXT[ext],
+            declared_category=declared_category_of(new_doc),
+            source_document=str(ins.inserted_id),
+        )
+        new_doc["extracted_facts"] = extracted["extracted_facts"]
+        new_doc["extraction_status"] = extracted["extraction_status"]
+        await db.property_documents.update_one(
+            {"_id": ins.inserted_id},
+            {"$set": {
+                "extracted_facts": extracted["extracted_facts"],
+                "extraction_status": extracted["extraction_status"],
+            }},
+        )
+    except Exception:  # noqa: BLE001
+        new_doc["extracted_facts"] = []
+        new_doc["extraction_status"] = "failed"
     await db.property_documents.update_one({"_id": doc["_id"]}, {"$set": {"superseded": True}})
     await storage_service.add_usage(str(doc.get("owner_id")), len(data), "personal")
     if ALLOWED_EXT[ext].startswith("video/"):

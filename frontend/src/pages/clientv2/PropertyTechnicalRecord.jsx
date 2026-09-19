@@ -112,7 +112,7 @@ const PropertyCoreSection = ({ core }) => {
       <div className="rounded-2xl border border-slate-100 bg-white p-4">
         <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Rezumat tehnic</div>
         <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <SummaryTile label="Documente" value={stats.documents ?? 0} sub={`${stats.documents_verified ?? 0} verificate`} />
+          <SummaryTile label="Documente" value={stats.documents ?? 0} sub={`${stats.documents_verified ?? 0} acceptate în fluxul actual`} />
           <SummaryTile label="Active" value={stats.assets_active ?? 0} sub="echipamente" />
           <SummaryTile label="Cereri" value={stats.requests ?? 0} sub="lucrări totale" />
           <SummaryTile label="Garanții" value={stats.warranties_active ?? 0} sub="active" />
@@ -296,6 +296,7 @@ const BuildingContextSection = ({ propId, initial, vocab, viewer, onSaved }) => 
   const [neighbours, setNeighbours] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [pendingBuilding, setPendingBuilding] = useState(null);
+  const [guard, setGuard] = useState(null);
 
   useEffect(() => {
     setBuilding(initial);
@@ -316,9 +317,16 @@ const BuildingContextSection = ({ propId, initial, vocab, viewer, onSaved }) => 
       const res = await axios.post(`${API}/properties/${propId}/building-context`, payload);
       setBuilding(res.data.building);
       setEditing(false);
+      setGuard(null);
       onSaved?.(res.data.building);
     } catch (e) {
-      alert(formatApiError(e));
+      const detail = e?.response?.data?.detail;
+      if (detail && typeof detail === "object" && detail.created === false) {
+        setGuard(detail);
+        setSearchOpen(true);
+      } else {
+        alert(formatApiError(e));
+      }
     } finally {
       setBusy(false);
     }
@@ -424,6 +432,27 @@ const BuildingContextSection = ({ propId, initial, vocab, viewer, onSaved }) => 
             </div>
             <TextInput label="Referință sursă (URL/ID)" value={form.source_reference}
               onChange={v => setForm({ ...form, source_reference: v })} testid="ptr-b-src-ref" />
+            {guard && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-1.5" data-testid="ptr-building-guard">
+                <p className="text-[11px] font-bold text-amber-800">{guard.message}</p>
+                {(guard.granularity?.stair || guard.granularity?.apartment) && (
+                  <p className="text-[10px] text-slate-500">
+                    {guard.granularity.stair ? `Scara ${guard.granularity.stair}` : ""}
+                    {guard.granularity.stair && guard.granularity.apartment ? " · " : ""}
+                    {guard.granularity.apartment ? `Apartament ${guard.granularity.apartment}` : ""}
+                    {" "}rămân pe proprietate. Folosiți căutarea de mai jos pentru a alege clădirea.
+                  </p>
+                )}
+                {(guard.candidates || []).map(c => (
+                  <button key={c.building_id} type="button" onClick={() => attachExisting({ id: c.building_id, name: c.name, address: c.address })}
+                    className="w-full text-left rounded-lg border border-slate-200 bg-white px-3 py-2"
+                    data-testid={`ptr-guard-candidate-${c.building_id}`}>
+                    <div className="text-[11px] font-black text-slate-800">{c.name}</div>
+                    <div className="text-[10px] text-slate-500">{c.address}</div>
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="flex items-center gap-2 pt-2">
               <button onClick={save} disabled={busy} data-testid="ptr-building-save"
                 className="px-4 py-2 rounded-full text-xs font-black text-black disabled:opacity-50" style={{ background: "#d4ff3a" }}>
@@ -985,7 +1014,7 @@ const DocumentsSection = ({ coreStats }) => {
     <div data-testid="ptr-documents-section" className="rounded-2xl border border-slate-100 bg-white p-4">
       <div className="text-sm font-black text-slate-900">Documente & Evidență</div>
       <div className="text-[10px] text-slate-400">
-        {coreStats?.documents ?? 0} documente ({coreStats?.documents_verified ?? 0} verificate). Documentele complete se gestionează în secțiunea „Cartea Casei”.
+        {coreStats?.documents ?? 0} documente ({coreStats?.documents_verified ?? 0} acceptate în fluxul actual). Documentele complete se gestionează în secțiunea „Cartea Casei”.
       </div>
       {entries.length === 0 ? (
         <div className="mt-3 text-[11px] text-slate-500">Nicio evidență încă.</div>
@@ -1227,7 +1256,7 @@ export const PropertyTechnicalRecord = ({ propId }) => {
           <StatusBadge status={header?.overall_status} testid="ptr-header-status" />
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2">
-          <SummaryTile label="Documente" value={header?.documents_count ?? 0} sub={`${header?.documents_verified ?? 0} verificate`} />
+          <SummaryTile label="Documente" value={header?.documents_count ?? 0} sub={`${header?.documents_verified ?? 0} acceptate în fluxul actual`} />
           <SummaryTile label="Ultima actualizare" value={formatDate(header?.last_updated)} sub="documente" />
           <SummaryTile label="Diagnostice" value={record?.regulatory_diagnostics?.total ?? 0} sub={buildJurLabel(record?.regulatory_diagnostics?.by_jurisdiction)} />
         </div>
