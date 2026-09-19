@@ -20,12 +20,70 @@ from deps import require_role
 router = APIRouter(prefix="/api/founder/knowledge", tags=["knowledge-center"])
 
 OWNER_EMAILS = {e.strip().lower() for e in os.environ.get("OWNER_EMAIL", "").split(",") if e.strip()}
-MEMORY_ROOT = Path("/app/memory")
-DOCS_ROOT = Path("/app/docs")
+# backend/routes/this.py → backend/ → repository root (local workspace or /app on Emergent)
+_DETECTED_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+_EMERGENT_APP_ROOT = Path("/app")
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 REGISTRY_PATH = DATA_DIR / "enterprise_registry.json"
 WIDGETS_PATH = DATA_DIR / "widget_inspector.json"
 ARCH_PATH = DATA_DIR / "architecture_blocks.json"
+
+
+def _as_existing_or_candidate_dir(raw: str) -> Path | None:
+    """Normalize a server-side root. Rejects NUL. Existing non-directories are ignored."""
+    if not raw or not str(raw).strip() or "\x00" in str(raw):
+        return None
+    try:
+        p = Path(str(raw).strip()).expanduser().resolve(strict=False)
+    except (OSError, RuntimeError, ValueError):
+        return None
+    if p.exists() and not p.is_dir():
+        return None
+    return p
+
+
+def _looks_like_project_root(root: Path) -> bool:
+    return (root / "memory").is_dir() or (root / "docs").is_dir()
+
+
+def resolve_project_root() -> Path:
+    """Git/workspace root that contains memory/ and docs/.
+
+    Order: KC_PROJECT_ROOT → detected repo from this file → /app if it holds the corpus.
+    """
+    env = _as_existing_or_candidate_dir(os.environ.get("KC_PROJECT_ROOT", ""))
+    if env is not None:
+        return env
+    if _looks_like_project_root(_DETECTED_REPO_ROOT):
+        return _DETECTED_REPO_ROOT
+    if _EMERGENT_APP_ROOT.is_dir() and _looks_like_project_root(_EMERGENT_APP_ROOT):
+        return _EMERGENT_APP_ROOT
+    if _EMERGENT_APP_ROOT.is_dir():
+        return _EMERGENT_APP_ROOT
+    return _DETECTED_REPO_ROOT
+
+
+def resolve_memory_root() -> Path:
+    env = _as_existing_or_candidate_dir(os.environ.get("KC_MEMORY_ROOT", ""))
+    if env is not None:
+        return env
+    return resolve_project_root() / "memory"
+
+
+def resolve_docs_root() -> Path:
+    env = _as_existing_or_candidate_dir(os.environ.get("KC_DOCS_ROOT", ""))
+    if env is not None:
+        return env
+    return resolve_project_root() / "docs"
+
+
+# Names kept for any leftover in-module reads; always current (not a stale /app snapshot).
+def _memory_root() -> Path:
+    return resolve_memory_root()
+
+
+def _docs_root() -> Path:
+    return resolve_docs_root()
 
 CATEGORY_ORDER = [
     "System Zero", "Constitution", "Board Directives", "Board Resolutions", "Execution Orders",
@@ -126,7 +184,7 @@ def _categorize(rel: str) -> str:
 
 
 def _all_files():
-    for root, label in ((MEMORY_ROOT, "memory"), (DOCS_ROOT, "docs")):
+    for root, label in ((_memory_root(), "memory"), (_docs_root(), "docs")):
         if not root.exists():
             continue
         for p in sorted(root.rglob("*.md")):
@@ -252,11 +310,11 @@ def _doc_relationships(rel: str, reg: dict) -> dict:
 
 def _safe_resolve(rel: str) -> Path:
     if rel.startswith("memory/"):
-        p = (MEMORY_ROOT / rel[len("memory/"):]).resolve()
-        root = MEMORY_ROOT
+        root = _memory_root().resolve()
+        p = (root / rel[len("memory/"):]).resolve()
     elif rel.startswith("docs/"):
-        p = (DOCS_ROOT / rel[len("docs/"):]).resolve()
-        root = DOCS_ROOT
+        root = _docs_root().resolve()
+        p = (root / rel[len("docs/"):]).resolve()
     else:
         raise HTTPException(400, "Cale invalidă.")
     if root not in p.parents or p.suffix != ".md" or not p.exists():
@@ -497,7 +555,8 @@ async def architecture_blocks(user=Depends(require_role("admin"))):
 
 
 # ═══════════════════════ MASTER FUNCTION MAP (Founder) ═══════════════════════
-FUNCTION_MAP_PATH = MEMORY_ROOT / "registries" / "FUNCTION_MAP.md"
+def _function_map_path() -> Path:
+    return _memory_root() / "registries" / "FUNCTION_MAP.md"
 
 # Câmpuri parsate per funcție din FUNCTION_MAP.md (bullet-list markdown)
 _FN_FIELDS = {
@@ -516,9 +575,10 @@ def _parse_function_map() -> dict:
     Format sursă: fiecare funcție este introdusă cu heading `### FN-XXX · Name`.
     Câmpurile sunt bullet-uri `- **Field**: value`. Matricea este un tabel markdown.
     """
-    if not FUNCTION_MAP_PATH.exists():
+    fmap = _function_map_path()
+    if not fmap.exists():
         return {"functions": [], "matrix": [], "summary": {}, "meta": {}, "error": "FUNCTION_MAP.md not found"}
-    text = FUNCTION_MAP_PATH.read_text(encoding="utf-8", errors="replace")
+    text = fmap.read_text(encoding="utf-8", errors="replace")
 
     # meta din frontmatter simplu (linii `**Key**: value` la top, before first ###)
     meta_zone = text.split("\n## ", 1)[0]
@@ -604,7 +664,7 @@ async def function_map(user=Depends(require_role("admin"))):
     """Master Function/Capability Map — LIVE view din FUNCTION_MAP.md.
 
     Read-only. Zero DB. Zero business logic modification. Foloseste ca sursă unicul
-    fișier canonic `/app/memory/registries/FUNCTION_MAP.md` (parseat markdown).
+    fișier canonic `memory/registries/FUNCTION_MAP.md` (parseat markdown).
     Datele UNKNOWN/UNVERIFIED sunt returnate așa cum sunt — zero fabricație.
     """
     _require_owner(user)
