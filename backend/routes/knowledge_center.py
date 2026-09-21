@@ -671,6 +671,48 @@ async def function_map(user=Depends(require_role("admin"))):
     return _parse_function_map()
 
 
+@router.get("/coverage")
+async def knowledge_coverage_report(user=Depends(require_role("admin"))):
+    """Phase 2 — Knowledge ↔ Code coverage. Read-only. Candidates are never canonical."""
+    _require_owner(user)
+    from knowledge_coverage import build_coverage_report
+
+    return build_coverage_report()
+
+
+@router.get("/coverage/history")
+async def knowledge_coverage_history(user=Depends(require_role("admin"))):
+    """Phase 4 — Git-derived historical provenance. Read-only. Never canonical."""
+    _require_owner(user)
+    from knowledge_history import build_history_report
+
+    return build_history_report()
+
+
+@router.get("/coverage/reconciliation")
+async def knowledge_coverage_reconciliation(user=Depends(require_role("admin"))):
+    """Phase 5 — Emergent/origin/local reconciliation baseline. Read-only. Never canonical."""
+    _require_owner(user)
+    from knowledge_reconciliation import build_reconciliation_report
+
+    return build_reconciliation_report()
+
+
+@router.get("/coverage/changes")
+async def knowledge_coverage_changes(user=Depends(require_role("admin"))):
+    """Normalized change records from the working tree. Not every change needs a KC document."""
+    _require_owner(user)
+    from knowledge_coverage import build_coverage_report
+
+    report = build_coverage_report()
+    return {
+        "generated_at": report["generated_at"],
+        "changes": report["changes"],
+        "note": report["note"],
+        "canonical_promotion_allowed": False,
+    }
+
+
 @router.get("/function-map/{fn_id}")
 async def function_map_detail(fn_id: str, user=Depends(require_role("admin"))):
     """Detaliu individual pentru un Function ID (ex: FN-001)."""

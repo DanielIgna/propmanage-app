@@ -5,7 +5,7 @@ import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import {
-  BookOpenCheck, Loader2, Search, Network, FileText, ShieldAlert, X, RefreshCcw, ClipboardCheck, Clock, Compass,
+  BookOpenCheck, Loader2, Search, Network, FileText, ShieldAlert, X, RefreshCcw, ClipboardCheck, Clock, Compass, Radar,
 } from "lucide-react";
 import { RegistryGraph, STATUS_STYLE, TYPE_META } from "../../components/founder/RegistryGraph";
 
@@ -281,6 +281,179 @@ const ReviewPane = ({ onOpen }) => {
         <Section title="Duplicate (titluri identice)" docs={r.duplicates} tone="text-red-300" />
         <Section title="Sugestii de activare (quality ≥60%)" docs={r.activation_suggestions} tone="text-emerald-300" />
         <Section title="Sugestii de curățenie" docs={r.cleanup_suggestions} tone="text-stone-300" />
+      </div>
+    </div>
+  );
+};
+
+const COVERAGE_STYLE = {
+  DOCUMENTED: "bg-emerald-500/10 border-emerald-500/30 text-emerald-300",
+  PARTIALLY_DOCUMENTED: "bg-sky-500/10 border-sky-500/30 text-sky-300",
+  UNDOCUMENTED: "bg-amber-500/10 border-amber-500/30 text-amber-300",
+  STALE: "bg-orange-500/10 border-orange-500/30 text-orange-300",
+  DUPLICATE_CANDIDATE: "bg-red-500/10 border-red-500/30 text-red-300",
+  CONFLICT_CANDIDATE: "bg-red-500/10 border-red-500/30 text-red-300",
+  UNKNOWN: "bg-stone-500/10 border-stone-500/30 text-stone-400",
+  MATCH: "bg-emerald-500/10 border-emerald-500/30 text-emerald-300",
+  PARTIAL: "bg-sky-500/10 border-sky-500/30 text-sky-300",
+  MISSING: "bg-amber-500/10 border-amber-500/30 text-amber-300",
+  CONFLICT: "bg-red-500/10 border-red-500/30 text-red-300",
+};
+const CoverageBadge = ({ s }) => (
+  <span className={`text-[9px] px-2 py-0.5 rounded-full border shrink-0 uppercase font-mono ${COVERAGE_STYLE[s] || COVERAGE_STYLE.UNKNOWN}`}>{s}</span>
+);
+
+// Phase 2 — Coverage / Drift. Separate from document lifecycle (Active/Review/Draft).
+const CoveragePane = ({ onOpen }) => {
+  const [r, setR] = useState(null);
+  const [err, setErr] = useState(null);
+  useEffect(() => {
+    ax.get(`/api/founder/knowledge/coverage`)
+      .then(res => setR(res.data))
+      .catch(e => setErr(e?.response?.data?.detail || "Eroare coverage"));
+  }, []);
+  if (err) return <div className="text-red-300 text-sm p-6" data-testid="kc-coverage-error">{err}</div>;
+  if (!r) return <div className="flex items-center gap-2 text-stone-400 text-sm p-6"><Loader2 className="w-4 h-4 animate-spin" /> Se calculează Knowledge ↔ Code coverage...</div>;
+  const m = r.metrics || {};
+  const kc = m.knowledge_coverage || {};
+  const Metric = ({ label, value, hint }) => (
+    <div className="bg-white/[0.02] border border-white/10 rounded-xl px-3 py-2">
+      <div className="text-[10px] uppercase tracking-widest text-stone-500">{label}</div>
+      <div className="text-white font-mono text-lg">{value ?? "—"}</div>
+      {hint && <div className="text-[10px] text-stone-600">{hint}</div>}
+    </div>
+  );
+  const OpenPath = ({ path }) => path ? (
+    <button onClick={() => onOpen(path)} className="text-[10px] text-[#d4ff3a] hover:underline font-mono">{path}</button>
+  ) : null;
+  return (
+    <div className="space-y-4" data-testid="kc-coverage">
+      <div className="bg-[#0e0e10] border border-[#d4ff3a]/20 rounded-2xl p-4">
+        <div className="text-xs font-semibold text-[#d4ff3a] mb-1 flex items-center gap-1.5"><Radar className="w-3.5 h-3.5" /> Coverage / Drift</div>
+        <p className="text-[11px] text-stone-400 mb-3">{r.note}</p>
+        <div className="text-[10px] text-stone-500 mb-3">Canonical promotion: <span className="text-red-300">{r.canonical_promotion_allowed ? "ALLOWED" : "FORBIDDEN"}</span> · Sources rewritten: {String(r.rewrites_sources)}</div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2" data-testid="kc-coverage-metrics">
+          <Metric label="Documented" value={kc.documented} hint="Dedicated KC + registry" />
+          <Metric label="Partial" value={kc.partial} hint="Mentioned, no dedicated artifact" />
+          <Metric label="Undocumented" value={kc.undocumented} hint="Code/tests, no KC mention" />
+          <Metric label="Stale" value={kc.stale} hint="Dedicated doc behind code" />
+          <Metric label="Impl. without KC" value={m.undocumented_implementation_count} />
+          <Metric label="Function Map delta" value={m.function_map_coverage?.proposed_delta_rows} />
+          <Metric label="Duplicate groups" value={m.duplicate_risk?.groups} />
+          <Metric label="Drift load" value={m.knowledge_drift?.undocumented_plus_stale_plus_fn_delta} hint="No overall score" />
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div className="bg-[#0e0e10] border border-white/10 rounded-2xl p-4" data-testid="kc-coverage-areas">
+          <div className="text-xs font-semibold text-stone-200 mb-2">Watch areas</div>
+          <div className="space-y-1.5 max-h-80 overflow-y-auto">
+            {(r.areas || []).map(a => (
+              <div key={a.id} className="border border-white/10 rounded-lg px-3 py-2" data-testid={`kc-coverage-area-${a.id}`}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-stone-200">{a.title}</span>
+                  <CoverageBadge s={a.status} />
+                </div>
+                <div className="text-[10px] text-stone-500 mt-1">{a.reason}</div>
+                {a.dedicated_kc?.[0] && <div className="mt-1"><OpenPath path={a.dedicated_kc[0]} /></div>}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-[#0e0e10] border border-white/10 rounded-2xl p-4" data-testid="kc-coverage-candidates">
+          <div className="text-xs font-semibold text-amber-300 mb-2">Candidate artifacts (not canonical)</div>
+          {(r.candidates || []).length === 0 && <div className="text-[11px] text-stone-600">Niciun candidat nou.</div>}
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {(r.candidates || []).map(c => (
+              <div key={c.candidate_id} className="border border-amber-500/20 bg-amber-500/[0.04] rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-stone-200">{c.proposed_title}</span>
+                  <CoverageBadge s={c.coverage_status} />
+                  <span className="text-[9px] text-stone-500">confidence {c.confidence}</span>
+                </div>
+                <div className="text-[10px] text-stone-500 mt-1">{c.reason}</div>
+                <div className="text-[10px] text-stone-600 mt-1 font-mono">{c.suggested_kc_path}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div className="bg-[#0e0e10] border border-white/10 rounded-2xl p-4" data-testid="kc-coverage-fn-drift">
+          <div className="text-xs font-semibold text-stone-200 mb-2">Function Map drift</div>
+          <div className="text-[10px] text-stone-500 mb-2">Last update: {r.function_map_drift?.last_update || "—"} · rewritten: {String(r.function_map_drift?.rewritten)}</div>
+          {(r.function_map_drift?.proposed_delta || []).map(d => (
+            <div key={d.id} className="text-[11px] text-stone-300 py-1 border-b border-white/5 flex items-center justify-between gap-2">
+              <span>{d.title}</span>
+              <span className="text-[9px] text-amber-300">{d.proposed_action}</span>
+            </div>
+          ))}
+          {(r.function_map_drift?.stale_path_refs || []).map(s => (
+            <div key={s.function_id} className="text-[11px] text-orange-300 mt-2">
+              {s.function_id} {s.name} → missing { (s.missing_paths || []).join(", ") }
+            </div>
+          ))}
+        </div>
+        <div className="bg-[#0e0e10] border border-white/10 rounded-2xl p-4" data-testid="kc-coverage-duplicates">
+          <div className="text-xs font-semibold text-stone-200 mb-2">Duplicate candidates</div>
+          {(r.duplicates || []).length === 0 && <div className="text-[11px] text-stone-600">Niciun grup.</div>}
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {(r.duplicates || []).map((g, i) => (
+              <div key={`${g.kind}-${i}`} className="border border-white/10 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2"><CoverageBadge s={g.kind} /><span className="text-[11px] text-stone-300">{g.title}</span></div>
+                <div className="text-[10px] text-stone-500 mt-1">{g.proposal}</div>
+                <div className="mt-1 space-x-2">{(g.paths || []).map(p => <OpenPath key={p} path={p} />)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {r.history?.areas && (
+        <div className="bg-[#0e0e10] border border-white/10 rounded-2xl p-4" data-testid="kc-coverage-history">
+          <div className="text-xs font-semibold text-stone-200 mb-1 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> History</div>
+          <p className="text-[10px] text-stone-500 mb-3">{r.history.note}</p>
+          <div className="space-y-1.5 max-h-96 overflow-y-auto">
+            {r.history.areas.map(h => (
+              <div key={h.id} className="border border-white/10 rounded-lg px-3 py-2" data-testid={`kc-history-${h.id}`}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-stone-200">{h.title}</span>
+                  <CoverageBadge s={h.current_documentation_state} />
+                  <span className="text-[9px] uppercase tracking-wide text-stone-500">{h.origin} · {h.origin_confidence}</span>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-x-4 text-[10px] text-stone-500 mt-1">
+                  <div>First seen: {h.code_first_seen?.commit_date?.slice(0, 10) || "—"} {h.code_first_seen?.commit_hash ? `· ${h.code_first_seen.commit_hash.slice(0, 8)}` : ""}</div>
+                  <div>Last changed: {h.code_last_changed?.commit_date?.slice(0, 10) || "—"}</div>
+                  <div>KC mention: {h.kc_first_mention?.commit_date?.slice(0, 10) || "none"}</div>
+                  <div>Dedicated: {h.dedicated_kc_first_seen?.commit_date?.slice(0, 10) || "none"}</div>
+                  <div>Registry: {h.latency?.code_to_registry} · Dep: {h.latency?.code_to_dependency_map}</div>
+                  <div>Origin confidence: {h.origin_confidence}</div>
+                </div>
+                {h.why_flagged?.length > 0 && (
+                  <div className="text-[10px] text-amber-300/80 mt-1" data-testid={`kc-history-why-${h.id}`}>Why flagged: {h.why_flagged.join(" ")}</div>
+                )}
+                {h.iteration?.inferred && (
+                  <div className="text-[10px] text-stone-600">Iteration inferred from filename: {String(h.iteration.iteration)}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="bg-[#0e0e10] border border-white/10 rounded-2xl p-4" data-testid="kc-coverage-backlog">
+        <div className="text-xs font-semibold text-stone-200 mb-2">Priority backlog (verified, not auto-created)</div>
+        <div className="space-y-1.5">
+          {(r.backlog || []).map(b => (
+            <div key={b.id} className="flex items-center gap-2 text-[11px] border border-white/10 rounded-lg px-3 py-1.5">
+              <CoverageBadge s={b.status} />
+              <span className="text-stone-200 flex-1">{b.title}</span>
+              <span className="text-stone-500">{b.action}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -728,10 +901,12 @@ export default function KnowledgeCenter() {
           <button onClick={() => setTab("map")} className={`pm-btn pm-btn-sm ${tab === "map" ? "pm-btn-success" : "pm-btn-secondary"}`} data-testid="kc-tab-map"><Network className="w-3.5 h-3.5" /> Dependency Map</button>
           <a href="/admin/function-map" className="pm-btn pm-btn-sm pm-btn-secondary" data-testid="kc-tab-function-map"><Network className="w-3.5 h-3.5" /> Function Map</a>
           <button onClick={() => setTab("review")} className={`pm-btn pm-btn-sm ${tab === "review" ? "pm-btn-success" : "pm-btn-secondary"}`} data-testid="kc-tab-review"><ClipboardCheck className="w-3.5 h-3.5" /> Review</button>
+          <button onClick={() => setTab("coverage")} className={`pm-btn pm-btn-sm ${tab === "coverage" ? "pm-btn-success" : "pm-btn-secondary"}`} data-testid="kc-tab-coverage"><Radar className="w-3.5 h-3.5" /> Coverage / Drift</button>
         </div>
 
         {tab === "map" && <RegistryGraph onOpenDoc={openDoc} />}
         {tab === "review" && <ReviewPane onOpen={openDoc} />}
+        {tab === "coverage" && <CoveragePane onOpen={openDoc} />}
 
         {tab === "docs" && (
           <>
