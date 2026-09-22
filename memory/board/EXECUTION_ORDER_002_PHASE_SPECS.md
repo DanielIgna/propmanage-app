@@ -61,12 +61,34 @@ Implement a verified Enterprise Relationship Registry.
 This registry becomes the single source of truth for every relationship
 inside the Enterprise Operating System.
 
+That sentence means: every relationship that is in scope for this Registry
+must be represented here when proven. It does not mean every runtime
+component must exist as a Registry node.
+
 PRINCIPLE
 
 Truth is more important than completeness.
 The system must NEVER invent relationships.
 The system must NEVER infer undocumented dependencies.
 Every relationship must be backed by real evidence.
+
+SCOPE
+
+This Registry is an evidence-gated relationship graph, not a software or
+component inventory.
+
+A runtime engine, Function Map entry, route, UI, database collection,
+scheduler/job, or other implementation artifact does not become a Registry
+node merely because it exists.
+
+A node is included only when a relevant enterprise relationship is supported
+by verified evidence and belongs in this Registry's scope.
+
+Absence from the Registry does not, by itself, mean a component is missing,
+invalid, or defective.
+
+Indirect or database-mediated relationships must not be recorded as direct
+engine→engine edges merely to appear complete.
 
 SOURCE OF TRUTH
 
