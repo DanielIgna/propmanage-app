@@ -153,6 +153,28 @@ The Enterprise Relationship Registry becomes the authoritative source for all vi
 
 No visualization may bypass this registry.
 
+CANDIDATE DISPOSITION — C01–C13
+
+Recorded audit disposition. Not a new governance engine.
+
+C01 Repair Engine → Enterprise Health — HOLD
+C02 Repair Engine → Lead Follow-up — HOLD
+C03 Repair Engine → Learning — HOLD
+C04 Operations → Enterprise Health via specialist_gaps — DO_NOT_REGISTER
+C05 Enterprise Health → Evolution Council — REGISTERED (e48)
+C06 CEO Briefing → Evolution Council — REGISTERED (e49)
+C07 Knowledge Center → Architecture Navigator — HOLD
+C08 Analytics & Growth → FN-021 Autonomy Loop — HOLD
+C09 Analytics & Growth → Lead Intelligence — DO_NOT_REGISTER
+C10 Analytics & Growth → Marketing Intelligence — HOLD
+C11 Lead Intelligence → Marketing Intelligence — DO_NOT_REGISTER
+C12 Business Health → Notification Center — DO_NOT_REGISTER
+C13 Lead Intelligence → Notification Center — DO_NOT_REGISTER
+
+No new Registry edge or node is authorized by this disposition alone.
+HOLD items remain Founder scope decisions. DO_NOT_REGISTER items must
+not be represented as direct engine→engine Registry relationships.
+
 END
 
 ======================================================================
