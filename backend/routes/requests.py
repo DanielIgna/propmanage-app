@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from bson import ObjectId
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
+from pymongo import ReturnDocument
 
 from db import db
 from core_utils import serialize_doc
@@ -187,7 +188,11 @@ class AcceptRequestIn(BaseModel):
 
 @router.post("/requests/{req_id}/accept")
 async def accept_request(req_id: str, data: Optional[AcceptRequestIn] = None, user: dict = Depends(require_role("specialist"))):
-    """Specialist accepts a lead - pays 45 RON fee and proposes terms (start/end dates, hours)."""
+    """Residual /accept (D13 open). Public participation is D2 submit_offer.
+
+    Public first-wins + Lead Credits consume is disabled. Rehire/direct waived
+    still assigns without charge.
+    """
     req = await db.requests.find_one({"_id": ObjectId(req_id)})
     if not req: raise HTTPException(404, "Request not found")
     if req.get("status") != "open":
@@ -197,17 +202,15 @@ async def accept_request(req_id: str, data: Optional[AcceptRequestIn] = None, us
     if direct_id and direct_id != user["id"]:
         raise HTTPException(403, "Cerere directă adresată altui specialist")
     fee_waived = bool(direct_id == user["id"] and req.get("lead_fee_waived"))
-    LEAD_FEE = 0.0 if fee_waived else 45.0
-    specialist = await db.users.find_one({"_id": ObjectId(user["id"])})
-    if (specialist.get("wallet_balance") or 0) < LEAD_FEE:
-        raise HTTPException(400, f"Insufficient balance. Need {LEAD_FEE} RON")
-
-    # Deduct lead fee (0 pentru rebooking direct — recompensă de loialitate)
-    if LEAD_FEE > 0:
-        await db.users.update_one(
-            {"_id": ObjectId(user["id"])},
-            {"$inc": {"wallet_balance": -LEAD_FEE}}
+    if not fee_waived:
+        raise HTTPException(
+            400,
+            "Participarea publică se face prin POST /api/requests/{id}/offers (45 Lead Credits sau 45 RON).",
         )
+    specialist = await db.users.find_one({"_id": ObjectId(user["id"])})
+    if not specialist:
+        raise HTTPException(404, "User not found")
+
     update = {
         "status": "assigned",
         "specialist_id": user["id"],
@@ -217,7 +220,6 @@ async def accept_request(req_id: str, data: Optional[AcceptRequestIn] = None, us
         "specialist_verified": bool(specialist.get("verified")),
         "assigned_at": datetime.now(timezone.utc).isoformat(),
     }
-    # Schedule proposal
     proposed = {}
     if data:
         if data.proposed_start_date: proposed["start_date"] = data.proposed_start_date
@@ -228,17 +230,15 @@ async def accept_request(req_id: str, data: Optional[AcceptRequestIn] = None, us
         proposed["proposed_at"] = datetime.now(timezone.utc).isoformat()
         proposed["proposed_by"] = user["id"]
         update["schedule_proposal"] = proposed
-    await db.requests.update_one({"_id": ObjectId(req_id)}, {"$set": update})
-    # Log transaction
-    if LEAD_FEE > 0:
-        await db.transactions.insert_one({
-            "user_id": user["id"],
-            "type": "lead_fee",
-            "amount": -LEAD_FEE,
-            "request_id": req_id,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
-    # Notify client
+
+    claimed = await db.requests.find_one_and_update(
+        {"_id": ObjectId(req_id), "status": "open"},
+        {"$set": update},
+        return_document=ReturnDocument.AFTER,
+    )
+    if not claimed:
+        raise HTTPException(400, "Request not available")
+
     schedule_msg = ""
     if proposed.get("start_date"):
         schedule_msg = f" Programare propusă: {proposed.get('start_date','')[:10]}"
@@ -250,8 +250,16 @@ async def accept_request(req_id: str, data: Optional[AcceptRequestIn] = None, us
         type_="assignment",
         link="/client"
     )
-    await log_event(req_id, "request.accepted", actor=user, payload={"lead_fee": LEAD_FEE, "schedule": proposed or None})
-    return {"ok": True, "balance_after": (specialist.get("wallet_balance") or 0) - LEAD_FEE}
+    await log_event(
+        req_id, "request.accepted", actor=user,
+        payload={"lead_fee": 0.0, "paid_with": "waived", "schedule": proposed or None},
+    )
+    return {
+        "ok": True,
+        "balance_after": float(specialist.get("wallet_balance") or 0),
+        "lead_credits_after": int(specialist.get("lead_credits") or 0),
+        "paid_with": "waived",
+    }
 
 @router.post("/requests/{req_id}/start")
 async def start_work(req_id: str, user: dict = Depends(require_role("specialist"))):

@@ -242,13 +242,17 @@ class TestReferralEndToEnd:
 
     def _complete_flow(self, referred, specialist, req_id, db):
         sp = specialist["session"]
-        # specialist accepts (charges 45 RON lead fee — ensure wallet has funds)
-        db.users.update_one({"_id": ObjectId(specialist["id"])}, {"$set": {"wallet_balance": 5000.0}})
-        r = sp.post(f"{API}/requests/{req_id}/accept")
+        db.users.update_one(
+            {"_id": ObjectId(specialist["id"])},
+            {"$set": {"wallet_balance": 5000.0, "lead_credits": 135}},
+        )
+        r = sp.post(f"{API}/requests/{req_id}/offers", json={"message": "referral offer"})
         assert r.status_code == 200, r.text
+        cl = referred["session"]
+        acc = cl.post(f"{API}/requests/{req_id}/offers/{r.json()['offer_id']}/accept")
+        assert acc.status_code == 200, acc.text
 
         # client places escrow
-        cl = referred["session"]
         r = cl.post(f"{API}/requests/{req_id}/escrow", params={"amount": 100.0})
         assert r.status_code == 200, r.text
 

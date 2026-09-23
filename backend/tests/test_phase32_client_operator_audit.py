@@ -27,6 +27,17 @@ def _login(creds):
     return s, r.json()
 
 
+def _assign_via_offer(spec, client, rid):
+    me = spec.get(f"{BASE_URL}/api/auth/me", timeout=20).json()
+    if int(me.get("lead_credits") or 0) < 45 and float(me.get("wallet_balance") or 0) < 45:
+        spec.post(f"{BASE_URL}/api/wallet/topup", params={"amount": 100}, timeout=20)
+    off = spec.post(f"{BASE_URL}/api/requests/{rid}/offers", json={"message": "audit offer"}, timeout=20)
+    assert off.status_code == 200, f"submit_offer -> {off.status_code} {off.text}"
+    acc = client.post(f"{BASE_URL}/api/requests/{rid}/offers/{off.json()['offer_id']}/accept", timeout=20)
+    assert acc.status_code == 200, f"accept_offer -> {acc.status_code} {acc.text}"
+    return acc
+
+
 @pytest.fixture(scope="session")
 def client_sess():
     s, me = _login(CLIENT)
@@ -185,9 +196,7 @@ class TestClientAudit:
         }, timeout=20)
         assert r.status_code in (200, 201), r.text
         rid = r.json().get("id") or r.json().get("_id")
-        # Specialist accepts (45 RON lead fee debit)
-        acc = spec.post(f"{BASE_URL}/api/requests/{rid}/accept", timeout=20)
-        assert acc.status_code in (200, 201), f"accept -> {acc.status_code} {acc.text}"
+        _assign_via_offer(spec, s, rid)
         # Fund escrow
         cs = s.post(f"{BASE_URL}/api/payments/checkout-session?request_id={rid}",
                     headers={"Origin": BASE_URL}, timeout=20)
@@ -221,8 +230,7 @@ class TestClientAudit:
             "category": "plumbing", "budget_estimate": 150, "priority": "normal",
         }, timeout=20)
         rid = r.json().get("id") or r.json().get("_id")
-        acc = spec.post(f"{BASE_URL}/api/requests/{rid}/accept", timeout=20)
-        assert acc.status_code in (200, 201), f"spec accept failed: {acc.status_code} {acc.text}"
+        _assign_via_offer(spec, s, rid)
         cs = s.post(f"{BASE_URL}/api/payments/checkout-session?request_id={rid}",
                     headers={"Origin": BASE_URL}, timeout=20)
         assert cs.status_code == 200
@@ -291,9 +299,7 @@ class TestOperatorAudit:
             "category": "hvac", "budget_estimate": 220, "priority": "normal",
         }, timeout=20)
         rid = req.json().get("id") or req.json().get("_id")
-        # Specialist accepts
-        acc = spec.post(f"{BASE_URL}/api/requests/{rid}/accept", timeout=20)
-        assert acc.status_code in (200, 201), f"spec accept failed: {acc.status_code} {acc.text}"
+        _assign_via_offer(spec, s, rid)
         # Operator builds + approves twin
         build = op.post(f"{BASE_URL}/api/operator/twins/{pid}",
                         json={"rooms": [{"id": "r1", "name": "Living", "type": "living"}], "assets": [], "notes": "TEST"}, timeout=20)
@@ -335,7 +341,7 @@ class TestOperatorAudit:
             "category": "hvac", "budget_estimate": 100, "priority": "normal",
         }, timeout=20)
         rid = req.json().get("id") or req.json().get("_id")
-        spec.post(f"{BASE_URL}/api/requests/{rid}/accept", timeout=20)
+        _assign_via_offer(spec, s, rid)
         # Operator builds + rejects
         op.post(f"{BASE_URL}/api/operator/twins/{pid}",
                 json={"rooms": [], "assets": [], "notes": "TEST_rej"}, timeout=20)

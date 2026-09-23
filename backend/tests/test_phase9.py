@@ -169,10 +169,15 @@ class TestPhaseFlow:
         r = client_session.post(f"{BASE_URL}/api/design/concept-request", json=payload, timeout=15)
         assert r.status_code == 200, r.text
         req_id = r.json()["id"]
-        # Specialist accepts lead
-        acc = spec_session.post(f"{BASE_URL}/api/requests/{req_id}/accept", timeout=15)
-        if acc.status_code != 200:
-            pytest.skip(f"could not accept lead: {acc.status_code} {acc.text}")
+        me = spec_session.get(f"{BASE_URL}/api/auth/me", timeout=15).json()
+        if int(me.get("lead_credits") or 0) < 45 and float(me.get("wallet_balance") or 0) < 45:
+            spec_session.post(f"{BASE_URL}/api/wallet/topup", params={"amount": 100}, timeout=15)
+        off = spec_session.post(f"{BASE_URL}/api/requests/{req_id}/offers", json={"message": "design offer"}, timeout=15)
+        assert off.status_code == 200, off.text
+        acc = client_session.post(
+            f"{BASE_URL}/api/requests/{req_id}/offers/{off.json()['offer_id']}/accept", timeout=15
+        )
+        assert acc.status_code == 200, acc.text
         # Start work (move to in_progress)
         st = spec_session.post(f"{BASE_URL}/api/requests/{req_id}/start", timeout=15)
         # Some implementations might not require start; tolerate either way

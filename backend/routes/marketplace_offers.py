@@ -1,9 +1,8 @@
 """Sprint C — Multi-Offer Flow + Hybrid Ranking + Fairness Rotation + Sponsorizat badge.
 
-Coexists with legacy `POST /api/requests/{id}/accept` (single specialist takes lead, 45 RON fee).
-New flow: multiple specialists submit offers with custom fees; client picks one.
-
-Feature-flagged via `fee_configs.multi_offer_enabled`. When OFF, new endpoints return 400.
+D2: submit_offer is public Marketplace participation (45 Lead Credits or 45 RON).
+Client selection is accept_offer (D6). Public /accept is residual (D13).
+Legacy fee_ron / priority_fee_ron are stored for compatibility and ranking, not charged.
 
 Collections:
   - marketplace_offers (NEW): {request_id, specialist_id, fee_paid, message, status, created_at, ranking_score, sponsored}
@@ -26,9 +25,16 @@ from typing import Optional
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from pymongo.errors import DuplicateKeyError
 
 from db import db
 from deps import get_current_user, require_role
+from lead_credits import (
+    debit_participation,
+    paid_with_label,
+    refund_participation,
+    write_participation_ledger,
+)
 from services import notify, log_event
 
 logger = logging.getLogger("propmanage.marketplace_offers")
@@ -42,8 +48,9 @@ TIER_SCORE = {"ENTRY": 1, "VERIFIED": 2, "PREMIUM": 3}
 # Models
 # ============================================================================
 class OfferIn(BaseModel):
-    fee_ron: float = Field(..., ge=5.0, le=50.0, description="Fee paid for this application (5-50 RON cap)")
-    priority_fee_ron: float = Field(0.0, ge=0.0, le=50.0, description="Extra fee for sponsored top placement")
+    # LEGACY fields — accepted for backward compatibility, not charged (D2: 45 credits OR 45 RON).
+    fee_ron: float = Field(0.0, ge=0.0, le=50.0, description="Legacy apply fee. Not charged as D2 participation.")
+    priority_fee_ron: float = Field(0.0, ge=0.0, le=50.0, description="Legacy sponsored extra. Not charged as D2 participation.")
     message: Optional[str] = Field(None, max_length=1000)
     proposed_start_date: Optional[str] = None
     proposed_end_date: Optional[str] = None
@@ -60,6 +67,19 @@ async def _get_fee_config():
 async def _multi_offer_enabled() -> bool:
     cfg = await _get_fee_config()
     return bool(cfg.get("multi_offer_enabled"))
+
+
+async def _ensure_active_offer_unique_index() -> None:
+    """One non-withdrawn offer per specialist per request (D2 concurrency)."""
+    try:
+        await db.marketplace_offers.create_index(
+            [("request_id", 1), ("specialist_id", 1)],
+            unique=True,
+            partialFilterExpression={"status": {"$in": ["open", "won", "lost"]}},
+            name="uniq_active_offer_per_specialist",
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("marketplace_offers unique index: %s", e)
 
 
 def _fee_norm(fee: float, min_f: float, max_f: float) -> float:
@@ -120,8 +140,7 @@ async def _compute_score(offer: dict, request_doc: dict, spec_doc: dict, cfg: di
 # ============================================================================
 @router.post("/requests/{req_id}/offers")
 async def submit_offer(req_id: str, data: OfferIn, user: dict = Depends(require_role("specialist"))):
-    if not await _multi_offer_enabled():
-        raise HTTPException(400, "Multi-offer flow nu este activ — folosește endpointul legacy /accept")
+    """D2: participate with 45 Lead Credits or 45 RON. Does not assign the request."""
     req = await db.requests.find_one({"_id": ObjectId(req_id)})
     if not req:
         raise HTTPException(404, "Request not found")
@@ -129,47 +148,81 @@ async def submit_offer(req_id: str, data: OfferIn, user: dict = Depends(require_
         raise HTTPException(400, "Această cerere nu mai acceptă oferte")
     if req.get("client_id") == user["id"]:
         raise HTTPException(400, "Nu poți aplica la propria ta cerere")
-    # Anti-duplicate
-    existing = await db.marketplace_offers.find_one({"request_id": req_id, "specialist_id": user["id"], "status": {"$ne": "withdrawn"}})
+    existing = await db.marketplace_offers.find_one(
+        {"request_id": req_id, "specialist_id": user["id"], "status": {"$ne": "withdrawn"}}
+    )
     if existing:
         raise HTTPException(409, "Ai deja o ofertă activă la această cerere")
-    # Max 5 offers cap per request (user requirement from earlier session)
     open_count = await db.marketplace_offers.count_documents({"request_id": req_id, "status": "open"})
     if open_count >= 5:
         raise HTTPException(400, "S-au înregistrat deja 5 oferte la această cerere — așteaptă următoarea")
-    total_fee = data.fee_ron + data.priority_fee_ron
     spec = await db.users.find_one({"_id": ObjectId(user["id"])})
-    if (spec.get("wallet_balance") or 0) < total_fee:
-        raise HTTPException(400, f"Sold insuficient. Necesar: {total_fee} RON")
+    if not spec:
+        raise HTTPException(404, "User not found")
+
+    uid = ObjectId(user["id"])
+    await _ensure_active_offer_unique_index()
+    debit = await debit_participation(uid)
+
+    raced = await db.marketplace_offers.find_one(
+        {"request_id": req_id, "specialist_id": user["id"], "status": {"$ne": "withdrawn"}}
+    )
+    if raced:
+        await refund_participation(uid, debit["payment"])
+        raise HTTPException(409, "Ai deja o ofertă activă la această cerere")
+    open_again = await db.marketplace_offers.count_documents({"request_id": req_id, "status": "open"})
+    if open_again >= 5:
+        await refund_participation(uid, debit["payment"])
+        raise HTTPException(400, "S-au înregistrat deja 5 oferte la această cerere — așteaptă următoarea")
+
     now_iso = datetime.now(timezone.utc).isoformat()
-    # Deduct fee
-    await db.users.update_one({"_id": ObjectId(user["id"])}, {"$inc": {"wallet_balance": -total_fee}})
     offer_doc = {
         "request_id": req_id,
         "specialist_id": user["id"],
         "specialist_name": spec.get("name", ""),
         "fee_ron": data.fee_ron,
         "priority_fee_ron": data.priority_fee_ron,
-        "fee_paid_total": total_fee,
+        "fee_paid_total": debit["monetary_fee"],
+        "paid_with": paid_with_label(debit),
         "message": (data.message or "").strip()[:1000],
         "proposed_start_date": data.proposed_start_date,
         "proposed_end_date": data.proposed_end_date,
         "estimated_hours": data.estimated_hours,
         "status": "open",
         "created_at": now_iso,
-        "sponsored": data.priority_fee_ron > 0,
+        "sponsored": False,
     }
-    result = await db.marketplace_offers.insert_one(offer_doc)
-    offer_doc.pop("_id", None)
-    # Transaction log
-    await db.transactions.insert_one({
-        "user_id": user["id"], "type": "marketplace_offer_fee", "amount": -total_fee,
-        "request_id": req_id, "offer_id": str(result.inserted_id), "created_at": now_iso,
-    })
-    # Notify client (lazy notify — debounced by client if many offers)
-    await notify(req["client_id"], "Ofertă nouă primită", f"{spec.get('name','Specialist')} a aplicat la cererea ta. Verifică oferta.", type_="offer", link=f"/client/requests/{req_id}/offers")
-    await log_event(req_id, "offer.submitted", actor=user, payload={"offer_id": str(result.inserted_id), "fee": total_fee})
-    return {"ok": True, "offer_id": str(result.inserted_id), "fee_paid": total_fee}
+    try:
+        result = await db.marketplace_offers.insert_one(offer_doc)
+    except DuplicateKeyError:
+        await refund_participation(uid, debit["payment"])
+        raise HTTPException(409, "Ai deja o ofertă activă la această cerere")
+    except Exception:
+        await refund_participation(uid, debit["payment"])
+        raise
+    offer_id = str(result.inserted_id)
+    await write_participation_ledger(user["id"], req_id, debit, offer_id=offer_id)
+    await notify(
+        req["client_id"],
+        "Ofertă nouă primită",
+        f"{spec.get('name', 'Specialist')} a aplicat la cererea ta. Verifică oferta.",
+        type_="offer",
+        link=f"/client/requests/{req_id}/offers",
+    )
+    await log_event(
+        req_id,
+        "offer.submitted",
+        actor=user,
+        payload={"offer_id": offer_id, "paid_with": paid_with_label(debit), "fee": debit["monetary_fee"]},
+    )
+    return {
+        "ok": True,
+        "offer_id": offer_id,
+        "paid_with": paid_with_label(debit),
+        "lead_credits_after": debit["remaining_credits"],
+        "balance_after": debit["wallet_after"],
+        "fee_paid": debit["monetary_fee"],
+    }
 
 
 # ============================================================================

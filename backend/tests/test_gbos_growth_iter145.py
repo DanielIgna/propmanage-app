@@ -249,11 +249,10 @@ def test_b3_request_direct_mode(client_sess, task_for_request):
     assert doc.get("maintenance_task_id") == task_for_request["id"]
 
 
-# --------------------- REGRESSION: normal accept still charges 45 RON ---------------------
+# --------------------- D2: public /accept blocked; submit_offer consumes ---------------------
 
 def test_regression_normal_accept_charges_45(client_sess, spec1_sess):
-    """Create a normal (non-direct) public request and verify SPEC1 accepts with -45 RON."""
-    # Use a request wizard endpoint or /api/requests directly
+    """Public /accept no longer consumes. D2 participation is submit_offer (45 credits or 45 RON)."""
     payload = {
         "property_id": PROPERTY_ID,
         "category": "handyman",
@@ -262,15 +261,36 @@ def test_regression_normal_accept_charges_45(client_sess, spec1_sess):
         "priority": "normal",
     }
     r = client_sess.post(f"{BASE}/api/requests", json=payload)
-    if r.status_code != 200:
-        pytest.skip(f"cannot create normal request: {r.status_code} {r.text[:200]}")
-    req = r.json()
-    req_id = req.get("id")
+    assert r.status_code == 200, r.text
+    req_id = r.json().get("id")
 
-    before = _wallet_of(spec1_sess)
-    r = spec1_sess.post(f"{BASE}/api/requests/{req_id}/accept", json={})
-    if r.status_code != 200:
-        pytest.skip(f"accept failed: {r.status_code} {r.text[:200]}")
-    after = _wallet_of(spec1_sess)
-    if before is not None and after is not None:
-        assert round(before - after, 2) == 45.0, f"Normal accept must deduct 45 RON: before={before} after={after}"
+    me_before = spec1_sess.get(f"{BASE}/api/auth/me").json()
+    credits_before = int(me_before.get("lead_credits") or 0)
+    wallet_before = float(me_before.get("wallet_balance") or 0)
+    if credits_before < 45 and wallet_before < 45:
+        top = spec1_sess.post(f"{BASE}/api/wallet/topup", params={"amount": 100})
+        assert top.status_code == 200, top.text
+        me_before = spec1_sess.get(f"{BASE}/api/auth/me").json()
+        credits_before = int(me_before.get("lead_credits") or 0)
+        wallet_before = float(me_before.get("wallet_balance") or 0)
+
+    blocked = spec1_sess.post(f"{BASE}/api/requests/{req_id}/accept", json={})
+    assert blocked.status_code == 400, blocked.text
+    me_mid = spec1_sess.get(f"{BASE}/api/auth/me").json()
+    assert int(me_mid.get("lead_credits") or 0) == credits_before
+    assert float(me_mid.get("wallet_balance") or 0) == pytest.approx(wallet_before, abs=0.01)
+
+    off = spec1_sess.post(f"{BASE}/api/requests/{req_id}/offers", json={"message": "D2 offer"})
+    assert off.status_code == 200, off.text
+    body = off.json()
+    assert body.get("paid_with") in ("lead_credit", "wallet")
+    after = spec1_sess.get(f"{BASE}/api/auth/me").json()
+    if body.get("paid_with") == "lead_credit":
+        assert int(after.get("lead_credits") or 0) == credits_before - 45
+        assert float(after.get("wallet_balance") or 0) == pytest.approx(wallet_before, abs=0.01)
+    else:
+        assert int(after.get("lead_credits") or 0) == credits_before
+        assert float(after.get("wallet_balance") or 0) == pytest.approx(wallet_before - 45.0, abs=0.01)
+    req = client_sess.get(f"{BASE}/api/requests/{req_id}").json()
+    assert req.get("status") == "open"
+    assert not req.get("specialist_id")

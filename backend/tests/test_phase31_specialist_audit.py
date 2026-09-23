@@ -111,42 +111,62 @@ class TestSpecClient1Opportunities:
 # ============ SPEC<->CLIENT-2: Lead pickup ============
 class TestSpecClient2AcceptLead:
     def test_specialist_accept_request_deducts_fee(self, specialist_auth, client_auth, created_request):
-        # Capture wallet before
-        me_before = specialist_auth["session"].get(f"{API}/auth/me", timeout=30).json()
-        wallet_before = me_before.get("wallet_balance") or 0
+        spec = specialist_auth["session"]
+        client = client_auth["session"]
+        me_before = spec.get(f"{API}/auth/me", timeout=30).json()
+        credits_before = int(me_before.get("lead_credits") or 0)
+        wallet_before = float(me_before.get("wallet_balance") or 0)
+        if credits_before < 45 and wallet_before < 45:
+            top = spec.post(f"{API}/wallet/topup", params={"amount": 100}, timeout=30)
+            assert top.status_code == 200, top.text
+            me_before = spec.get(f"{API}/auth/me", timeout=30).json()
+            credits_before = int(me_before.get("lead_credits") or 0)
+            wallet_before = float(me_before.get("wallet_balance") or 0)
 
         payload = {
+            "message": "Voi veni mâine.",
             "proposed_start_date": "2026-02-01T09:00:00Z",
             "proposed_end_date": "2026-02-02T17:00:00Z",
             "estimated_hours": 6,
-            "note": "Voi veni mâine.",
         }
-        r = specialist_auth["session"].post(f"{API}/requests/{created_request['id']}/accept", json=payload, timeout=30
-        )
+        r = spec.post(f"{API}/requests/{created_request['id']}/offers", json=payload, timeout=30)
         assert r.status_code == 200, r.text
         body = r.json()
         assert body.get("ok") is True
+        assert body.get("paid_with") in ("lead_credit", "wallet")
+        offer_id = body["offer_id"]
 
-        # Verify wallet deducted 45 RON
-        me_after = specialist_auth["session"].get(f"{API}/auth/me", timeout=30).json()
-        wallet_after = me_after.get("wallet_balance") or 0
-        assert round(wallet_before - wallet_after, 2) == 45.0, f"expected -45 RON, got {wallet_before}->{wallet_after}"
+        me_after = spec.get(f"{API}/auth/me", timeout=30).json()
+        if body.get("paid_with") == "lead_credit":
+            assert int(me_after.get("lead_credits") or 0) == credits_before - 45
+            assert float(me_after.get("wallet_balance") or 0) == pytest.approx(wallet_before, abs=0.01)
+        else:
+            assert round(wallet_before - float(me_after.get("wallet_balance") or 0), 2) == 45.0
 
-        # Verify request status flipped to assigned with our specialist_id
-        r2 = client_auth["session"].get(f"{API}/requests/{created_request['id']}", timeout=30)
+        mid = client.get(f"{API}/requests/{created_request['id']}", timeout=30)
+        assert mid.status_code == 200, mid.text
+        assert mid.json().get("status") == "open"
+        assert not mid.json().get("specialist_id")
+
+        acc = client.post(f"{API}/requests/{created_request['id']}/offers/{offer_id}/accept", timeout=30)
+        assert acc.status_code == 200, acc.text
+
+        r2 = client.get(f"{API}/requests/{created_request['id']}", timeout=30)
         assert r2.status_code == 200, r2.text
         req = r2.json()
         assert req.get("status") == "assigned"
         assert req.get("specialist_id") == specialist_auth["user"]["id"]
         assert req.get("schedule_proposal", {}).get("start_date")
 
-        # Client should have notification
-        notifs = client_auth["session"].get(f"{API}/notifications", timeout=30)
+        notifs = client.get(f"{API}/notifications", timeout=30)
         if notifs.status_code == 200:
             arr = notifs.json()
-            assert any("acceptat" in (n.get("body") or n.get("message") or "").lower()
-                       or "specialist alocat" in (n.get("title") or "").lower()
-                       for n in arr), "client should have an acceptance notification"
+            assert any(
+                "ofert" in (n.get("body") or n.get("message") or n.get("title") or "").lower()
+                or "acceptat" in (n.get("body") or n.get("message") or "").lower()
+                or "specialist alocat" in (n.get("title") or "").lower()
+                for n in arr
+            ), "client should have an offer notification"
 
 
 # ============ SPEC<->CLIENT-3: Start/Complete/Confirm ============
@@ -214,9 +234,16 @@ class TestSpecClient5Dispute:
         }, timeout=30).json()
         rid = r.get("id") or r.get("_id")
         assert rid, r
-        # Accept by specialist
-        ra = specialist_auth["session"].post(f"{API}/requests/{rid}/accept", json={}, timeout=30)
+        spec = specialist_auth["session"]
+        me = spec.get(f"{API}/auth/me", timeout=30).json()
+        if int(me.get("lead_credits") or 0) < 45 and float(me.get("wallet_balance") or 0) < 45:
+            spec.post(f"{API}/wallet/topup", params={"amount": 100}, timeout=30)
+        ra = spec.post(f"{API}/requests/{rid}/offers", json={"message": "dispute offer"}, timeout=30)
         assert ra.status_code == 200, ra.text
+        acc = client_auth["session"].post(
+            f"{API}/requests/{rid}/offers/{ra.json()['offer_id']}/accept", timeout=30
+        )
+        assert acc.status_code == 200, acc.text
         # Client funds escrow
         client_auth["session"].post(f"{API}/requests/{rid}/escrow?amount=300", timeout=30)
         # Specialist opens dispute

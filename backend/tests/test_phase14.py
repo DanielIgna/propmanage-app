@@ -16,6 +16,8 @@ import os
 import uuid
 import requests
 import pytest
+from bson import ObjectId
+from pymongo import MongoClient
 from tests.test_config import OWNER_ADMIN_PASSWORD
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8001").rstrip("/")
@@ -31,6 +33,20 @@ ADMIN_EMAIL = "admin@propmanage.io"
 ADMIN_PASS = OWNER_ADMIN_PASSWORD
 OPERATOR_EMAIL = "operator@propmanage.io"
 OPERATOR_PASS = "Op123!"
+MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
+DB_NAME = os.environ.get("DB_NAME", "propmanage_db")
+
+
+def _mongo():
+    return MongoClient(MONGO_URL)[DB_NAME]
+
+
+def _ensure_offer_funds(spec_s):
+    me = spec_s.get(f"{API}/auth/me").json()
+    if int(me.get("lead_credits") or 0) < 45 and float(me.get("wallet_balance") or 0) < 45:
+        top = spec_s.post(f"{API}/wallet/topup", params={"amount": 100})
+        assert top.status_code == 200, top.text
+    return spec_s.get(f"{API}/auth/me").json()
 
 
 def _login(email, password):
@@ -122,15 +138,25 @@ class TestAcceptRequestSchedule:
 
     def test_accept_legacy_no_body(self, client_with_prop, specialist2_session):
         req_id = self._seed_request(client_with_prop["session"], client_with_prop["prop_id"], "legacy")
+        spec_id = specialist2_session.get(f"{API}/auth/me").json()["id"]
+        _mongo().requests.update_one(
+            {"_id": ObjectId(req_id)},
+            {"$set": {"lead_fee_waived": True, "direct_specialist_id": spec_id}},
+        )
         r = specialist2_session.post(f"{API}/requests/{req_id}/accept")
-        # If specialist2 doesn't match category, should still pass per backend logic (no category filter at accept-time)
-        assert r.status_code == 200, f"Legacy accept failed: {r.status_code} {r.text}"
+        assert r.status_code == 200, f"Residual waived accept failed: {r.status_code} {r.text}"
         body = r.json()
         assert body.get("ok") is True
+        assert body.get("paid_with") == "waived"
         assert "balance_after" in body
 
     def test_accept_with_schedule_body(self, client_with_prop, specialist_session):
         req_id = self._seed_request(client_with_prop["session"], client_with_prop["prop_id"], "scheduled")
+        spec_id = specialist_session.get(f"{API}/auth/me").json()["id"]
+        _mongo().requests.update_one(
+            {"_id": ObjectId(req_id)},
+            {"$set": {"lead_fee_waived": True, "direct_specialist_id": spec_id}},
+        )
         payload = {
             "proposed_start_date": "2026-02-01T09:00:00Z",
             "proposed_end_date": "2026-02-03T17:00:00Z",
@@ -138,7 +164,7 @@ class TestAcceptRequestSchedule:
             "note": "TEST_Phase14 schedule note",
         }
         r = specialist_session.post(f"{API}/requests/{req_id}/accept", json=payload)
-        assert r.status_code == 200, f"Scheduled accept failed: {r.status_code} {r.text}"
+        assert r.status_code == 200, f"Residual waived scheduled accept failed: {r.status_code} {r.text}"
 
         # Verify event logged with schedule payload
         ad = _login(ADMIN_EMAIL, ADMIN_PASS)
@@ -173,10 +199,15 @@ class TestTimelineRBAC:
             "budget_min": 100, "budget_max": 200,
         })
         req_id = r.json()["id"]
-        spec.post(f"{API}/requests/{req_id}/accept", json={
+        _ensure_offer_funds(spec)
+        off = spec.post(f"{API}/requests/{req_id}/offers", json={
+            "message": "RBAC offer",
             "proposed_start_date": "2026-02-10T09:00:00Z",
             "estimated_hours": 4,
         })
+        assert off.status_code == 200, off.text
+        acc = client.post(f"{API}/requests/{req_id}/offers/{off.json()['offer_id']}/accept")
+        assert acc.status_code == 200, acc.text
         return {"req_id": req_id, "client": client, "spec": spec, "prop_id": prop_id}
 
     def test_client_can_view_timeline(self, scenario):
@@ -190,7 +221,8 @@ class TestTimelineRBAC:
             assert evs[i]["created_at"] <= evs[i + 1]["created_at"]
         types = {e["event_type"] for e in evs}
         assert "request.created" in types
-        assert "request.accepted" in types
+        assert "offer.submitted" in types
+        assert "offer.accepted" in types
 
     def test_specialist_can_view_timeline(self, scenario):
         r = scenario["spec"].get(f"{API}/requests/{scenario['req_id']}/timeline")
@@ -337,13 +369,16 @@ class TestFullE2E:
         })
         req_id = r.json()["id"]
 
-        # Specialist accept with schedule
-        specialist_session.post(f"{API}/requests/{req_id}/accept", json={
+        _ensure_offer_funds(specialist_session)
+        off = specialist_session.post(f"{API}/requests/{req_id}/offers", json={
+            "message": "E2E schedule",
             "proposed_start_date": "2026-02-15T09:00:00Z",
             "proposed_end_date": "2026-02-16T17:00:00Z",
             "estimated_hours": 8,
-            "note": "E2E schedule",
         })
+        assert off.status_code == 200, off.text
+        acc = client.post(f"{API}/requests/{req_id}/offers/{off.json()['offer_id']}/accept")
+        assert acc.status_code == 200, acc.text
 
         # Client pays escrow (demo mode)
         pay_r = client.post(f"{API}/escrow/pay-demo", json={"request_id": req_id, "amount": 400})
@@ -364,23 +399,20 @@ class TestFullE2E:
         events = r.json()["events"]
         types_in_order = [e["event_type"] for e in events]
         # Must include core events; escrow.paid may be absent if pay-demo endpoint differs
-        for required in ["request.created", "request.accepted", "work.started",
+        for required in ["request.created", "offer.submitted", "offer.accepted", "work.started",
                          "work.completed", "work.confirmed"]:
             assert required in types_in_order, \
                 f"Missing event {required} in {types_in_order}"
-        # Order check: created < accepted < started < completed < confirmed
-        order = ["request.created", "request.accepted", "work.started",
+        order = ["request.created", "offer.submitted", "offer.accepted", "work.started",
                  "work.completed", "work.confirmed"]
         positions = [types_in_order.index(t) for t in order]
         assert positions == sorted(positions), f"Events out of order: {types_in_order}"
 
     def test_schedule_proposal_in_accept_payload(self, scenario, admin_session):
-        events = admin_session.get(f"{API}/requests/{scenario['req_id']}/timeline").json()["events"]
-        accepted = next((e for e in events if e["event_type"] == "request.accepted"), None)
-        assert accepted is not None
-        sched = accepted["payload"].get("schedule") or {}
+        req = scenario["client"].get(f"{API}/requests/{scenario['req_id']}").json()
+        sched = req.get("schedule_proposal") or {}
         assert sched.get("estimated_hours") == 8
-        assert sched.get("note") == "E2E schedule"
+        assert "start_date" in sched
 
     def test_admin_activity_stream_contains_e2e_events(self, scenario, admin_session):
         r = admin_session.get(f"{API}/admin/activity-stream?limit=200")

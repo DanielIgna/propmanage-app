@@ -143,11 +143,14 @@ class TestPropertyCRUD:
         req_id = rq.json()["id"]
 
         # 'open' status is NOT in delete-blocking list per server code: {"assigned", "in_progress", "completed"}
-        # We need to push the request to 'assigned'. Have specialist accept it.
         sspec, _ = _login(SPEC)
-        # Ensure wallet has 45 RON
-        acc = sspec.post(f"{API}/requests/{req_id}/accept", timeout=15)
-        assert acc.status_code == 200, f"Accept failed: {acc.text}"
+        me = sspec.get(f"{API}/auth/me", timeout=15).json()
+        if int(me.get("lead_credits") or 0) < 45 and float(me.get("wallet_balance") or 0) < 45:
+            sspec.post(f"{API}/wallet/topup", params={"amount": 100}, timeout=15)
+        off = sspec.post(f"{API}/requests/{req_id}/offers", json={"message": "blocker offer"}, timeout=15)
+        assert off.status_code == 200, f"submit_offer failed: {off.text}"
+        acc = s.post(f"{API}/requests/{req_id}/offers/{off.json()['offer_id']}/accept", timeout=15)
+        assert acc.status_code == 200, f"accept_offer failed: {acc.text}"
 
         # Now attempt delete -> 400
         d = s.delete(f"{API}/properties/{prop_id}", timeout=15)
@@ -354,10 +357,15 @@ class TestNotifications:
         client_id = me_client["id"]
 
         sspec, _ = _login(SPEC)
-        sspec.post(f"{API}/requests/{req_id}/accept", timeout=15)
-        # Expect 'assignment' notif for client
+        me = sspec.get(f"{API}/auth/me", timeout=15).json()
+        if int(me.get("lead_credits") or 0) < 45 and float(me.get("wallet_balance") or 0) < 45:
+            sspec.post(f"{API}/wallet/topup", params={"amount": 100}, timeout=15)
+        off = sspec.post(f"{API}/requests/{req_id}/offers", json={"message": "notif offer"}, timeout=15)
+        assert off.status_code == 200, off.text
+        acc = s.post(f"{API}/requests/{req_id}/offers/{off.json()['offer_id']}/accept", timeout=15)
+        assert acc.status_code == 200, acc.text
         assert db.notifications.count_documents(
-            {"user_id": client_id, "type": "assignment", "title": {"$regex": "Specialist alocat"}}
+            {"user_id": client_id, "type": "offer"}
         ) > 0
 
         sspec.post(f"{API}/requests/{req_id}/start", timeout=15)

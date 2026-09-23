@@ -230,9 +230,15 @@ def _ensure_active_request_with_escrow(client_session, spec_session):
     )
     assert rreq.status_code in (200, 201), rreq.text
     req_id = rreq.json()["id"]
-    # Specialist accepts (pays 45 RON lead fee)
-    ra = spec_session.post(f"{BASE_URL}/api/requests/{req_id}/accept", timeout=15)
+    me = spec_session.get(f"{BASE_URL}/api/auth/me", timeout=15).json()
+    if int(me.get("lead_credits") or 0) < 45 and float(me.get("wallet_balance") or 0) < 45:
+        spec_session.post(f"{BASE_URL}/api/wallet/topup", params={"amount": 100}, timeout=15)
+    ra = spec_session.post(f"{BASE_URL}/api/requests/{req_id}/offers", json={"message": "phase6 offer"}, timeout=15)
     assert ra.status_code == 200, ra.text
+    acc = client_session.post(
+        f"{BASE_URL}/api/requests/{req_id}/offers/{ra.json()['offer_id']}/accept", timeout=15
+    )
+    assert acc.status_code == 200, acc.text
     # Client funds escrow
     re = client_session.post(
         f"{BASE_URL}/api/requests/{req_id}/escrow", params={"amount": 300}, timeout=15

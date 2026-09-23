@@ -80,8 +80,13 @@ def assigned_request():
     }, timeout=15)
     assert created.status_code == 200, created.text
     req_id = created.json()["id"]
-    acc = spec.post(f"{API}/requests/{req_id}/accept", json={}, timeout=15)
-    assert acc.status_code == 200, f"accept failed: {acc.status_code} {acc.text[:200]}"
+    me_spec = spec.get(f"{API}/auth/me", timeout=15).json()
+    if int(me_spec.get("lead_credits") or 0) < 45 and float(me_spec.get("wallet_balance") or 0) < 45:
+        spec.post(f"{API}/wallet/topup", params={"amount": 100}, timeout=15)
+    off = spec.post(f"{API}/requests/{req_id}/offers", json={"message": "idor offer"}, timeout=15)
+    assert off.status_code == 200, f"submit_offer failed: {off.status_code} {off.text[:200]}"
+    acc = client.post(f"{API}/requests/{req_id}/offers/{off.json()['offer_id']}/accept", timeout=15)
+    assert acc.status_code == 200, f"accept_offer failed: {acc.status_code} {acc.text[:200]}"
     return {"req_id": req_id, "client": client, "spec": spec}
 
 

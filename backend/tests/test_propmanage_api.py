@@ -219,21 +219,37 @@ class TestMarketplaceFlow:
         return {"id": r.json()["id"], "property_id": prop_id}
 
     def test_specialist_accept_deducts_wallet(self, created_request):
-        s = make_session(SPEC2)  # use spec2 to avoid balance issues if reruns
+        s = make_session(SPEC2)
+        client = make_session(CLIENT)
         me_before = s.get(f"{API}/auth/me").json()
-        bal_before = me_before.get("wallet_balance", 0)
-        if bal_before < 45:
-            pytest.skip("Insufficient balance on spec2 to test accept")
+        credits_before = int(me_before.get("lead_credits") or 0)
+        bal_before = float(me_before.get("wallet_balance") or 0)
+        if credits_before < 45 and bal_before < 45:
+            top = s.post(f"{API}/wallet/topup", params={"amount": 100})
+            assert top.status_code == 200, top.text
+            me_before = s.get(f"{API}/auth/me").json()
+            credits_before = int(me_before.get("lead_credits") or 0)
+            bal_before = float(me_before.get("wallet_balance") or 0)
 
-        r = s.post(f"{API}/requests/{created_request['id']}/accept")
+        r = s.post(f"{API}/requests/{created_request['id']}/offers", json={"message": "flow offer"})
         assert r.status_code == 200, r.text
         data = r.json()
         assert data.get("ok") is True
+        assert data.get("paid_with") in ("lead_credit", "wallet")
 
         me_after = s.get(f"{API}/auth/me").json()
-        assert me_after["wallet_balance"] == pytest.approx(bal_before - 45.0, abs=0.01)
+        if data.get("paid_with") == "lead_credit":
+            assert int(me_after.get("lead_credits") or 0) == credits_before - 45
+            assert float(me_after.get("wallet_balance") or 0) == pytest.approx(bal_before, abs=0.01)
+        else:
+            assert me_after["wallet_balance"] == pytest.approx(bal_before - 45.0, abs=0.01)
 
-        # Verify request status
+        req_open = client.get(f"{API}/requests/{created_request['id']}").json()
+        assert req_open["status"] == "open"
+        assert not req_open.get("specialist_id")
+
+        acc = client.post(f"{API}/requests/{created_request['id']}/offers/{data['offer_id']}/accept")
+        assert acc.status_code == 200, acc.text
         req = s.get(f"{API}/requests/{created_request['id']}").json()
         assert req["status"] == "assigned"
         assert req["specialist_id"]
