@@ -123,7 +123,8 @@ async def register(data: RegisterIn, request: Request, response: Response):
         "role": data.role,
         "tenant_id": tenant_id,
         "phone": phone_digits,
-        "wallet_balance": 500.0 if data.role == "specialist" else 0.0,
+        "wallet_balance": 0.0,
+        "lead_credits": 135 if data.role == "specialist" else 0,
         "tokens": 0,
         "rating": 5.0 if data.role == "specialist" else None,
         "reviews_count": 0,
@@ -678,7 +679,9 @@ async def become_specialist(
         "tier": None,
         "rating": user.get("rating"),
         "reviews_count": user.get("reviews_count", 0),
-        # Wallet stays the same — no welcome bonus, since this is an upgrade
+        # First specialist activation: onboarding Lead Credits (not RON).
+        # Wallet is unchanged. Guards above make this grant idempotent ($set, not $inc).
+        "lead_credits": 135,
         "specialist_onboarded_at": now_iso,
     }
     # Also set role='specialist' so existing require_role("specialist") guards work
@@ -1168,7 +1171,7 @@ async def google_direct_callback(payload: GoogleCallbackIn, response: Response, 
             "tenant_id": "main",
             "avatar": picture or None, "avatar_source": "google" if picture else None,
             "role": "client", "google_auth": True, "password_hash": "",
-            "wallet_balance": 0.0, "tokens": 0,
+            "wallet_balance": 0.0, "tokens": 0, "lead_credits": 0,
             "rating": None, "reviews_count": 0, "verified": False, "tier": None,
             "phone": "",
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -1307,6 +1310,7 @@ async def google_session_exchange(request: Request, response: Response):
             "password_hash": "",
             "wallet_balance": 0.0,
             "tokens": 0,
+            "lead_credits": 0,
             "rating": None,
             "reviews_count": 0,
             "verified": False,
