@@ -8,6 +8,7 @@ from db import db
 from core_utils import serialize_doc, effective_role
 from deps import get_current_user, require_role
 from models import PropertyIn, PropertyUpdateIn
+from routes.property_dna import _load_property_for
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["properties"])
@@ -64,8 +65,7 @@ async def list_my_properties(user: dict = Depends(get_current_user)):
 
 @router.get("/properties/{prop_id}")
 async def get_property(prop_id: str, user: dict = Depends(get_current_user)):
-    doc = await db.properties.find_one({"_id": ObjectId(prop_id)})
-    if not doc: raise HTTPException(404, "Property not found")
+    doc = await _load_property_for(user, prop_id)
     return serialize_doc(doc)
 
 @router.put("/properties/{prop_id}")

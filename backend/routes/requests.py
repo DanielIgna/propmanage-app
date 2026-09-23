@@ -152,6 +152,8 @@ async def get_request(req_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(404, "Request not found")
     doc = await db.requests.find_one({"_id": ObjectId(req_id)})
     if not doc: raise HTTPException(404, "Request not found")
+    if not await _can_view_request_events(user, doc):
+        raise HTTPException(403, "Nu ai permisiunea să vezi această cerere.")
     return serialize_doc(doc)
 
 @router.get("/requests/{req_id}/concept-render")

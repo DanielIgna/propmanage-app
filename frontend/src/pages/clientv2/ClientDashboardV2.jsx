@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { Navigate } from "react-router-dom";
 import axios from "axios";
 import { Home, Plus, Wrench, Building2, Settings, Bell, ChevronDown, Shield, ChevronRight, Gift } from "lucide-react";
 import { useAuth, formatApiError } from "../../auth";
@@ -164,6 +165,12 @@ export default function ClientDashboardV2() {
   };
 
   const markRead = async (id) => { await axios.post(`${API}/notifications/${id}/read`).catch(() => {}); loadNotifs(); };
+
+  // Same route guard as DashLayout (/specialist): null = checking, false = not authenticated.
+  if (user === false) return <Navigate to="/login?next=/client" replace />;
+  if (!user) return <div className="min-h-screen flex items-center justify-center text-stone-400">Se încarcă...</div>;
+  const effectiveRole = user.active_view || user.role;
+  if (effectiveRole !== "client") return <Navigate to={`/${effectiveRole}`} replace />;
 
   const actions = {
     payEscrow, confirmRequest, setChatRequest, setReviewFor, setDisputeFor, setTimelineRequestId,

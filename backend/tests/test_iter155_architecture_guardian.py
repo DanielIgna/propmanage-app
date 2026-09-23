@@ -54,9 +54,14 @@ def test_no_duplicate_stripe_webhook():
 
 
 def test_canonical_client_dashboard_only():
-    assert not Path("/app/frontend/src/pages/ClientDashboard.jsx").exists()
-    assert not Path("/app/frontend/src/pages/clientv2/ClientDashboardSwitch.jsx").exists()
-    assert Path("/app/frontend/src/pages/clientv2/ClientDashboardV2.jsx").exists()
+    pages = Path("/app/frontend/src/pages") if Path("/app/frontend").exists() else Path(__file__).resolve().parents[2] / "frontend" / "src" / "pages"
+    assert not (pages / "ClientDashboard.jsx").exists()
+    assert not (pages / "clientv2" / "ClientDashboardSwitch.jsx").exists()
+    v2 = pages / "clientv2" / "ClientDashboardV2.jsx"
+    assert v2.exists()
+    text = v2.read_text()
+    assert "user === false" in text
+    assert 'to="/login?next=/client"' in text
 
 
 def test_house_health_webhook_wired_in_canonical_handler():
