@@ -13,6 +13,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from db import db
+from fulfillment_birth import initial_fulfillment_fields
+from fulfillment_commit import DIRECT_REBOOK, MULTI_OFFER
 from deps import require_role
 from services import notify, log_event
 
@@ -179,6 +181,8 @@ async def request_from_task(task_id: str, data: TaskRequestIn, user: dict = Depe
         if not worked:
             raise HTTPException(403, "Poți trimite direct doar către specialiști cu care ai finalizat o lucrare")
 
+    created_at = datetime.now(timezone.utc).isoformat()
+    strategy = DIRECT_REBOOK if direct_spec else MULTI_OFFER
     doc = {
         "property_id": t["property_id"],
         "category": t.get("category") or "handyman",
@@ -197,7 +201,8 @@ async def request_from_task(task_id: str, data: TaskRequestIn, user: dict = Depe
         "specialist_name": None,
         "escrow_amount": None,
         "maintenance_task_id": task_id,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": created_at,
+        **initial_fulfillment_fields(strategy, created_at),
     }
     if direct_spec:
         doc.update({

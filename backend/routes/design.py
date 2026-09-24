@@ -6,6 +6,8 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 
 from db import db
+from fulfillment_birth import initial_fulfillment_fields
+from fulfillment_commit import MULTI_OFFER
 from deps import require_role
 from services import notify
 from models import (
@@ -119,6 +121,7 @@ async def create_design_concept_request(data: DesignConceptIn, user: dict = Depe
         },
         "phases": [],
         "created_at": now_iso,
+        **initial_fulfillment_fields(MULTI_OFFER, now_iso),
     }
     res = await db.requests.insert_one(req_doc)
     req_id = str(res.inserted_id)

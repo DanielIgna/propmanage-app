@@ -11,6 +11,8 @@ from bson import ObjectId
 from fastapi import APIRouter, Body, Depends, HTTPException
 
 from db import db
+from fulfillment_birth import initial_fulfillment_fields
+from fulfillment_commit import MULTI_OFFER
 from deps import require_role
 from event_bus import emit
 from revenue_hunter import SERVICES, is_enabled, run_revenue_hunter_tick, scan_property_throttled
@@ -54,6 +56,7 @@ async def accept_opportunity(opp_id: str, user: dict = Depends(require_role("cli
         raise HTTPException(404, "Proprietatea nu există")
 
     meta = SERVICES.get(opp["service"], {})
+    created_at = _now()
     doc = {
         "property_id": opp["property_id"],
         "category": meta.get("category", "other"),
@@ -70,7 +73,8 @@ async def accept_opportunity(opp_id: str, user: dict = Depends(require_role("cli
         "status": "open",
         "specialist_id": None, "specialist_name": None, "escrow_amount": None,
         "source": "revenue_hunter",
-        "created_at": _now(),
+        "created_at": created_at,
+        **initial_fulfillment_fields(MULTI_OFFER, created_at),
     }
     res = await db.requests.insert_one(doc)
     req_id = str(res.inserted_id)

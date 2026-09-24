@@ -29,6 +29,8 @@ import logging
 logger = logging.getLogger("propmanage.digital_twin")
 
 from db import db
+from fulfillment_birth import initial_fulfillment_fields
+from fulfillment_commit import MULTI_OFFER
 from deps import get_current_user, require_role
 from core_utils import JWT_SECRET, JWT_ALGORITHM
 import jwt as _jwt
@@ -1353,6 +1355,7 @@ async def request_offer_from_concept(concept_id: str, payload: RequestOfferIn,
         lines.append(f"Notă client: {payload.note}")
     lines.append("Sursă: Digital Twin — concept validat profesional.")
     owner = await db.users.find_one(_user_filter(owner_id), {"name": 1, "email": 1})
+    created_at = _now_iso()
     doc = {
         "property_id": prop_id,
         "category": payload.category or "interior_design",
@@ -1372,7 +1375,8 @@ async def request_offer_from_concept(concept_id: str, payload: RequestOfferIn,
         "specialist_id": None,
         "specialist_name": None,
         "escrow_amount": None,
-        "created_at": _now_iso(),
+        "created_at": created_at,
+        **initial_fulfillment_fields(MULTI_OFFER, created_at),
         "source": "digital_twin_concept",
         "concept_id": concept_id,
         "dt_model_id": c.get("model_id"),

@@ -28,6 +28,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, validator
 
 from db import db
+from fulfillment_birth import initial_fulfillment_fields
+from fulfillment_commit import MULTI_OFFER
 from deps import get_current_user
 
 logger = logging.getLogger("propmanage.house_health.recommendations")
@@ -273,6 +275,7 @@ async def publish_to_marketplace(
     )
     description = "\n".join([p for p in description_parts if p]).strip() or r.get("title", "Recomandare House Health")
 
+    created_at = datetime.now(timezone.utc).isoformat()
     # Build request doc (mirrors /api/requests POST minimum required fields)
     request_doc = {
         "property_id": str(prop["_id"]),
@@ -290,7 +293,8 @@ async def publish_to_marketplace(
         "specialist_id": None,
         "specialist_name": None,
         "escrow_amount": None,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": created_at,
+        **initial_fulfillment_fields(MULTI_OFFER, created_at),
         # House Health attribution metadata
         "house_health_source": {
             "recommendation_id": rec_id,

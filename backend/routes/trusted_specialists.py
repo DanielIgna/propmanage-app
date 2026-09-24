@@ -8,6 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from db import db
+from fulfillment_birth import initial_fulfillment_fields
+from fulfillment_commit import DIRECT_REBOOK
 from deps import require_role
 from services import notify, log_event
 from routes.trust_growth import rebook_rollup
@@ -137,6 +139,7 @@ async def rebook_specialist(specialist_id: str, data: RebookIn, user: dict = Dep
         "is_rebooking": True,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
+    doc.update(initial_fulfillment_fields(DIRECT_REBOOK, doc["created_at"]))
     res = await db.requests.insert_one(doc)
     doc["id"] = str(res.inserted_id)
     doc.pop("_id", None)

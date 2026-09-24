@@ -14,6 +14,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from db import db
+from fulfillment_birth import initial_fulfillment_fields
+from fulfillment_commit import CAMPAIGN
 from deps import get_current_user, require_role
 from services import notify, log_event
 
@@ -362,6 +364,7 @@ async def accept_campaign_offer(campaign_id: str, body: dict, user: dict = Depen
     created_requests = []
     for p in participants:
         pr = props.get(p["property_id"]) or {}
+        created_at = _now()
         doc = {
             "property_id": p["property_id"], "category": c["category"], "title": c["title"],
             "description": f"Campanie comună „{c['title']}” — {c.get('building_name')}. Preț de grup: {offer['price_per_unit']} RON/apartament.",
@@ -370,10 +373,11 @@ async def accept_campaign_offer(campaign_id: str, body: dict, user: dict = Depen
             "client_id": p["owner_id"], "client_name": p.get("owner_name"),
             "property_name": pr.get("name"), "property_address": pr.get("address"),
             "status": "assigned", "specialist_id": sid, "specialist_name": offer["specialist_name"],
-            "assigned_at": _now(), "escrow_amount": None,
+            "assigned_at": created_at, "escrow_amount": None,
             "direct_specialist_id": sid, "direct_specialist_name": offer["specialist_name"],
             "lead_fee_waived": True, "is_campaign": True, "campaign_id": campaign_id,
-            "created_at": _now(),
+            "created_at": created_at,
+            **initial_fulfillment_fields(CAMPAIGN, created_at),
         }
         res = await db.requests.insert_one(doc)
         rid = str(res.inserted_id)

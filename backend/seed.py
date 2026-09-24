@@ -6,6 +6,8 @@ from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
 from db import db
+from fulfillment_birth import initial_fulfillment_fields
+from fulfillment_commit import MULTI_OFFER
 from core_utils import hash_password, verify_password
 
 logger = logging.getLogger(__name__)
@@ -114,6 +116,10 @@ async def seed():
             prop_id = str(prop_res.inserted_id)
 
             spec_id = user_ids.get("specialist@propmanage.io")
+            open_recent = (
+                datetime.now(timezone.utc) - timedelta(hours=1)
+            ).isoformat()
+            open_now = datetime.now(timezone.utc).isoformat()
             sample_requests = [
                 {
                     "client_id": client_id, "client_name": "Andrei Popescu",
@@ -134,7 +140,8 @@ async def seed():
                     "description": "Două prize din bucătărie nu mai funcționează.",
                     "priority": "normal", "budget_estimate": 200.0,
                     "status": "open", "specialist_id": None, "specialist_name": None,
-                    "created_at": (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat(),
+                    "created_at": open_recent,
+                    **initial_fulfillment_fields(MULTI_OFFER, open_recent),
                 },
                 {
                     "client_id": client_id, "client_name": "Andrei Popescu",
@@ -143,7 +150,8 @@ async def seed():
                     "description": "Scurgere detectată sub chiuvetă.",
                     "priority": "urgent", "budget_estimate": 350.0,
                     "status": "open",
-                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": open_now,
+                    **initial_fulfillment_fields(MULTI_OFFER, open_now),
                 },
             ]
             for r in sample_requests:

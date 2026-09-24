@@ -10,6 +10,8 @@ from pymongo import ReturnDocument
 from db import db
 from core_utils import serialize_doc
 from deps import get_current_user, require_role
+from fulfillment_birth import initial_fulfillment_fields
+from fulfillment_commit import MULTI_OFFER
 from services import notify, log_event
 from models import RequestIn, ReviewIn
 
@@ -21,6 +23,7 @@ router = APIRouter(prefix="/api", tags=["requests"])
 async def create_request(data: RequestIn, background_tasks: BackgroundTasks, user: dict = Depends(require_role("client"))):
     prop = await db.properties.find_one({"_id": ObjectId(data.property_id), "owner_id": user["id"]})
     if not prop: raise HTTPException(404, "Property not found")
+    created_at = datetime.now(timezone.utc).isoformat()
     doc = {
         **data.model_dump(),
         "county": data.county or prop.get("county") or prop.get("zone") or prop.get("city"),
@@ -32,7 +35,8 @@ async def create_request(data: RequestIn, background_tasks: BackgroundTasks, use
         "specialist_id": None,
         "specialist_name": None,
         "escrow_amount": None,
-        "created_at": datetime.now(timezone.utc).isoformat()
+        "created_at": created_at,
+        **initial_fulfillment_fields(MULTI_OFFER, created_at),
     }
     res = await db.requests.insert_one(doc)
     doc["id"] = str(res.inserted_id)
