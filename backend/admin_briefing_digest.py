@@ -90,7 +90,8 @@ async def _orchestrator_last_24h() -> dict:
 
 async def _latest_backup() -> Optional[dict]:
     """Latest DB backup run metadata for the Briefing tile."""
-    doc = await db.backup_runs.find_one({}, sort=[("started_at", -1)])
+    from backup_service import json_backup_run_filter
+    doc = await db.backup_runs.find_one(json_backup_run_filter(), sort=[("started_at", -1)])
     if not doc:
         return None
     doc.pop("_id", None)

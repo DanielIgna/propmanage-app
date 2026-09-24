@@ -72,7 +72,8 @@ async def trust_stats() -> dict:
 
     # --- Last MongoDB backup ---
     try:
-        last_backup = await db.backup_runs.find_one({}, sort=[("started_at", -1)])
+        from backup_service import json_backup_run_filter
+        last_backup = await db.backup_runs.find_one(json_backup_run_filter(), sort=[("started_at", -1)])
         if last_backup:
             out["last_backup"] = {
                 "status": last_backup.get("status"),

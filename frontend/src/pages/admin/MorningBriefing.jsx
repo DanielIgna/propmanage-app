@@ -1,12 +1,12 @@
 // Morning Briefing — at-a-glance status snapshot of all monitoring systems.
 // Aggregates: Healthcheck, Smoke Test, Data Integrity, Incidents, AI findings.
 // Goal: admin sees in 5 seconds whether all systems are OK or needs action.
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import {
   Sunrise, CheckCircle2, AlertTriangle, XCircle, Activity, Database,
-  PlayCircle, AlertOctagon, FileSearch, RefreshCw, ArrowRight, Mail, HardDrive, BarChart3
+  PlayCircle, AlertOctagon, FileSearch, RefreshCw, ArrowRight, Mail, HardDrive, BarChart3, Download
 } from "lucide-react";
 import { AdminCard } from "./AdminLayoutMetronic";
 import { API } from "../DashShared";
@@ -20,7 +20,7 @@ const TONE = {
   idle:  { bg: "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700",            text: "text-slate-600 dark:text-slate-300",   icon: Activity, iconColor: "text-slate-400" },
 };
 
-const SystemTile = ({ icon: Icon, title, tone, headline, sub, action, testid }) => {
+const SystemTile = ({ icon: Icon, title, tone, headline, sub, action, secondaryAction, testid }) => {
   const t = TONE[tone] || TONE.idle;
   const StatusIcon = t.icon;
   return (
@@ -37,10 +37,21 @@ const SystemTile = ({ icon: Icon, title, tone, headline, sub, action, testid }) 
           {action && (
             <button
               onClick={action.onClick}
-              className="mt-1.5 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+              disabled={action.disabled}
+              className="mt-1.5 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 disabled:opacity-50"
               data-testid={`${testid}-action`}
             >
               {action.label} <ArrowRight className="w-3 h-3" />
+            </button>
+          )}
+          {secondaryAction && (
+            <button
+              onClick={secondaryAction.onClick}
+              disabled={secondaryAction.disabled}
+              className="mt-1 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 disabled:opacity-50"
+              data-testid={`${testid}-secondary-action`}
+            >
+              {secondaryAction.label} <Download className="w-3 h-3" />
             </button>
           )}
         </div>
@@ -80,6 +91,52 @@ export const MorningBriefing = () => {
     }
   };
   const [runningBackup, setRunningBackup] = useState(false);
+  const [dumpingBson, setDumpingBson] = useState(false);
+  const dumpingBsonRef = useRef(false);
+
+  const downloadBsonDump = async () => {
+    if (dumpingBsonRef.current) return;
+    dumpingBsonRef.current = true;
+    setDumpingBson(true);
+    const tid = toast.loading("Se generează dump BSON...");
+    try {
+      const r = await axios.post(`${API}/admin/backups/dump-bson`, {}, { timeout: 180000 });
+      const d = r.data?.dump || {};
+      if (!d.ok || !d.filename) {
+        toast.error(`Dump BSON eșuat: ${d.error || "necunoscut"}`, { id: tid });
+        return;
+      }
+      const fileResp = await axios.get(`${API}/admin/backups/download/${d.filename}`, {
+        responseType: "blob",
+        timeout: 180000,
+      });
+      const url = window.URL.createObjectURL(new Blob([fileResp.data], { type: "application/gzip" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = d.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success(`Dump BSON descărcat: ${d.size_mb}MB · ${d.collections_count} colecții`, { id: tid });
+      load();
+    } catch (err) {
+      let detail = err?.response?.data?.detail;
+      const data = err?.response?.data;
+      if (data instanceof Blob) {
+        try {
+          const text = await data.text();
+          detail = JSON.parse(text).detail || text;
+        } catch {
+          detail = null;
+        }
+      }
+      toast.error(detail || "Eroare la dump BSON", { id: tid });
+    } finally {
+      dumpingBsonRef.current = false;
+      setDumpingBson(false);
+    }
+  };
 
   const runManualBackup = async () => {
     setRunningBackup(true);
@@ -333,7 +390,12 @@ export const MorningBriefing = () => {
           tone={backupTile.tone}
           headline={backupTile.headline}
           sub={backupTile.sub}
-          action={{ label: runningBackup ? "Se creează..." : "Backup acum", onClick: runManualBackup }}
+          action={{ label: runningBackup ? "Se creează..." : "Backup acum", onClick: runManualBackup, disabled: runningBackup }}
+          secondaryAction={{
+            label: dumpingBson ? "Se generează..." : "Generează și descarcă dump BSON",
+            onClick: downloadBsonDump,
+            disabled: dumpingBson,
+          }}
           testid="briefing-tile-backup"
         />
       </div>
