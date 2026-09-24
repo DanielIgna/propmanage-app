@@ -18,6 +18,13 @@ from bson.errors import InvalidId
 
 from db import db
 from deps import require_role
+from fulfillment_commit import (
+    ADMIN,
+    DIRECT_REBOOK,
+    commit_assignment,
+    stored_assignment_version,
+)
+from routes.marketplace_offers import close_open_offers_after_assignment
 from services import notify, log_event
 
 logger = logging.getLogger(__name__)
@@ -357,20 +364,39 @@ async def assign_gap(gap_id: str, payload: dict = Body(...), user=Depends(requir
     req = await db.requests.find_one({"_id": ObjectId(gap["request_id"])})
     if not req:
         raise HTTPException(404, "Cererea nu mai există")
+    if req.get("fulfillment_strategy") != DIRECT_REBOOK:
+        raise HTTPException(400, "Operations poate atribui doar un override explicit pe DIRECT_REBOOK")
+    if req.get("status") != "open":
+        raise HTTPException(400, "Cererea nu mai este deschisă")
     if req.get("specialist_id"):
         raise HTTPException(400, "Cererea are deja specialist alocat")
 
     now = datetime.now(timezone.utc).isoformat()
-    await db.requests.update_one({"_id": req["_id"]}, {"$set": {
-        "status": "assigned",
-        "specialist_id": str(spec["_id"]),
-        "specialist_name": spec.get("name"),
-        "specialist_specialty": spec.get("specialty") or "",
-        "specialist_verified": bool(spec.get("verified")),
-        "assigned_at": now,
-        "assigned_via": "operations_center",
-        "assigned_by": str(user.get("id")),
-    }})
+    committed = await commit_assignment(
+        request_id=str(req["_id"]),
+        expected_strategy=DIRECT_REBOOK,
+        expected_assignment_version=stored_assignment_version(req),
+        specialist_id=str(spec["_id"]),
+        assignment_authority=ADMIN,
+        assignment_trigger="operations_center",
+        assignment_reason="explicit admin override on direct rebook",
+        actor={
+            "id": str(user.get("id")),
+            "name": user.get("email") or user.get("name"),
+            "role": "admin",
+        },
+        explicit_admin_override=True,
+        assigned_via="operations_center",
+        specialist_snapshot={
+            "specialist_name": spec.get("name") or "",
+            "specialist_specialty": spec.get("specialty") or "",
+            "specialist_city": spec.get("city") or spec.get("location") or "",
+            "specialist_verified": bool(spec.get("verified")),
+        },
+    )
+    if not committed["ok"]:
+        raise HTTPException(409, "Atribuirea nu a putut fi confirmată")
+    await close_open_offers_after_assignment(str(req["_id"]))
     await db.specialist_gaps.update_one({"_id": gap["_id"]}, {"$set": {
         "status": "assigned", "assigned_specialist_id": str(spec["_id"]),
         "assigned_specialist_name": spec.get("name"), "assigned_by": str(user.get("id")),

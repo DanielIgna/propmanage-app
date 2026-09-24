@@ -112,6 +112,20 @@ def _version_is(doc: dict, expected: int) -> bool:
     return doc.get("assignment_version") == expected
 
 
+def stored_assignment_version(doc: dict) -> int:
+    """Version a writer must pass as expected.
+
+    A missing field is 0. Explicit null and other non-integers do not match
+    version 0, so callers pass a value the predicate rejects.
+    """
+    if not doc or "assignment_version" not in doc:
+        return 0
+    value = doc.get("assignment_version")
+    if isinstance(value, bool) or not isinstance(value, int):
+        return -1
+    return value
+
+
 async def _explain_miss(
     oid: ObjectId,
     strategy: str,

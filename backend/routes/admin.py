@@ -9,6 +9,13 @@ from fastapi import APIRouter, Depends, HTTPException, Body
 from db import db
 from core_utils import serialize_doc
 from deps import require_role
+from fulfillment_commit import (
+    AUTHORITY_AUTO_MATCH,
+    AUTO_MATCH,
+    commit_assignment,
+    stored_assignment_version,
+)
+from routes.marketplace_offers import close_open_offers_after_assignment
 from services import notify, log_event
 from models import DocumentReviewIn, SpecialistRejectIn
 from email_service import (
@@ -601,12 +608,21 @@ async def execute_auto_match(
     cursor = db.requests.find({
         "status": "open",
         "specialist_id": {"$in": [None, ""]},
+        "fulfillment_strategy": AUTO_MATCH,
         "created_at": {"$lt": cutoff.isoformat()},
     }).sort("created_at", 1).limit(limit)
 
     assigned = []
     skipped = []
     async for req in cursor:
+        if req.get("fulfillment_strategy") != AUTO_MATCH:
+            skipped.append({
+                "request_id": str(req["_id"]),
+                "reason": "strategy_not_auto_match",
+                "category": req.get("category") or "",
+            })
+            continue
+
         category = req.get("category") or ""
         zone = req.get("property_zone") or req.get("zone") or ""
         if not zone and req.get("property_id"):
@@ -643,20 +659,37 @@ async def execute_auto_match(
             continue
 
         try:
-            spec = await db.users.find_one({"_id": ObjectId(best["id"])})
-            update = {
-                "status": "assigned",
-                "specialist_id": best["id"],
-                "specialist_name": spec.get("name"),
-                "specialist_specialty": spec.get("specialty") or spec.get("category") or "",
-                "specialist_city": spec.get("city") or spec.get("location") or "",
-                "specialist_verified": bool(spec.get("verified")),
-                "assigned_at": datetime.now(timezone.utc).isoformat(),
-                "auto_assigned_by_admin": triggered_by.get("id"),
-                "auto_assigned_at": datetime.now(timezone.utc).isoformat(),
-                "auto_assigned_via": triggered_by.get("kind"),
-            }
-            await db.requests.update_one({"_id": req["_id"]}, {"$set": update})
+            spec = await db.users.find_one({"_id": ObjectId(best["id"])}) or {}
+            kind = triggered_by.get("kind") or "cron"
+            committed = await commit_assignment(
+                request_id=str(req["_id"]),
+                expected_strategy=AUTO_MATCH,
+                expected_assignment_version=stored_assignment_version(req),
+                specialist_id=best["id"],
+                assignment_authority=AUTHORITY_AUTO_MATCH,
+                assignment_trigger=kind,
+                assignment_reason="auto match",
+                actor={
+                    "id": triggered_by.get("id"),
+                    "name": triggered_by.get("label") or kind,
+                    "role": "admin" if kind == "admin_manual" else "system",
+                },
+                matching_policy="category_zone",
+                specialist_snapshot={
+                    "specialist_name": spec.get("name") or "",
+                    "specialist_specialty": spec.get("specialty") or spec.get("category") or "",
+                    "specialist_city": spec.get("city") or spec.get("location") or "",
+                    "specialist_verified": bool(spec.get("verified")),
+                },
+            )
+            if not committed["ok"]:
+                skipped.append({
+                    "request_id": str(req["_id"]),
+                    "reason": committed["reason"],
+                    "category": category,
+                })
+                continue
+            await close_open_offers_after_assignment(str(req["_id"]))
 
             try:
                 await notify(

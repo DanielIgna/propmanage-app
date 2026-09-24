@@ -5,13 +5,18 @@ from datetime import datetime, timezone
 from bson import ObjectId
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
-from pymongo import ReturnDocument
-
 from db import db
 from core_utils import serialize_doc
 from deps import get_current_user, require_role
 from fulfillment_birth import initial_fulfillment_fields
-from fulfillment_commit import MULTI_OFFER
+from fulfillment_commit import (
+    AUTHORITY_DIRECT_REBOOK,
+    DIRECT_REBOOK,
+    MULTI_OFFER,
+    commit_assignment,
+    stored_assignment_version,
+)
+from routes.marketplace_offers import close_open_offers_after_assignment
 from services import notify, log_event
 from models import RequestIn, ReviewIn
 
@@ -192,38 +197,25 @@ class AcceptRequestIn(BaseModel):
 
 @router.post("/requests/{req_id}/accept")
 async def accept_request(req_id: str, data: Optional[AcceptRequestIn] = None, user: dict = Depends(require_role("specialist"))):
-    """Residual /accept (D13 open). Public participation is D2 submit_offer.
+    """Direct rebook acceptance. Public participation is D2 submit_offer.
 
-    Public first-wins + Lead Credits consume is disabled. Rehire/direct waived
-    still assigns without charge.
+    Assigns only fulfillment_strategy=DIRECT_REBOOK for the named specialist.
+    Lead fee stays waived. Strategy, not legacy flags, is the gate.
     """
     req = await db.requests.find_one({"_id": ObjectId(req_id)})
     if not req: raise HTTPException(404, "Request not found")
+    if req.get("fulfillment_strategy") != DIRECT_REBOOK:
+        raise HTTPException(400, "Această cerere nu este o reangajare directă")
     if req.get("status") != "open":
         raise HTTPException(400, "Request not available")
 
     direct_id = req.get("direct_specialist_id")
-    if direct_id and direct_id != user["id"]:
+    if not direct_id or direct_id != user["id"]:
         raise HTTPException(403, "Cerere directă adresată altui specialist")
-    fee_waived = bool(direct_id == user["id"] and req.get("lead_fee_waived"))
-    if not fee_waived:
-        raise HTTPException(
-            400,
-            "Participarea publică se face prin POST /api/requests/{id}/offers (45 Lead Credits sau 45 RON).",
-        )
     specialist = await db.users.find_one({"_id": ObjectId(user["id"])})
     if not specialist:
         raise HTTPException(404, "User not found")
 
-    update = {
-        "status": "assigned",
-        "specialist_id": user["id"],
-        "specialist_name": user["name"],
-        "specialist_specialty": specialist.get("specialty") or specialist.get("category") or "",
-        "specialist_city": specialist.get("city") or specialist.get("location") or "",
-        "specialist_verified": bool(specialist.get("verified")),
-        "assigned_at": datetime.now(timezone.utc).isoformat(),
-    }
     proposed = {}
     if data:
         if data.proposed_start_date: proposed["start_date"] = data.proposed_start_date
@@ -233,15 +225,31 @@ async def accept_request(req_id: str, data: Optional[AcceptRequestIn] = None, us
     if proposed:
         proposed["proposed_at"] = datetime.now(timezone.utc).isoformat()
         proposed["proposed_by"] = user["id"]
-        update["schedule_proposal"] = proposed
 
-    claimed = await db.requests.find_one_and_update(
-        {"_id": ObjectId(req_id), "status": "open"},
-        {"$set": update},
-        return_document=ReturnDocument.AFTER,
+    committed = await commit_assignment(
+        request_id=req_id,
+        expected_strategy=DIRECT_REBOOK,
+        expected_assignment_version=stored_assignment_version(req),
+        specialist_id=direct_id,
+        assignment_authority=AUTHORITY_DIRECT_REBOOK,
+        assignment_trigger="direct_accept",
+        assignment_reason="named specialist accepted a direct rebook",
+        actor=user,
+        specialist_snapshot={
+            "specialist_name": user.get("name") or "",
+            "specialist_specialty": specialist.get("specialty") or specialist.get("category") or "",
+            "specialist_city": specialist.get("city") or specialist.get("location") or "",
+            "specialist_verified": bool(specialist.get("verified")),
+        },
     )
-    if not claimed:
-        raise HTTPException(400, "Request not available")
+    if not committed["ok"]:
+        raise HTTPException(409, "Request not available")
+    if proposed:
+        await db.requests.update_one(
+            {"_id": ObjectId(req_id), "specialist_id": direct_id},
+            {"$set": {"schedule_proposal": proposed}},
+        )
+    await close_open_offers_after_assignment(req_id)
 
     schedule_msg = ""
     if proposed.get("start_date"):

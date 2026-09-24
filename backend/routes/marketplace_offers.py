@@ -29,6 +29,12 @@ from pymongo.errors import DuplicateKeyError
 
 from db import db
 from deps import get_current_user, require_role
+from fulfillment_commit import (
+    CLIENT_SELECTION,
+    MULTI_OFFER,
+    commit_assignment,
+    stored_assignment_version,
+)
 from lead_credits import (
     debit_participation,
     paid_with_label,
@@ -67,6 +73,48 @@ async def _get_fee_config():
 async def _multi_offer_enabled() -> bool:
     cfg = await _get_fee_config()
     return bool(cfg.get("multi_offer_enabled"))
+
+
+def _assignment_http(reason: str) -> HTTPException:
+    if reason in ("already_assigned", "not_open", "version_mismatch", "conflict"):
+        return HTTPException(409, "Cererea a fost deja atribuită")
+    if reason == "strategy_mismatch":
+        return HTTPException(400, "Strategia cererii nu permite această atribuire")
+    return HTTPException(400, "Atribuirea nu a putut fi confirmată")
+
+
+async def close_open_offers_after_assignment(
+    request_id: str,
+    winner_offer_id: Optional[str] = None,
+) -> None:
+    """Mark the winning offer won and any remaining open offers lost.
+
+    Called only after commit_assignment succeeds. The winner update matches
+    status=open, so a second accept cannot create a second winner.
+    """
+    now_iso = datetime.now(timezone.utc).isoformat()
+    if winner_offer_id:
+        await db.marketplace_offers.update_one(
+            {
+                "_id": ObjectId(winner_offer_id),
+                "request_id": request_id,
+                "status": "open",
+            },
+            {"$set": {"status": "won", "won_at": now_iso}},
+        )
+        await db.marketplace_offers.update_many(
+            {
+                "request_id": request_id,
+                "status": "open",
+                "_id": {"$ne": ObjectId(winner_offer_id)},
+            },
+            {"$set": {"status": "lost", "lost_at": now_iso}},
+        )
+        return
+    await db.marketplace_offers.update_many(
+        {"request_id": request_id, "status": "open"},
+        {"$set": {"status": "lost", "lost_at": now_iso}},
+    )
 
 
 async def _ensure_active_offer_unique_index() -> None:
@@ -144,6 +192,8 @@ async def submit_offer(req_id: str, data: OfferIn, user: dict = Depends(require_
     req = await db.requests.find_one({"_id": ObjectId(req_id)})
     if not req:
         raise HTTPException(404, "Request not found")
+    if req.get("fulfillment_strategy") != MULTI_OFFER:
+        raise HTTPException(400, "Această cerere nu acceptă oferte publice")
     if req.get("status") != "open":
         raise HTTPException(400, "Această cerere nu mai acceptă oferte")
     if req.get("client_id") == user["id"]:
@@ -285,35 +335,52 @@ async def accept_offer(req_id: str, offer_id: str, user: dict = Depends(require_
     req = await db.requests.find_one({"_id": ObjectId(req_id), "client_id": user["id"]})
     if not req:
         raise HTTPException(404, "Request not found")
+    if req.get("fulfillment_strategy") != MULTI_OFFER:
+        raise HTTPException(400, "Strategia cererii nu permite acceptarea unei oferte")
     if req.get("status") != "open":
         raise HTTPException(400, "Cererea nu mai e disponibilă")
     offer = await db.marketplace_offers.find_one({"_id": ObjectId(offer_id), "request_id": req_id, "status": "open"})
     if not offer:
         raise HTTPException(404, "Ofertă invalidă")
-    spec = await db.users.find_one({"_id": ObjectId(offer["specialist_id"])})
-    now_iso = datetime.now(timezone.utc).isoformat()
-    # Assign request to this specialist
-    update = {
-        "status": "assigned",
-        "specialist_id": offer["specialist_id"],
-        "specialist_name": offer.get("specialist_name", ""),
-        "specialist_verified": bool(spec.get("verified")),
-        "assigned_at": now_iso,
-        "selected_offer_id": offer_id,
-        "selected_offer_fee": offer.get("fee_paid_total", 0),
-    }
+    spec = await db.users.find_one({"_id": ObjectId(offer["specialist_id"])}) or {}
+    committed = await commit_assignment(
+        request_id=req_id,
+        expected_strategy=MULTI_OFFER,
+        expected_assignment_version=stored_assignment_version(req),
+        specialist_id=offer["specialist_id"],
+        assignment_authority=CLIENT_SELECTION,
+        assignment_trigger="client_accept_offer",
+        assignment_reason="client accepted an offer",
+        actor=user,
+        offer_id=offer_id,
+        specialist_snapshot={
+            "specialist_name": offer.get("specialist_name", ""),
+            "specialist_specialty": spec.get("specialty") or spec.get("category") or "",
+            "specialist_city": spec.get("city") or spec.get("location") or "",
+            "specialist_verified": bool(spec.get("verified")),
+        },
+    )
+    if not committed["ok"]:
+        raise _assignment_http(committed["reason"])
+    extra = {"selected_offer_fee": offer.get("fee_paid_total", 0)}
     if offer.get("proposed_start_date"):
-        update["schedule_proposal"] = {
+        extra["schedule_proposal"] = {
             "start_date": offer.get("proposed_start_date"),
             "end_date": offer.get("proposed_end_date"),
             "estimated_hours": offer.get("estimated_hours"),
             "proposed_at": offer.get("created_at"),
             "proposed_by": offer["specialist_id"],
         }
-    await db.requests.update_one({"_id": ObjectId(req_id)}, {"$set": update})
-    # Close winning offer + reject others
-    await db.marketplace_offers.update_one({"_id": ObjectId(offer_id)}, {"$set": {"status": "won", "won_at": now_iso}})
-    await db.marketplace_offers.update_many({"request_id": req_id, "_id": {"$ne": ObjectId(offer_id)}, "status": "open"}, {"$set": {"status": "lost", "lost_at": now_iso}})
+    await db.requests.update_one(
+        {
+            "_id": ObjectId(req_id),
+            "specialist_id": offer["specialist_id"],
+            "selected_offer_id": offer_id,
+        },
+        {"$set": extra},
+    )
+    await close_open_offers_after_assignment(req_id, offer_id)
+    now_iso = datetime.now(timezone.utc).isoformat()
     # Notify the winner + losers
     await notify(offer["specialist_id"], "Felicitări — oferta acceptată!", f"Clientul a ales oferta ta pentru '{req.get('title','')}'. Poți începe lucrarea.", type_="offer_won", link="/specialist")
     losers_cur = db.marketplace_offers.find({"request_id": req_id, "status": "lost"}, {"specialist_id": 1})

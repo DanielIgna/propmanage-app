@@ -19,7 +19,6 @@ from services import log_event, notify
 logger = logging.getLogger("propmanage.demo_time_machine")
 router = APIRouter(prefix="/api/admin/demo-tools", tags=["admin-demo-tools"])
 
-LEAD_FEE = 45.0
 SPECIALIST_SPLIT = 0.95
 PLATFORM_SPLIT = 0.05
 
@@ -119,28 +118,16 @@ async def sim_payment(req_id: str, user: dict = Depends(require_role("admin"))):
 
 @router.post("/requests/{req_id}/simulate-specialist-accept")
 async def sim_accept(req_id: str, payload: dict = Body(default={}), user: dict = Depends(require_role("admin"))):
-    """Pick a specialist (any verified one) and mark as accepted."""
+    """Demo read of the current assignment. Does not write a commercial assignment."""
+    del payload, user
     r = await _get_request(req_id)
-    spec_id = payload.get("specialist_id")
-    if not spec_id:
-        spec = await db.users.find_one({"role": "specialist"})
-        if not spec:
-            raise HTTPException(400, "No specialist available")
-        spec_id = str(spec["_id"])
-    await db.requests.update_one(
-        {"_id": r["_id"]},
-        {"$set": {
-            "specialist_id": spec_id,
-            "status": "assigned",
-            "assigned_at": datetime.now(timezone.utc).isoformat(),
-        }},
-    )
-    await log_event(req_id, "request.accepted", actor=user, payload={"specialist_id": spec_id, "lead_fee": LEAD_FEE, "demo_simulated": True})
-    try:
-        await notify(r["client_id"], "Specialist alocat", "Demo: specialist alocat pe cererea ta.", type_="assignment", link="/client")
-    except Exception:  # noqa: BLE001
-        pass
-    return {"ok": True, "status": "assigned", "specialist_id": spec_id}
+    return {
+        "ok": True,
+        "mutated": False,
+        "status": r.get("status"),
+        "specialist_id": r.get("specialist_id"),
+        "note": "Demo nu modifică assignment-ul comercial",
+    }
 
 
 @router.post("/requests/{req_id}/simulate-start")

@@ -93,10 +93,12 @@ async def _detect_operations(m: dict) -> list:
 async def _repair_operations(probs: list) -> list:
     actions = []
     if any(p["metric"] == "gap_pressure" for p in probs):
-        from routes.admin import execute_auto_match
-        actions.append(await _safe("auto_match", execute_auto_match(
-            limit=20, min_rating=0.0, dry_run=False,
-            triggered_by={"id": "repair_engine", "kind": "repair", "label": "HealthRepairEngine"})))
+        gaps = await db.specialist_gaps.count_documents({"status": "open"})
+        actions.append(_action(
+            "gap_pressure_report",
+            True,
+            f"{gaps} gap-uri deschise; Health Repair nu atribuie comercial",
+        ))
     if any(p["metric"] == "leads_contact_rate" for p in probs):
         from lead_followup import run_followup_scan
         actions.append(await _safe("lead_followup_scan", run_followup_scan(manual=True)))
@@ -139,10 +141,13 @@ async def _detect_marketplace(m: dict) -> list:
 async def _repair_marketplace(probs: list) -> list:
     actions = []
     if any(p["metric"] == "fill_rate" for p in probs):
-        from routes.admin import execute_auto_match
-        actions.append(await _safe("auto_match", execute_auto_match(
-            limit=20, min_rating=0.0, dry_run=False,
-            triggered_by={"id": "repair_engine", "kind": "repair", "label": "HealthRepairEngine"})))
+        unfilled = await db.requests.count_documents(
+            {"specialist_id": {"$in": [None, ""]}, "status": {"$nin": ["completed", "cancelled", "closed", "rejected"]}})
+        actions.append(_action(
+            "fill_rate_report",
+            True,
+            f"{unfilled} cereri fără specialist; Health Repair nu atribuie comercial",
+        ))
     from orchestrator.engine import emit_signal
     actions.append(await _safe("category_visibility_refresh",
                                emit_signal("category_visibility_refresh", {"trigger": "repair_engine"})))
