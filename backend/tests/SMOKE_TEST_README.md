@@ -9,22 +9,19 @@ Tests all **12 demo profiles** by impersonating each from admin and verifying:
 
 ## Quick run
 
+There is no preview or production default. The process fails closed unless the
+test contract from `TEST_ENVIRONMENT.md` is already exported
+(`http://localhost:8002`, database `propmanage_test`).
+
 ```bash
-# Against preview (default)
-python /app/backend/tests/test_dashboards_smoke.py
-
-# Against production
-SMOKE_BASE_URL=https://propmanage.ro python /app/backend/tests/test_dashboards_smoke.py
-
-# As pytest
-cd /app/backend && python -m pytest tests/test_dashboards_smoke.py -v -s
+cd backend && python -m pytest tests/test_dashboards_smoke.py -v -s
 ```
 
 ## Output
 
 ```
 🔥 Pre-Deploy Dashboard Smoke Test
-   Base URL: https://phased-document.preview.emergentagent.com
+   Base URL: http://localhost:8002
    Profiles: 12
 
   → client@propmanage.io (base)... ✅ PASS

@@ -4,6 +4,11 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 
 Role = Literal["client", "specialist", "admin", "operator"]
 
+# Public registration only. Admin, operator, and other privileged roles stay on
+# controlled writers (seed, admin account changes, franchise-admin creation).
+PUBLIC_REGISTER_ROLES = frozenset({"client", "specialist"})
+PublicRegisterRole = Literal["client", "specialist"]
+
 ALLOWED_SPECIALTIES = {
     "hvac", "electric", "plumbing", "interior_design", "carpentry",
     "painting", "cleaning", "appliance_repair", "gardening", "other",
@@ -20,7 +25,7 @@ class RegisterIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=6)
     name: str
-    role: Role = "client"
+    role: PublicRegisterRole = "client"
     phone: Optional[str] = None
     specialty: Optional[str] = None
     service_categories: Optional[List[str]] = None

@@ -27,6 +27,7 @@ from deps import get_current_user, require_role, block_in_impersonation, block_i
 from services import send_email, VAPID_PUBLIC_KEY
 from models import (
     RegisterIn, LoginIn, TotpVerifyIn, ALLOWED_SPECIALTIES, ConsentUpdateIn,
+    PUBLIC_REGISTER_ROLES,
 )
 from email_service import send_template, tpl_welcome
 from digest import DIGEST_BUILDERS, run_daily_digests
@@ -93,6 +94,13 @@ def _gen_email_verification_token() -> str:
 
 @router.post("/auth/register")
 async def register(data: RegisterIn, request: Request, response: Response):
+    # SEC-01: reject before any read or insert. RegisterIn already excludes
+    # privileged roles; this covers model_construct and later assignment.
+    if data.role not in PUBLIC_REGISTER_ROLES:
+        raise HTTPException(
+            400,
+            "Rol invalid. Înregistrarea publică acceptă doar client sau specialist.",
+        )
     email = data.email.lower()
     # GDPR gate: terms + privacy MUST be accepted explicitly
     if not data.terms_accepted:

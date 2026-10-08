@@ -1,32 +1,24 @@
-"""Shared test credentials & config — env-driven (no hardcoded secrets).
+"""Shared test credentials.
 
-All test files import credentials from here. Override any value via env:
-  TEST_ADMIN_EMAIL / SEED_ADMIN_PASSWORD / TEST_ADMIN_PASSWORD / DEMO_MASTER_CODE
-Loads backend/.env + frontend/.env automatically so tests run standalone.
+The pytest process does not load backend/.env or frontend/.env.
+REACT_APP_BACKEND_URL, MONGO_URL, and DB_NAME must already be exported.
+See TEST_ENVIRONMENT.md.
 """
 import os
-from pathlib import Path
 
-try:
-    from dotenv import load_dotenv
-    _here = Path(__file__).resolve()
-    load_dotenv(_here.parents[1] / ".env")                     # backend/.env
-    load_dotenv(_here.parents[2] / "frontend" / ".env")        # frontend/.env
-except ImportError:  # pragma: no cover
-    pass
+from tests.isolation_gate import enforce_test_environment
 
-BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL") or "").rstrip("/")
+enforce_test_environment()
+
+BASE_URL = os.environ["REACT_APP_BACKEND_URL"].rstrip("/")
 API = f"{BASE_URL}/api"
 
-# ── Demo-seeded accounts (see seed.py — idempotent) ─────────────────────────
 ADMIN_EMAIL = os.environ.get("TEST_ADMIN_EMAIL", "admin@propmanage.io")
-# Admin password comes from env (SEED_ADMIN_PASSWORD in backend/.env).
 OWNER_ADMIN_PASSWORD = (
     os.environ.get("SEED_ADMIN_PASSWORD")
     or os.environ.get("TEST_ADMIN_PASSWORD")
     or "Admin123!"
 )
-# Ordered candidate list — some environments may still use the demo default.
 ADMIN_PASSWORDS = list(dict.fromkeys([OWNER_ADMIN_PASSWORD, "Admin123!"]))
 
 CLIENT_EMAIL = "client@propmanage.io"

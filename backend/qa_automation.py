@@ -2660,19 +2660,23 @@ async def wallet_transactions_list_for_user() -> dict:
 
 @_safe_e2e
 async def wallet_topup_test_increases_balance() -> dict:
-    """WALLET-TOPUP: POST /wallet/topup?amount=100 crește wallet_balance cu 100."""
+    """SEC-02: POST /wallet/topup?amount=100 must be rejected and must not credit."""
     client_c, c_email, c_id = await _register_and_login("client", "topup")
     try:
         before = await db.users.find_one({"_id": ObjectId(c_id)})
         bal_b = float(before.get("wallet_balance") or 0)
+        tx_before = await db.transactions.count_documents({"user_id": c_id, "type": "topup"})
         r = await client_c.post("/api/wallet/topup?amount=100")
-        if r.status_code != 200:
+        if r.status_code != 403:
             return _ko(f"topup {r.status_code}: {r.text[:160]}")
         after = await db.users.find_one({"_id": ObjectId(c_id)})
         delta = round(float(after.get("wallet_balance") or 0) - bal_b, 2)
-        if abs(delta - 100.0) < 0.01:
-            return _ok(f"OK — topup +100 RON aplicat (delta={delta})")
-        return _ko(f"delta={delta} (await 100)")
+        tx_after = await db.transactions.count_documents({"user_id": c_id, "type": "topup"})
+        if abs(delta) > 0.01:
+            return _ko(f"balance changed by {delta}")
+        if tx_after != tx_before:
+            return _ko(f"topup transactions {tx_before} -> {tx_after}")
+        return _ok("OK — direct topup rejected, balance and topup ledger unchanged")
     finally:
         await client_c.aclose()
         try:
@@ -3422,7 +3426,7 @@ AUTOMATED_TESTS: dict[str, dict] = {
         "runner": wallet_transactions_list_for_user,
     },
     "WALLET-TOPUP": {
-        "code": "WALLET-TOPUP", "title": "POST /wallet/topup?amount=100 crește wallet_balance +100",
+        "code": "WALLET-TOPUP", "title": "SEC-02: POST /wallet/topup?amount=100 is rejected and does not credit",
         "kind": "http", "category": "E2E", "priority": "P1",
         "runner": wallet_topup_test_increases_balance,
     },

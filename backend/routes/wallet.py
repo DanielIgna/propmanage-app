@@ -22,19 +22,12 @@ async def list_transactions(user: dict = Depends(get_current_user)):
 
 @router.post("/wallet/topup")
 async def topup_wallet(amount: float, user: dict = Depends(get_current_user)):
-    if amount <= 0 or amount > 10000:
-        raise HTTPException(400, "Invalid amount")
-    await db.users.update_one(
-        {"_id": ObjectId(user["id"])},
-        {"$inc": {"wallet_balance": amount}}
+    """SEC-02: direct credit is closed. Payment credit stays on checkout + topup-status."""
+    del amount, user
+    raise HTTPException(
+        403,
+        "Alimentarea directă a portofelului este oprită. Soldul se poate mări doar după o plată confirmată.",
     )
-    await db.transactions.insert_one({
-        "user_id": user["id"],
-        "type": "topup",
-        "amount": amount,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
-    return {"ok": True, "added": amount}
 
 
 # ============= STRIPE CHECKOUT pentru wallet topup =============

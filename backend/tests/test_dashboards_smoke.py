@@ -24,13 +24,14 @@ _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(_BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(_BACKEND_ROOT))
 
+from tests.isolation_gate import enforce_test_environment
+
+enforce_test_environment()
+
 from tests.test_config import OWNER_ADMIN_PASSWORD
 
-# Read env or fall back to preview URL
-BASE_URL = os.environ.get(
-    "SMOKE_BASE_URL",
-    "https://phased-document.preview.emergentagent.com",
-)
+# No preview, production, or development-port default. The contract is required.
+BASE_URL = os.environ["REACT_APP_BACKEND_URL"].rstrip("/")
 ADMIN_EMAIL = os.environ.get("SMOKE_ADMIN_EMAIL", "admin@propmanage.io")
 ADMIN_PASSWORD = os.environ.get("SMOKE_ADMIN_PASSWORD", OWNER_ADMIN_PASSWORD)
 

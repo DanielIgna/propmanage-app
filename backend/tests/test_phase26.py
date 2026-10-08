@@ -144,13 +144,13 @@ class TestWalletTopupCheckout:
         assert r.status_code == 404
 
     def test_legacy_topup_still_works(self, client_sess):
+        """SEC-02: direct top-up must be rejected and must not change the balance."""
         me_before = client_sess.get(f"{BASE_URL}/api/auth/me").json()
         bal_before = float(me_before.get("wallet_balance", 0))
         r = client_sess.post(f"{BASE_URL}/api/wallet/topup?amount=50")
-        assert r.status_code == 200, r.text
-        assert r.json().get("ok") is True
+        assert r.status_code == 403, r.text
         me_after = client_sess.get(f"{BASE_URL}/api/auth/me").json()
-        assert abs(float(me_after.get("wallet_balance", 0)) - bal_before - 50) < 0.5
+        assert abs(float(me_after.get("wallet_balance", 0)) - bal_before) < 0.01
 
 
 # ============= MILESTONE RENEGOTIATION (P2a) =============

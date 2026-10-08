@@ -385,20 +385,26 @@ class TestOperator:
 # ========== WALLET / TRANSACTIONS ==========
 class TestWallet:
     def test_wallet_topup(self):
+        """SEC-02: direct top-up is rejected and does not change the balance."""
         s = make_session(SPEC)
         me_before = s.get(f"{API}/auth/me").json()
         bal_before = me_before["wallet_balance"]
         r = s.post(f"{API}/wallet/topup?amount=50")
-        assert r.status_code == 200
+        assert r.status_code == 403
         me_after = s.get(f"{API}/auth/me").json()
-        assert me_after["wallet_balance"] == pytest.approx(bal_before + 50, abs=0.01)
+        assert me_after["wallet_balance"] == pytest.approx(bal_before, abs=0.01)
 
     def test_topup_invalid(self):
+        """SEC-02: every direct amount is rejected, including values outside the old range."""
         s = make_session(CLIENT)
+        me_before = s.get(f"{API}/auth/me").json()
+        bal_before = me_before["wallet_balance"]
         r = s.post(f"{API}/wallet/topup?amount=0")
-        assert r.status_code == 400
+        assert r.status_code == 403
         r2 = s.post(f"{API}/wallet/topup?amount=99999")
-        assert r2.status_code == 400
+        assert r2.status_code == 403
+        me_after = s.get(f"{API}/auth/me").json()
+        assert me_after["wallet_balance"] == pytest.approx(bal_before, abs=0.01)
 
     def test_transactions_list(self):
         s = make_session(SPEC)
