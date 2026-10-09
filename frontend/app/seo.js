@@ -38,6 +38,7 @@ const PRIVATE_PREFIXES = [
   "/admin", "/client", "/specialist", "/operator", "/dashboard", "/settings", "/kyc", "/auth",
   "/verify-email", "/report-respond", "/property/", "/franchise_admin", "/franciza", "/components-v2",
   "/status", "/privacy/notices",
+  "/pricing", // plans require login: anonymous visitors are sent to /login
 ];
 
 async function getJson(path) {

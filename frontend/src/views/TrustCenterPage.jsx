@@ -187,9 +187,10 @@ const EmbedSection = () => {
 };
 
 
-export const TrustCenterPage = () => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+export const TrustCenterPage = ({ initialData = null }) => {
+  // initialData: trust stats fetched by the Next.js server route (SSR); refreshed every 60s.
+  const [data, setData] = useState(initialData);
+  const [loading, setLoading] = useState(!initialData);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
@@ -208,7 +209,7 @@ export const TrustCenterPage = () => {
   };
 
   useEffect(() => {
-    fetchStats(false);
+    if (!initialData) fetchStats(false);
     const i = setInterval(() => fetchStats(false), 60000);
     return () => clearInterval(i);
   }, []);
