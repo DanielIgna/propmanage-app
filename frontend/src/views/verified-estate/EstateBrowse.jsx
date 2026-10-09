@@ -183,14 +183,15 @@ const ListingCard = ({ item }) => (
   </Link>
 );
 
-export const EstateBrowse = () => {
+export const EstateBrowse = ({ initialItems = null }) => {
+  // initialItems: unfiltered listings from the Next.js server route (SSR); the SPA fetches them.
   useDynamicSEO("estate", {
     title: "Imobile Verificate — Case și Apartamente Verificate cu Audit Tehnic | PropManage",
     description: "Imobile verificate cu audit tehnic complet și Digital Twin: case de vânzare verificate și apartamente verificate, anunțuri imobiliare cu audit tehnic și proprietăți verificate digital twin. Cumperi cu încredere, vinzi cu credibilitate.",
   });
   const navigate = useNavigate();
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState(initialItems || []);
+  const [loading, setLoading] = useState(!initialItems);
   const [filterCity, setFilterCity] = useState("");
   const [filterRooms, setFilterRooms] = useState("");
   const [filterPriceMax, setFilterPriceMax] = useState("");
@@ -200,6 +201,11 @@ export const EstateBrowse = () => {
   const [viewMode, setViewMode] = useState("grid"); // grid | map
 
   useEffect(() => {
+    if (initialItems && !filterCity && !filterRooms && !filterPriceMax && !filterTransaction) {
+      setItems(initialItems); // unfiltered list already rendered on the server
+      setLoading(false);
+      return undefined;
+    }
     let active = true;
     setLoading(true);
     const params = {};

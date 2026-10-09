@@ -67,8 +67,23 @@ function build({ path, title, description, ogTitle, ogDescription, ogImage, noin
   return meta;
 }
 
+// Routes behind <ServiceGate> in the SPA (non-admins are redirected to "/" while the service is off).
+const GATED_SERVICES = [{ prefix: "/marketplace", service: "specialisti" }];
+
+async function serviceDisabled(path) {
+  const gate = GATED_SERVICES.find((g) => path === g.prefix || path.startsWith(`${g.prefix}/`));
+  if (!gate) return false;
+  const vis = await getJson("/api/public/service-visibility");
+  const svc = vis?.services?.[gate.service];
+  return !!vis && !(svc && svc.active && svc.visible_site);
+}
+
 export async function metadataForPath(slug) {
   const path = "/" + (slug || []).map(decodeURIComponent).join("/");
+
+  if (await serviceDisabled(path)) {
+    return build({ path: "/", noindex: true });
+  }
 
   if (PRIVATE_PREFIXES.some((p) => path === p || path.startsWith(p.endsWith("/") ? p : `${p}/`))) {
     return build({ path, noindex: true });

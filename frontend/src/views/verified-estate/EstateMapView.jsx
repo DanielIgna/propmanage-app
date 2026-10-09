@@ -1,5 +1,8 @@
 import React from "react";
-import { PmMarkersMap } from "../../components/PmMap";
+import dynamic from "next/dynamic";
+
+// Leaflet touches `window` at import time: load the map in the browser only.
+const PmMarkersMap = dynamic(() => import("../../components/PmMap").then((m) => m.PmMarkersMap), { ssr: false });
 
 const formatPrice = (ron) => {
   if (!ron) return "—";

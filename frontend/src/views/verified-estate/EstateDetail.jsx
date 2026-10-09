@@ -78,15 +78,17 @@ const InquiryForm = ({ listing, intent = "viewing", onSuccess }) => {
   );
 };
 
-export const EstateDetail = () => {
+export const EstateDetail = ({ initialListing = null }) => {
+  // initialListing: provided by the Next.js server route (SSR); the SPA fetches it.
   const { id } = useParams();
   const navigate = useNavigate();
-  const [listing, setListing] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [listing, setListing] = useState(initialListing);
+  const [loading, setLoading] = useState(!initialListing);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [intent, setIntent] = useState("viewing");
 
   useEffect(() => {
+    if (initialListing && String(initialListing.id || initialListing._id) === String(id)) return undefined;
     let active = true;
     setLoading(true);
     axios.get(`${API}/api/verified-estate/listings/${id}`)
