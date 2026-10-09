@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api`;
 
 const getSessionId = () => {
   let sid = localStorage.getItem("pm_ab_session");
@@ -24,19 +24,23 @@ const getVariant = (experiment) => {
 };
 
 export const useABTest = (experiment) => {
-  const [variant] = useState(() => getVariant(experiment));
+  // Variant "a" until mounted (server render + hydration), then the stable per-browser variant.
+  const [variant, setVariant] = useState("a");
   const fired = useRef(false);
 
   useEffect(() => {
     if (fired.current) return;
     fired.current = true;
+    let v = "a";
+    try { v = getVariant(experiment); } catch { /* storage blocked */ }
+    setVariant(v);
     axios.post(`${API}/ab/track`, {
       experiment,
-      variant,
+      variant: v,
       event: "impression",
       session_id: getSessionId(),
     }).catch(() => {});
-  }, [experiment, variant]);
+  }, [experiment]);
 
   const trackClick = () => {
     axios.post(`${API}/ab/track`, {

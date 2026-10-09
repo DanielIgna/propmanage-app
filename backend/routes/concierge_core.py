@@ -32,7 +32,7 @@ def _redact_pii(text: str) -> str:
     return text
 
 
-EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY", "").strip()
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 DEFAULT_MODEL_PROVIDER = "anthropic"
 DEFAULT_MODEL_NAME = "claude-sonnet-4-6"
 

@@ -5,7 +5,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { ShieldCheck, Activity, Lock, CheckCircle2, ExternalLink } from "lucide-react";
-import { API } from "../pages/DashShared";
+import { API } from "../views/DashShared";
 
 const STATUS_COLORS = {
   operational: "emerald",

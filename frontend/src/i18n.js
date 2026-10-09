@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api`;
 
 const translations = {
   ro: {
@@ -167,13 +167,24 @@ const translations = {
 
 const I18nContext = createContext(null);
 
-export const I18nProvider = ({ children }) => {
-  const [lang, setLang] = useState(() => localStorage.getItem("propmanage_lang") || "ro");
-  const [cms, setCms] = useState({}); // CMS overrides (RO only)
-
-  useEffect(() => { localStorage.setItem("propmanage_lang", lang); }, [lang]);
+export const I18nProvider = ({ children, initialCms }) => {
+  // "ro" until mounted (server render + hydration), then the saved language.
+  const [lang, setLang] = useState("ro");
+  const [langReady, setLangReady] = useState(false);
+  const [cms, setCms] = useState(initialCms || {}); // CMS overrides (RO only); server-provided when SSR'd
 
   useEffect(() => {
+    try { const saved = localStorage.getItem("propmanage_lang"); if (saved) setLang(saved); } catch { /* storage blocked */ }
+    setLangReady(true);
+  }, []);
+  useEffect(() => {
+    if (!langReady) return;
+    try { localStorage.setItem("propmanage_lang", lang); } catch { /* storage blocked */ }
+  }, [lang, langReady]);
+
+  useEffect(() => {
+    // Server-rendered pages already received the CMS overrides (rendered per request).
+    if (initialCms && Object.keys(initialCms).length) return;
     // Fetch CMS public overrides once at mount. Silent fail keeps i18n working offline.
     axios.get(`${API}/cms/public`)
       .then(r => setCms(r.data || {}))

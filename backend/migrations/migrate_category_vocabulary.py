@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 
-from motor.motor_asyncio import AsyncIOMotorClient
+from db import db as _shared_db  # noqa: E402
 
 MAPPING = {
     "painting": "zugravit",
@@ -26,7 +26,7 @@ MAPPING = {
 
 
 async def main():
-    db = AsyncIOMotorClient(os.environ["MONGO_URL"])[os.environ["DB_NAME"]]
+    db = _shared_db
     old_values = list(MAPPING.keys())
     q = {"role": "specialist", "$or": [
         {"specialty": {"$in": old_values}},

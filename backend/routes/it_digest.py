@@ -153,9 +153,9 @@ async def _compose_digest_html(report: dict) -> tuple[str, str]:
 
 async def _run_copilot_now(user_email: str = "system_digest") -> dict:
     """Runs the IT Performance Copilot and returns the AI report."""
-    key = os.environ.get("EMERGENT_LLM_KEY")
+    key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
-        raise RuntimeError("EMERGENT_LLM_KEY missing")
+        raise RuntimeError("ANTHROPIC_API_KEY missing")
 
     docs = []
     async for d in db.it_collaborators.find({"status": "active"}):
@@ -183,7 +183,7 @@ async def _run_copilot_now(user_email: str = "system_digest") -> dict:
     import json
     prompt = "Metrici echipă pentru raport săptămânal:\n" + json.dumps(docs, ensure_ascii=False, indent=2)
 
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    from llm_chat import LlmChat, UserMessage
     chat = LlmChat(
         api_key=key,
         session_id=f"it_digest_{uuid.uuid4().hex[:8]}",

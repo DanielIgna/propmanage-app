@@ -27,7 +27,7 @@ from deps import require_role
 logger = logging.getLogger("propmanage.admin_ai")
 router = APIRouter(prefix="/api/admin/ai", tags=["admin-ai"])
 
-EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY", "").strip()
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 DEFAULT_MODEL_PROVIDER = "anthropic"
 DEFAULT_MODEL_NAME = "claude-sonnet-4-6"  # Latest available per playbook
 
@@ -463,8 +463,8 @@ async def suggest_repair(
     """Generate a repair suggestion for a finding using Claude Sonnet 4.5.
     Body (optional): { regenerate: bool } — if true, overwrite existing.
     """
-    if not EMERGENT_LLM_KEY:
-        raise HTTPException(503, "EMERGENT_LLM_KEY nu este configurat.")
+    if not ANTHROPIC_API_KEY:
+        raise HTTPException(503, "ANTHROPIC_API_KEY nu este configurat.")
     try:
         oid = ObjectId(finding_id)
     except InvalidId:
@@ -505,9 +505,9 @@ async def suggest_repair(
     proposal_json = None
     raw_text = ""
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage  # type: ignore
+        from llm_chat import LlmChat, UserMessage  # type: ignore
         chat_inst = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
+            api_key=ANTHROPIC_API_KEY,
             session_id=f"repair_{oid}_{uuid.uuid4().hex[:6]}",
             system_message=REPAIR_SYSTEM_PROMPT,
         ).with_model(DEFAULT_MODEL_PROVIDER, DEFAULT_MODEL_NAME)
@@ -977,8 +977,8 @@ async def chat_send(
     """Send a chat message to the Investigator agent.
     Body: { session_id: str (optional, creates new if missing), message: str }
     """
-    if not EMERGENT_LLM_KEY:
-        raise HTTPException(503, "EMERGENT_LLM_KEY nu este configurat în /app/backend/.env")
+    if not ANTHROPIC_API_KEY:
+        raise HTTPException(503, "ANTHROPIC_API_KEY nu este configurat în /app/backend/.env")
 
     session_id = payload.get("session_id") or f"admin_ai_{user['id']}_{uuid.uuid4().hex[:8]}"
     user_message = (payload.get("message") or "").strip()
@@ -1019,22 +1019,22 @@ async def chat_send(
 
     # Call LLM
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage  # type: ignore
+        from llm_chat import LlmChat, UserMessage  # type: ignore
 
         chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
+            api_key=ANTHROPIC_API_KEY,
             session_id=session_id,
             system_message=system_msg,
         ).with_model(DEFAULT_MODEL_PROVIDER, DEFAULT_MODEL_NAME)
 
         # Replay history except the latest user message (which we'll send fresh)
-        # NOTE: emergentintegrations LlmChat keeps internal history per session_id.
+        # NOTE: llm_chat.LlmChat keeps history per instance (not across requests).
         # We don't want to double up. So we just send the latest user message.
         response_text = await chat.send_message(UserMessage(text=user_message))
         provider_used = DEFAULT_MODEL_PROVIDER
     except Exception as e:  # noqa: BLE001
         logger.error(f"[AI-Chat] LLM call failed: {e}")
-        response_text = f"❌ Nu am putut contacta modelul AI. Eroare: {str(e)[:200]}\n\nPoți încerca din nou peste câteva secunde sau verifică EMERGENT_LLM_KEY în logs."
+        response_text = f"❌ Nu am putut contacta modelul AI. Eroare: {str(e)[:200]}\n\nPoți încerca din nou peste câteva secunde sau verifică ANTHROPIC_API_KEY în logs."
         provider_used = "error"
 
     # Save assistant message

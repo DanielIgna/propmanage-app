@@ -4,7 +4,7 @@ import axios from "axios";
 import { Star, EyeOff, Bell, ChevronRight, MessageCircle } from "lucide-react";
 import { ReviewFormV2Modal } from "./ReviewFormV2";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 const DIM_LABELS_C2S = {
   timeliness: "Termene", quality: "Calitate", offer_adherence: "Respectare ofertă", communication: "Comunicare",

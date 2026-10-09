@@ -5,7 +5,7 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useNavigate, useLocation } from "react-router-dom";
 import { Compass, Lightbulb, ArrowRight, Loader2, RotateCcw, Sparkles, Users } from "lucide-react";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 const jget = (url) => fetch(`${API}${url}`, { credentials: "include" })
   .then(async r => { if (!r.ok) throw new Error(r.status); return r.json(); });
 const jpost = (url, body) => fetch(`${API}${url}`, {

@@ -7,7 +7,7 @@ import {
   CheckCircle2, FlaskConical, Gauge, Building2, Wrench,
 } from "lucide-react";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 const ax = axios.create({ baseURL: API, withCredentials: true });
 
 const VERDICT_STYLE = {

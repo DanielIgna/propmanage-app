@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { Workflow, Loader2, RefreshCw, Users, GitBranch, AlertTriangle, ScanEye, ArrowRight } from "lucide-react";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 const ax = axios.create({ baseURL: API, withCredentials: true });
 
 const KIND_STYLE = {

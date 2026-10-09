@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 import { supabase } from "./lib/supabase";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api`;
 axios.defaults.withCredentials = true;
 // Anti-CSRF (SEC-002): header custom pe TOATE apelurile app-ului — formularele
 // HTML cross-site nu pot seta headere custom, deci mutațiile /api/admin fără
@@ -65,11 +65,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    // CRITICAL: If returning from Emergent OAuth callback, skip the /me check.
-    // AuthCallback will exchange the session_id and establish the session first.
-    if (window.location.hash?.includes("session_id=")) {
-      return;
-    }
     // Skip auth probe on intentionally-public routes (avoids noisy 401s).
     const path = window.location.pathname;
     if (path.startsWith("/report-respond/")) {

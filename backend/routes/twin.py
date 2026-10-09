@@ -246,9 +246,9 @@ async def twin_ask(payload: AskRequest, user=Depends(require_role("admin"))):
     if not is_super_admin(user):
         raise HTTPException(403, "Doar super-admin poate folosi Twin Orchestrator.")
 
-    key = os.environ.get("EMERGENT_LLM_KEY")
+    key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
-        raise HTTPException(500, "EMERGENT_LLM_KEY lipsește din environment.")
+        raise HTTPException(500, "ANTHROPIC_API_KEY lipsește din environment.")
 
     session_id = payload.session_id or f"twin-{user['id']}-{uuid.uuid4().hex[:8]}"
 
@@ -287,7 +287,7 @@ async def twin_ask(payload: AskRequest, user=Depends(require_role("admin"))):
         ctx = await _gather_platform_context()
         system_prompt = _build_system_prompt(ctx, proposed_action=proposed_action)
 
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_chat import LlmChat, UserMessage
         chat = LlmChat(
             api_key=key,
             session_id=session_id,

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { X, Megaphone, Info, AlertTriangle } from "lucide-react";
+import { useSessionFlag } from "../lib/useSessionFlag";
 import { useSiteContent } from "../lib/siteContent";
 
 const VARIANTS = {
@@ -11,7 +12,7 @@ const VARIANTS = {
 
 export const AnnouncementBanner = () => {
   const content = useSiteContent();
-  const [dismissed, setDismissed] = useState(() => sessionStorage.getItem("pm_announce_dismissed") === "1");
+  const [dismissed, dismiss] = useSessionFlag("pm_announce_dismissed");
   const banner = content?.banner;
   if (!banner?.active || !banner.text || dismissed) return null;
   const v = VARIANTS[banner.variant] || VARIANTS.info;
@@ -25,7 +26,7 @@ export const AnnouncementBanner = () => {
             {banner.link_label || "Vezi"}
           </Link>
         )}
-        <button onClick={() => { sessionStorage.setItem("pm_announce_dismissed", "1"); setDismissed(true); }}
+        <button onClick={dismiss}
           className="p-1 rounded-full hover:bg-black/10 shrink-0" aria-label="Închide" data-testid="announcement-banner-close">
           <X className="w-4 h-4" />
         </button>

@@ -5,7 +5,7 @@ import "leaflet/dist/leaflet.css";
 import axios from "axios";
 import { MapPin, ExternalLink } from "lucide-react";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api`;
 
 // ── Provider abstraction ────────────────────────────────────────────────────
 // Google Maps când GOOGLE_MAPS_ENABLED=true + cheie; altfel fallback Leaflet

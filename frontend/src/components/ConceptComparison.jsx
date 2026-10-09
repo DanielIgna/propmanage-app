@@ -9,9 +9,9 @@ import {
   X, Loader2, Palette, Coins, ShieldCheck, AlertTriangle, GitCompare,
   ShoppingBag, FileText, CheckCircle2, Image as ImageIcon, Star,
 } from "lucide-react";
-import { API } from "../pages/DashShared";
+import { API } from "../views/DashShared";
 
-const IMG = (u) => `${process.env.REACT_APP_BACKEND_URL}${u}`;
+const IMG = (u) => `${process.env.NEXT_PUBLIC_BACKEND_URL}${u}`;
 
 const StatusBadge = ({ status }) => {
   const map = {

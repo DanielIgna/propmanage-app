@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api", tags=["payments"])
 
 
 import stripe
-from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
+from stripe_checkout import StripeCheckout, CheckoutSessionRequest
 stripe.api_key = os.environ.get("STRIPE_API_KEY", "sk_test_emergent")
 
 # ============= STRIPE ESCROW =============# ============= STRIPE ESCROW =============
@@ -84,7 +84,7 @@ async def create_checkout_session(request_id: str, request: Request, user: dict 
                 )
         return {"checkout_url": f"{origin}/client?payment=success&request={request_id}&session_id={fake_session_id}&demo=1", "session_id": fake_session_id, "demo_mode": True}
 
-    # REAL Stripe via emergentintegrations
+    # REAL Stripe via the official SDK (stripe_checkout.py)
     host_url = origin
     webhook_url = f"{host_url}/api/webhook/stripe"
     stripe_checkout = StripeCheckout(api_key=STRIPE_KEY, webhook_url=webhook_url)

@@ -47,9 +47,10 @@ from datetime import datetime, timezone
 from typing import Any
 
 from dotenv import load_dotenv
-from motor.motor_asyncio import AsyncIOMotorClient
 
-load_dotenv("/app/backend/.env")
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import db as _db_mod  # noqa: E402
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from routes.impersonation import DEMO_IMPERSONATION_ACCOUNTS  # noqa: E402
@@ -251,13 +252,8 @@ async def check_deployment_readiness(db) -> dict[str, Any]:
 
 
 async def run_full_check() -> dict[str, Any]:
-    mongo_url = os.environ.get("MONGO_URL")
-    db_name = os.environ.get("DB_NAME")
-    if not mongo_url or not db_name:
-        raise RuntimeError("MONGO_URL / DB_NAME lipsesc.")
-
-    client = AsyncIOMotorClient(mongo_url)
-    db = client[db_name]
+    client = _db_mod.client
+    db = _db_mod.db
 
     now_iso = datetime.now(timezone.utc).isoformat()
     report = {

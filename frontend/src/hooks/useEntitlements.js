@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
-import { API } from "../pages/DashShared";
+import { API } from "../views/DashShared";
 
 let _cache = null; // simplu module-level cache pentru sesiune
 let _cachePromise = null;

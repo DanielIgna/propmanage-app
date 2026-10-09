@@ -7,7 +7,7 @@ import axios from "axios";
 import { PartyPopper, X, Sparkles } from "lucide-react";
 import { TIER_LABEL } from "./experienceTier";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 const ax = axios.create({ baseURL: API, withCredentials: true });
 
 const TIER_GRADIENT = {

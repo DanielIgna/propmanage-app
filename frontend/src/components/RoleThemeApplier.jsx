@@ -5,7 +5,7 @@ import axios from "axios";
 import { useAuth } from "../auth";
 import { useTheme } from "../contexts/ThemeContext";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 export const RoleThemeApplier = () => {
   const { user } = useAuth();

@@ -486,10 +486,10 @@ async def patch_lead(lead_id: str, payload: LeadPatch, user=Depends(get_current_
 async def _claude_json(system: str, prompt: str, session_prefix: str) -> dict:
     """Helper: call Claude Sonnet 4.5 and parse JSON response."""
     import json
-    key = os.environ.get("EMERGENT_LLM_KEY")
+    key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
-        raise HTTPException(503, "EMERGENT_LLM_KEY missing.")
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
+        raise HTTPException(503, "ANTHROPIC_API_KEY missing.")
+    from llm_chat import LlmChat, UserMessage
     chat = LlmChat(
         api_key=key,
         session_id=f"{session_prefix}_{_uuid.uuid4().hex[:8]}",

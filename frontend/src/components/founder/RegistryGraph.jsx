@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { Loader2, X, ChevronRight, ZoomIn, ZoomOut, Crosshair, Maximize2, Grid3X3, GitBranch } from "lucide-react";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 export const STATUS_STYLE = {
   VERIFIED: "bg-emerald-500/10 border-emerald-500/30 text-emerald-300",

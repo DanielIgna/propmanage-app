@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api`;
 const PREVIEW_KEY = "pm_admin_preview_scope";
 
 // Visibility map: which nav items each scope can see (besides "general" who sees all).

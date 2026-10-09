@@ -269,3 +269,13 @@ frontend/node_modules/.cache/default-development/244.pack
 frontend/node_modules/.cache/default-development/245.pack
 frontend/node_modules/.cache/default-development/245.pack
 frontend/node_modules/.cache/default-development/246.pack
+
+# Local MongoDB dumps (mongodump --archive)
+*.archive.gz
+
+# Next.js / OpenNext (frontend)
+frontend/.next/
+frontend/.open-next/
+frontend/next-env.d.ts
+frontend/cloudflare-env.d.ts
+frontend/.dev.vars

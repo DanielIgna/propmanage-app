@@ -6,7 +6,7 @@ import {
   Sparkles, Wand2, X, Loader2, Palette, Coins, ShieldCheck, Image as ImageIcon,
   ChevronRight, AlertTriangle, GitCompare,
 } from "lucide-react";
-import { API } from "../pages/DashShared";
+import { API } from "../views/DashShared";
 import { ConceptMaterials, RequestOfferButton, PreferButton } from "./ConceptComparison";
 
 const TrustBadge = () => (
@@ -36,7 +36,7 @@ const ConceptResult = ({ c, onRequestReview, reviewBusy, projectId, onChanged })
       {c.render_url && (
         <div className="rounded-xl overflow-hidden border border-white/10 bg-black/30">
           <img
-            src={`${process.env.REACT_APP_BACKEND_URL}${c.render_url}`}
+            src={`${process.env.NEXT_PUBLIC_BACKEND_URL}${c.render_url}`}
             alt="Render concept AI"
             className="w-full h-auto object-cover"
             data-testid="design-render-img"
@@ -334,7 +334,7 @@ export const DesignConceptStudio = ({ projectId, projectName, onClose, onModelCh
                 data-testid={`design-history-${c.id}`}
               >
                 {c.render_url ? (
-                  <img src={`${process.env.REACT_APP_BACKEND_URL}${c.render_url}`} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                  <img src={`${process.env.NEXT_PUBLIC_BACKEND_URL}${c.render_url}`} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
                 ) : (
                   <div className="w-12 h-12 rounded-lg bg-violet-500/15 flex items-center justify-center shrink-0"><Palette className="w-5 h-5 text-violet-300" /></div>
                 )}

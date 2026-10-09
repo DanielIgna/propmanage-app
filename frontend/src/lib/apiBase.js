@@ -1,10 +1,10 @@
 // Smart API base URL detection.
 // Falls back to window.location.origin if the configured URL points to a
 // different host than the one the user is currently on. This protects against
-// stale build-time REACT_APP_BACKEND_URL when the custom domain isn't yet live
+// stale build-time NEXT_PUBLIC_BACKEND_URL when the custom domain isn't yet live
 // (e.g. propmanage.ro DNS not propagated yet).
 function resolveApiBase() {
-  const configured = (process.env.REACT_APP_BACKEND_URL || "").trim();
+  const configured = (process.env.NEXT_PUBLIC_BACKEND_URL || "").trim();
   if (typeof window === "undefined") return configured;
 
   if (!configured) return window.location.origin;

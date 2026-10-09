@@ -65,11 +65,11 @@ Reply ONLY with the Markdown prompt, no commentary."""
 
 def _llm_chat(system_message: str, session_id: str):
     """Build a fresh Claude chat instance. Returns None if key not configured."""
-    key = os.environ.get("EMERGENT_LLM_KEY", "").strip()
+    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if not key:
         return None
     try:
-        from emergentintegrations.llm.chat import LlmChat
+        from llm_chat import LlmChat
         return LlmChat(api_key=key, session_id=session_id, system_message=system_message).with_model(*_MODEL)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"[qa_copilot] LLM init failed: {e}")
@@ -140,7 +140,7 @@ async def analyze_finding(finding_text: str, *, role: str, area: str, prior_find
 
     chat = _llm_chat(sys_msg, f"qa-copilot-analyze-{uuid.uuid4().hex[:8]}")
     if chat is None:
-        return {**fallback, "error": "EMERGENT_LLM_KEY not configured"}
+        return {**fallback, "error": "ANTHROPIC_API_KEY not configured"}
 
     prior_block = ""
     if prior_findings:
@@ -155,7 +155,7 @@ async def analyze_finding(finding_text: str, *, role: str, area: str, prior_find
     )
 
     try:
-        from emergentintegrations.llm.chat import UserMessage
+        from llm_chat import UserMessage
         raw = await chat.send_message(UserMessage(text=user_text))
         parsed = _parse_json(raw)
         if not parsed:
@@ -192,7 +192,7 @@ async def generate_emergent_prompt(session: dict) -> dict:
 
     chat = _llm_chat(_PROMPT_GEN_SYS, f"qa-copilot-prompt-{uuid.uuid4().hex[:8]}")
     if chat is None:
-        return {"error": "EMERGENT_LLM_KEY not configured"}
+        return {"error": "ANTHROPIC_API_KEY not configured"}
 
     findings_block = []
     for i, f in enumerate(findings, 1):
@@ -218,7 +218,7 @@ async def generate_emergent_prompt(session: dict) -> dict:
     )
 
     try:
-        from emergentintegrations.llm.chat import UserMessage
+        from llm_chat import UserMessage
         raw = await chat.send_message(UserMessage(text=user_text))
         return {"prompt": (raw or "").strip(), "provider": "claude-sonnet-4-5"}
     except Exception as e:  # noqa: BLE001

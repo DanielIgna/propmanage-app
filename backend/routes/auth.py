@@ -1323,125 +1323,6 @@ async def supabase_oauth_login(request: Request, response: Response):
     return serialize_doc(user)
 
 
-@router.post("/auth/google/session")
-async def google_session_exchange(request: Request, response: Response):
-    """Exchange Emergent session_id for our JWT cookie + user record.
-
-    Calls upstream `demobackend.emergentagent.com` to verify the session and
-    retrieve the Google profile. Retries up to 3× with exponential backoff so
-    transient upstream slowness (often 5-15s on cold start) doesn't yield a
-    520/origin-empty response that users see as "Autentificare Google eșuată".
-    Every attempt is recorded in `oauth_health` collection for the
-    /admin/auth-health dashboard.
-    """
-    started_at = datetime.now(timezone.utc)
-    health_event = {
-        "event_type": "google_oauth_exchange",
-        "started_at": started_at.isoformat(),
-        "attempts": 0,
-        "outcome": None,  # "success" | "user_error" | "upstream_5xx" | "network" | "exhausted"
-        "final_status": None,
-        "upstream_status": None,
-        "duration_ms": None,
-        "ip": request.client.host if request.client else None,
-    }
-    session_id = request.headers.get("X-Session-ID")
-    if not session_id:
-        health_event["outcome"] = "user_error"
-        health_event["final_status"] = 400
-        await _record_oauth_health(health_event, started_at)
-        raise HTTPException(400, "Lipsește header-ul X-Session-ID")
-    upstream_status = None
-    upstream_body = None
-    last_err = None
-    data = None
-    # Retry loop: 2 attempts, 15s timeout each + 2s backoff between → max ~32s total.
-    # MUST stay under the Kubernetes ingress proxy timeout (typically 60s) or the
-    # browser sees a generic 502 Bad Gateway from the ingress instead of our 503.
-    for attempt in range(2):
-        health_event["attempts"] = attempt + 1
-        try:
-            async with httpx.AsyncClient(timeout=15) as http_client:
-                r = await http_client.get(
-                    "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
-                    headers={"X-Session-ID": session_id}
-                )
-                upstream_status = r.status_code
-                upstream_body = (r.text or "")[:300]
-                health_event["upstream_status"] = upstream_status
-                if r.status_code == 200:
-                    data = r.json()
-                    break
-                # 4xx → user-fixable (session expired, redirect URL not whitelisted) — no retry
-                if 400 <= r.status_code < 500:
-                    logger.warning(f"Emergent OAuth user error: status={upstream_status} body={upstream_body[:200]}")
-                    health_event["outcome"] = "user_error"
-                    health_event["final_status"] = 401
-                    await _record_oauth_health(health_event, started_at)
-                    raise HTTPException(
-                        401,
-                        f"Emergent OAuth a refuzat sesiunea (upstream HTTP {upstream_status}). "
-                        f"Detaliu: {upstream_body[:200]}. Cauze posibile: (1) session_id expirat — încearcă din nou rapid, "
-                        f"(2) propmanage.ro/auth/callback nu este whitelisted în panoul OAuth Emergent — "
-                        f"contactează support@emergent.sh."
-                    )
-                # 5xx upstream → transient, will retry
-                last_err = f"upstream HTTP {r.status_code}"
-                logger.warning(f"Emergent OAuth transient {r.status_code} (attempt {attempt+1}/2): {upstream_body[:120]}")
-        except HTTPException:
-            raise
-        except (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPError) as e:
-            last_err = f"network: {type(e).__name__}: {e}"
-            logger.warning(f"Emergent OAuth network error (attempt {attempt+1}/2): {last_err}")
-        if attempt < 1:
-            await asyncio.sleep(2)  # short backoff to stay under ingress timeout
-    if data is None:
-        # Both attempts failed — return a SAFE 503 with JSON body so the browser
-        # gets an actionable detail instead of a generic ingress 502/520.
-        logger.error(f"Emergent OAuth exhausted retries: {last_err}")
-        health_event["outcome"] = "exhausted"
-        health_event["final_status"] = 503
-        health_event["last_error"] = last_err
-        await _record_oauth_health(health_event, started_at)
-        raise HTTPException(
-            503,
-            f"Serverul Emergent OAuth nu răspunde (2 încercări, ultima: {last_err}). "
-            "Încearcă din nou peste 1-2 minute sau folosește email + parolă."
-        )
-
-    email = data.get("email", "").lower()
-    name = data.get("name", "")
-    picture = data.get("picture", "")
-
-    user = await _upsert_google_user(email, name, picture)
-    uid = str(user["_id"])
-
-    user = await _enforce_admin_role(user)
-    # Track last_seen for beta engagement analytics
-    await db.users.update_one(
-        {"_id": user["_id"]},
-        {"$set": {"last_seen": datetime.now(timezone.utc).isoformat()}}
-    )
-    access = create_access_token(uid, email, user.get("role", "client"))
-    refresh = create_refresh_token(uid)
-    set_auth_cookies(response, access, refresh)
-    # Mark success in oauth_health (best-effort, never block response on this)
-    try:
-        await db.oauth_health.insert_one({
-            "event_type": "google_oauth_exchange",
-            "started_at": started_at.isoformat(),
-            "outcome": "success",
-            "final_status": 200,
-            "upstream_status": 200,
-            "attempts": health_event["attempts"],
-            "duration_ms": int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000),
-            "email": email,
-        })
-    except Exception:  # noqa: BLE001
-        pass
-    return serialize_doc(user)
-
-
 async def _record_oauth_health(event: dict, started_at: datetime) -> None:
     """Best-effort write to oauth_health collection — never raises."""
     try:
@@ -1593,7 +1474,7 @@ async def admin_auth_health(user: dict = Depends(require_role("admin"))):
 
 @router.get("/admin/auth-health/export.csv")
 async def admin_auth_health_export_csv(user: dict = Depends(require_role("admin"))):
-    """Download last-24h OAuth events as CSV — useful for support@emergent.sh tickets."""
+    """Download last-24h OAuth events as CSV — useful for support tickets."""
     from fastapi.responses import StreamingResponse
     now = datetime.now(timezone.utc)
     since = (now - timedelta(hours=24)).isoformat()
@@ -1686,7 +1567,7 @@ async def run_auth_health_alert_check() -> dict:
       </p>
       <p style="font-size: 12px; color: #6b7280; margin-top: 24px;">
         Cooldown: vei primi următoarea alertă cel mai devreme peste {_AUTH_ALERT_COOLDOWN_MIN} minute.<br/>
-        Dacă upstream Emergent OAuth e degradat, contactează <a href="mailto:support@emergent.sh">support@emergent.sh</a>.
+        Dacă Google OAuth e degradat, verifică configurarea în Google Cloud Console / Supabase Auth.
       </p>
     </div>
     """

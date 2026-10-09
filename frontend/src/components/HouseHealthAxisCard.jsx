@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { ChevronRight, ChevronDown, Info, Sparkles, Check } from "lucide-react";
-import { API } from "../pages/DashShared";
+import { API } from "../views/DashShared";
 import {
   HOUSE_HEALTH_AXIS, STATE_META, AXIS_DISCLAIMER, AXIS_NOT_ENERGY_CLASS,
   deriveChapterState, chapterForNextStep,

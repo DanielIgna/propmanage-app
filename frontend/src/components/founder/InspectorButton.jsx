@@ -5,7 +5,7 @@ import axios from "axios";
 import { Info, X, Loader2, FileText, Database, Cpu, Clock, Layers } from "lucide-react";
 import { useFounderAccess } from "./useFounderAccess";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 const Section = ({ title, children }) => (
   <div className="mb-4">

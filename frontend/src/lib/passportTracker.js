@@ -1,5 +1,5 @@
 // Passport Analytics tracker (EO-026) — first-party, fără cookies de tracking.
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 const REF_KEY = "pm_passport_ref";
 const VID_KEY = "pm_vid";
 const REF_TTL = 30 * 24 * 3600 * 1000;

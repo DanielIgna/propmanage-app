@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import axios from "axios";
+import { getAppSettingsPublic, invalidatePublicConfig } from "./publicConfig";
+import { useServerRendered } from "./serverRendered";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 // Two caches: legacy app_settings (backward compat) + new page registry per key.
 let _settingsCache = null;
@@ -12,10 +14,7 @@ const _pagePromise = new Map();        // key -> in-flight promise
 function fetchSettings() {
   if (_settingsCache) return Promise.resolve(_settingsCache);
   if (_settingsPromise) return _settingsPromise;
-  _settingsPromise = axios
-    .get(`${API}/api/app-settings/public`)
-    .then((r) => { _settingsCache = r.data; return _settingsCache; })
-    .catch(() => null);
+  _settingsPromise = getAppSettingsPublic().then((d) => { _settingsCache = d; return d; });
   return _settingsPromise;
 }
 
@@ -64,7 +63,10 @@ function applyMeta(title, description, ogImage, ogTitle, ogDescription) {
  * `pageKey` is the shared key used across Page Registry + legacy app_settings.
  */
 export function useDynamicSEO(pageKey, fallback = {}) {
+  // Server-rendered pages already carry their metadata (app/seo.js): nothing to fetch.
+  const serverRendered = useServerRendered();
   useEffect(() => {
+    if (serverRendered) return undefined;
     let cancelled = false;
     Promise.all([fetchPageConfig(pageKey), fetchSettings()]).then(([pg, s]) => {
       if (cancelled) return;
@@ -85,13 +87,14 @@ export function useDynamicSEO(pageKey, fallback = {}) {
       applyMeta(title, description, ogImage, ogTitle, ogDescription);
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [pageKey, fallback.title, fallback.description, fallback.ogImage]);
+  }, [serverRendered, pageKey, fallback.title, fallback.description, fallback.ogImage]);
 }
 
 /** Clear all SEO-related caches — call after admin saves SEO to force fresh fetch. */
 export function invalidateSEOCache() {
   _settingsCache = null;
   _settingsPromise = null;
+  invalidatePublicConfig();
   _pageCache.clear();
   _pagePromise.clear();
 }

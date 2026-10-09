@@ -258,9 +258,9 @@ async def ai_suggest_fix(inc_id: str, occurrence_index: int = 0) -> dict:
     canonical = inc["canonical"]
     other_variants = [v for v in variants_used if v.lower() != canonical.lower()]
 
-    key = os.environ.get("EMERGENT_LLM_KEY", "").strip()
+    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if not key:
-        return {"error": "EMERGENT_LLM_KEY missing"}
+        return {"error": "ANTHROPIC_API_KEY missing"}
     prompt = f"""Document: `{inc['doc_slug']}` · Secțiune: `{occ['section_heading']}`
 
 Termenul canonic stabilit: **{canonical}**
@@ -275,7 +275,7 @@ Rescrie paragraful înlocuind variantele cu termenul canonic, păstrând complet
 Nu schimba structura, nu adăuga informații noi. Doar înlocuiește.
 Răspuns STRICT JSON: {{"title": "păstrează sau adaptează", "body": "paragraful rescris"}}. Fără fences, fără proză."""
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_chat import LlmChat, UserMessage
         chat = (LlmChat(
             api_key=key,
             session_id=f"term-fix-{inc_id[:8]}-{occurrence_index}",
@@ -352,9 +352,9 @@ async def apply_fix(inc_id: str, actor: str, custom_body: Optional[str] = None, 
 
 async def ai_discover_clusters(sample_slugs: Optional[list[str]] = None) -> dict:
     """Run Claude on a doc sample and propose new term clusters worth tracking."""
-    key = os.environ.get("EMERGENT_LLM_KEY", "").strip()
+    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if not key:
-        return {"error": "EMERGENT_LLM_KEY missing"}
+        return {"error": "ANTHROPIC_API_KEY missing"}
     slugs = sample_slugs or list(DOCS_CONTENT.keys())
     samples = []
     for s in slugs[:4]:
@@ -381,7 +381,7 @@ async def ai_discover_clusters(sample_slugs: Optional[list[str]] = None) -> dict
         + "\n\nRăspuns STRICT JSON: {\"new_clusters\": [{\"key\": \"snake_case\", \"canonical\": \"termen preferat\", \"variants\": [\"sinonim1\",...], \"description\": \"...\"}, ...]}"
     )
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_chat import LlmChat, UserMessage
         chat = (LlmChat(
             api_key=key,
             session_id=f"term-discover-{uuid.uuid4().hex[:8]}",
@@ -437,9 +437,9 @@ async def add_cluster(key: str, canonical: str, variants: list[str], description
 async def _ai_rewrite_block(doc_slug: str, section_heading: str, canonical: str, other_variants: list[str], excerpt: str) -> dict:
     """Pure AI call: rewrite block to use canonical term. Doesn't touch DB."""
     import asyncio as _aio
-    key = os.environ.get("EMERGENT_LLM_KEY", "").strip()
+    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if not key:
-        return {"error": "EMERGENT_LLM_KEY missing"}
+        return {"error": "ANTHROPIC_API_KEY missing"}
     prompt = f"""Document: `{doc_slug}` · Secțiune: `{section_heading}`
 
 Termen canonic: **{canonical}**
@@ -452,7 +452,7 @@ Paragraf:
 
 Rescrie înlocuind variantele cu termenul canonic. Răspuns STRICT JSON: {{"title":"","body":""}}. Fără fences."""
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_chat import LlmChat, UserMessage
         chat = (LlmChat(
             api_key=key,
             session_id=f"term-bulk-{uuid.uuid4().hex[:8]}",

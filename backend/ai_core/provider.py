@@ -101,16 +101,16 @@ async def call_llm(
     model = cfg["model"]
     temperature = cfg["temperature"]
 
-    key = os.environ.get("EMERGENT_LLM_KEY", "").strip()
+    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if not key:
-        return {"error": "EMERGENT_LLM_KEY not configured", "text": ""}
+        return {"error": "ANTHROPIC_API_KEY not configured", "text": ""}
 
-    # Currently all three providers route via emergentintegrations.
+    # llm_chat implements "anthropic" (Messages API) and "gemini"; other providers raise.
     if provider not in ("anthropic", "openai", "gemini"):
         return {"error": f"Provider '{provider}' not active in Phase 1", "text": ""}
 
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_chat import LlmChat, UserMessage
         chat = (
             LlmChat(
                 api_key=key,

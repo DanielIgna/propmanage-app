@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Building2, Users, Search, Plus, Sparkles, Check, Megaphone, ExternalLink } from "lucide-react";
-import { API } from "../pages/DashShared";
+import { API } from "../views/DashShared";
 import { formatApiError } from "../auth";
-import { GREEN, CTA, Sheet } from "../pages/clientv2/ui";
+import { GREEN, CTA, Sheet } from "../views/clientv2/ui";
 import { trackIntent } from "../lib/analytics";
 
 const hbField = (label, value) => {

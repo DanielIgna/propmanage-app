@@ -225,7 +225,7 @@ async def health_check():
         status["checks"]["db"] = f"err: {str(e)[:60]}"
         status["status"] = "degraded"
     # LLM key
-    status["checks"]["emergent_llm_key"] = "configured" if os.environ.get("EMERGENT_LLM_KEY") else "missing"
+    status["checks"]["emergent_llm_key"] = "configured" if os.environ.get("ANTHROPIC_API_KEY") else "missing"
     # Email provider
     status["checks"]["email_provider"] = "resend" if os.environ.get("RESEND_API_KEY") else "console_fallback"
     # Stripe
@@ -253,7 +253,7 @@ async def public_status():
         out["status"] = "outage"
 
     # AI Concierge (depends on LLM key)
-    out["components"]["ai_concierge"] = "operational" if os.environ.get("EMERGENT_LLM_KEY") else "limited"
+    out["components"]["ai_concierge"] = "operational" if os.environ.get("ANTHROPIC_API_KEY") else "limited"
 
     # Payments — reflect reality: demo mode shows as "limited"
     skey = (os.environ.get("STRIPE_API_KEY") or "").strip()
@@ -320,7 +320,7 @@ async def record_health_ping():
             components["api"] = "down"
             components["database"] = "down"
             overall = "degraded"
-        components["ai_concierge"] = "ok" if os.environ.get("EMERGENT_LLM_KEY") else "limited"
+        components["ai_concierge"] = "ok" if os.environ.get("ANTHROPIC_API_KEY") else "limited"
         skey = (os.environ.get("STRIPE_API_KEY") or "").strip()
         components["payments"] = "ok" if skey.startswith("sk_live_") else "limited"
         components["email"] = "ok" if (os.environ.get("RESEND_API_KEY") or os.environ.get("SENDGRID_API_KEY")) else "limited"

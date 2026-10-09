@@ -5,10 +5,10 @@ import uuid
 
 
 async def claude_json(system: str, prompt: str, session_prefix: str) -> dict:
-    key = (os.environ.get("EMERGENT_LLM_KEY") or "").strip()
+    key = (os.environ.get("ANTHROPIC_API_KEY") or "").strip()
     if not key:
-        raise RuntimeError("EMERGENT_LLM_KEY missing")
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
+        raise RuntimeError("ANTHROPIC_API_KEY missing")
+    from llm_chat import LlmChat, UserMessage
     chat = LlmChat(
         api_key=key,
         session_id=f"{session_prefix}_{uuid.uuid4().hex[:8]}",

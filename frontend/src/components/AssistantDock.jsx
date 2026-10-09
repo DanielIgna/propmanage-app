@@ -4,9 +4,10 @@ import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import axios from "axios";
 import { MessageCircle, Bot, X } from "lucide-react";
+import { getTrackConfig } from "../lib/publicConfig";
 import { useAuth } from "../auth";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 const WaIcon = () => (
   <svg viewBox="0 0 32 32" className="w-4.5 h-4.5 fill-white" style={{ width: 18, height: 18 }} aria-hidden="true">
@@ -23,7 +24,7 @@ export const AssistantDock = () => {
   const [panelOpen, setPanelOpen] = useState(false);
 
   useEffect(() => {
-    fetch(`${API}/api/track/config`).then(r => r.json()).then(setCfg).catch(() => {});
+    getTrackConfig().then((c) => { if (c) setCfg(c); });
   }, []);
 
   const loggedIn = !!user && user !== false;

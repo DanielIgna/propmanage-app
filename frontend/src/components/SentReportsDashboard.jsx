@@ -6,7 +6,7 @@ import {
   ArrowLeft, BellRing, CheckCircle2, FileEdit, Clock, ExternalLink,
   AlertTriangle, X, Loader2, Mail, Send, Filter, Settings, Pause, Play, BellOff,
 } from "lucide-react";
-import { API } from "../pages/DashShared";
+import { API } from "../views/DashShared";
 
 const STATUS_META = {
   pending: { label: "În așteptare", color: "#f59e0b", bg: "bg-amber-500/15", text: "text-amber-300", border: "border-amber-500/30" },

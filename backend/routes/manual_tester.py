@@ -620,9 +620,9 @@ async def suggest_cases(payload: SuggestIn, user=Depends(require_role("admin")))
 
     Topic example: "Twin Orchestrator scheduling", "House Health checkout edge cases".
     """
-    key = os.environ.get("EMERGENT_LLM_KEY")
+    key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
-        raise HTTPException(503, "EMERGENT_LLM_KEY nu este configurat.")
+        raise HTTPException(503, "ANTHROPIC_API_KEY nu este configurat.")
 
     system = (
         "Ești un QA engineer senior pentru o aplicație de management imobiliar (PropManage). "
@@ -639,7 +639,7 @@ async def suggest_cases(payload: SuggestIn, user=Depends(require_role("admin")))
     )
 
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_chat import LlmChat, UserMessage
         chat = LlmChat(api_key=key, session_id=f"manual_tester_{uuid.uuid4().hex[:8]}",
                        system_message=system).with_model("anthropic", "claude-sonnet-4-5-20250929")
         raw = await chat.send_message(UserMessage(text=prompt))

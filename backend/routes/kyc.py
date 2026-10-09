@@ -126,9 +126,9 @@ async def _run_ai_verification(kyc_id: str) -> dict:
     if not doc:
         return {"error": "kyc_not_found"}
 
-    key = os.environ.get("EMERGENT_LLM_KEY", "").strip()
+    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if not key:
-        return {"error": "EMERGENT_LLM_KEY missing"}
+        return {"error": "ANTHROPIC_API_KEY missing"}
 
     result = {
         "ran_at": _now_iso(),
@@ -140,7 +140,7 @@ async def _run_ai_verification(kyc_id: str) -> dict:
         "error": None,
     }
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+        from llm_chat import LlmChat, UserMessage, ImageContent
 
         # Strip any data: url prefix already done at upload time; values are pure base64
         id_front_img = ImageContent(image_base64=doc.get("id_front", ""))

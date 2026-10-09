@@ -578,9 +578,9 @@ async def partner_copilot_nudges(user=Depends(get_current_user)):
     Response: {nudges: [{title, body, priority}], generated_at}
     """
     p = await _require_partner(user)
-    key = os.environ.get("EMERGENT_LLM_KEY")
+    key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
-        raise HTTPException(503, "EMERGENT_LLM_KEY missing.")
+        raise HTTPException(503, "ANTHROPIC_API_KEY missing.")
 
     # Build context: partner profile + lead breakdown
     by_stage = {}
@@ -620,7 +620,7 @@ async def partner_copilot_nudges(user=Depends(get_current_user)):
     )
 
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_chat import LlmChat, UserMessage
         chat = LlmChat(
             api_key=key,
             session_id=f"city_partner_copilot_{_uuid.uuid4().hex[:8]}",
