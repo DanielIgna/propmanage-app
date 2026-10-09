@@ -1,0 +1,14 @@
+# Railway builds backend/Dockerfile from the repo root: only ship what the backend needs.
+*
+!backend/
+!memory/
+!docs/
+backend/venv/
+backend/.env
+backend/.env.*
+backend/uploads/
+backend/backups/
+backend/tests/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
