@@ -1,3 +1,4 @@
+import { getTrackConfig } from "./publicConfig";
 // ============================================================================
 // PropManage Analytics — tracker first-party + integrări externe pluggable
 // ----------------------------------------------------------------------------
@@ -310,7 +311,8 @@ export function initAnalytics() {
   window.addEventListener("pagehide", () => flushTimeOnPage(true));
 
   // integrări externe din config (Clarity / GA4 / Meta Pixel)
-  fetch(`${API}/api/track/config`).then((r) => r.json()).then((cfg) => {
+  getTrackConfig().then((cfg) => {
+    if (!cfg) return;
     injectClarity(cfg.clarity_id);
     injectGA4(cfg.ga4_id);
     injectMetaPixel(cfg.meta_pixel_id);

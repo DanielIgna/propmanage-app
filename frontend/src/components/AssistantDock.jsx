@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import axios from "axios";
 import { MessageCircle, Bot, X } from "lucide-react";
+import { getTrackConfig } from "../lib/publicConfig";
 import { useAuth } from "../auth";
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -23,7 +24,7 @@ export const AssistantDock = () => {
   const [panelOpen, setPanelOpen] = useState(false);
 
   useEffect(() => {
-    fetch(`${API}/api/track/config`).then(r => r.json()).then(setCfg).catch(() => {});
+    getTrackConfig().then((c) => { if (c) setCfg(c); });
   }, []);
 
   const loggedIn = !!user && user !== false;

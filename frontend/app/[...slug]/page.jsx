@@ -7,7 +7,7 @@ export async function generateMetadata({ params }) {
   return metadataForPath(slug);
 }
 
-// Catch-all: every path not claimed by a dedicated App Router route renders the SPA.
+// Catch-all: every path (except "/", see app/page.jsx) not claimed by an App Router route renders the SPA.
 export default function Page() {
   return <ClientOnly />;
 }

@@ -2,7 +2,10 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Building2, MapPin, ArrowRight, ShieldCheck, Info } from "lucide-react";
-import { PmMarkersMap } from "./PmMap";
+import dynamic from "next/dynamic";
+
+// Leaflet touches `window` at import time: load the map in the browser only.
+const PmMarkersMap = dynamic(() => import("./PmMap").then((m) => m.PmMarkersMap), { ssr: false });
 
 const API = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api`;
 
