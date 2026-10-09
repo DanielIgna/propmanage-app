@@ -290,10 +290,10 @@ async def generate_learnings(user=Depends(get_current_user)):
     if len(logs) < 3:
         raise HTTPException(400, "Insuficiente date (necesare minim 3 loguri de performanță).")
 
-    key = os.environ.get("EMERGENT_LLM_KEY")
+    key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
-        raise HTTPException(503, "EMERGENT_LLM_KEY missing.")
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
+        raise HTTPException(503, "ANTHROPIC_API_KEY missing.")
+    from llm_chat import LlmChat, UserMessage
     system = (
         "Ești un AI Marketing Performance Analyst pentru PropManage. Primești "
         "loguri istorice ale campaniilor cu predicted vs actual. Identifici "

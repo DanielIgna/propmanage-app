@@ -162,12 +162,12 @@ def collect_velocity(days: int = 7) -> dict:
 async def ai_summary(stats: dict) -> str:
     """Ask Claude to produce a Romanian executive summary of the week's velocity."""
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_chat import LlmChat, UserMessage
     except Exception as e:  # noqa: BLE001
-        logger.warning(f"[DevVelocity] emergentintegrations missing: {e}")
+        logger.warning(f"[DevVelocity] llm_chat import failed: {e}")
         return _fallback_summary(stats)
 
-    key = os.environ.get("EMERGENT_LLM_KEY")
+    key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
         return _fallback_summary(stats)
 

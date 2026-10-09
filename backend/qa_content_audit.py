@@ -217,9 +217,9 @@ async def ai_suggest_fix(conflict_id: str) -> dict:
     conflict = await db.doc_conflicts.find_one({"id": conflict_id})
     if not conflict:
         return {"error": "not found"}
-    key = os.environ.get("EMERGENT_LLM_KEY", "").strip()
+    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if not key:
-        return {"error": "EMERGENT_LLM_KEY missing"}
+        return {"error": "ANTHROPIC_API_KEY missing"}
     prompt = f"""Manualul `{conflict['doc_slug']}` are rolul `{conflict['doc_role']}`.
 Acest paragraf pare scris din perspectiva audienței greșite (`{conflict['wrong_audience']}`).
 Secțiune: {conflict['section_heading']}
@@ -232,7 +232,7 @@ Rescrie paragraful din perspectiva audienței CORECTE (rolul docului = `{conflic
 Păstrează aceleași informații (escrow, comisioane, garanții), dar schimbă pronumele și unghiul.
 Răspunde STRICT cu un JSON: {{"title": "...", "body": "..."}}. Fără markdown, fără fences."""
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_chat import LlmChat, UserMessage
         chat = (LlmChat(
             api_key=key,
             session_id=f"doc-fix-{conflict_id}",

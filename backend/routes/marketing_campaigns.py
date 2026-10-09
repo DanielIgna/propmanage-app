@@ -81,10 +81,10 @@ def _serialize_campaign(d: dict, include_images: bool = False) -> dict:
 
 async def _claude_generate_campaign(objective: str, service: str, county: str,
                                     budget: int, trigger_reason: str | None = None) -> dict:
-    key = os.environ.get("EMERGENT_LLM_KEY")
+    key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
-        raise HTTPException(503, "EMERGENT_LLM_KEY missing.")
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
+        raise HTTPException(503, "ANTHROPIC_API_KEY missing.")
+    from llm_chat import LlmChat, UserMessage
     # Inject performance-based calibration learnings if any
     try:
         from routes.marketing_performance import get_active_calibration_hint
@@ -129,11 +129,11 @@ async def _claude_generate_campaign(objective: str, service: str, county: str,
 
 async def _nano_banana_generate(prompt: str) -> Optional[dict]:
     """Generate single ad image via Gemini Nano Banana. Returns {mime_type, data} base64."""
-    key = os.environ.get("EMERGENT_LLM_KEY")
+    key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
         return None
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_chat import LlmChat, UserMessage
         chat = LlmChat(api_key=key, session_id=f"img_{_uuid.uuid4().hex[:8]}",
                        system_message="You are a professional ad-creative photo generator. "
                                       "Generate photo-realistic marketing images. No text overlays.")\

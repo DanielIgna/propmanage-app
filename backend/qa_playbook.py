@@ -250,12 +250,12 @@ async def ai_suggest_tests(feature: str, context: Optional[str] = None) -> dict:
     feature = (feature or "").strip()
     if not feature:
         return {"items": [], "error": "Empty feature description"}
-    key = os.environ.get("EMERGENT_LLM_KEY", "").strip()
+    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if not key:
-        return {"items": [], "error": "EMERGENT_LLM_KEY not configured"}
+        return {"items": [], "error": "ANTHROPIC_API_KEY not configured"}
     prompt = _build_prompt(feature, context)
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_chat import LlmChat, UserMessage
         chat = (LlmChat(
             api_key=key,
             session_id=f"qa-suggest-{uuid.uuid4().hex[:8]}",

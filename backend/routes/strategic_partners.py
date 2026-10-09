@@ -167,9 +167,9 @@ async def cross_reference(lead_id: str, user=Depends(get_current_user)):
         } for p in candidates[:15]],
     }
 
-    key = os.environ.get("EMERGENT_LLM_KEY")
+    key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
-        raise HTTPException(503, "EMERGENT_LLM_KEY missing.")
+        raise HTTPException(503, "ANTHROPIC_API_KEY missing.")
 
     system = (
         "Ești un Ecosystem Connector pentru PropManage. Primești un LEAD adus de un "
@@ -182,7 +182,7 @@ async def cross_reference(lead_id: str, user=Depends(get_current_user)):
         "reason (max 200c, propunere concretă de colaborare)}], "
         "introduction_email_subject, introduction_email_body (max 600c, ton prietenos profesional)}."
     )
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    from llm_chat import LlmChat, UserMessage
     chat = LlmChat(
         api_key=key,
         session_id=f"xref_{_uuid.uuid4().hex[:8]}",

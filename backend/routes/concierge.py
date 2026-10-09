@@ -19,7 +19,7 @@ from db import db
 from deps import get_current_user
 from routes.security_guard import security_guard
 from routes.concierge_core import (
-    EMERGENT_LLM_KEY,
+    ANTHROPIC_API_KEY,
     DEFAULT_MODEL_PROVIDER,
     DEFAULT_MODEL_NAME,
     _check_escalation,
@@ -127,7 +127,7 @@ async def concierge_chat(
     user: dict = Depends(security_guard),
 ):
     """Send a message to the role-appropriate concierge agent."""
-    if not EMERGENT_LLM_KEY:
+    if not ANTHROPIC_API_KEY:
         raise HTTPException(503, "Asistentul AI nu este disponibil momentan. Te rog contactează support.")
 
     user_role = (user.get("role") or "client").lower()
@@ -217,9 +217,9 @@ async def concierge_chat(
     # Call LLM
     system_prompt = ROLE_PROMPTS.get(user_role, CLIENT_PROMPT)
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage  # type: ignore
+        from llm_chat import LlmChat, UserMessage  # type: ignore
         chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
+            api_key=ANTHROPIC_API_KEY,
             session_id=session_id,
             system_message=system_prompt,
         ).with_model(DEFAULT_MODEL_PROVIDER, DEFAULT_MODEL_NAME)

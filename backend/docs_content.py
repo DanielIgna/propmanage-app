@@ -1141,7 +1141,7 @@ ARCHITECTURE_DOC = {
                 {"type": "list", "items": [
                     "**Resend** (email) — `RESEND_API_KEY`. Tranzacționale + digest-uri admin + docs sending. Limită attachment ~20MB (cap intern 15MB).",
                     "**Stripe** (plăți) — `STRIPE_API_KEY`. Test în preview, live în prod când `sk_live_*` setat. Plăți prin escrow segregat.",
-                    "**Emergent LLM Key** (Claude Sonnet 4.5) — `EMERGENT_LLM_KEY`. AI Concierge + AI Investigator + Smart Match.",
+                    "**Emergent LLM Key** (Claude Sonnet 4.5) — `ANTHROPIC_API_KEY`. AI Concierge + AI Investigator + Smart Match.",
                     "**Google OAuth** (Emergent-managed) — `GOOGLE_OAUTH_*`. Redirect → `/auth/google/callback` → JWT.",
                     "**VAPID Web Push** — `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY`. Push browser.",
                 ]},
@@ -1167,7 +1167,7 @@ ARCHITECTURE_DOC = {
             "body": [
                 {"type": "h3", "text": "Env vars critice"},
                 {"type": "list", "items": [
-                    "**Backend** (`/app/backend/.env`): `MONGO_URL`, `DB_NAME`, `JWT_SECRET`, `RESEND_API_KEY`, `STRIPE_API_KEY`, `EMERGENT_LLM_KEY`, `GOOGLE_OAUTH_*`, `VAPID_*`, `ADMIN_EMAILS`, `APP_PUBLIC_URL`, `SENDER_EMAIL`",
+                    "**Backend** (`/app/backend/.env`): `MONGO_URL`, `DB_NAME`, `JWT_SECRET`, `RESEND_API_KEY`, `STRIPE_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_OAUTH_*`, `VAPID_*`, `ADMIN_EMAILS`, `APP_PUBLIC_URL`, `SENDER_EMAIL`",
                     "**Frontend** (`/app/frontend/.env`): `REACT_APP_BACKEND_URL`",
                 ]},
                 {"type": "h3", "text": "Restart servicii"},

@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["ai"])
 
 
-from emergentintegrations.llm.chat import LlmChat, UserMessage
-EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY", "")
+from llm_chat import LlmChat, UserMessage
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # ============= AI ASSISTANT# ============= AI ASSISTANT (Claude Haiku 4.5) =============
 
@@ -58,7 +58,7 @@ Ești specializat să ajuți SPECIALISTUL:
 @router.post("/ai/chat")
 async def ai_chat(data: AiChatIn, user: dict = Depends(get_current_user)):
     """AI Assistant chat using Claude Haiku 4.5 via Emergent LLM key"""
-    if not EMERGENT_LLM_KEY:
+    if not ANTHROPIC_API_KEY:
         raise HTTPException(503, "AI Assistant not configured")
     
     session_id = data.session_id or f"{user['id']}:default"
@@ -76,7 +76,7 @@ async def ai_chat(data: AiChatIn, user: dict = Depends(get_current_user)):
                 initial_messages.append({"role": m["role"], "content": m["text"]})
 
         chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
+            api_key=ANTHROPIC_API_KEY,
             session_id=session_id,
             system_message=_build_system_prompt(role),
             initial_messages=initial_messages,

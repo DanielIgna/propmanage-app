@@ -322,10 +322,10 @@ async def _build_ai_context() -> dict:
 
 
 def _claude_chat(session_id: str, system: str):
-    key = os.environ.get("EMERGENT_LLM_KEY")
+    key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
-        raise HTTPException(503, "EMERGENT_LLM_KEY missing.")
-    from emergentintegrations.llm.chat import LlmChat
+        raise HTTPException(503, "ANTHROPIC_API_KEY missing.")
+    from llm_chat import LlmChat
     return LlmChat(api_key=key, session_id=session_id, system_message=system)\
         .with_model("anthropic", "claude-sonnet-4-5-20250929")
 
@@ -345,7 +345,7 @@ async def generate_insights(user=Depends(get_current_user)):
     """Claude analizează datele platformei → insights factuale (română)."""
     _require_marketing(user)
     ctx = await _build_ai_context()
-    from emergentintegrations.llm.chat import UserMessage
+    from llm_chat import UserMessage
     system = (
         "Ești AI Business Intelligence Engine pentru PropManage (platformă property "
         "management România). Primești date agregate. Generezi 6-10 INSIGHTS "
@@ -390,7 +390,7 @@ async def recent_insights(limit: int = 5, user=Depends(get_current_user)):
 async def recommendations(user=Depends(get_current_user)):
     _require_marketing(user)
     ctx = await _build_ai_context()
-    from emergentintegrations.llm.chat import UserMessage
+    from llm_chat import UserMessage
     system = (
         "Ești AI Recommendation Engine pentru PropManage. Primești date agregate. "
         "Generezi recomandări concrete în română pentru marketing și business. "
@@ -435,7 +435,7 @@ async def copilot(req: CopilotMsg, user=Depends(get_current_user)):
         raise HTTPException(400, "Mesaj gol.")
     sid = req.session_id or f"mkt_chat_{_uuid.uuid4().hex[:10]}"
     ctx = await _build_ai_context()
-    from emergentintegrations.llm.chat import UserMessage
+    from llm_chat import UserMessage
     system = (
         "Ești AI Marketing Copilot pentru PropManage. Răspunzi STRICT pe baza datelor "
         "agregate primite (date reale platformă, România). Răspunsuri scurte, în română, "

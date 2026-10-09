@@ -74,10 +74,10 @@ async def _probe_emergent_llm() -> dict:
     can cover live LLM calls separately if needed.
     """
     t = time.perf_counter()
-    key = (os.environ.get("EMERGENT_LLM_KEY") or "").strip()
+    key = (os.environ.get("ANTHROPIC_API_KEY") or "").strip()
     if not key:
         return _check("Emergent LLM Key", t, ok=False, status="missing_key",
-                      detail="EMERGENT_LLM_KEY nu e configurată în .env",
+                      detail="ANTHROPIC_API_KEY nu e configurată în .env",
                       severity="high")
     if not key.startswith("sk-emergent-"):
         return _check("Emergent LLM Key", t, ok=False, status="invalid_format",

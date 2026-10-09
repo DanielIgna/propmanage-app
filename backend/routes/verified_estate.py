@@ -795,7 +795,7 @@ async def create_checkout(body: CheckoutRequest, request: Request):
 
     # lazy imports to keep module isolated
     import stripe as _stripe
-    from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
+    from stripe_checkout import StripeCheckout, CheckoutSessionRequest
 
     STRIPE_KEY = os.environ.get("STRIPE_API_KEY", "sk_test_emergent")
     demo_mode = (STRIPE_KEY == "sk_test_emergent") or not STRIPE_KEY.startswith(("sk_test_", "sk_live_"))
@@ -932,7 +932,7 @@ async def get_checkout_status(session_id: str):
         raise HTTPException(404, "Order not found")
     if order.get("status") == "pending" and not order.get("demo_mode"):
         try:
-            from emergentintegrations.payments.stripe.checkout import StripeCheckout
+            from stripe_checkout import StripeCheckout
             STRIPE_KEY = os.environ.get("STRIPE_API_KEY", "sk_test_emergent")
             checkout = StripeCheckout(api_key=STRIPE_KEY, webhook_url="")
             st = await checkout.get_checkout_status(session_id)

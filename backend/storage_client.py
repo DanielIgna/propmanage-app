@@ -55,7 +55,7 @@ def _sb_get(path: str):
 
 # ---------------------------------------------------------------- Emergent Object Storage (legacy)
 STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
-EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
+EMERGENT_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
 _storage_key = None
 

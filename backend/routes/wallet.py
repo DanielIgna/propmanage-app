@@ -72,7 +72,7 @@ async def topup_checkout_session(data: TopupCheckoutIn, request: Request, user: 
             "demo_mode": True,
         }
 
-    from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
+    from stripe_checkout import StripeCheckout, CheckoutSessionRequest
     webhook_url = f"{origin}/api/webhook/stripe"
     stripe_checkout = StripeCheckout(api_key=STRIPE_KEY, webhook_url=webhook_url)
     success_url = f"{origin}/payment-success?type=topup&session_id={{CHECKOUT_SESSION_ID}}"
@@ -131,7 +131,7 @@ async def topup_status(session_id: str, request: Request, user: dict = Depends(g
         return {"status": "complete", "payment_status": "paid", "amount": payment["amount"], "demo_mode": True}
 
     # Real Stripe poll
-    from emergentintegrations.payments.stripe.checkout import StripeCheckout
+    from stripe_checkout import StripeCheckout
     origin = request.headers.get("origin") or request.headers.get("referer", "").rstrip("/") or ""
     stripe_checkout = StripeCheckout(api_key=STRIPE_KEY, webhook_url=f"{origin}/api/webhook/stripe")
     try:

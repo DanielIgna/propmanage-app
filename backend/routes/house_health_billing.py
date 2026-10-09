@@ -1,7 +1,7 @@
 """House Health — F4.3: Stripe Checkout for subscription-style purchases.
 
 Implementation notes:
-    The `emergentintegrations` Stripe wrapper only supports one-shot Checkout
+    The Stripe wrapper (stripe_checkout.py) only supports one-shot Checkout
     Sessions (not native Stripe Subscription mode). We model each "subscription
     purchase" as a single payment that grants N days of access (extending
     ``hh_subscriptions.expires_at``). Recurring auto-renewal can be added later
@@ -41,7 +41,7 @@ router = APIRouter(prefix="/api/house-health", tags=["house-health-billing"])
 
 def _stripe():
     """Lazy import to avoid breaking server startup if the lib isn't installed."""
-    from emergentintegrations.payments.stripe.checkout import StripeCheckout
+    from stripe_checkout import StripeCheckout
     api_key = os.environ.get("STRIPE_API_KEY")
     if not api_key:
         raise HTTPException(503, "Stripe nu este configurat (lipsește STRIPE_API_KEY).")
@@ -67,7 +67,7 @@ async def create_checkout_session(
     request: Request,
     user=Depends(get_current_user),
 ):
-    from emergentintegrations.payments.stripe.checkout import CheckoutSessionRequest
+    from stripe_checkout import CheckoutSessionRequest
 
     plan = await db.hh_plans.find_one({"slug": payload.plan_slug, "active": True})
     if not plan:

@@ -261,9 +261,9 @@ async def update_metrics(collab_id: str, payload: MetricsUpdate, user=Depends(ge
 @router.post("/copilot/analyze")
 async def copilot_analyze(payload: CopilotAnalyze, user=Depends(get_current_user)):
     _require_super(user)
-    key = os.environ.get("EMERGENT_LLM_KEY")
+    key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
-        raise HTTPException(503, "EMERGENT_LLM_KEY nu este configurat.")
+        raise HTTPException(503, "ANTHROPIC_API_KEY nu este configurat.")
 
     # Collect collaborator data
     q = {}
@@ -318,7 +318,7 @@ async def copilot_analyze(payload: CopilotAnalyze, user=Depends(get_current_user
     prompt = "\n".join(prompt_parts)
 
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_chat import LlmChat, UserMessage
         chat = LlmChat(
             api_key=key,
             session_id=f"it_copilot_{uuid.uuid4().hex[:8]}",

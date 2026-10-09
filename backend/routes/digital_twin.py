@@ -928,11 +928,11 @@ async def _ai_design_concept(context: str, payload, prop: dict, rooms: list):
 async def _gen_design_render(prompt: str, project_id: str):
     """Generează un render vizual cu Gemini Nano Banana.
     Returnează (object_path|None, stored_as|None, mime|None, error|None)."""
-    key = os.environ.get("EMERGENT_LLM_KEY", "").strip()
+    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if not key:
         return None, None, None, "Cheia AI pentru imagini nu este configurată."
     try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        from llm_chat import LlmChat, UserMessage
         chat = LlmChat(
             api_key=key,
             session_id=f"dt-design-img-{uuid.uuid4().hex[:8]}",
