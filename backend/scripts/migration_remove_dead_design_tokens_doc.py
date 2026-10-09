@@ -16,16 +16,18 @@ import os
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
-from motor.motor_asyncio import AsyncIOMotorClient
+import sys
 
 load_dotenv()
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import db as _db_mod  # noqa: E402 — honours DB_BACKEND
 
 MIGRATION_ID = "remove_dead_design_tokens_doc"
 
 
 async def main():
-    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
-    db = client[os.environ["DB_NAME"]]
+    client = _db_mod.client
+    db = _db_mod.db
 
     pre_count = await db.design_tokens.count_documents({})
     dead = await db.design_tokens.find_one({"_id": "design_tokens"})

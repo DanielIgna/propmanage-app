@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 
-from motor.motor_asyncio import AsyncIOMotorClient
+from db import db as _shared_db  # noqa: E402 — honours DB_BACKEND
 
 INDEXES = [
     ("users", [("role", 1), ("verified", 1)]),
@@ -38,7 +38,7 @@ INDEXES = [
 
 
 async def main():
-    db = AsyncIOMotorClient(os.environ["MONGO_URL"])[os.environ["DB_NAME"]]
+    db = _shared_db
     for coll, keys in INDEXES:
         try:
             name = await db[coll].create_index(keys)

@@ -37,21 +37,16 @@ import os
 import sys
 from typing import Any
 
-from motor.motor_asyncio import AsyncIOMotorClient
 
 # Import canonic allowlist — SINGURA sursă validă.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from routes.impersonation import DEMO_IMPERSONATION_ACCOUNTS  # noqa: E402
+import db as _db_mod  # noqa: E402 — honours DB_BACKEND
 
 
 async def audit() -> dict[str, Any]:
-    mongo_url = os.environ.get("MONGO_URL")
-    db_name = os.environ.get("DB_NAME")
-    if not mongo_url or not db_name:
-        raise RuntimeError("MONGO_URL / DB_NAME lipsesc din environment.")
-
-    client = AsyncIOMotorClient(mongo_url)
-    db = client[db_name]
+    client = _db_mod.client
+    db = _db_mod.db
 
     report = {
         "checked_emails": len(DEMO_IMPERSONATION_ACCOUNTS),

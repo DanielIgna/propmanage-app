@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 
 import httpx
 
-from db import db, client as mongo_client
+from db import db, client as mongo_client, DB_BACKEND
 
 logger = logging.getLogger("propmanage.healthcheck_service")
 
@@ -45,6 +45,9 @@ def _check(name: str, started: float, ok: bool, status: str = "",
 # ============================================================================
 
 
+_DB_LABEL = "Supabase Postgres" if DB_BACKEND == "postgres" else "MongoDB"
+
+
 async def _probe_mongo() -> dict:
     t = time.perf_counter()
     try:
@@ -52,7 +55,7 @@ async def _probe_mongo() -> dict:
         # Count a known collection to confirm read access too
         users_count = await db.users.estimated_document_count()
         return _check(
-            "MongoDB",
+            _DB_LABEL,
             t,
             ok=True,
             status="ok",
@@ -60,7 +63,7 @@ async def _probe_mongo() -> dict:
             severity="high",
         )
     except Exception as e:  # noqa: BLE001
-        return _check("MongoDB", t, ok=False, status="down",
+        return _check(_DB_LABEL, t, ok=False, status="down",
                       detail=f"Eroare conexiune: {str(e)[:200]}", severity="high")
 
 

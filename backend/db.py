@@ -1,7 +1,7 @@
 """Database handle (single source of truth).
 
 DB_BACKEND=mongo (default) → Motor/MongoDB.
-DB_BACKEND=postgres        → pgmongo facade over Supabase Postgres (schema `app`), same API.
+DB_BACKEND=postgres        → pgmongo facade over Supabase Postgres (schema PG_SCHEMA, default `app`), same API.
 """
 import os
 from dotenv import load_dotenv
@@ -15,7 +15,7 @@ DB_BACKEND = os.environ.get('DB_BACKEND', 'mongo').lower()
 if DB_BACKEND == 'postgres':
     from pgmongo import PgDatabase
 
-    db = PgDatabase(os.environ['SUPABASE_DB_URL'])
+    db = PgDatabase(os.environ['SUPABASE_DB_URL'], schema=os.environ.get('PG_SCHEMA', 'app'))
     client = db.client
     mongo_url = None
 else:

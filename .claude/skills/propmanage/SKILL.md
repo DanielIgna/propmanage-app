@@ -8,6 +8,7 @@ description: Use for ANY change in the PropManage project (frontend React/CRA, b
 ## Stil răspuns
 - Română, scurt, la subiect. Doar: ce s-a schimbat, ce s-a testat, ce rămâne.
 - Fără recapitulări lungi.
+- NU face `git commit`/`push` fără să întrebi întâi.
 
 ## Structură
 - `frontend/` — React 19 (CRA + craco), Yarn **1.22** (`cd frontend && yarn start`, port 3000). UI în `src/components/ui` (shadcn). Rute în `src/App.js`.

@@ -62,6 +62,18 @@ class _Sql:
         return f"${len(self.params)}"
 
 
+class _InlineSql(_Sql):
+    """Renders parameters as SQL literals (DDL such as partial index predicates can't take $n)."""
+
+    def p(self, value: Any) -> str:
+        if isinstance(value, list):
+            return "array[" + ", ".join(self.p(v) for v in value) + "]"
+        return "'" + str(value).replace("'", "''") + "'"
+
+
+_KEY_RE = re.compile(r"^[A-Za-z0-9_]+$")
+
+
 def _top_key(key: str) -> bool:
     return "." not in key and not key.startswith("$")
 
@@ -140,6 +152,7 @@ def _where(sql: _Sql, flt: Optional[dict]) -> tuple[str, bool]:
     parts, exact = [], True
     for key, cond in flt.items():
         if key in ("$and", "$or") and isinstance(cond, list) and cond:
+            mark = len(sql.params)
             subs = [_where(sql, c) for c in cond]
             if key == "$and":
                 parts.append("(" + " and ".join(s for s, _ in subs) + ")")
@@ -147,6 +160,7 @@ def _where(sql: _Sql, flt: Optional[dict]) -> tuple[str, bool]:
             elif all(e for _, e in subs):
                 parts.append("(" + " or ".join(s for s, _ in subs) + ")")
             else:
+                del sql.params[mark:]  # clause dropped: its parameters must go too
                 exact = False  # an untranslatable branch could match anything
         elif key.startswith("$"):
             exact = False  # $nor, $expr, $comment, ...
@@ -168,7 +182,17 @@ def _norm_sort(key_or_list, direction=None) -> list[tuple[str, int]]:
 
 
 def _order_by(sql: _Sql, sort: list[tuple[str, int]]) -> Optional[str]:
-    """ORDER BY clause matching Mongo order for single-typed fields, or None if not pushable."""
+    """ORDER BY clause matching Mongo order for single-typed fields, or None if not pushable.
+
+    On None, any parameters added while trying are rolled back."""
+    mark = len(sql.params)
+    clause = _order_by_inner(sql, sort)
+    if clause is None:
+        del sql.params[mark:]
+    return clause
+
+
+def _order_by_inner(sql: _Sql, sort: list[tuple[str, int]]) -> Optional[str]:
     out = []
     for key, d in sort:
         if not isinstance(d, int) or (key != "_id" and not _top_key(key)):
@@ -294,11 +318,11 @@ class PgCollection:
 
     @property
     def full_name(self):
-        return f"app.{self.name}"
+        return f"{self.database.schema}.{self.name}"
 
     @property
     def _t(self) -> str:
-        return f'app."{self.name}"'
+        return f'{self.database.schema}."{self.name}"'
 
     # ---- reads
     async def _select(self, conn, flt, *, sort=None, skip=0, limit=0, lock=False) -> tuple[list[dict], bool]:
@@ -431,7 +455,10 @@ class PgCollection:
                 ups.append((k, enc))
         dels = [k for k in before if k not in after]
         if ups:
-            await conn.executemany(f"update {self._t} set data = $2::jsonb, updated_at = now() where id = $1", ups)
+            try:
+                await conn.executemany(f"update {self._t} set data = $2::jsonb, updated_at = now() where id = $1", ups)
+            except asyncpg.UniqueViolationError as e:
+                raise DuplicateKeyError(f"E11000 duplicate key error collection: {self.full_name} {e.detail}") from e
         if ins:
             await self._insert_rows(conn, ins)
         if dels:
@@ -534,22 +561,39 @@ class PgCollection:
     # ---- indexes / admin
     async def create_index(self, keys, unique=False, name=None, sparse=False,
                            partialFilterExpression=None, **_kw) -> str:
+        """Only UNIQUE indexes are materialised (they enforce behaviour; lookups use the GIN index).
+
+        Mongo semantics: a missing field counts as null (coalesce), `sparse` skips docs missing
+        all keys, `partialFilterExpression` becomes the index WHERE clause.
+        """
         spec = _norm_sort(keys)
         idx_name = name or "_".join(f"{k}_{d}" for k, d in spec)
-        if len(spec) != 1 or spec[0][0] == "_id" or not _top_key(spec[0][0]) or partialFilterExpression:
-            return idx_name  # compound/nested/partial: covered by the GIN index + mongomock
-        key = spec[0][0]
-        pg_name = f"{self.name}__{key}"[:55] + ("_uq" if unique and not sparse else "_ix")
-        stmt = (f'create {"unique " if unique and not sparse else ""}index if not exists "{pg_name}" '
-                f"on {self._t} ((data->'{key}'))")
-        if unique and not sparse:
-            stmt += f" where data ? '{key}'"
+        if not unique:
+            return idx_name
+        if not spec or any(k == "_id" or not _top_key(k) or not _KEY_RE.match(k) for k, _ in spec):
+            log.warning("create_index %s %s: unique index on nested/_id keys not supported", self.name, idx_name)
+            return idx_name
+        cols = ", ".join(f"(coalesce(data->'{k}', 'null'::jsonb))" for k, _ in spec)
+        where = []
+        if sparse:
+            where.append("(" + " or ".join(f"data ? '{k}'" for k, _ in spec) + ")")
+        if partialFilterExpression:
+            sql = _InlineSql()
+            clause, exact = _where(sql, partialFilterExpression)
+            if not exact:
+                log.warning("create_index %s %s: partial filter not translatable, skipped", self.name, idx_name)
+                return idx_name
+            where.append(clause)
+        pg_name = f"{self.name}__{idx_name}"[:60]
+        stmt = f'create unique index if not exists "{pg_name}" on {self._t} ({cols})'
+        if where:
+            stmt += " where " + " and ".join(where)
         try:
             async with self.database._conn() as conn:
                 await self.database._ensure(self.name, conn)
                 await conn.execute(stmt)
         except Exception as e:  # noqa: BLE001 — duplicates in data must not crash startup
-            log.warning("create_index %s.%s skipped: %s", self.name, key, e)
+            log.warning("create_index %s %s skipped: %s", self.name, idx_name, e)
         return idx_name
 
     async def create_indexes(self, indexes, **_kw):
@@ -559,8 +603,8 @@ class PgCollection:
     async def index_information(self) -> dict:
         info = {"_id_": {"v": 2, "key": [("_id", 1)]}}
         async with self.database._conn() as conn:
-            rows = await conn.fetch("select indexname, indexdef from pg_indexes where schemaname = 'app' "
-                                    "and tablename = $1 and indexdef like '%(data -> %'", self.name)
+            rows = await conn.fetch("select indexname, indexdef from pg_indexes where schemaname = $2 "
+                                    "and tablename = $1 and indexdef like '%(data -> %'", self.name, self.database.schema)
         for r in rows:
             m = re.search(r"\(data -> '([^']+)'::text\)", r["indexdef"])
             if m:
@@ -578,19 +622,38 @@ class PgCollection:
 
 # --------------------------------------------------------------------------- database
 
+# Same DDL as app.create_collection() (supabase/migrations), usable for any schema (e.g. app_test).
+_CREATE_TABLE_SQL = """
+create schema if not exists "{s}";
+create table if not exists "{s}"."{t}" (
+  id text primary key,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table "{s}"."{t}" enable row level security;
+create index if not exists "{t}_data_gin" on "{s}"."{t}" using gin (data jsonb_path_ops);
+"""
+
+
 class _Admin:
+    def __init__(self, database: "PgDatabase"):
+        self._db = database
+
     async def command(self, cmd, *_a, **_kw):
-        return {"ok": 1.0}
+        return await self._db.command(cmd)
 
 
 class PgDatabase:
-    def __init__(self, dsn: str, name: str = "app", max_size: int = 5):
-        self._dsn, self.name, self._max = dsn, name, max_size
+    def __init__(self, dsn: str, schema: str = "app", max_size: int = 5):
+        if not _NAME_RE.match(schema):
+            raise ValueError(f"invalid schema name {schema!r}")
+        self._dsn, self.schema, self.name, self._max = dsn, schema, schema, max_size
         self._pool: Optional[asyncpg.Pool] = None
         self._loop = None
         self._lock: Optional[asyncio.Lock] = None
         self._known: set = set()
-        self.admin = _Admin()
+        self.admin = _Admin(self)
         self.client = self  # db.client.admin.command("ping") / client.close()
 
     async def _get_pool(self) -> asyncpg.Pool:
@@ -617,7 +680,7 @@ class PgDatabase:
     async def _exists(self, name: str, conn) -> bool:
         if name in self._known:
             return True
-        ok = await conn.fetchval("select to_regclass($1) is not null", f'app."{name}"')
+        ok = await conn.fetchval("select to_regclass($1) is not null", f'{self.schema}."{name}"')
         if ok:
             self._known.add(name)
         return ok
@@ -626,7 +689,7 @@ class PgDatabase:
         if not await self._exists(name, conn):
             if not _NAME_RE.match(name):
                 raise ValueError(f"invalid collection name {name!r}")
-            await conn.execute("select app.create_collection($1)", name)
+            await conn.execute(_CREATE_TABLE_SQL.format(s=self.schema, t=name))
             self._known.add(name)
 
     def __getitem__(self, name: str) -> PgCollection:
@@ -643,7 +706,7 @@ class PgDatabase:
     async def list_collection_names(self, **_kw) -> list[str]:
         async with self._conn() as conn:
             rows = await conn.fetch("select table_name from information_schema.tables "
-                                    "where table_schema = 'app' order by 1")
+                                    "where table_schema = $1 order by 1", self.schema)
         return [r[0] for r in rows]
 
     async def command(self, cmd, *_a, **_kw):
@@ -652,8 +715,11 @@ class PgDatabase:
             async with self._conn() as conn:
                 size = await conn.fetchval("select coalesce(sum(pg_total_relation_size(c.oid)), 0) from pg_class c "
                                            "join pg_namespace n on n.oid = c.relnamespace "
-                                           "where n.nspname = 'app' and c.relkind = 'r'")
+                                           "where n.nspname = $1 and c.relkind = 'r'", self.schema)
             return {"ok": 1.0, "db": self.name, "dataSize": int(size), "storageSize": int(size)}
+        if name == "ping":
+            async with self._conn() as conn:
+                await conn.fetchval("select 1")  # raises if Postgres is unreachable, like Mongo's ping
         return {"ok": 1.0}
 
     def close(self):
