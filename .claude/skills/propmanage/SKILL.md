@@ -24,6 +24,8 @@ description: Use for ANY change in the PropManage project (frontend React/CRA, b
 ## Migrare Mongo → Supabase (în curs, branch `feat/supabase-migration`)
 - Plan + inventar: `docs/migration/collections.md`. Decizii: arhitectura A (frontend → backend → DB), păstrăm loguri + conturi demo.
 - Schema `app` (NU expusă în Data API): o tabelă JSONB per colecție (`id` = Mongo `_id`, `data jsonb`, GIN `jsonb_path_ops`), RLS fără politici. Colecție nouă → `select app.create_collection('nume')` într-o migrare.
+- Backend pe Supabase: `DB_BACKEND=postgres` → `backend/pgmongo.py` (fațadă Motor peste JSONB; SQL prefiltrează, mongomock aplică semantica Mongo). Test diferențial: `supabase_migration/verify_adapter.py`. Import date: `supabase_migration/import_mongo_dump.py`.
+- Fișiere: `STORAGE_BACKEND=supabase` → `storage_client.py` scrie în bucket privat `propmanage-files` (aceleași căi `propmanage/...`). Copiere din Emergent: `supabase_migration/copy_objects.py`.
 - Migrări SQL în `supabase/migrations/` (aplicate și prin MCP `apply_migration`).
 
 ## Autentificare (Supabase Auth + profil Mongo)
