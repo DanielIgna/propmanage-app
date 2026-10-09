@@ -16,7 +16,6 @@ export const metadata = {
   authors: [{ name: "PropManage" }],
   robots: { index: true, follow: true, "max-image-preview": "large", googleBot: { index: true, follow: true } },
   verification: { google: "W9yerKU6o_slXxwZSefxumjy_QxXfq-YsWqj2MbjD-k" },
-  alternates: { canonical: "/", languages: { ro: "/", "x-default": "/" } },
   openGraph: {
     type: "website",
     title: "PropManage — Cartea Digitală a Casei Tale",
