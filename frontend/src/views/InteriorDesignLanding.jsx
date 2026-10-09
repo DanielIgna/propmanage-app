@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { API } from "./DashShared";
 import { useDynamicSEO } from "../lib/useDynamicSEO";
+import { useServerRendered } from "../lib/serverRendered";
 import { trackLeadFormConversion } from "../lib/analytics";
 import { EcosystemFlow } from "../components/ecosystem/EcosystemFlow";
 import { ServiceDetailModal } from "../components/ecosystem/ServiceDetailModal";
@@ -168,8 +169,10 @@ const ANCHORS = [
 
 const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 
-export default function InteriorDesignLanding() {
-  const [content, setContent] = useState(null);
+export default function InteriorDesignLanding({ initialContent = null }) {
+  // initialContent: provided by the Next.js server route (SSR); the SPA fetches it client-side.
+  const serverRendered = useServerRendered();
+  const [content, setContent] = useState(initialContent);
   const [detailKind, setDetailKind] = useState(null);
   useDynamicSEO("interior_design", {
     title: content?.seo?.title || "Design Interior & Arhitectură de Interior | Amenajări Interioare la Cheie — Interior Intelligence by PropManage",
@@ -177,6 +180,7 @@ export default function InteriorDesignLanding() {
   });
 
   useEffect(() => {
+    if (initialContent) return;
     ax.get("/interior-design/content").then((r) => setContent(r.data)).catch(() => {});
   }, []);
 
@@ -232,6 +236,7 @@ export default function InteriorDesignLanding() {
       ],
     });
     document.head.appendChild(ld);
+    if (serverRendered) return () => { document.getElementById("id-jsonld")?.remove(); }; // canonical comes from the server
     let canon = document.querySelector('link[rel="canonical"]');
     if (!canon) { canon = document.createElement("link"); canon.rel = "canonical"; document.head.appendChild(canon); }
     canon.href = window.location.origin + "/design-interior";
