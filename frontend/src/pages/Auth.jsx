@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Building2, ArrowRight, Sparkles, Languages } from "lucide-react";
 import { useAuth, formatApiError } from "../auth";
 import { useI18n } from "../i18n";
+import { supabase } from "../lib/supabase";
 import { sendPassportConversion } from "../lib/passportTracker";
 
 const Backdrop = () => (
@@ -150,6 +151,13 @@ export const LoginPage = () => {
             type="button"
             onClick={() => {
               const redirectUri = window.location.origin + "/auth/callback";
+              if (supabase && process.env.REACT_APP_SUPABASE_GOOGLE === "true") {
+                supabase.auth.signInWithOAuth({
+                  provider: "google",
+                  options: { redirectTo: `${redirectUri}?sb=1`, queryParams: { prompt: "select_account" } },
+                });
+                return;
+              }
               const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
               if (googleClientId) {
                 // Direct Google OAuth (own Cloud project) — brands "PropManage" on Google consent screen

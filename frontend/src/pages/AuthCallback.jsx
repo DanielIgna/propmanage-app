@@ -1,4 +1,4 @@
-// AuthCallback - handles TWO Google OAuth flows:
+// AuthCallback - handles THREE Google OAuth flows (0. SUPABASE: `?code=...&sb=1` → exchangeCodeForSession → POST /api/auth/supabase/oauth):
 //   1. DIRECT flow (own Google Cloud project): `?code=...` query param → POST /api/auth/google/callback
 //   2. EMERGENT flow (legacy fallback): `#session_id=...` URL fragment → POST /api/auth/google/session
 // The button in Auth.jsx picks the flow at redirect-time based on REACT_APP_GOOGLE_CLIENT_ID.
@@ -7,6 +7,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../auth";
+import { supabase } from "../lib/supabase";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -31,6 +32,26 @@ export const AuthCallback = () => {
 
     if (oauthError) {
       setError(`Google a returnat eroare: ${oauthError}. Încearcă din nou.`);
+      return;
+    }
+
+    if (oauthCode && search.get("sb") && supabase) {
+      // ============ SUPABASE flow (Google via Supabase Auth, PKCE) ============
+      setFlowLabel("supabase");
+      (async () => {
+        try {
+          const { error: exErr } = await supabase.auth.exchangeCodeForSession(oauthCode);
+          if (exErr) throw exErr;
+          window.history.replaceState(null, "", window.location.pathname);
+          const { data } = await axios.post(`${API}/auth/supabase/oauth`, null, { withCredentials: true });
+          await refreshUser();
+          navigate(`/${data.role || "client"}`, { replace: true });
+        } catch (e) {
+          const status = e?.response?.status;
+          setError(`[${status || "supabase"}] ${e?.response?.data?.detail || e.message || "Autentificare eșuată"}`);
+          console.error("[GoogleOAuth supabase] Failed:", e);
+        }
+      })();
       return;
     }
 

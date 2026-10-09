@@ -23,6 +23,7 @@ from core_utils import (
     hash_password, verify_password, create_access_token, create_refresh_token,
     serialize_doc, set_auth_cookies, JWT_SECRET, JWT_ALGORITHM,
 )
+import supabase_auth
 from deps import get_current_user, require_role, block_in_impersonation, block_impersonation_dep
 from services import send_email, VAPID_PUBLIC_KEY
 from models import (
@@ -90,6 +91,32 @@ async def _record_consent(user_id: str, email: str, consent_type: str, accepted:
 def _gen_email_verification_token() -> str:
     import secrets
     return secrets.token_urlsafe(32)
+
+
+async def _start_session(response: Response, user: dict, password: str) -> dict:
+    """Open a Supabase session for a Mongo-verified user; legacy JWT cookies if Supabase is off."""
+    uid = str(user["_id"])
+    if not supabase_auth.enabled():
+        set_auth_cookies(response, create_access_token(uid, user["email"], user.get("role", "client")),
+                         create_refresh_token(uid))
+        return {}
+    try:
+        session, new_sb_id = await supabase_auth.session_for(user, password)
+    except Exception as e:  # noqa: BLE001 — Supabase down: keep users able to log in
+        logging.getLogger("propmanage.auth").error(f"[SupabaseAuth] fallback to legacy JWT: {e}")
+        set_auth_cookies(response, create_access_token(uid, user["email"], user.get("role", "client")),
+                         create_refresh_token(uid))
+        return {}
+    if new_sb_id:
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"supabase_id": new_sb_id}})
+    _set_supabase_cookie(response, session["access_token"])
+    return supabase_auth.public_session(session)
+
+
+def _set_supabase_cookie(response: Response, access: str):
+    # Same flags as set_auth_cookies; keeps cookie-only requests (downloads, <img>) authenticated.
+    set_auth_cookies(response, access, "")
+    response.delete_cookie("refresh_token", path="/")
 
 
 @router.post("/auth/register")
@@ -180,9 +207,8 @@ async def register(data: RegisterIn, request: Request, response: Response):
     await _record_consent(uid, email, "terms", True, ip, ua, source="register")
     await _record_consent(uid, email, "privacy", True, ip, ua, source="register")
     await _record_consent(uid, email, "marketing", bool(data.marketing_consent), ip, ua, source="register")
-    access = create_access_token(uid, email, data.role)
-    refresh = create_refresh_token(uid)
-    set_auth_cookies(response, access, refresh)
+    user["_id"] = result.inserted_id
+    user["supabase_session"] = await _start_session(response, user, data.password)
     user["id"] = uid
     user.pop("_id", None)
     user.pop("password_hash", None)
@@ -286,15 +312,34 @@ async def login(data: LoginIn, request: Request, response: Response):
         {"_id": user["_id"]},
         {"$set": {"last_seen": datetime.now(timezone.utc).isoformat()}}
     )
-    access = create_access_token(uid, email, user.get("role", "client"))
-    refresh = create_refresh_token(uid)
-    set_auth_cookies(response, access, refresh)
+    sb_session = await _start_session(response, user, data.password)
     # Clean any leftover impersonation stash cookie so a fresh login never
     # auto-resumes a previous "View as User" session. Without this, an admin
     # who closed the browser mid-impersonation would re-open the app and still
     # see the red "Vizionezi ca …" banner from the past session.
     response.delete_cookie("admin_access_token", path="/")
-    return serialize_doc(user)
+    out = serialize_doc(user)
+    out["supabase_session"] = sb_session
+    return out
+
+
+@router.post("/auth/supabase/session")
+async def supabase_session_cookie(request: Request, response: Response):
+    """Mirror a (refreshed) Supabase access token into the httpOnly cookie.
+    Never overwrites an impersonation cookie."""
+    h = request.headers.get("Authorization", "")
+    token = h[7:] if h.startswith("Bearer ") else ""
+    if not supabase_auth.verify_token(token):
+        raise HTTPException(401, "Invalid Supabase token")
+    current = request.cookies.get("access_token")
+    if current:
+        try:
+            if jwt.decode(current, JWT_SECRET, algorithms=[JWT_ALGORITHM]).get("impersonation"):
+                return {"ok": True, "skipped": "impersonation"}
+        except jwt.PyJWTError:
+            pass
+    _set_supabase_cookie(response, token)
+    return {"ok": True}
 
 
 @router.post("/auth/logout")
@@ -473,6 +518,7 @@ async def password_reset(data: PasswordResetIn):
             "pw_reset_used_at": datetime.now(timezone.utc).isoformat(),
         }}
     )
+    await supabase_auth.set_password(user.get("supabase_id"), data.new_password)
     return {"ok": True, "email": user.get("email")}
 
 
@@ -496,6 +542,7 @@ async def send_backup_password(user: dict = Depends(get_current_user)):
             "password_temp_issued_at": datetime.now(timezone.utc).isoformat(),
         }}
     )
+    await supabase_auth.set_password(db_user.get("supabase_id"), temp_pw)
 
     # Send email with the temp password (we never log it server-side)
     email = db_user.get("email")
@@ -783,6 +830,7 @@ async def change_password(data: ChangePasswordIn, user: dict = Depends(block_imp
         {"_id": ObjectId(user["id"])},
         {"$set": {"password_hash": hash_password(data.new_password)}}
     )
+    await supabase_auth.set_password(db_user.get("supabase_id"), data.new_password)
     return {"ok": True}
 
 
@@ -830,8 +878,10 @@ async def account_delete(data: AccountDeleteIn, response: Response, user: dict =
             "password_hash": hash_password(secrets.token_urlsafe(32)),
             "deleted_at": datetime.now(timezone.utc).isoformat(),
             "deleted": True,
-        }}
+        }, "$unset": {"supabase_id": ""}}
     )
+    if db_user.get("supabase_id"):
+        await supabase_auth.delete_user(db_user["supabase_id"])
     response.delete_cookie("access_token", path="/")
     response.delete_cookie("refresh_token", path="/")
     return {"ok": True, "message": "Cont șters. Datele asociate au fost anonimizate conform GDPR."}
@@ -1203,6 +1253,76 @@ async def google_direct_callback(payload: GoogleCallbackIn, response: Response, 
 
 
 # ============= GOOGLE OAUTH (Emergent-managed) =============
+async def _upsert_google_user(email: str, name: str, picture: str, supabase_id: Optional[str] = None) -> dict:
+    """Find-or-create the Mongo user for a Google identity (shared by Emergent + Supabase flows)."""
+    existing = await db.users.find_one({"email": email})
+    if existing:
+        # Always refresh stored Google picture so the user can "Refresh from Google"
+        # later, but ONLY apply it as the active avatar if they haven't uploaded
+        # a custom one.
+        patch = {"picture": picture, "name": name, "google_auth": True}
+        if existing.get("avatar_source") != "uploaded":
+            patch["avatar"] = picture
+            patch["avatar_source"] = "google" if picture else None
+        await db.users.update_one({"_id": existing["_id"]}, {"$set": patch})
+        user = await db.users.find_one({"_id": existing["_id"]})
+    else:
+        new_user = {
+            "email": email,
+            "name": name,
+            "picture": picture,
+            "tenant_id": "main",
+            "avatar": picture or None,
+            "avatar_source": "google" if picture else None,
+            "role": "client",
+            "google_auth": True,
+            "password_hash": "",
+            "wallet_balance": 0.0,
+            "tokens": 0,
+            "lead_credits": 0,
+            "rating": None,
+            "reviews_count": 0,
+            "verified": False,
+            "tier": None,
+            "phone": "",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        result = await db.users.insert_one(new_user)
+        user = new_user
+        user["_id"] = result.inserted_id
+
+    if supabase_id and user.get("supabase_id") != supabase_id:
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"supabase_id": supabase_id}})
+        user["supabase_id"] = supabase_id
+    return user
+
+
+@router.post("/auth/supabase/oauth")
+async def supabase_oauth_login(request: Request, response: Response):
+    """Finish a Supabase Google sign-in: link/create the Mongo user and set the cookie."""
+    h = request.headers.get("Authorization", "")
+    token = h[7:] if h.startswith("Bearer ") else ""
+    claims = supabase_auth.verify_token(token)
+    if not claims:
+        raise HTTPException(401, "Invalid Supabase token")
+    # Only trust provider-verified emails for linking to existing accounts.
+    if (claims.get("app_metadata") or {}).get("provider") != "google":
+        raise HTTPException(400, "Doar autentificarea Google este acceptată aici.")
+    email = (claims.get("email") or "").lower()
+    if not email:
+        raise HTTPException(400, "Contul Google nu are email.")
+    meta = claims.get("user_metadata") or {}
+    user = await _upsert_google_user(email, meta.get("full_name") or meta.get("name") or "",
+                                     meta.get("avatar_url") or meta.get("picture") or "", claims["sub"])
+    if user.get("role") == "admin" and user.get("is_active") is False:
+        raise HTTPException(403, "Cont dezactivat. Contactează super-administratorul.")
+    user = await _enforce_admin_role(user)
+    await db.users.update_one({"_id": user["_id"]}, {"$set": {"last_seen": datetime.now(timezone.utc).isoformat()}})
+    _set_supabase_cookie(response, token)
+    response.delete_cookie("admin_access_token", path="/")
+    return serialize_doc(user)
+
+
 @router.post("/auth/google/session")
 async def google_session_exchange(request: Request, response: Response):
     """Exchange Emergent session_id for our JWT cookie + user record.
@@ -1293,43 +1413,8 @@ async def google_session_exchange(request: Request, response: Response):
     name = data.get("name", "")
     picture = data.get("picture", "")
 
-    existing = await db.users.find_one({"email": email})
-    if existing:
-        # Always refresh stored Google picture so the user can "Refresh from Google"
-        # later, but ONLY apply it as the active avatar if they haven't uploaded
-        # a custom one.
-        patch = {"picture": picture, "name": name, "google_auth": True}
-        if existing.get("avatar_source") != "uploaded":
-            patch["avatar"] = picture
-            patch["avatar_source"] = "google" if picture else None
-        await db.users.update_one({"_id": existing["_id"]}, {"$set": patch})
-        user = await db.users.find_one({"_id": existing["_id"]})
-        uid = str(user["_id"])
-    else:
-        new_user = {
-            "email": email,
-            "name": name,
-            "picture": picture,
-            "tenant_id": "main",
-            "avatar": picture or None,
-            "avatar_source": "google" if picture else None,
-            "role": "client",
-            "google_auth": True,
-            "password_hash": "",
-            "wallet_balance": 0.0,
-            "tokens": 0,
-            "lead_credits": 0,
-            "rating": None,
-            "reviews_count": 0,
-            "verified": False,
-            "tier": None,
-            "phone": "",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }
-        result = await db.users.insert_one(new_user)
-        uid = str(result.inserted_id)
-        user = new_user
-        user["_id"] = result.inserted_id
+    user = await _upsert_google_user(email, name, picture)
+    uid = str(user["_id"])
 
     user = await _enforce_admin_role(user)
     # Track last_seen for beta engagement analytics
