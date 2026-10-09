@@ -18,6 +18,7 @@ import { useABTest } from "./ab";
 import { LoginPage, RegisterPage } from "./pages/Auth";
 import { EmailVerifyPage } from "./pages/EmailVerifyPage";
 const ClientRequestOffersPage = lazy(() => import("./pages/ClientRequestOffersPage").then(m => ({ default: m.ClientRequestOffersPage })));
+const SupabaseTestPage = lazy(() => import("./pages/SupabaseTestPage").then(m => ({ default: m.SupabaseTestPage })));
 const PremiumProfileEditorPage = lazy(() => import("./pages/PremiumProfileEditorPage").then(m => ({ default: m.PremiumProfileEditorPage })));
 import { CookieBanner } from "./components/CookieBanner";
 import { BetaFeedbackWidget } from "./components/BetaFeedbackWidget";
@@ -1709,6 +1710,7 @@ function App() {
               <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center"><div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>}>
               <Routes>
               <Route path="/" element={<LandingPage />} />
+              <Route path="/test-supabase" element={<SupabaseTestPage />} />
               <Route path="/design-interior" element={<InteriorDesignLanding />} />
               <Route path="/design-interior/stil/:slug" element={<DesignInteriorPage kind="style" />} />
               <Route path="/design-interior/:slug" element={<DesignInteriorPage kind="page" />} />

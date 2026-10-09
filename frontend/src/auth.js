@@ -1,6 +1,7 @@
 // Auth Context for PropManage
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
+import { supabase } from "./lib/supabase";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 axios.defaults.withCredentials = true;
@@ -8,6 +9,21 @@ axios.defaults.withCredentials = true;
 // HTML cross-site nu pot seta headere custom, deci mutațiile /api/admin fără
 // acest header sunt respinse de backend.
 axios.defaults.headers.common["X-PM-Client"] = "propmanage-app";
+
+// Supabase Auth: trimite access token-ul curent (auto-refresh de supabase-js) ca Bearer.
+axios.interceptors.request.use(async (config) => {
+  if (!supabase || config.headers?.Authorization) return config;
+  const { data } = await supabase.auth.getSession();
+  const token = data?.session?.access_token;
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+const applySupabaseSession = async (s) => {
+  if (supabase && s?.access_token && s?.refresh_token) {
+    await supabase.auth.setSession({ access_token: s.access_token, refresh_token: s.refresh_token });
+  }
+};
 
 // Task 5: global 402 interceptor. Când server-ul răspunde cu 402 entitlement_required,
 // emitem un CustomEvent pe window ca UI-ul să afișeze un nudge friendly în loc de eroare
@@ -35,6 +51,19 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null); // null = checking, false = not auth, object = auth
   
+  // Token reîmprospătat → actualizează și cookie-ul httpOnly (download-uri, <img>, link-uri directe).
+  useEffect(() => {
+    if (!supabase) return;
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "TOKEN_REFRESHED" && session?.access_token) {
+        axios.post(`${API}/auth/supabase/session`, null, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        }).catch(() => {});
+      }
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
+
   useEffect(() => {
     // CRITICAL: If returning from Emergent OAuth callback, skip the /me check.
     // AuthCallback will exchange the session_id and establish the session first.
@@ -64,6 +93,8 @@ export const AuthProvider = ({ children }) => {
     const payload = { email, password };
     if (totp_code) payload.totp_code = totp_code;
     const { data } = await axios.post(`${API}/auth/login`, payload);
+    await applySupabaseSession(data.supabase_session);
+    delete data.supabase_session;
     localStorage.setItem("pm_session_hint", "1");
     setUser(data);
     try { const { identify } = await import("@/lib/analytics"); identify(data?.id, data?.role); } catch { /* noop */ }
@@ -73,6 +104,8 @@ export const AuthProvider = ({ children }) => {
   const register = async (payload) => {
     try { const { trackFunnel } = await import("@/lib/analytics"); trackFunnel("signup_started"); } catch { /* noop */ }
     const { data } = await axios.post(`${API}/auth/register`, payload);
+    await applySupabaseSession(data.supabase_session);
+    delete data.supabase_session;
     localStorage.setItem("pm_session_hint", "1");
     try {
       const { trackFunnel, identify } = await import("@/lib/analytics");
@@ -85,6 +118,7 @@ export const AuthProvider = ({ children }) => {
   
   const logout = async () => {
     await axios.post(`${API}/auth/logout`);
+    if (supabase) await supabase.auth.signOut({ scope: "local" }).catch(() => {});
     localStorage.removeItem("pm_session_hint");
     try { const { identify } = await import("@/lib/analytics"); identify(null); } catch { /* noop */ }
     setUser(false);

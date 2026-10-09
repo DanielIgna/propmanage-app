@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd frontend && BROWSER=none PORT=3000 yarn start"],
+      "port": 3000
+    }
+  ]
+}

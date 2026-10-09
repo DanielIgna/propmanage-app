@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 async def seed():
     """Seed demo accounts + properties + sample requests (idempotent)."""
     await db.users.create_index("email", unique=True)
+    await db.users.create_index("supabase_id", unique=True, sparse=True)
 
     demo_users = [
         {"email": "client@propmanage.io", "password": "Client123!", "name": "Andrei Popescu", "role": "client", "phone": "+40 712 345 678"},
