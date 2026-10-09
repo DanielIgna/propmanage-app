@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { Network, Loader2, Search, GitBranch, Zap, MessageCircleQuestion } from "lucide-react";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 const ax = axios.create({ baseURL: API, withCredentials: true });
 
 const KIND_COLORS = {

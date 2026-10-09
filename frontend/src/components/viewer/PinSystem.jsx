@@ -4,7 +4,7 @@ import * as THREE from "three";
 import axios from "axios";
 import { Html } from "@react-three/drei";
 import { X, Trash2, MessageCircle, Send, FileText, Eye, Loader2 } from "lucide-react";
-import { API } from "../../pages/DashShared";
+import { API } from "../../views/DashShared";
 import { CATEGORY_COLORS, STATUS_LABEL } from "./constants";
 
 // 3D Pin marker on the model (Phase E + H highlight)

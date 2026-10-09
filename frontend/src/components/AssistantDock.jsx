@@ -6,7 +6,7 @@ import axios from "axios";
 import { MessageCircle, Bot, X } from "lucide-react";
 import { useAuth } from "../auth";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 const WaIcon = () => (
   <svg viewBox="0 0 32 32" className="w-4.5 h-4.5 fill-white" style={{ width: 18, height: 18 }} aria-hidden="true">

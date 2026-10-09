@@ -74,7 +74,7 @@ export const AIInsightCard = ({ bullets = [], alerts = [], recommendations = [],
   const runLlm = async () => {
     setLlmBusy(true);
     try {
-      const base = process.env.REACT_APP_BACKEND_URL;
+      const base = process.env.NEXT_PUBLIC_BACKEND_URL;
       const res = await fetch(`${base}/api/admin/insights/llm?module=${llmModule}`, { credentials: "include" });
       if (!res.ok) throw new Error();
       setLlm(await res.json());

@@ -7,7 +7,7 @@ import axios from "axios";
 import { X, CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
 import { trackIntent, trackLeadFormConversion, getLeadAttribution } from "../lib/analytics";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api`;
 
 const STYLE_OPTIONS = [
   "modern", "scandinavian", "minimalist", "industrial", "japandi",

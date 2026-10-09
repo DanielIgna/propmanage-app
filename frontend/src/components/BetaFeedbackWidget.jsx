@@ -6,7 +6,7 @@ import axios from "axios";
 import { MessageSquareHeart, X, Send, ThumbsUp, ThumbsDown, ChevronRight } from "lucide-react";
 import { useAuth } from "../auth";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 const QUESTIONS = [
   ["confusing", "Ce ți s-a părut confuz?"],
   ["easy", "Ce a fost ușor?"],

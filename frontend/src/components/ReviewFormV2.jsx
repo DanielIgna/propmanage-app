@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { Star, Loader2, X, CheckCircle2, Eye, EyeOff } from "lucide-react";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 const DIMENSIONS_C2S = [
   { key: "timeliness", label: "Respectarea termenelor", desc: "A respectat data agreată?" },

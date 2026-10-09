@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api`;
 
 const getSessionId = () => {
   let sid = localStorage.getItem("pm_ab_session");

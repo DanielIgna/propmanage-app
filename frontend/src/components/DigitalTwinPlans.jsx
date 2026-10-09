@@ -4,7 +4,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { Upload, X, FileText, Trash2, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Layers, Loader2, Download, Box, Columns } from "lucide-react";
-import { API } from "../pages/DashShared";
+import { API } from "../views/DashShared";
 import * as pdfjsLib from "pdfjs-dist";
 import DigitalTwinViewer from "./DigitalTwinViewer";
 

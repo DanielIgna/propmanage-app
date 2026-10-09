@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { Sparkles, Send, X, Loader2, ShieldCheck, MessageSquare } from "lucide-react";
-import { API } from "../pages/DashShared";
+import { API } from "../views/DashShared";
 
 const SUGGESTIONS = [
   "Ce suprafață are proprietatea?",

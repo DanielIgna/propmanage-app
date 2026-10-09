@@ -11,10 +11,10 @@ description: Use for ANY change in the PropManage project (frontend React/CRA, b
 - NU face `git commit`/`push` fără să întrebi întâi.
 
 ## Structură
-- `frontend/` — React 19 (CRA + craco), Yarn **1.22** (`cd frontend && yarn start`, port 3000). UI în `src/components/ui` (shadcn). Rute în `src/App.js`.
+- `frontend/` — **Next.js 16.3 (App Router)** + React 19, Yarn **1.22** (`cd frontend && yarn dev`, port 3000). Aplicația existentă (React Router, `src/App.js`, ecrane în `src/views/`) rulează client-only din `app/[[...slug]]`; paginile noi/SEO se fac ca rute App Router în `app/`. Variabile publice: `NEXT_PUBLIC_*`. `/api` și `/uploads` → backend prin `rewrites` (`BACKEND_URL`, implicit localhost:8001).
+- Deploy frontend: Cloudflare Workers prin OpenNext — `cd frontend && BACKEND_URL=<railway> yarn deploy` (worker `propmanage-app`). Next fixat la 16.3.x până OpenNext suportă 16.4 (eroare `preview-props.json`).
 - `backend/` — FastAPI + MongoDB (motor), `./venv/bin/uvicorn server:app --port 8001`. Rute în `routes/`, dependențe auth în `deps.py`.
-- Rădăcina (`package.json`, `wrangler.jsonc`, `worker/`, `cf-site/`) — Cloudflare Worker (Yarn 4, wrangler). Nu e dev serverul aplicației.
-- Frontend proxy `/api` → `localhost:8001` (`src/setupProxy.js`).
+- Backend pe Railway (Dockerfile `backend/Dockerfile`, build din rădăcina repo-ului, include `memory/` + `docs/`).
 
 ## Supabase
 - Proiect: `propmanage` (ref `nvkcxcquksdtodgikznc`). Chei în `frontend/.env` (`REACT_APP_SUPABASE_*`, doar publishable) și `backend/.env` (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`).

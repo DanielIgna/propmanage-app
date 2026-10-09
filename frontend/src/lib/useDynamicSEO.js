@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import axios from "axios";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 // Two caches: legacy app_settings (backward compat) + new page registry per key.
 let _settingsCache = null;

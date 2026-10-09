@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { RatingBadge } from "./RatingBadge";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 // ============= SPONSORED BADGE =============
 export const SponsoredBadge = ({ size = "sm" }) => {

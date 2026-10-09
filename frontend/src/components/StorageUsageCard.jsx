@@ -5,7 +5,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { HardDrive, AlertTriangle, Box } from "lucide-react";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 const barColor = (pct) => (pct >= 95 ? "#ef4444" : pct >= 80 ? "#f59e0b" : "#34C759");
 
 export const StorageUsageCard = () => {

@@ -7,7 +7,7 @@ import {
   AlertTriangle, Copy, GitCompare, Layers, TrendingUp, Unplug, FileText, Gauge,
 } from "lucide-react";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 const ax = axios.create({ baseURL: API, withCredentials: true });
 
 const STATUS_STYLE = {

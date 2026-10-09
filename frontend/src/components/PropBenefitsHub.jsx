@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { Gift, Sparkles, Lock, Loader2, ChevronRight, BadgeCheck, Clock, CheckCircle2 } from "lucide-react";
-import { API } from "../pages/DashShared";
+import { API } from "../views/DashShared";
 import { CommunityDealsSection, AmbassadorCard } from "./pb/PbEverywhere";
 
 const LEVEL_COLORS = {

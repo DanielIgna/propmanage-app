@@ -5,7 +5,7 @@ import axios from "axios";
 import {
   X, Loader2, ShieldCheck, ShieldQuestion, Clock, Check, Ban, History, AlertTriangle, FileBox,
 } from "lucide-react";
-import { API } from "../pages/DashShared";
+import { API } from "../views/DashShared";
 
 const trust = (m) => {
   const rev = m.review_state || "none";

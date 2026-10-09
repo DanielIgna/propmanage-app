@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, Building2, MapPin, ArrowRight, ShieldCheck, Info } from "lucide-react";
 import { PmMarkersMap } from "./PmMap";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api`;
 
 const SOURCE_BADGE = {
   hartablocuri: { label: "HartaBlocuri", cls: "bg-amber-500/15 text-amber-300 border-amber-500/30" },

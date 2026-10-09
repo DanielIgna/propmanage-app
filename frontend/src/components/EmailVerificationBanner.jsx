@@ -5,7 +5,7 @@ import axios from "axios";
 import { Mail, X, Loader2, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../auth";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 const DISMISS_KEY = "pm_email_verify_dismissed_session";
 
 export const EmailVerificationBanner = () => {

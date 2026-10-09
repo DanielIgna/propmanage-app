@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import { useAuth } from "../auth";
 import { useI18n } from "../i18n";
-import { ThemeToggle } from "../pages/DashShared";
+import { ThemeToggle } from "../views/DashShared";
 import {
   Menu, X, ChevronDown, ChevronRight, Home, Layers, BadgeCheck, Box, Palette, Trees,
   Compass, Hammer, Paintbrush, Armchair, Wrench, Brush, Users, MessageCircle, KeyRound,
@@ -13,7 +13,7 @@ import {
   Bell, Settings, Languages, ShieldCheck, Circle,
 } from "lucide-react";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 const ICONS = {
   Home, Layers, BadgeCheck, Box, Palette, Trees, Compass, Hammer, Paintbrush, Armchair,

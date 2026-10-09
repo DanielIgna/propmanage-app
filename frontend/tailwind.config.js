@@ -3,7 +3,7 @@ module.exports = {
     darkMode: ["class"],
     content: [
     "./src/**/*.{js,jsx,ts,tsx}",
-    "./public/index.html"
+    "./app/**/*.{js,jsx,ts,tsx}"
   ],
   safelist: [
     // QA Copilot + AI Control Center dynamic category colors

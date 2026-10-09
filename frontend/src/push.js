@@ -1,7 +1,7 @@
 // PropManage - Web Push subscription helper
 import axios from "axios";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api`;
 
 // Converts a base64-url-safe string to a Uint8Array (required by PushManager.subscribe)
 function urlBase64ToUint8Array(base64String) {

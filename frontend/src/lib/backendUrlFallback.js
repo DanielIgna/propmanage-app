@@ -1,7 +1,7 @@
 /**
- * Runtime patch for stale REACT_APP_BACKEND_URL.
+ * Runtime patch for stale NEXT_PUBLIC_BACKEND_URL.
  *
- * Problem: REACT_APP_BACKEND_URL is inlined at build time. If the deployment
+ * Problem: NEXT_PUBLIC_BACKEND_URL is inlined at build time. If the deployment
  * uses a custom domain that later goes down (e.g. DNS issue), every fetch and
  * axios call fails with Network Error.
  *
@@ -25,7 +25,7 @@ function init() {
   if (_applied) return;
   if (typeof window === "undefined") return;
 
-  const configured = (process.env.REACT_APP_BACKEND_URL || "").trim();
+  const configured = (process.env.NEXT_PUBLIC_BACKEND_URL || "").trim();
   if (!configured) return;
 
   let configuredHost;

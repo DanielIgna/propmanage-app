@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { chapterForNextStep } from "../../lib/houseHealthAxis";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 const GREEN = "#166534";
 const LIME = "#d4ff3a";
 const pctColor = (p) => (p >= 95 ? "#ef4444" : p >= 80 ? "#f59e0b" : "#34C759");

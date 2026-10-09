@@ -5,7 +5,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { Map, Check, ChevronDown, ChevronRight, CircleDashed, Circle, Gauge, ShieldCheck } from "lucide-react";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 const GREEN = "#166534";
 
 const StepIcon = ({ status }) => {

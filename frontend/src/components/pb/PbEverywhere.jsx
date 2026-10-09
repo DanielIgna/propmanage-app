@@ -5,7 +5,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { Gift, Sparkles, ChevronRight, Handshake, Lock, BadgeCheck, TrendingUp } from "lucide-react";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 // ---------------------------------------------------------------------------
 // CLIENT · Benefits Pulse — primele 30 de secunde (montat în HomeV2)

@@ -8,7 +8,7 @@ import axios from "axios";
 import {
   Eye, EyeOff, Layers, RotateCcw, Box as BoxIcon, Sparkles, Wand2, Loader2, Palette, ShieldCheck, GitCompare,
 } from "lucide-react";
-import { API } from "../pages/DashShared";
+import { API } from "../views/DashShared";
 import { FACE_STYLES, TOOLS, SECTION_AXES } from "./viewer/constants";
 import { DemoHouse, ModelWithEvents, ResetCamera, MultiLayerScene } from "./viewer/ViewerScene";
 import { MeasureMarkers } from "./viewer/MeasureSection";
@@ -158,7 +158,7 @@ export const DigitalTwinViewer = ({ projectId, modelUrl, projectName, onClose, o
   // setup if the project has only one upload (backwards-compat).
   const renderLayers = useMemo(() => {
     if (!projectLayers.length) return null;
-    const backend = process.env.REACT_APP_BACKEND_URL || "";
+    const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "";
     return projectLayers.map((m) => {
       const o = layerOverrides[m.id] || {};
       const url = (m.public_path || m.url || "").startsWith("http")
@@ -202,7 +202,7 @@ export const DigitalTwinViewer = ({ projectId, modelUrl, projectName, onClose, o
   };
 
   const url = modelUrl
-    ? (modelUrl.startsWith("http") ? modelUrl : `${process.env.REACT_APP_BACKEND_URL || ""}${modelUrl}`)
+    ? (modelUrl.startsWith("http") ? modelUrl : `${process.env.NEXT_PUBLIC_BACKEND_URL || ""}${modelUrl}`)
     : null;
   const isDefaultModel = !modelUrl;
 

@@ -9,7 +9,7 @@
 // Compat: exportă trackPageView (folosit de AnalyticsRouteTracker din App.js)
 // și se auto-inițializează la import (index.js importă modulul side-effect).
 // ============================================================================
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 const VISITOR_KEY = "pm_vid";
 const SESSION_KEY = "pm_sid";
 const USER_KEY = "pm_uid"; // GI-2: identify vizitator↔utilizator

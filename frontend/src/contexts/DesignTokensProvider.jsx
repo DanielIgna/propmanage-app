@@ -5,7 +5,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import axios from "axios";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 const TokensContext = createContext(null);
 export const TOKENS_UPDATED_EVENT = "pm:tokens-updated";
 

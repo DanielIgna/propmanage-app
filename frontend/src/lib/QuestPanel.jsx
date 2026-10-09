@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Award, Gift, Loader2, ChevronDown, ChevronUp, Sparkles, Copy, CheckCircle2 } from "lucide-react";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 const ax = axios.create({ baseURL: API, withCredentials: true });
 
 export const QuestPanel = ({ hideActive = false }) => {

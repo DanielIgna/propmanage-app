@@ -2,7 +2,7 @@
 // Orice pagină nouă folosește DOAR acest client. Migrarea paginilor vechi: progresiv.
 import axios from "axios";
 
-export const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 export const api = axios.create({
   baseURL: `${BACKEND_URL}/api`,

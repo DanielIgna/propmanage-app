@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { Bot, Send, X, MessageCircle, AlertTriangle, ShieldAlert, LifeBuoy } from "lucide-react";
 import { useAuth } from "../auth";
-import { API } from "../pages/DashShared";
+import { API } from "../views/DashShared";
 
 const SUGGESTIONS_BY_ROLE = {
   client: [

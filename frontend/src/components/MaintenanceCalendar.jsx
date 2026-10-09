@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { CalendarClock, Plus, Check, X, Send, Sparkles } from "lucide-react";
-import { API } from "../pages/DashShared";
+import { API } from "../views/DashShared";
 import { formatApiError } from "../auth";
-import { GREEN, CTA, Sheet } from "../pages/clientv2/ui";
+import { GREEN, CTA, Sheet } from "../views/clientv2/ui";
 
 const CAT_LABELS = {
   zugravit: "Zugrăvit", parchet: "Parchet", faianta: "Faianță / Gresie", handyman: "Handyman",

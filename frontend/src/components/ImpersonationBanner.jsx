@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { ShieldAlert, LogOut, Clock } from "lucide-react";
 import { useAuth } from "../auth";
-import { API } from "../pages/DashShared";
+import { API } from "../views/DashShared";
 
 const fmtCountdown = (secs) => {
   if (secs <= 0) return "expirat";

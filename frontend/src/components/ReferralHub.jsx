@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { UserPlus, Heart, Copy, Check, Send, Loader2 } from "lucide-react";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api`;
 
 // GBOS P0.1/P0.2 — Referral & Recommendation Hub (variant: "light" cv2 / "dark" pm)
 export const ReferralHub = ({ variant = "dark" }) => {

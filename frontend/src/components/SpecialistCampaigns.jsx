@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Building2, Send, Check } from "lucide-react";
-import { API } from "../pages/DashShared";
+import { API } from "../views/DashShared";
 import { formatApiError } from "../auth";
 import { PMCard, PMSectionHeader, PMChip, PMPillButton } from "./pm";
 

@@ -6,7 +6,7 @@ import {
   Scale, Loader2, ScanEye, AlertTriangle, FlaskConical, MessageCircleQuestion, ListOrdered,
 } from "lucide-react";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 const ax = axios.create({ baseURL: API, withCredentials: true });
 
 const FACTOR_LABELS = {

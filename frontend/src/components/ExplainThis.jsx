@@ -7,7 +7,7 @@ import { useLocation } from "react-router-dom";
 import { Sparkles, X, Loader2, ScanSearch, Route as RouteIcon, Compass } from "lucide-react";
 import { MentorWidget } from "./MentorWidget";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 const post = (url, body) =>
   fetch(`${API}${url}`, {

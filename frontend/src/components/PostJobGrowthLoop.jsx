@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Heart, CalendarClock, Share2, Check, Home, Copy } from "lucide-react";
-import { API } from "../pages/DashShared";
-import { GREEN, CTA, Sheet } from "../pages/clientv2/ui";
+import { API } from "../views/DashShared";
+import { GREEN, CTA, Sheet } from "../views/clientv2/ui";
 import { trackIntent } from "../lib/analytics";
 
 const CAT_LABELS = {

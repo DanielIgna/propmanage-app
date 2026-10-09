@@ -6,7 +6,7 @@ import {
   BrainCog, Loader2, ScanEye, ThumbsUp, ThumbsDown, Gauge, Users, TrendingDown, Sparkles,
 } from "lucide-react";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 const ax = axios.create({ baseURL: API, withCredentials: true });
 
 const Stat = ({ label, value, tone = "" }) => (

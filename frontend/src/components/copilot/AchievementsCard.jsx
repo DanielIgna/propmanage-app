@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import { Trophy, TrendingUp, Target, Star, ChevronDown, X, Lock } from "lucide-react";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 const Row = ({ icon: Icon, color, label, value, tid }) => (
   <div className="flex items-start gap-2.5 py-1.5" data-testid={tid}>
