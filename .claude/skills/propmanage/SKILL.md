@@ -21,6 +21,11 @@ description: Use for ANY change in the PropManage project (frontend React/CRA, b
 - Orice tabel nou în `public`: RLS activat + politici explicite; rulează `get_advisors` după DDL.
 - Cheia secretă NICIODATĂ în frontend.
 
+## Migrare Mongo → Supabase (în curs, branch `feat/supabase-migration`)
+- Plan + inventar: `docs/migration/collections.md`. Decizii: arhitectura A (frontend → backend → DB), păstrăm loguri + conturi demo.
+- Schema `app` (NU expusă în Data API): o tabelă JSONB per colecție (`id` = Mongo `_id`, `data jsonb`, GIN `jsonb_path_ops`), RLS fără politici. Colecție nouă → `select app.create_collection('nume')` într-o migrare.
+- Migrări SQL în `supabase/migrations/` (aplicate și prin MCP `apply_migration`).
+
 ## Autentificare (Supabase Auth + profil Mongo)
 - `backend/supabase_auth.py` — verificare JWT (JWKS, ES256), admin API GoTrue, sesiuni.
 - Login/register (`routes/auth.py`): parola verificată pe hash-ul bcrypt din Mongo (sursa de adevăr), apoi `_start_session` sincronizează userul în Supabase (migrare leneșă) și întoarce `supabase_session`.
