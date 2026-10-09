@@ -41,7 +41,7 @@ from typing import Any
 # Import canonic allowlist — SINGURA sursă validă.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from routes.impersonation import DEMO_IMPERSONATION_ACCOUNTS  # noqa: E402
-import db as _db_mod  # noqa: E402 — honours DB_BACKEND
+import db as _db_mod  # noqa: E402
 
 
 async def audit() -> dict[str, Any]:

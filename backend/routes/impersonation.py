@@ -38,7 +38,7 @@ ADMIN_STASH_COOKIE = "admin_access_token"
 ACCESS_COOKIE = "access_token"
 COOKIE_PATH = "/"
 
-# Match auth cookie config so cross-site (e.g. propmanage.ro → emergent.host) works
+# Match auth cookie config so cross-site (e.g. propmanage.ro → *.up.railway.app) works
 _COOKIE_SAMESITE = (os.environ.get("COOKIE_SAMESITE") or "none").lower()
 if _COOKIE_SAMESITE not in ("lax", "strict", "none"):
     _COOKIE_SAMESITE = "none"

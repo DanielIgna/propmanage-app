@@ -65,11 +65,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    // CRITICAL: If returning from Emergent OAuth callback, skip the /me check.
-    // AuthCallback will exchange the session_id and establish the session first.
-    if (window.location.hash?.includes("session_id=")) {
-      return;
-    }
     // Skip auth probe on intentionally-public routes (avoids noisy 401s).
     const path = window.location.pathname;
     if (path.startsWith("/report-respond/")) {

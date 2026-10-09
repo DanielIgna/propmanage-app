@@ -20,7 +20,7 @@ import sys
 
 load_dotenv()
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import db as _db_mod  # noqa: E402 — honours DB_BACKEND
+import db as _db_mod  # noqa: E402
 
 MIGRATION_ID = "remove_dead_design_tokens_doc"
 

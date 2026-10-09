@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 
 import httpx
 
-from db import db, client as mongo_client, DB_BACKEND
+from db import db, client as mongo_client
 
 logger = logging.getLogger("propmanage.healthcheck_service")
 
@@ -45,7 +45,7 @@ def _check(name: str, started: float, ok: bool, status: str = "",
 # ============================================================================
 
 
-_DB_LABEL = "Supabase Postgres" if DB_BACKEND == "postgres" else "MongoDB"
+_DB_LABEL = "Supabase Postgres"
 
 
 async def _probe_mongo() -> dict:

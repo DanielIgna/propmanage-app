@@ -6,10 +6,10 @@ Audit → Digital Twin → Proiectare → Implementare → Management → Între
 from typing import Any
 
 IMG = {
-    "hero": "https://static.prod-images.emergentagent.com/jobs/c0629304-e2e2-4a6f-8f15-5c4c3ef257d1/images/b9da608294ee30b204e88bb726b84e7acba4feab7c8d57a6d216768809d0ec74.png",
-    "kitchen": "https://static.prod-images.emergentagent.com/jobs/c0629304-e2e2-4a6f-8f15-5c4c3ef257d1/images/1323436e5e8b88a450f399e715e335002b6266a213edaf021a58ca23a2306ca0.png",
-    "bedroom": "https://static.prod-images.emergentagent.com/jobs/c0629304-e2e2-4a6f-8f15-5c4c3ef257d1/images/9848014ca223246c9430bb6f53dcd94dce505b83eb2f354dac3397cdda3b7717.png",
-    "moodboard": "https://static.prod-images.emergentagent.com/jobs/c0629304-e2e2-4a6f-8f15-5c4c3ef257d1/images/59b3880c6ad53f5cc76d44876c555bfa1b7d0b09fcd9d46af143852ec22f8748.png",
+    "hero": "/img/design/hero.png",
+    "kitchen": "/img/design/kitchen.png",
+    "bedroom": "/img/design/bedroom.png",
+    "moodboard": "/img/design/moodboard.png",
 }
 
 DEFAULT_CONTENT: dict[str, Any] = {

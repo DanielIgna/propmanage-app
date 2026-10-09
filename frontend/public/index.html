@@ -149,7 +149,6 @@
           gtag('config', 'AW-18423416296');
         </script>
         <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
-        <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>
@@ -164,42 +163,7 @@
       To begin the development, run `npm start` or `yarn start`.
       To create a production bundle, use `npm run build` or `yarn build`.
     -->
-                <script>
-            // Show Emergent badge ONLY on /admin* routes. On non-admin routes the
-            // badge is fully REMOVED from the DOM (not just hidden) so it cannot
-            // be inspected, forced-visible via devtools, or leak through any CSS.
-            (function () {
-                var badge = document.getElementById("emergent-badge");
-                var parent = badge && badge.parentNode;
-                var placeholder = document.createComment("emergent-badge-slot");
-                if (badge && parent) parent.insertBefore(placeholder, badge);
-                var attached = true;
 
-                function updateBadge() {
-                    if (!badge || !parent) return;
-                    var p = window.location.pathname;
-                    var isAdmin = p === "/admin" || p.indexOf("/admin/") === 0;
-                    if (isAdmin && !attached) {
-                        parent.insertBefore(badge, placeholder.nextSibling);
-                        badge.style.setProperty("display", "inline-flex", "important");
-                        attached = true;
-                    } else if (!isAdmin && attached) {
-                        badge.remove();
-                        attached = false;
-                    } else if (isAdmin) {
-                        badge.style.setProperty("display", "inline-flex", "important");
-                    }
-                }
-                updateBadge();
-                window.addEventListener("popstate", updateBadge);
-                var _push = history.pushState;
-                history.pushState = function () { _push.apply(this, arguments); updateBadge(); };
-                var _replace = history.replaceState;
-                history.replaceState = function () { _replace.apply(this, arguments); updateBadge(); };
-                // Fallback observer in case SPA changes route without history API
-                setInterval(updateBadge, 1500);
-            })();
-        </script>
         <script>
             !(function (t, e) {
                 var o, n, p, r;

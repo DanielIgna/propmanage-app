@@ -11,7 +11,7 @@
     "head_sampling_rate": 1
   },
   "vars": {
-    "BACKEND_URL": "https://propmanage.ro"
+    "BACKEND_URL": "https://backend-production-e5b7d.up.railway.app"
   },
   "assets": {
     "directory": "./cf-site",

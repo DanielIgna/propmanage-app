@@ -83,7 +83,7 @@ def set_auth_cookies(response: Response, access: str, refresh: str):
 
     `SameSite=lax + secure=false` works for same-origin dev/preview.
     `SameSite=none + secure=true` is REQUIRED when frontend (e.g. propmanage.ro)
-    and backend (e.g. phased-document.emergent.host) are on DIFFERENT domains,
+    and backend (e.g. *.up.railway.app) are on DIFFERENT domains,
     because Chrome blocks AJAX cookies cross-site with SameSite=lax.
 
     Controlled via env: COOKIE_SAMESITE (defaults to 'none' for production safety)

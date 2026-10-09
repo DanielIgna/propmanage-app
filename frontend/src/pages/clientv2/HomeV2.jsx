@@ -15,7 +15,7 @@ import { AxisHereBadge, HouseHealthAxisPreview } from "../../components/HouseHea
 
 const IMG_TWIN = "https://images.unsplash.com/photo-1721244654394-36a7bc2da288?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzh8MHwxfHNlYXJjaHwyfHxhcmNoaXRlY3R1cmFsJTIwYmx1ZXByaW50JTIwYnVpbGRpbmd8ZW58MHx8fHwxNzg0OTkwMDEyfDA&ixlib=rb-4.1.0&q=85&w=800";
 const IMG_HEALTH = "https://images.pexels.com/photos/36035073/pexels-photo-36035073.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940";
-const IMG_GUIDE = "https://static.prod-images.emergentagent.com/jobs/c0629304-e2e2-4a6f-8f15-5c4c3ef257d1/images/7b363db9e5f2b9781098798793b0f1746f212980f43a212562902c1e28838a43.jpeg";
+const IMG_GUIDE = "/img/design-concept.jpeg";
 
 // Revenue Hunter — inbox de decizii comerciale (Sprint 2, Board Review 001)
 const OPP_ICONS = { digital_twin: Box, audit_tehnic: ShieldCheck, design_interior: Palette, design_tematic: Sparkles };

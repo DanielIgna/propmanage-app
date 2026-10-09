@@ -71,11 +71,12 @@ logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="PropManage API")
 
-# CORS: read from env, support "*" wildcard for dev OR comma-separated origins for prod.
-# Default regex auto-permits both preview (*.preview.emergentagent.com) AND the production
-# custom domain (*.propmanage.ro) so cookies/credentials work cross-origin out of the box.
+# CORS: credentialed requests only from our own origins — the product domains (https, any
+# subdomain of propmanage.ro/.io), localhost for development, plus the exact origins listed in
+# CORS_ORIGINS (e.g. the Cloudflare worker URL). No shared-hosting wildcards (*.workers.dev,
+# *.pages.dev): anyone can publish there, which would allow credentialed cross-site requests.
 _raw_origins = os.environ.get("CORS_ORIGINS", "*").strip()
-_default_origin_regex = r"^https?://(.*\.)?(propmanage\.ro|propmanage\.io|pages\.dev|workers\.dev|preview\.emergentagent\.com|emergentagent\.com)$"
+_default_origin_regex = r"^(https://([a-z0-9-]+\.)*propmanage\.(ro|io)|http://(localhost|127\.0\.0\.1)(:\d+)?)$"
 _origin_regex = os.environ.get("CORS_ORIGIN_REGEX") or _default_origin_regex
 if _raw_origins == "*" or not _raw_origins:
     # Use empty allow_origins + regex so allow_credentials=True can still work
@@ -105,12 +106,10 @@ import re as _re  # noqa: E402
 from urllib.parse import urlparse as _urlparse  # noqa: E402
 from starlette.responses import JSONResponse as _JSONResponse  # noqa: E402
 
-# Sufixe de host permise: domeniile produsului + infrastructura de preview
-# (ingress-ul Emergent rescrie Origin către *.emergentcf.cloud).
-_CSRF_ALLOWED_SUFFIXES = ("propmanage.ro", "propmanage.io",
-                          "pages.dev", "workers.dev",
-                          "preview.emergentagent.com", "emergentagent.com",
-                          "emergentcf.cloud", "localhost")
+# Hosturi permise: domeniile produsului (+ subdomenii), localhost și hosturile EXACTE din
+# CORS_ORIGINS (ex. worker-ul Cloudflare). Fără wildcard-uri pe hosting partajat.
+_CSRF_ALLOWED_SUFFIXES = ("propmanage.ro", "propmanage.io", "localhost")
+_CSRF_ALLOWED_HOSTS = {(_urlparse(o).hostname or "").lower() for o in _origins} - {""}
 
 
 def _csrf_origin_ok(origin: str, host: str) -> bool:
@@ -122,6 +121,8 @@ def _csrf_origin_ok(origin: str, host: str) -> bool:
         return False
     if host and h == host.split(":")[0].lower():
         return True  # same-origin
+    if h in _CSRF_ALLOWED_HOSTS:
+        return True
     return any(h == s or h.endswith("." + s) for s in _CSRF_ALLOWED_SUFFIXES)
 
 

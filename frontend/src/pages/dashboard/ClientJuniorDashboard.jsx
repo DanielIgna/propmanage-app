@@ -16,7 +16,7 @@ import { API } from "../DashShared";
 // ============================================================================
 
 const IMG_TWIN = "https://images.unsplash.com/photo-1721244654394-36a7bc2da288?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzh8MHwxfHNlYXJjaHwyfHxhcmNoaXRlY3R1cmFsJTIwYmx1ZXByaW50JTIwYnVpbGRpbmd8ZW58MHx8fHwxNzg0OTkwMDEyfDA&ixlib=rb-4.1.0&q=85&w=1200";
-const IMG_DESIGN = "https://static.prod-images.emergentagent.com/jobs/c0629304-e2e2-4a6f-8f15-5c4c3ef257d1/images/7b363db9e5f2b9781098798793b0f1746f212980f43a212562902c1e28838a43.jpeg";
+const IMG_DESIGN = "/img/design-concept.jpeg";
 
 const FEATURED = [
   { id: "digital_twin", label: "Digital Twin & Audit Tehnic", icon: ScanSearch, price: "de la RON 1.500", badge: "Serviciu PropManage", image: IMG_TWIN },

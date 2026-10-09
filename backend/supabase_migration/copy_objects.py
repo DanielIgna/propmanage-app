@@ -22,6 +22,18 @@ import storage_client as sc  # noqa: E402
 
 ENV = dotenv_values(Path(__file__).resolve().parent.parent / ".env")
 
+EMERGENT_STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
+
+
+def emergent_get_object(path: str, emergent_key: str):
+    """Read one object from the legacy Emergent Object Storage."""
+    init = requests.post(f"{EMERGENT_STORAGE_URL}/init", json={"emergent_key": emergent_key}, timeout=30)
+    init.raise_for_status()
+    resp = requests.get(f"{EMERGENT_STORAGE_URL}/objects/{path}",
+                        headers={"X-Storage-Key": init.json()["storage_key"]}, timeout=60)
+    resp.raise_for_status()
+    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
+
 PATHS_SQL = """
 with recursive walk(v) as (
   select data from app.{t}
@@ -63,7 +75,6 @@ def main():
     args = ap.parse_args()
     if not ENV.get("EMERGENT_LLM_KEY"):
         raise SystemExit("EMERGENT_LLM_KEY missing in backend/.env (needed to read the old storage)")
-    sc.EMERGENT_KEY = ENV["EMERGENT_LLM_KEY"]
 
     paths = asyncio.run(collect_paths())
     print(f"{len(paths)} object paths referenced in the database")
@@ -77,7 +88,7 @@ def main():
             print(f"would copy {path}  ({', '.join(sorted(tables))})")
             continue
         try:
-            data, ct = sc.emergent_get_object(path)
+            data, ct = emergent_get_object(path, ENV["EMERGENT_LLM_KEY"])
             sc._sb_put(path, data, ct)
             copied += 1
             print(f"copied  {len(data):>10} B  {path}")

@@ -1,10 +1,7 @@
-"""Object storage client — persistent file storage (Document Vault, House Health, Digital Twin).
+"""Object storage client — Supabase Storage, private bucket (Document Vault, House Health, Digital Twin).
 
-STORAGE_BACKEND=supabase  → Supabase Storage, private bucket `propmanage-files` (secret key, server-side only).
-STORAGE_BACKEND=emergent  → Emergent Object Storage (legacy, default while not migrated).
-
-Same API for both: put_object(path, data, content_type) -> {"path", "size"}; get_object(path) -> (bytes, content_type).
-Object paths are unchanged between backends (e.g. "propmanage/properties/<id>/<uuid>.pdf").
+put_object(path, data, content_type) -> {"path", "size"}; get_object(path) -> (bytes, content_type).
+Server-side only (secret key). Object paths look like "propmanage/properties/<id>/<uuid>.pdf".
 """
 import os
 from pathlib import Path
@@ -14,8 +11,6 @@ import requests
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent / '.env')
-
-STORAGE_BACKEND = os.environ.get("STORAGE_BACKEND", "emergent").lower()
 
 # ---------------------------------------------------------------- Supabase Storage
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
@@ -53,58 +48,10 @@ def _sb_get(path: str):
     return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
 
 
-# ---------------------------------------------------------------- Emergent Object Storage (legacy)
-STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
-EMERGENT_KEY = os.environ.get("ANTHROPIC_API_KEY")
-
-_storage_key = None
-
-
-def init_storage() -> str:
-    global _storage_key
-    if _storage_key:
-        return _storage_key
-    resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
-    resp.raise_for_status()
-    _storage_key = resp.json()["storage_key"]
-    return _storage_key
-
-
-def emergent_put_object(path: str, data: bytes, content_type: str) -> dict:
-    key = init_storage()
-    resp = requests.put(
-        f"{STORAGE_URL}/objects/{path}",
-        headers={"X-Storage-Key": key, "Content-Type": content_type},
-        data=data, timeout=120,
-    )
-    if resp.status_code == 403:
-        global _storage_key
-        _storage_key = None
-        key = init_storage()
-        resp = requests.put(
-            f"{STORAGE_URL}/objects/{path}",
-            headers={"X-Storage-Key": key, "Content-Type": content_type},
-            data=data, timeout=120,
-        )
-    resp.raise_for_status()
-    return resp.json()
-
-
-def emergent_get_object(path: str):
-    key = init_storage()
-    resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
-    resp.raise_for_status()
-    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
-
-
 # ---------------------------------------------------------------- public API
 def put_object(path: str, data: bytes, content_type: str) -> dict:
-    if STORAGE_BACKEND == "supabase":
-        return _sb_put(path, data, content_type)
-    return emergent_put_object(path, data, content_type)
+    return _sb_put(path, data, content_type)
 
 
 def get_object(path: str):
-    if STORAGE_BACKEND == "supabase":
-        return _sb_get(path)
-    return emergent_get_object(path)
+    return _sb_get(path)

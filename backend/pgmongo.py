@@ -85,6 +85,14 @@ def _contains(sql: _Sql, key: str, value: Any) -> str:
     return f"(data @> {a}::jsonb or data @> {b}::jsonb)"
 
 
+def _in_list(sql: _Sql, key: str, values: list) -> str:
+    """Field equals one of `values`, or is an array containing one of them."""
+    arr = sql.p([_enc(v) for v in values])
+    f = f"(data->{sql.p(key)}::text)"
+    return (f"(case jsonb_typeof({f}) when 'array' then exists (select 1 from jsonb_array_elements({f}) e "
+            f"where e = any({arr}::jsonb[])) else coalesce({f} = any({arr}::jsonb[]), false) end)")
+
+
 def _range(sql: _Sql, key: str, op: str, value: Any) -> Optional[str]:
     sym = {"$gt": ">", "$gte": ">=", "$lt": "<", "$lte": "<="}[op]
     f = f"data->{sql.p(key)}::text"
@@ -131,8 +139,11 @@ def _field(sql: _Sql, key: str, cond: Any) -> tuple[str, bool]:
             parts.append(f"not {_contains(sql, key, val)}")
         elif op in ("$in", "$nin") and isinstance(val, list) and 0 < len(val) <= _IN_MAX \
                 and all(_is_plain_scalar(v) for v in val):
-            ors = " or ".join(_contains(sql, key, v) for v in val)
-            parts.append(f"({ors})" if op == "$in" else f"not ({ors})")
+            if len(val) <= 3:  # few values: GIN-indexable containment
+                clause = "(" + " or ".join(_contains(sql, key, v) for v in val) + ")"
+            else:  # many values: read the field once (large docs are expensive to re-read)
+                clause = _in_list(sql, key, val)
+            parts.append(clause if op == "$in" else f"not {clause}")
         elif op in ("$gt", "$gte", "$lt", "$lte"):
             clause = _range(sql, key, op, val)
             if clause:
@@ -211,6 +222,98 @@ def _order_by_inner(sql: _Sql, sort: list[tuple[str, int]]) -> Optional[str]:
             f"{x} {direction}",
         ]
     return ", ".join(out + ["id"])
+
+
+# --------------------------------------------------------------------------- field pruning
+# Large documents make every round trip expensive; when an operation provably needs only a few
+# top-level fields we fetch just those (presence-preserving, via jsonb_each). None = whole document.
+
+def _top(path: str) -> str:
+    return path.split(".", 1)[0]
+
+
+def _filter_fields(flt: Any, out: set) -> bool:
+    """Collect top-level fields a filter reads. False if it can read arbitrary fields ($where/$expr)."""
+    if not isinstance(flt, dict):
+        return True
+    for k, v in flt.items():
+        if k in ("$and", "$or", "$nor"):
+            if not all(_filter_fields(c, out) for c in (v or [])):
+                return False
+        elif k in ("$where", "$expr", "$text", "$jsonSchema"):
+            return False
+        elif k.startswith("$"):
+            continue  # $comment etc.
+        else:
+            out.add(_top(k))
+    return True
+
+
+def _find_fields(flt, projection, sort) -> Optional[set]:
+    if not isinstance(projection, dict) or not projection:
+        return None
+    vals = [v for k, v in projection.items() if k != "_id"]
+    if not vals or any(v in (0, False) for v in vals):
+        return None  # exclusion projection keeps everything else
+    out = {"_id"} | {_top(k) for k in projection if k != "_id"}
+    if not _filter_fields(flt or {}, out):
+        return None
+    out |= {_top(k) for k, _ in (sort or [])}
+    return out
+
+
+_FULL_DOC_STAGES = {"$unset", "$geoNear", "$replaceWith", "$merge", "$out", "$graphLookup",
+                    "$setWindowFields", "$densify", "$fill", "$redact", "$documents", "$unionWith"}
+
+
+def _pipeline_fields(pipeline: list) -> Optional[set]:
+    """Top-level fields an aggregation pipeline can read, or None when it needs whole documents."""
+    out: set = {"_id"}
+
+    def refs(v) -> bool:
+        if isinstance(v, str):
+            if v.startswith("$$ROOT") or v.startswith("$$CURRENT"):
+                return False
+            if v.startswith("$") and not v.startswith("$$"):
+                out.add(_top(v[1:]))
+            return True
+        if isinstance(v, dict):
+            return all(refs(x) for x in v.values())
+        if isinstance(v, list):
+            return all(refs(x) for x in v)
+        return True
+
+    for stage in pipeline:
+        if not isinstance(stage, dict) or len(stage) != 1:
+            return None
+        (name, spec), = stage.items()
+        if name in _FULL_DOC_STAGES:
+            return None
+        if name == "$match":
+            if not _filter_fields(spec, out) or not refs(spec):
+                return None
+        elif name == "$project":
+            vals = [v for k, v in spec.items() if k != "_id"]
+            if any(v in (0, False) for v in vals):
+                return None
+            out |= {_top(k) for k, v in spec.items() if v in (1, True)}
+            if not refs(spec):
+                return None
+        elif name == "$lookup":
+            if "pipeline" in spec:
+                return None
+            out.add(_top(spec.get("localField", "_id")))
+        elif name == "$sort":
+            out |= {_top(k) for k in spec}
+        elif name == "$facet":
+            for sub in spec.values():
+                f = _pipeline_fields(sub)
+                if f is None:
+                    return None
+                out |= f
+        elif not refs(spec):
+            return None
+    return out
 
 
 # --------------------------------------------------------------------------- mongomock bridge
@@ -325,7 +428,8 @@ class PgCollection:
         return f'{self.database.schema}."{self.name}"'
 
     # ---- reads
-    async def _select(self, conn, flt, *, sort=None, skip=0, limit=0, lock=False) -> tuple[list[dict], bool]:
+    async def _select(self, conn, flt, *, sort=None, skip=0, limit=0, lock=False,
+                      fields: Optional[set] = None) -> tuple[list[dict], bool]:
         """Return (candidate docs, pushed_down). pushed_down=True means skip/limit/sort were applied in SQL."""
         if not await self.database._exists(self.name, conn):
             return [], False
@@ -341,7 +445,12 @@ class PgCollection:
                     tail += f" limit {int(limit)}"
                 if skip:
                     tail += f" offset {int(skip)}"
-        q = f"select data::text from {self._t} where {where} order by {order}{tail}"
+        if fields:
+            col = (f"(select coalesce(jsonb_object_agg(e.key, e.value), '{{}}'::jsonb) from jsonb_each(data) e "
+                   f"where e.key = any({sql.p(sorted(fields))}::text[]))::text")
+        else:
+            col = "data::text"
+        q = f"select {col} from {self._t} where {where} order by {order}{tail}"
         if lock:
             q += " for update"
         rows = await conn.fetch(q, *sql.params)
@@ -365,7 +474,8 @@ class PgCollection:
 
     async def _find_docs(self, flt, projection, sort, skip, limit) -> list:
         async with self.database._conn() as conn:
-            docs, pushed = await self._select(conn, flt, sort=sort, skip=skip, limit=limit)
+            docs, pushed = await self._select(conn, flt, sort=sort, skip=skip, limit=limit,
+                                              fields=_find_fields(flt, projection, sort))
         cur = _scratch(self.name, docs).find(flt or {}, projection)
         if sort:
             cur = cur.sort(sort)
@@ -398,7 +508,8 @@ class PgCollection:
                 n = await conn.fetchval(f"select count(*) from {self._t} where {where}", *sql.params)
                 n = max(0, n - (skip or 0))
                 return min(n, limit) if limit else n
-            docs, _ = await self._select(conn, filter)
+            need: set = {"_id"}
+            docs, _ = await self._select(conn, filter, fields=need if _filter_fields(filter or {}, need) else None)
         return len(await self._find_docs_from(docs, filter, skip, limit))
 
     async def _find_docs_from(self, docs, flt, skip, limit):
@@ -417,7 +528,8 @@ class PgCollection:
 
     async def distinct(self, key, filter=None, **_kw):
         async with self.database._conn() as conn:
-            docs, _ = await self._select(conn, filter)
+            need: set = {"_id", _top(key)}
+            docs, _ = await self._select(conn, filter, fields=need if _filter_fields(filter or {}, need) else None)
         return _scratch(self.name, docs).distinct(key, filter or {})
 
     def aggregate(self, pipeline, **kwargs):
@@ -426,7 +538,7 @@ class PgCollection:
     async def _aggregate(self, pipeline, kwargs):
         first = pipeline[0].get("$match") if pipeline and isinstance(pipeline[0], dict) else None
         async with self.database._conn() as conn:
-            docs, _ = await self._select(conn, first)
+            docs, _ = await self._select(conn, first, fields=_pipeline_fields(pipeline))
         return list(_scratch(self.name, docs).aggregate(pipeline, **{k: v for k, v in kwargs.items() if k == "allowDiskUse"}))
 
     # ---- writes

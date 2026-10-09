@@ -1,7 +1,7 @@
-// AuthCallback - handles THREE Google OAuth flows (0. SUPABASE: `?code=...&sb=1` → exchangeCodeForSession → POST /api/auth/supabase/oauth):
-//   1. DIRECT flow (own Google Cloud project): `?code=...` query param → POST /api/auth/google/callback
-//   2. EMERGENT flow (legacy fallback): `#session_id=...` URL fragment → POST /api/auth/google/session
-// The button in Auth.jsx picks the flow at redirect-time based on REACT_APP_GOOGLE_CLIENT_ID.
+// AuthCallback - handles TWO Google OAuth flows:
+//   1. SUPABASE flow: `?code=...&sb=1` → exchangeCodeForSession → POST /api/auth/supabase/oauth
+//   2. DIRECT flow (own Google Cloud project): `?code=...` query param → POST /api/auth/google/callback
+// The button in Auth.jsx picks the flow (REACT_APP_SUPABASE_GOOGLE, else REACT_APP_GOOGLE_CLIENT_ID).
 // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS BEYOND WHAT'S BELOW.
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -23,12 +23,10 @@ export const AuthCallback = () => {
     processed.current = true;
 
     // ---- Flow detection ----
-    // 1) Direct Google OAuth returns `?code=...` (+ optionally `?state=...`).
-    // 2) Emergent-managed OAuth returns `#session_id=...` in the URL fragment.
+    // Supabase (`?code=...&sb=1`) and direct Google OAuth (`?code=...`) both return a code.
     const search = new URLSearchParams(window.location.search);
     const oauthCode = search.get("code");
     const oauthError = search.get("error"); // e.g. access_denied when user cancels
-    const hashMatch = window.location.hash.match(/session_id=([^&]+)/);
 
     if (oauthError) {
       setError(`Google a returnat eroare: ${oauthError}. Încearcă din nou.`);
@@ -84,48 +82,7 @@ export const AuthCallback = () => {
       return;
     }
 
-    if (hashMatch) {
-      // ============ EMERGENT fallback flow ============
-      setFlowLabel("emergent");
-      const sessionId = hashMatch[1];
-      (async () => {
-        try {
-          const { data } = await axios.post(
-            `${API}/auth/google/session`,
-            {},
-            { headers: { "X-Session-ID": sessionId }, withCredentials: true }
-          );
-          window.history.replaceState(null, "", window.location.pathname);
-          const me = await refreshUser();
-          if (!me) {
-            setError("Autentificarea Google a reușit dar cookie-ul a fost blocat. Activează cookies pentru propmanage.ro și încearcă din nou.");
-            return;
-          }
-          navigate(`/${data.role || "client"}`, { replace: true });
-        } catch (e) {
-          const status = e?.response?.status;
-          const hasDetail = !!e?.response?.data?.detail;
-          let detail = e?.response?.data?.detail || e.message || "Autentificare eșuată";
-          const isGatewayErr = status && !hasDetail && (status === 502 || status === 504 || (status >= 520 && status <= 524));
-          if (isGatewayErr) {
-            detail = `Serverul Emergent OAuth (upstream) e momentan inaccesibil sau prea lent (HTTP ${status} — ${status === 502 ? "Bad Gateway" : status === 504 ? "Gateway Timeout" : "Cloudflare origin empty"}). ` +
-              "Încearcă din nou peste 30s-1min, sau folosește email + parolă mai jos.";
-            axios.post(`${API}/auth/health-beacon`, {
-              status_code: status,
-              where: "auth_callback",
-              note: (e.message || "").slice(0, 200),
-            }).catch(() => {});
-          } else if (status === 503 && hasDetail) {
-            detail = e.response.data.detail;
-          }
-          setError(`[${status || "network"}] ${detail}`);
-          console.error("[GoogleOAuth emergent] Failed:", status, detail, e);
-        }
-      })();
-      return;
-    }
-
-    // Neither `code` nor `session_id` present → nothing to do
+    // No `code` present → nothing to do
     navigate("/login");
   }, [navigate, refreshUser]);
 

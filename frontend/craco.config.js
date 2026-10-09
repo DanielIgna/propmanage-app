@@ -81,25 +81,4 @@ webpackConfig.devServer = (devServerConfig) => {
   return devServerConfig;
 };
 
-// Wrap with visual edits (automatically adds babel plugin, dev server, and overlay in dev mode)
-// DISABLED for now: the babel plugin injects `x-line-number` JSX attributes on all
-// lowercase elements, which crashes React Three Fiber's applyProps reconciler.
-// Re-enable selectively when an upstream fix is available. Production builds are
-// unaffected (this wrapper only applies when isDevServer === true anyway).
-const VISUAL_EDITS_ENABLED = false;
-if (isDevServer && VISUAL_EDITS_ENABLED) {
-  try {
-    const { withVisualEdits } = require("@emergentbase/visual-edits/craco");
-    webpackConfig = withVisualEdits(webpackConfig);
-  } catch (err) {
-    if (err.code === 'MODULE_NOT_FOUND' && err.message.includes('@emergentbase/visual-edits/craco')) {
-      console.warn(
-        "[visual-edits] @emergentbase/visual-edits not installed — visual editing disabled."
-      );
-    } else {
-      throw err;
-    }
-  }
-}
-
 module.exports = webpackConfig;

@@ -50,7 +50,7 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import db as _db_mod  # noqa: E402 — honours DB_BACKEND
+import db as _db_mod  # noqa: E402
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from routes.impersonation import DEMO_IMPERSONATION_ACCOUNTS  # noqa: E402

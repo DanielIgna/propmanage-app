@@ -171,8 +171,7 @@ export const LoginPage = () => {
                 });
                 window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
               } else {
-                // Fallback: Emergent-managed OAuth (legacy — used if own credentials missing)
-                window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUri)}`;
+                alert("Autentificarea cu Google nu este configurată momentan. Folosește email și parolă.");
               }
             }}
             className="w-full flex items-center justify-center gap-3 bg-white text-black py-3 rounded-xl text-sm font-medium hover:bg-stone-100 transition"
