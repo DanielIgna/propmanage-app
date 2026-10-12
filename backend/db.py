@@ -8,10 +8,12 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from media_store import externalize_doc
 from pgmongo import PgDatabase
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 db = PgDatabase(os.environ['SUPABASE_DB_URL'], schema=os.environ.get('PG_SCHEMA', 'app'))
+db.before_write = externalize_doc  # base64 media -> Storage links (media_store.MEDIA_FIELDS)
 client = db.client

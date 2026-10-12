@@ -167,6 +167,8 @@ from routes.building_identity import router as building_identity_router
 from routes.launch_sentinel import router as launch_sentinel_router
 from routes.prop_benefits import user_router as prop_benefits_user_router, admin_router as prop_benefits_admin_router
 from routes.storage import user_router as storage_user_router, admin_router as storage_admin_router
+from routes.scheduler_admin import admin_router as scheduler_admin_router
+from routes.media import router as media_router
 from routes.copilot import router as copilot_router
 from routes.journey import router as journey_router, fairprice_router as journey_fairprice_router
 from routes.engagement import router as engagement_router
@@ -353,6 +355,8 @@ ALL_ROUTERS = (
     prop_benefits_admin_router,
     storage_user_router,
     storage_admin_router,
+    scheduler_admin_router,
+    media_router,
     copilot_router,
     journey_router,
     journey_fairprice_router,

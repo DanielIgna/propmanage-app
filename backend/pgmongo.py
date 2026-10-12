@@ -16,6 +16,7 @@ import asyncio
 import logging
 import re
 import time
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 import asyncpg
@@ -24,6 +25,7 @@ from bson import ObjectId, json_util
 from bson.json_util import JSONMode, JSONOptions
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
+from pymongo.results import DeleteResult
 
 log = logging.getLogger("propmanage.pgmongo")
 RELAXED = JSONOptions(json_mode=JSONMode.RELAXED)
@@ -106,6 +108,13 @@ def _range(sql: _Sql, key: str, op: str, value: Any) -> Optional[str]:
         elem = f"(jsonb_typeof(e) = 'number' and (e #>> '{{}}')::numeric {sym} {v}::text::numeric)"
         scalar = f"((({f}) #>> '{{}}')::numeric {sym} {v}::text::numeric)"
         kind = "number"
+    elif isinstance(value, datetime):  # stored as {"$date": "<ISO>"}; BSON keeps millisecond precision
+        value = value.astimezone(timezone.utc) if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        v = sql.p(value.replace(microsecond=value.microsecond // 1000 * 1000)) + "::timestamptz"
+        elem = (f"(jsonb_typeof(e->'$date') = 'string' and (e->>'$date')::timestamptz {sym} {v})")
+        scalar = (f"(case jsonb_typeof(({f})->'$date') when 'string' "
+                  f"then (({f})->>'$date')::timestamptz {sym} {v} else false end)")
+        kind = "object"
     else:
         return None
     return (f"(case jsonb_typeof({f}) when '{kind}' then {scalar} "
@@ -260,6 +269,20 @@ def _find_fields(flt, projection, sort) -> Optional[set]:
         return None
     out |= {_top(k) for k, _ in (sort or [])}
     return out
+
+
+def _drop_fields(flt, projection, sort) -> Optional[set]:
+    """Top-level keys an exclusion projection removes and nothing else reads: dropped in SQL."""
+    if not isinstance(projection, dict) or not projection:
+        return None
+    drop = {k for k, v in projection.items() if k != "_id" and v in (0, False) and _top_key(k)}
+    if not drop or any(v not in (0, False) for k, v in projection.items() if k != "_id"):
+        return None
+    used: set = set()
+    if not _filter_fields(flt or {}, used):
+        return None
+    drop -= used | {_top(k) for k, _ in (sort or [])}
+    return drop or None
 
 
 _FULL_DOC_STAGES = {"$unset", "$geoNear", "$replaceWith", "$merge", "$out", "$graphLookup",
@@ -429,7 +452,7 @@ class PgCollection:
 
     # ---- reads
     async def _select(self, conn, flt, *, sort=None, skip=0, limit=0, lock=False,
-                      fields: Optional[set] = None) -> tuple[list[dict], bool]:
+                      fields: Optional[set] = None, drop: Optional[set] = None) -> tuple[list[dict], bool]:
         """Return (candidate docs, pushed_down). pushed_down=True means skip/limit/sort were applied in SQL."""
         if not await self.database._exists(self.name, conn):
             return [], False
@@ -448,6 +471,8 @@ class PgCollection:
         if fields:
             col = (f"(select coalesce(jsonb_object_agg(e.key, e.value), '{{}}'::jsonb) from jsonb_each(data) e "
                    f"where e.key = any({sql.p(sorted(fields))}::text[]))::text")
+        elif drop:
+            col = f"(data - {sql.p(sorted(drop))}::text[])::text"
         else:
             col = "data::text"
         q = f"select {col} from {self._t} where {where} order by {order}{tail}"
@@ -475,7 +500,8 @@ class PgCollection:
     async def _find_docs(self, flt, projection, sort, skip, limit) -> list:
         async with self.database._conn() as conn:
             docs, pushed = await self._select(conn, flt, sort=sort, skip=skip, limit=limit,
-                                              fields=_find_fields(flt, projection, sort))
+                                              fields=_find_fields(flt, projection, sort),
+                                              drop=_drop_fields(flt, projection, sort))
         cur = _scratch(self.name, docs).find(flt or {}, projection)
         if sort:
             cur = cur.sort(sort)
@@ -556,11 +582,22 @@ class PgCollection:
                 await self._persist(conn, before, list(scratch.find({})))
                 return result
 
+    async def _prepare(self, doc: dict) -> dict:
+        """Apply the database's before_write hook (e.g. move base64 media to Storage); never mutates `doc`."""
+        hook = self.database.before_write
+        if hook is None:
+            return doc
+        out = await hook(self.name, doc)
+        return doc if out is None else out
+
     async def _persist(self, conn, before: dict, after_docs: list):
         after = {_id_key(d["_id"]): d for d in after_docs}
         ups, ins = [], []
         for k, d in after.items():
             enc = _enc(d)
+            if before.get(k) != enc:
+                d = await self._prepare(d)
+                enc = _enc(d)
             if k not in before:
                 ins.append((k, enc, d["_id"].generation_time if isinstance(d["_id"], ObjectId) else None))
             elif before[k] != enc:
@@ -586,9 +623,10 @@ class PgCollection:
     async def insert_one(self, document, *_a, **_kw):
         document.setdefault("_id", ObjectId())
         _id = document["_id"]
+        stored = await self._prepare(document)
         async with self.database._conn() as conn:
             await self.database._ensure(self.name, conn)
-            await self._insert_rows(conn, [(_id_key(_id), _enc(document),
+            await self._insert_rows(conn, [(_id_key(_id), _enc(stored),
                                             _id.generation_time if isinstance(_id, ObjectId) else None)])
         return _Results.InsertOne(_id)
 
@@ -596,8 +634,8 @@ class PgCollection:
         docs = list(documents)
         for d in docs:
             d.setdefault("_id", ObjectId())
-        rows = [(_id_key(d["_id"]), _enc(d), d["_id"].generation_time if isinstance(d["_id"], ObjectId) else None)
-                for d in docs]
+        rows = [(_id_key(d["_id"]), _enc(await self._prepare(d)),
+                 d["_id"].generation_time if isinstance(d["_id"], ObjectId) else None) for d in docs]
         async with self.database._conn() as conn:
             await self.database._ensure(self.name, conn)
             if ordered:
@@ -626,6 +664,14 @@ class PgCollection:
         return await self._write(filter, lambda c: c.delete_one(filter))
 
     async def delete_many(self, filter, **_kw):
+        sql = _Sql()
+        where, exact = _where(sql, filter)
+        if exact:  # whole filter is SQL: delete without loading the documents
+            async with self.database._conn() as conn:
+                if not await self.database._exists(self.name, conn):
+                    return DeleteResult({"n": 0}, acknowledged=True)
+                status = await conn.execute(f"delete from {self._t} where {where}", *sql.params)
+            return DeleteResult({"n": int(status.split()[-1])}, acknowledged=True)
         return await self._write(filter, lambda c: c.delete_many(filter))
 
     async def find_one_and_update(self, filter, update, projection=None, sort=None, upsert=False,
@@ -761,6 +807,7 @@ class PgDatabase:
         if not _NAME_RE.match(schema):
             raise ValueError(f"invalid schema name {schema!r}")
         self._dsn, self.schema, self.name, self._max = dsn, schema, schema, max_size
+        self.before_write = None  # optional async hook(collection, doc) -> new doc | None, run on every write
         self._pool: Optional[asyncpg.Pool] = None
         self._loop = None
         self._lock: Optional[asyncio.Lock] = None

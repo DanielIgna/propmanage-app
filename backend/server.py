@@ -299,8 +299,10 @@ async def startup():
         logger.warning(f"Legal docs seed failed: {e}")
     # SEO — scrie sitemap.xml la rădăcina domeniului (frontend/public/sitemap.xml)
     try:
-        from routes.public import write_sitemap_file
-        await write_sitemap_file()
+        from job_control import scheduler_enabled
+        if scheduler_enabled():  # local runs must not rewrite frontend/public/sitemap*.xml from prod data
+            from routes.public import write_sitemap_file
+            await write_sitemap_file()
     except Exception as e:
         logger.warning(f"Sitemap file generation failed: {e}")
     if not scheduler.running:
@@ -909,7 +911,17 @@ async def startup():
             CronTrigger(hour=7, minute=20, timezone=pytz.timezone("Europe/Bucharest")),
             id="learning_outcomes_daily", replace_existing=True, misfire_grace_time=3600,
         )
-        scheduler.start()
+        # Runs only on Railway (or SCHEDULER_ENABLED=true); profile + overrides from /admin/scheduler.
+        from job_control import apply_job_settings, attach_history, scheduler_enabled
+        if scheduler_enabled():
+            scheduler.start()
+            attach_history(scheduler)
+            try:
+                await apply_job_settings(scheduler)
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"Scheduler settings apply failed: {e}")
+        else:
+            logger.info("Scheduler NOT started (local). Set SCHEDULER_ENABLED=true to run cron jobs.")
         # Felia 1 (Sprint 1): jurnalul central al agenților — toate execuțiile cron în agent_runs
         try:
             import asyncio as _asyncio
@@ -919,7 +931,8 @@ async def startup():
             logger.warning(f"Agent journal attach failed: {e}")
         # Record an immediate ping on startup so sparkline is non-empty from minute 1.
         try:
-            await record_health_ping()
+            if scheduler.running:
+                await record_health_ping()
         except Exception:  # noqa: BLE001
             pass
         logger.info("Daily digest scheduler started (19:00 Europe/Bucharest).")

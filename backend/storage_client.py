@@ -55,3 +55,9 @@ def put_object(path: str, data: bytes, content_type: str) -> dict:
 
 def get_object(path: str):
     return _sb_get(path)
+
+
+def delete_object(path: str) -> None:
+    resp = requests.delete(_sb_url(path), headers=_sb_headers(), timeout=60)
+    if resp.status_code not in (200, 204, 404):
+        resp.raise_for_status()

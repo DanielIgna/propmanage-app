@@ -9,15 +9,19 @@ from db import db
 from core_utils import JWT_SECRET, JWT_ALGORITHM, serialize_doc
 
 
+# Heavy base64 fields, read on every request otherwise; /auth/me and the document routes re-read them.
+_USER_HEAVY = {"avatar": 0, "documents": 0}
+
+
 async def _user_from_token(token: str) -> tuple[Optional[dict], Optional[dict]]:
     """Resolve a token to (mongo_user, legacy_payload). Supabase JWTs first, then legacy HS256."""
     claims = supabase_auth.verify_token(token)
     if claims:
-        return await db.users.find_one({"supabase_id": claims["sub"]}), None
+        return await db.users.find_one({"supabase_id": claims["sub"]}, _USER_HEAVY), None
     payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     if payload.get("type") != "access":
         raise jwt.InvalidTokenError("Invalid token type")
-    return await db.users.find_one({"_id": ObjectId(payload["sub"])}), payload
+    return await db.users.find_one({"_id": ObjectId(payload["sub"])}, _USER_HEAVY), payload
 
 
 async def get_current_user(request: Request) -> dict:

@@ -73,7 +73,7 @@ def _serialize_campaign(d: dict, include_images: bool = False) -> dict:
     if include_images:
         # base64 data URIs — never log this
         out["images"] = [
-            {"idx": i, "data_uri": f"data:{img.get('mime_type', 'image/png')};base64,{img.get('data')}"}
+            {"idx": i, "data_uri": img.get("url") or f"data:{img.get('mime_type', 'image/png')};base64,{img.get('data')}"}
             for i, img in enumerate(d.get("images") or [])
         ]
     return out

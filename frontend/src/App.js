@@ -46,6 +46,7 @@ import { LandingDemo3D } from "./components/LandingDemo3D";
 import { BuildingDiscovery } from "./components/BuildingDiscovery";
 const PublicDemoPage = lazy(() => import("./views/PublicDemoPage").then(m => ({ default: m.PublicDemoPage })));
 const AdminAuthHealthPage = lazy(() => import("./views/admin/AdminAuthHealthPage").then(m => ({ default: m.AdminAuthHealthPage })));
+const SchedulerJobsPage = lazy(() => import("./views/admin/SchedulerJobsPage").then(m => ({ default: m.SchedulerJobsPage })));
 const ResearchCoveragePage = lazy(() => import("./views/admin/ResearchCoveragePage"));
 const AcquisitionPage = lazy(() => import("./views/AcquisitionPage"));
 const AdminSupportInboxPage = lazy(() => import("./views/admin/AdminSupportInboxPage").then(m => ({ default: m.AdminSupportInboxPage })));
@@ -386,6 +387,7 @@ function App() {
               <Route path="/specialist" element={<SpecialistDashboard />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/auth-health" element={<AdminAuthHealthPage />} />
+              <Route path="/admin/scheduler" element={<SchedulerJobsPage />} />
               <Route path="/admin/research-coverage" element={<ResearchCoveragePage />} />
               <Route path="/admin/support-inbox" element={<AdminSupportInboxPage />} />
               <Route path="/operator" element={<OperatorDashboard />} />
