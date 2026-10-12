@@ -8,7 +8,6 @@ description: Core rules, architecture map and resource IDs for the PropManage pr
 ## Reguli
 - Română, scurt: ce s-a schimbat, ce s-a testat, ce rămâne. Nu pomeni site-ul live decât dacă ești întrebat.
 - Fără commit/push/deploy fără să întrebi.
-- `DanielIgna/propmanage-online` = DOAR CITIRE (impus și de hook-ul `.claude/hooks/guard.py`). Scrie doar în `DanielIgna/propmanage-app`.
 
 ## Economie de tokeni
 - Nu re-explora: harta și ID-urile de aici sunt sursa de adevăr; citește doar fișierele pe care le modifici.
