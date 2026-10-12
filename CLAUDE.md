@@ -4,4 +4,4 @@
 - **Nu face commit / push / deploy fără să întrebi.**
 - **`DanielIgna/propmanage-online` (GitHub) e DOAR CITIRE** — codul vechi Mongo + Emergent din producție rămâne neatins. Lucrul nou merge doar în `DanielIgna/propmanage-app` (remote-ul `origin` al acestui folder, deși folderul se numește `propmanage-online`).
 - Nu pomeni site-ul live (propmanage.ro / Emergent) decât dacă ești întrebat.
-- Pentru orice task pe cod: **încarcă skill-ul `propmanage`** (`.claude/skills/propmanage/SKILL.md`) — arhitectură, ID-uri, comenzi, verificare și reguli de economie de tokeni. Nu re-explora ce e deja descris acolo.
+- Pentru orice task pe cod: încarcă skill-ul `propmanage` (reguli, hartă, ID-uri, economie de tokeni); doar la nevoie `propmanage-ssr`, `propmanage-db`, `propmanage-deploy`. Nu re-explora ce e descris acolo.
