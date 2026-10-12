@@ -30,4 +30,4 @@ description: Core rules, architecture map and resource IDs for the PropManage pr
 - Supabase `nvkcxcquksdtodgikznc` (eu-west-1): schema `app`, bucket `propmanage-files`.
 - Railway: proiect `dcd46bb6-3cb7-4269-af0a-439fcbbf138f`, serviciu `9b2b3bff-4e08-4c10-bd58-b6d265e75a1c`, env `c0303ffe-040b-4684-93fe-8f7db568e4e3`, URL `https://backend-production-e5b7d.up.railway.app`.
 - Cloudflare: worker `propmanage-app` → `https://propmanage-app.danieligna1.workers.dev`.
-- Local: backend `cd backend && ./venv/bin/uvicorn server:app --port 8001`; frontend `cd frontend && yarn dev` (3000). Conturi demo: `backend/seed.py` (doar local). Mongo local oprit.
+- Local: backend `cd backend && ./venv/bin/python -m uvicorn server:app --port 8001`; frontend `cd frontend && yarn dev` (3000). Conturi demo: `backend/seed.py` (doar local). Mongo local oprit.
