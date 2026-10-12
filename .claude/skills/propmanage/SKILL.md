@@ -9,6 +9,7 @@ description: Use for ANY change in the PropManage project (Next.js frontend on C
 - Română, scurt, la subiect. Doar: ce s-a schimbat, ce s-a testat, ce rămâne.
 - Fără recapitulări lungi. Nu pomeni site-ul live (propmanage.ro / Emergent) decât dacă utilizatorul întreabă.
 - NU face `git commit`/`push`/deploy fără să întrebi întâi.
+- **`DanielIgna/propmanage-online` (GitHub) e DOAR CITIRE**: codul vechi Mongo + Emergent din producție rămâne exact cum e. Nu adăuga remote, nu face push/branch/PR, nu lega Railway/Cloudflare/Supabase de el, nu schimba DNS-ul propmanage.ro. Lucrul nou merge doar în `DanielIgna/propmanage-app` (remote-ul `origin` al acestui folder — numele folderului e înșelător). Funcționalități din propmanage-online se portează citind de acolo și scriind doar aici.
 
 ## Arhitectură
 - **Frontend** `frontend/` — Next.js 16.3 (App Router) + React 19, Yarn 1.22. Dev: `cd frontend && yarn dev` (port 3000; `/api` și `/uploads` → `BACKEND_URL` prin `rewrites`, implicit `localhost:8001`).
