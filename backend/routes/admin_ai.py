@@ -11,6 +11,7 @@ Design goals:
 - All actions logged to admin_audit_log
 - Memory persists across sessions and admin restarts
 """
+import asyncio
 import os
 import uuid
 import logging
@@ -332,6 +333,30 @@ async def trigger_scan(user: dict = Depends(require_role("admin"))):
     return summary
 
 
+_SCAN_MAX_AGE = timedelta(minutes=10)
+_scan_lock = asyncio.Lock()
+
+
+async def _ensure_fresh_scan() -> None:
+    """Findings reflect live data: rescan on view when the last scan is older than _SCAN_MAX_AGE
+    (the daily cron may be paused by the scheduler profile). One scan at a time."""
+    async def stale() -> bool:
+        last = await db.admin_ai_scans.find_one({}, {"started_at": 1}, sort=[("started_at", -1)])
+        try:
+            when = datetime.fromisoformat(last["started_at"]) if last else None
+        except (TypeError, ValueError):
+            when = None
+        return not when or datetime.now(timezone.utc) - when > _SCAN_MAX_AGE
+    if not await stale():
+        return
+    async with _scan_lock:
+        if await stale():
+            try:
+                await run_full_scan(actor_id="auto_on_view")
+            except Exception as e:  # noqa: BLE001 — listing must still work
+                logger.warning(f"[AI-Scan] auto scan failed: {e}")
+
+
 @router.get("/findings")
 async def list_findings(
     status: Optional[str] = Query("open"),
@@ -340,7 +365,8 @@ async def list_findings(
     limit: int = Query(100, le=500),
     user: dict = Depends(require_role("admin")),
 ):
-    """List findings with optional filters."""
+    """List findings with optional filters (rescans first if the last scan is stale)."""
+    await _ensure_fresh_scan()
     filt = {}
     if status and status != "all":
         filt["status"] = status
