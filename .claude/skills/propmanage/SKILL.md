@@ -20,7 +20,7 @@ description: Use for ANY change in the PropManage project (Next.js frontend on C
   - Variabile publice: `NEXT_PUBLIC_*` (`NEXT_PUBLIC_BACKEND_URL` gol = same-origin).
   - Deploy: Cloudflare Workers prin OpenNext — `cd frontend && BACKEND_URL=<railway> yarn deploy` (worker `propmanage-app`, https://propmanage-app.danieligna1.workers.dev). Test local runtime Workers: `npx opennextjs-cloudflare build && npx opennextjs-cloudflare preview`.
   - Next fixat la 16.3.x până OpenNext suportă 16.4 (eroare `preview-props.json`).
-- **Backend** `backend/` — FastAPI. Local: `./venv/bin/uvicorn server:app --port 8001`. Railway (proiect `propmanage`, serviciu `backend`, EU West): `backend/Dockerfile`, build din rădăcina repo-ului (include `memory/` + `docs/` pentru Knowledge Center), redeploy doar la schimbări în `backend/`, `memory/`, `docs/`.
+- **Backend** `backend/` — FastAPI. Local: `./venv/bin/uvicorn server:app --port 8001`. Railway (vezi ID-uri mai jos): `backend/Dockerfile`, build din rădăcina repo-ului (include `memory/` + `docs/` pentru Knowledge Center).
 - **Supabase** (proiect `propmanage`, ref `nvkcxcquksdtodgikznc`):
   - Date: schema `app` (NU expusă în Data API), o tabelă JSONB per colecție. Codul folosește API-ul Motor/Mongo prin `backend/pgmongo.py` (SQL prefiltrează, mongomock aplică semantica Mongo). `db.py` = doar Postgres (`SUPABASE_DB_URL`, `PG_SCHEMA`).
   - Colecție nouă → creată automat la primul insert; indexuri unice prin `create_index(..., unique=True)`.
@@ -29,6 +29,22 @@ description: Use for ANY change in the PropManage project (Next.js frontend on C
   - Migrări SQL în `supabase/migrations/`. Orice tabel nou în `public`: RLS + politici explicite. Cheia secretă NICIODATĂ în frontend.
 - **AI / plăți**: `llm_chat.py` (Anthropic `ANTHROPIC_API_KEY`, Gemini `GEMINI_API_KEY` pentru imagini), `stripe_checkout.py` (SDK oficial; webhook cere `STRIPE_WEBHOOK_SECRET`).
 - **Securitate**: CORS/CSRF doar `propmanage.ro/.io`, localhost și originile exacte din `CORS_ORIGINS` (fără `*.workers.dev`/`*.pages.dev`).
+
+## Economie de tokeni (obligatoriu)
+- **Nu re-explora**: arhitectura, ID-urile și comenzile de mai jos sunt sursa de adevăr; citește doar fișierele pe care le modifici.
+- Caută țintit (`grep -n`, `rg -l`, `sed -n 'a,bp'`); nu `cat` fișiere mari (`App.js`, `routes/*.py` au mii de linii), nu liste lungi de `ls`.
+- Limitează ieșirile: `| head`, `| tail -n 20`, `--stat`, `-q`; nu afișa loguri complete de build/test — doar erorile (`grep -E "error|Error|FAIL"`).
+- Nu rula suita completă de teste sau build-uri lungi fără motiv; rulează doar testul/pagina afectată. Build OpenNext + preview doar înainte de deploy.
+- Fără verificări repetate ale aceluiași lucru, fără polling des (Railway build ≈ 3–5 min, verifică o dată la final).
+- Lucru independent → apeluri de tool-uri în paralel; răspunsuri finale scurte (tabel mic sau 3–6 bullet-uri).
+- Nu porni sub-agenți și nu încărca skill-uri/documentație externă dacă informația e deja aici.
+
+## ID-uri și resurse (nu le mai căuta)
+- GitHub: `DanielIgna/propmanage-app` — `main` (sursa de deploy), branch de lucru `3D`. Read-only: `DanielIgna/propmanage-online`.
+- Supabase: proiect `nvkcxcquksdtodgikznc` (eu-west-1), schema date `app`, bucket `propmanage-files`.
+- Railway: proiect `dcd46bb6-3cb7-4269-af0a-439fcbbf138f`, serviciu `backend` `9b2b3bff-4e08-4c10-bd58-b6d265e75a1c`, env `production` `c0303ffe-040b-4684-93fe-8f7db568e4e3`; URL `https://backend-production-e5b7d.up.railway.app`; deploy automat din `main` (doar la schimbări în `backend/`, `memory/`, `docs/`).
+- Cloudflare: worker `propmanage-app` → `https://propmanage-app.danieligna1.workers.dev` (deploy manual: `cd frontend && BACKEND_URL=https://backend-production-e5b7d.up.railway.app yarn deploy`).
+- Local: backend `cd backend && ./venv/bin/uvicorn server:app --port 8001`; frontend `cd frontend && yarn dev` (port 3000). Mongo local e oprit (nu mai e folosit).
 
 ## Verificare după modificări
 1. Backend: `./venv/bin/python -c "import server"` + request real pe 8001.
