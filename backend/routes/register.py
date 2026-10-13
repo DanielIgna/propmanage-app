@@ -186,6 +186,7 @@ from routes.growth_intelligence import router as growth_intelligence_router
 from routes.lead_intelligence import router as lead_intelligence_router
 from routes.marketing_intelligence import router as marketing_intelligence_router
 from routes.learning import router as learning_router
+from routes.radacini import router as radacini_router
 
 # Registration order matters — kept identical to the original server.py loop.
 ALL_ROUTERS = (
@@ -376,4 +377,5 @@ ALL_ROUTERS = (
     ceo_briefing_router,
     evolution_council_router,
     ux_lab_router,
+    radacini_router,
 )

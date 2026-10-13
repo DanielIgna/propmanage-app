@@ -17,6 +17,7 @@ import { DesignTokensProvider } from "./contexts/DesignTokensProvider";
 import { useABTest } from "./ab";
 import { LoginPage, RegisterPage } from "./views/Auth";
 import { EmailVerifyPage } from "./views/EmailVerifyPage";
+import { radaciniRoutes } from "./apps/radacini/routes";
 const ClientRequestOffersPage = lazy(() => import("./views/ClientRequestOffersPage").then(m => ({ default: m.ClientRequestOffersPage })));
 const PremiumProfileEditorPage = lazy(() => import("./views/PremiumProfileEditorPage").then(m => ({ default: m.PremiumProfileEditorPage })));
 import { CookieBanner } from "./components/CookieBanner";
@@ -393,6 +394,7 @@ function App() {
               <Route path="/operator" element={<OperatorDashboard />} />
               <Route path="/projects/:id" element={<ProjectWorkspace />} />
               <Route path="/payment-success" element={<PaymentSuccess />} />
+              {radaciniRoutes()}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
               </Suspense>
