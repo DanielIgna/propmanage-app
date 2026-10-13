@@ -3,6 +3,7 @@
 Fără plăți: platforma doar consemnează cine primește ce cantitate din recoltă.
 """
 import logging
+import math
 from datetime import date as _Date  # câmpul `date` umbrește tipul în modelele pydantic
 from typing import Optional
 
@@ -12,6 +13,7 @@ from pydantic import BaseModel, field_validator
 
 from .bridge import db, emit, get_current_user, serialize_doc
 from .common import RadaciniRoute, mark_demo, now_iso, oid_or_404, safe_notify
+from .constants import MAX_HARVEST_KG
 from .crops import resolve_crop
 from .projects import (
     ensure_active,
@@ -25,8 +27,8 @@ from .projects import (
 log = logging.getLogger(__name__)
 router = APIRouter(route_class=RadaciniRoute)
 
-MAX_HARVEST_KG = 1_000_000
 EPS = 1e-6
+LIST_CAP = 2000
 
 
 def harvest_link(project_id) -> str:
@@ -35,6 +37,27 @@ def harvest_link(project_id) -> str:
 
 def _qty(v: float) -> float:
     return round(float(v), 3)
+
+
+def _checked_qty(v: float, message: str) -> float:
+    """Cantitate finită, rotunjită la 0,001 și validată DUPĂ rotunjire (0,0004 devine 0 → respinsă)."""
+    if not math.isfinite(v):
+        raise ValueError(message)
+    r = _qty(v)
+    if not 0 < r <= MAX_HARVEST_KG:
+        raise ValueError(message)
+    return r
+
+
+def owner_share(quantity_kg: float, pct: float) -> float:
+    """Partea proprietarului: min(round(q * pct / 100, 1), q). La recolte foarte mici, unde rotunjirea la
+    0,1 kg ar da 0 deși procentul e > 0, se păstrează cantitatea exactă (rotunjită la 0,001)."""
+    q = _qty(quantity_kg)
+    raw = q * min(max(float(pct), 0.0), 100.0) / 100
+    share = min(round(raw, 1), q)
+    if share <= 0 < raw:
+        share = min(raw, q)
+    return _qty(share)
 
 
 # ----------------------------------------------------------------- scheme
@@ -61,9 +84,7 @@ class HarvestIn(BaseModel):
     @field_validator("quantity_kg")
     @classmethod
     def _quantity(cls, v: float) -> float:
-        if not 0 < v <= MAX_HARVEST_KG:
-            raise ValueError("Cantitatea recoltei trebuie să fie între 0 și 1 000 000 kg.")
-        return v
+        return _checked_qty(v, "Cantitatea recoltei trebuie să fie între 0,001 și 1 000 000 kg.")
 
     @field_validator("note")
     @classmethod
@@ -83,9 +104,7 @@ class AllocationIn(BaseModel):
     @field_validator("quantity_kg")
     @classmethod
     def _quantity(cls, v: float) -> float:
-        if not 0 < v <= MAX_HARVEST_KG:
-            raise ValueError("Cantitatea alocată trebuie să fie pozitivă.")
-        return v
+        return _checked_qty(v, "Cantitatea alocată trebuie să fie între 0,001 și 1 000 000 kg.")
 
 
 # ----------------------------------------------------------------- helpers
@@ -126,51 +145,88 @@ async def _agreement_percent(project: dict) -> int:
     agreement_id = project.get("agreement_id")
     if not agreement_id or len(str(agreement_id)) != 24 or not ObjectId.is_valid(str(agreement_id)):
         return 0
-    agreement = await db.radacini_agreements.find_one({"_id": ObjectId(str(agreement_id))})
+    agreement = await db.radacini_agreements.find_one(
+        {"_id": ObjectId(str(agreement_id))}, {"model": 1, "terms.harvest_share_percent": 1}
+    )
     if not agreement or agreement.get("model") != "harvest_share":
         return 0
     pct = (agreement.get("terms") or {}).get("harvest_share_percent") or 0
     return pct if isinstance(pct, (int, float)) and pct > 0 else 0
 
 
-async def _create_owner_allocation(harvest: dict, project: dict, actor: dict) -> Optional[dict]:
-    """Alocarea automată (`agreement_share`) a proprietarului. Idempotentă; erorile se loghează."""
+async def _alloc_rows(harvest_id: str, fields: Optional[dict] = None) -> list[dict]:
+    return await db.radacini_allocations.find({"harvest_id": harvest_id}, fields).limit(LIST_CAP).to_list(LIST_CAP)
+
+
+async def _ensure_owner_allocation(
+    harvest: dict, project: dict, actor: dict, existing: Optional[list[dict]] = None
+) -> Optional[dict]:
+    """Garantează alocarea automată (`agreement_share`) a proprietarului pe o recoltă confirmată.
+
+    Idempotentă și sigură la concurență: inserarea e un upsert pe (harvest_id, basis), pe care pgmongo îl
+    serializează cu un lock advisory (o singură alocare, oricâte apeluri paralele). După inserare creștem
+    `rev`-ul recoltei, ca orice alocare manuală care a citit un `rev` mai vechi să eșueze la CAS (409).
+    Alocările manuale apelează întâi această funcție, deci suma lor o include mereu pe cea a proprietarului.
+    Întoarce documentul creat sau None (nimic de făcut). Nu înghite erorile: apelanții decid."""
+    if harvest.get("status") != "confirmed":
+        return None
+    hid = str(harvest["_id"])
+    owner = _owner(project)
+    if not owner:
+        return None
+    rows = existing if existing is not None else await _alloc_rows(hid, {"basis": 1, "quantity_kg": 1})
+    if any(a.get("basis") == "agreement_share" for a in rows):
+        return None
+    pct = await _agreement_percent(project)
+    if pct <= 0:
+        return None
+    quantity = _qty(harvest["quantity_kg"])
+    qty = owner_share(quantity, pct)
+    # Date vechi: dacă alocări manuale există deja (alocarea automată a eșuat înainte), nu depășim recolta.
+    remaining = _qty(quantity - _allocated_sum(rows))
+    if qty > remaining + EPS:
+        log.warning("radacini: partea proprietarului (%s kg) redusă la %s kg pe recolta %s", qty, remaining, hid)
+        qty = max(remaining, 0.0)
+    if qty <= 0:
+        return None
+    doc = mark_demo({
+        "harvest_id": hid,
+        "project_id": harvest["project_id"],
+        "member_user_id": owner["user_id"],
+        "member_name": owner.get("name", ""),
+        "quantity_kg": qty,
+        "basis": "agreement_share",
+        "status": "allocated",
+        "created_by": str(actor.get("id", "")),
+        "created_at": now_iso(),
+    })
+    res = await db.radacini_allocations.update_one(
+        {"harvest_id": hid, "basis": "agreement_share"}, {"$setOnInsert": doc}, upsert=True
+    )
+    if res.upserted_id is None:  # creată între timp de un apel paralel
+        return None
+    doc["_id"] = res.upserted_id
+    await db.radacini_harvests.update_one({"_id": harvest["_id"]}, {"$inc": {"rev": 1}})
+    await safe_notify(
+        owner["user_id"],
+        "Parte din recoltă alocată",
+        f"Ți s-au alocat {qty} kg din recolta de {harvest['crop']} conform acordului.",
+        link=harvest_link(harvest["project_id"]),
+        type_="project",
+    )
+    await emit(
+        "radacini.allocation_created",
+        actor=actor,
+        payload={"project_id": harvest["project_id"], "harvest_id": hid, "allocation_id": str(doc["_id"]), "basis": "agreement_share"},
+    )
+    return doc
+
+
+async def _ensure_owner_allocation_quiet(harvest: dict, project: dict, actor: dict, existing: Optional[list[dict]] = None):
+    """Varianta pentru fluxuri care au deja efect persistat (confirmare, GET): eroarea se loghează,
+    iar alocarea se reface la următorul GET/POST pe alocările recoltei."""
     try:
-        hid = str(harvest["_id"])
-        owner = _owner(project)
-        pct = await _agreement_percent(project)
-        if not owner or pct <= 0:
-            return None
-        if await db.radacini_allocations.find_one({"harvest_id": hid, "basis": "agreement_share"}):
-            return None
-        qty = round(harvest["quantity_kg"] * pct / 100, 1)
-        if qty <= 0:
-            return None
-        doc = mark_demo({
-            "harvest_id": hid,
-            "project_id": harvest["project_id"],
-            "member_user_id": owner["user_id"],
-            "member_name": owner.get("name", ""),
-            "quantity_kg": qty,
-            "basis": "agreement_share",
-            "status": "allocated",
-            "created_by": str(actor.get("id", "")),
-            "created_at": now_iso(),
-        })
-        await db.radacini_allocations.insert_one(doc)
-        await safe_notify(
-            owner["user_id"],
-            "Parte din recoltă alocată",
-            f"Ți s-au alocat {qty} kg din recolta de {harvest['crop']} conform acordului.",
-            link=harvest_link(harvest["project_id"]),
-            type_="project",
-        )
-        await emit(
-            "radacini.allocation_created",
-            actor=actor,
-            payload={"project_id": harvest["project_id"], "harvest_id": hid, "allocation_id": str(doc["_id"]), "basis": "agreement_share"},
-        )
-        return doc
+        return await _ensure_owner_allocation(harvest, project, actor, existing)
     except Exception:  # noqa: BLE001
         log.exception("radacini: alocarea automată nu a putut fi creată pentru recolta %s", harvest.get("_id"))
         return None
@@ -182,9 +238,11 @@ async def _create_owner_allocation(harvest: dict, project: dict, actor: dict) ->
 async def list_harvests(project_id: str, user: dict = Depends(get_current_user)):
     project, _, _ = await load_project(project_id, user)
     pid = str(project["_id"])
-    docs = await db.radacini_harvests.find({"project_id": pid}).to_list(2000)
+    docs = await db.radacini_harvests.find({"project_id": pid}).limit(LIST_CAP).to_list(LIST_CAP)
     docs.sort(key=lambda h: (h.get("date") or "", h.get("created_at") or ""), reverse=True)
-    allocs = await db.radacini_allocations.find({"project_id": pid}).to_list(10000)
+    allocs = await db.radacini_allocations.find(
+        {"project_id": pid}, {"harvest_id": 1, "quantity_kg": 1}
+    ).limit(10000).to_list(10000)
     by_harvest: dict = {}
     for a in allocs:
         by_harvest.setdefault(a["harvest_id"], []).append(a)
@@ -251,7 +309,7 @@ async def create_harvest(project_id: str, body: HarvestIn, user: dict = Depends(
         payload={"project_id": pid, "harvest_id": str(doc["_id"]), "crop": crop, "quantity_kg": doc["quantity_kg"]},
     )
     if auto_confirm:
-        await _create_owner_allocation(doc, project, user)
+        await _ensure_owner_allocation_quiet(doc, project, user)
         await emit("radacini.harvest_confirmed", actor=user, payload={"project_id": pid, "harvest_id": str(doc["_id"])})
     elif owner:
         await safe_notify(
@@ -280,7 +338,7 @@ async def confirm_harvest(harvest_id: str, user: dict = Depends(get_current_user
     if res.modified_count != 1:
         raise HTTPException(409, "Recolta a fost deja confirmată.")
     harvest = {**harvest, "status": "confirmed", "confirmed_by": uid, "confirmed_at": now}
-    await _create_owner_allocation(harvest, project, user)
+    await _ensure_owner_allocation_quiet(harvest, project, user)
     if harvest.get("recorded_by") and harvest["recorded_by"] != uid:
         await safe_notify(
             harvest["recorded_by"],
@@ -294,7 +352,7 @@ async def confirm_harvest(harvest_id: str, user: dict = Depends(get_current_user
         actor=user,
         payload={"project_id": str(project["_id"]), "harvest_id": harvest_id},
     )
-    allocs = await db.radacini_allocations.find({"harvest_id": harvest_id}).to_list(2000)
+    allocs = await _alloc_rows(harvest_id, {"quantity_kg": 1})
     return {"harvest": _harvest_view(harvest, project, allocs)}
 
 
@@ -302,9 +360,14 @@ async def confirm_harvest(harvest_id: str, user: dict = Depends(get_current_user
 
 @router.get("/harvests/{harvest_id}/allocations")
 async def list_allocations(harvest_id: str, user: dict = Depends(get_current_user)):
-    harvest, _, access, _ = await _load_harvest(harvest_id, user)
+    harvest, project, access, _ = await _load_harvest(harvest_id, user)
     need_member(access)
-    docs = await db.radacini_allocations.find({"harvest_id": str(harvest["_id"])}).to_list(2000)
+    hid = str(harvest["_id"])
+    docs = await _alloc_rows(hid)
+    # Auto-reparare: recolta confirmată fără alocarea proprietarului (inserarea automată a eșuat înainte).
+    created = await _ensure_owner_allocation_quiet(harvest, project, user, docs)
+    if created is not None:
+        docs.append(created)
     docs.sort(key=lambda a: a.get("created_at") or "")
     allocated = _allocated_sum(docs)
     return {
@@ -326,8 +389,15 @@ async def create_allocation(harvest_id: str, body: AllocationIn, user: dict = De
     if not member_role(project, target):
         raise HTTPException(400, "Primitorul trebuie să fie membru al proiectului.")
     qty = _qty(body.quantity_kg)
+    if qty <= 0:
+        raise HTTPException(400, "Cantitatea alocată trebuie să fie pozitivă.")
     hid = str(harvest["_id"])
-    existing = await db.radacini_allocations.find({"harvest_id": hid}).to_list(2000)
+    # Ordinea contează pentru serializare: întâi `rev` (recolta încărcată mai sus), apoi alocările.
+    # Alocarea proprietarului trebuie să existe înainte de verificarea sumei (și se creează aici dacă lipsește).
+    existing = await _alloc_rows(hid, {"basis": 1, "quantity_kg": 1})
+    if await _ensure_owner_allocation(harvest, project, user, existing) is not None:
+        harvest = await db.radacini_harvests.find_one({"_id": harvest["_id"]}) or harvest
+        existing = await _alloc_rows(hid, {"basis": 1, "quantity_kg": 1})
     if _allocated_sum(existing) + qty > harvest["quantity_kg"] + EPS:
         raise HTTPException(400, "Cantitatea depășește recolta rămasă.")
     doc = mark_demo({
@@ -342,7 +412,8 @@ async def create_allocation(harvest_id: str, body: AllocationIn, user: dict = De
         "created_at": now_iso(),
     })
     # Serializare: inserăm, apoi creștem `rev` pe recoltă doar dacă nu s-a schimbat între timp.
-    # Dacă altcineva a alocat în paralel, `rev` nu mai corespunde → retragem alocarea și răspundem 409.
+    # Dacă altcineva a alocat în paralel (manual sau automat, ambele cresc `rev`), `rev` nu mai corespunde →
+    # retragem alocarea și răspundem 409.
     await db.radacini_allocations.insert_one(doc)
     rev = harvest.get("rev", 0)
     res = await db.radacini_harvests.update_one({"_id": harvest["_id"], "rev": rev}, {"$set": {"rev": rev + 1}})

@@ -52,6 +52,21 @@ export default function TerenurileMele() {
 
   const renderActions = (p) => {
     const disabled = busy === p.id;
+    // Cu acord activ terenul nu se mai editează, reia sau șterge (backend: 409).
+    if (p.active_agreement_id) {
+      return (
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to={`/radacini/acorduri/${p.active_agreement_id}`}
+            className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 hover:underline dark:bg-emerald-500/15 dark:text-emerald-300"
+            data-testid={`radacini-acord-activ-${p.id}`}
+          >
+            Acord activ
+          </Link>
+          <span className="text-xs text-slate-500 dark:text-slate-400">Terenul nu mai poate fi editat sau șters cât timp acordul este activ.</span>
+        </div>
+      );
+    }
     if (p.status === "pending_verification") {
       return <p className="text-xs text-slate-500 dark:text-slate-400">Terenul așteaptă verificarea operatorului. Nu mai poate fi editat până atunci.</p>;
     }
@@ -94,7 +109,8 @@ export default function TerenurileMele() {
             Reia
           </DSButton>
         )}
-        <DSButton          variant="ghost"
+        <DSButton
+          variant="ghost"
           icon={Trash2}
           disabled={disabled}
           onClick={() => remove(p)}

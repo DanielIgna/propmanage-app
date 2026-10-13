@@ -108,12 +108,8 @@ export const counterOf = (p, key) => p?.counts?.[key] ?? 0;
 export const optsOr = (fromMeta, fallback) =>
   Array.isArray(fromMeta) && fromMeta.length ? fromMeta.map((x) => ({ id: x.id, label: x.label })) : fallback;
 
-// Ziua de azi ca "YYYY-MM-DD" (ora locală), pentru input type=date.
-export const todayIso = () => {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
+// Ziua de azi ca "YYYY-MM-DD" în Europe/Bucharest (aceeași zi ca serverul), pentru input type=date.
+export const todayIso = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Bucharest" }).format(new Date());
 
 // Cereri încă active (negociabile); celelalte stări sunt finale.
 export const ACTIVE_REQUEST = ["sent", "viewed", "negotiating"];
@@ -187,8 +183,8 @@ export const Field = ({ label, hint, htmlFor, children }) => (
   </div>
 );
 
-export const SelectField = ({ id, value, onValueChange, options, placeholder, testid }) => (
-  <Select value={value} onValueChange={onValueChange}>
+export const SelectField = ({ id, value, onValueChange, options, placeholder, testid, disabled }) => (
+  <Select value={value} onValueChange={onValueChange} disabled={disabled}>
     <SelectTrigger id={id} className="w-full" data-testid={testid}>
       <SelectValue placeholder={placeholder} />
     </SelectTrigger>

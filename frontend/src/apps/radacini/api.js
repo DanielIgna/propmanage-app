@@ -115,8 +115,6 @@ export const radaciniApi = {
   pickedUpReservation: (id) => data(api.post(`/radacini/reservations/${id}/picked-up`)).then((d) => d?.reservation ?? d),
   noShowReservation: (id) => data(api.post(`/radacini/reservations/${id}/no-show`)).then((d) => d?.reservation ?? d),
   rateReservation: (id, body) => data(api.post(`/radacini/reservations/${id}/rate`, body)).then((d) => d?.reservation ?? d),
-  // {avg, count}
-  sellerRating: (userId) => data(api.get(`/radacini/sellers/${userId}/rating`)),
 };
 
 // Listele pot veni ca array sau învelite; acceptăm ambele forme.

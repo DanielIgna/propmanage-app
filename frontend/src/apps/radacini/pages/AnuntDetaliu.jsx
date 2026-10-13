@@ -9,7 +9,7 @@ import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
 import { useConfirm } from "../components/ConfirmDialog";
 import { radaciniApi, errMsg } from "../api";
-import { useMeta, useSellerRatings } from "../hooks";
+import { useMeta } from "../hooks";
 import {
   Field,
   LISTING_CATEGORIES_FALLBACK,
@@ -18,6 +18,7 @@ import {
   PICKUP_NOTICE,
   PageSkeleton,
   RESERVATION_MODES_FALLBACK,
+  ReservationBadge,
   SelectField,
   Stars,
   StatusBadge,
@@ -135,7 +136,7 @@ export default function AnuntDetaliu() {
   const [state, setState] = useState({ loading: true, listing: null, error: null });
   const [tick, setTick] = useState(0);
   const [reserveOpen, setReserveOpen] = useState(false);
-  const ratings = useSellerRatings([state.listing?.seller_user_id]);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -178,12 +179,13 @@ export default function AnuntDetaliu() {
   const isSeller = !!user && l.seller_user_id === user.id;
   const active = l.status === "active";
   const available = Number(l.quantity_available || 0);
-  const canReserve = !!user && !isSeller && active && available > 0;
+  const myReservation = l.my_reservation || null;
+  const canReserve = !!user && !isSeller && active && available > 0 && !myReservation;
   const unit = labelOf(optsOr(meta?.listing_units, LISTING_UNITS_FALLBACK), l.unit);
   const category = labelOf(optsOr(meta?.listing_categories, LISTING_CATEGORIES_FALLBACK), l.category);
   const price = fmtPrice(l.price_ron_per_unit, unit);
   const reference = fmtPrice(l.reference_price, unit);
-  const rating = ratings[l.seller_user_id];
+  const rating = l.seller_rating;
 
   const close = async () => {
     if (
@@ -195,12 +197,15 @@ export default function AnuntDetaliu() {
       }))
     )
       return;
+    setClosing(true);
     try {
       await radaciniApi.closeListing(l.id);
       toast.success("Anunțul a fost închis");
       refresh();
     } catch (e) {
       toast.error(errMsg(e, "Anunțul nu a putut fi închis"));
+    } finally {
+      setClosing(false);
     }
   };
 
@@ -283,15 +288,24 @@ export default function AnuntDetaliu() {
             <Link to={`/radacini/piata/${l.id}/editare`} className={linkBtnCls("secondary")} data-testid="radacini-anunt-btn-editeaza">
               <Pencil className="w-3.5 h-3.5" /> Editează
             </Link>
-            <DSButton variant="danger" icon={XCircle} onClick={close} data-testid="radacini-anunt-btn-inchide">
-              Închide anunțul
+            <DSButton variant="danger" icon={XCircle} disabled={closing} onClick={close} data-testid="radacini-anunt-btn-inchide">
+              {closing ? "Se închide…" : "Închide anunțul"}
             </DSButton>
           </>
         )}
         {isSeller && (
-          <Link to="/radacini/rezervari" className={linkBtnCls("secondary")} data-testid="radacini-anunt-btn-rezervari">
+          <Link to="/radacini/rezervari?tab=seller" className={linkBtnCls("secondary")} data-testid="radacini-anunt-btn-rezervari">
             Vezi rezervările
           </Link>
+        )}
+        {myReservation && (
+          <div className="flex flex-wrap items-center gap-2" data-testid="radacini-anunt-rezervarea-mea">
+            <span className="text-sm text-slate-600 dark:text-slate-300">Ai deja o rezervare:</span>
+            <ReservationBadge status={myReservation.status} testid="radacini-anunt-rezervare-status" />
+            <Link to="/radacini/rezervari?tab=buyer" className={linkBtnCls("secondary")} data-testid="radacini-anunt-btn-rezervarea-mea">
+              Vezi rezervarea
+            </Link>
+          </div>
         )}
         {!user && <p className="text-sm text-slate-500 dark:text-slate-400">Autentifică-te pentru a rezerva.</p>}
       </div>

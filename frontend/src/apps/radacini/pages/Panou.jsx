@@ -116,7 +116,7 @@ function SellCard({ label, toConfirm }) {
         <Link to="/radacini/piata/nou" className={linkBtnCls()} data-testid="radacini-btn-publica-anunt">
           Publică un anunț
         </Link>
-        <Link to="/radacini/rezervari" className={linkBtnCls("secondary")} data-testid="radacini-btn-rezervari">
+        <Link to="/radacini/rezervari?tab=seller" className={linkBtnCls("secondary")} data-testid="radacini-btn-rezervari">
           Rezervările mele
         </Link>
       </div>
@@ -194,7 +194,6 @@ export default function Panou() {
   const { user } = useAuth();
   const { exists, member, loading } = useMember();
   const { meta } = useMeta();
-  const [apiStatus, setApiStatus] = useState("checking"); // checking | ok | down
   const [parcelCount, setParcelCount] = useState(null);
   const wantsLand = !!member?.interests?.includes("land");
   const wantsGrow = !!member?.interests?.includes("grow");
@@ -204,10 +203,6 @@ export default function Panou() {
   const wantsSell = !!member?.interests?.includes("sell");
   const [localListings, setLocalListings] = useState(null);
   const [toConfirm, setToConfirm] = useState(null);
-
-  useEffect(() => {
-    radaciniApi.health().then(() => setApiStatus("ok")).catch(() => setApiStatus("down"));
-  }, []);
 
   useEffect(() => {
     if (!wantsLand) return undefined;
@@ -266,24 +261,11 @@ export default function Panou() {
     };
   }, [wantsLand, wantsGrow]);
 
-  const badge =
-    apiStatus === "ok"
-      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-      : apiStatus === "down"
-      ? "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
-      : "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-300";
-  const badgeLabel = apiStatus === "ok" ? "API conectat" : apiStatus === "down" ? "API indisponibil" : "Se verifică…";
-
   return (
     <div className="space-y-6" data-testid="radacini-panou">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Bun venit în Rădăcini</h2>
-          {user?.email && <p className="text-sm text-slate-500 dark:text-slate-400">Conectat ca {user.email}</p>}
-        </div>
-        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${badge}`} data-testid="radacini-api-status">
-          {badgeLabel}
-        </span>
+      <div>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Bun venit în Rădăcini</h2>
+        {user?.email && <p className="text-sm text-slate-500 dark:text-slate-400">Conectat ca {user.email}</p>}
       </div>
 
       {loading ? (

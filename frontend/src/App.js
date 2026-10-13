@@ -18,6 +18,9 @@ import { useABTest } from "./ab";
 import { LoginPage, RegisterPage } from "./views/Auth";
 import { EmailVerifyPage } from "./views/EmailVerifyPage";
 import { radaciniRoutes } from "./apps/radacini/routes";
+// Rădăcini e o aplicație separată în aceeași bază de cod: pe /radacini nu afișăm widget-urile PropManage
+// (asistenți, tururi, feedback beta). Cookie-urile și acceptarea termenilor rămân (obligatorii legal).
+const NotOnRadacini = ({ children }) => (useLocation().pathname.startsWith("/radacini") ? null : children);
 const ClientRequestOffersPage = lazy(() => import("./views/ClientRequestOffersPage").then(m => ({ default: m.ClientRequestOffersPage })));
 const PremiumProfileEditorPage = lazy(() => import("./views/PremiumProfileEditorPage").then(m => ({ default: m.PremiumProfileEditorPage })));
 import { CookieBanner } from "./components/CookieBanner";
@@ -398,14 +401,20 @@ function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
               </Suspense>
-            <TutorialOverlay />
-            <RoleTour />
-            <AIConciergeBubble />
+            <NotOnRadacini>
+              <TutorialOverlay />
+              <RoleTour />
+              <AIConciergeBubble />
+            </NotOnRadacini>
             <CookieBanner />
-            <BetaFeedbackWidget />
-            <AssistantDock />
+            <NotOnRadacini>
+              <BetaFeedbackWidget />
+              <AssistantDock />
+            </NotOnRadacini>
             <LegalGate />
-            <EntitlementToast />
+            <NotOnRadacini>
+              <EntitlementToast />
+            </NotOnRadacini>
             <Toaster position="top-right" richColors closeButton />
             </ErrorBoundary>
           </BrowserRouter>

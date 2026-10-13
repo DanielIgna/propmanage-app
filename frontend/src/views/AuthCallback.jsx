@@ -11,6 +11,18 @@ import { supabase } from "../lib/supabase";
 
 const API = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api`;
 
+// Destinația după login Google: o cale internă salvată înainte de redirect (ex. intrarea Rădăcini),
+// altfel panoul rolului. Doar căi relative, ca să nu existe redirecționări în afara aplicației.
+const OAUTH_NEXT_KEY = "pm_oauth_next";
+const afterLoginPath = (role) => {
+  let next = null;
+  try {
+    next = sessionStorage.getItem(OAUTH_NEXT_KEY);
+    sessionStorage.removeItem(OAUTH_NEXT_KEY);
+  } catch { /* storage indisponibil */ }
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : `/${role || "client"}`;
+};
+
 export const AuthCallback = () => {
   const navigate = useNavigate();
   const { refreshUser } = useAuth();
@@ -43,7 +55,7 @@ export const AuthCallback = () => {
           window.history.replaceState(null, "", window.location.pathname);
           const { data } = await axios.post(`${API}/auth/supabase/oauth`, null, { withCredentials: true });
           await refreshUser();
-          navigate(`/${data.role || "client"}`, { replace: true });
+          navigate(afterLoginPath(data.role), { replace: true });
         } catch (e) {
           const status = e?.response?.status;
           setError(`[${status || "supabase"}] ${e?.response?.data?.detail || e.message || "Autentificare eșuată"}`);
@@ -71,7 +83,7 @@ export const AuthCallback = () => {
             setError("Autentificarea Google a reușit dar cookie-ul a fost blocat. Activează cookies pentru propmanage.ro și încearcă din nou.");
             return;
           }
-          navigate(`/${data.role || "client"}`, { replace: true });
+          navigate(afterLoginPath(data.role), { replace: true });
         } catch (e) {
           const status = e?.response?.status;
           const detail = e?.response?.data?.detail || e.message || "Autentificare eșuată";

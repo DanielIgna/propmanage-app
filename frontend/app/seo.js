@@ -37,7 +37,7 @@ const REGISTRY_ROUTES = {
 const PRIVATE_PREFIXES = [
   "/admin", "/client", "/specialist", "/operator", "/dashboard", "/settings", "/kyc", "/auth",
   "/verify-email", "/report-respond", "/property/", "/franchise_admin", "/franciza", "/components-v2",
-  "/status", "/privacy/notices",
+  "/status", "/privacy/notices", "/radacini",
   "/pricing", // plans require login: anonymous visitors are sent to /login
 ];
 
@@ -84,6 +84,16 @@ export async function metadataForPath(slug) {
 
   if (await serviceDisabled(path)) {
     return build({ path: "/", noindex: true });
+  }
+
+  // Rădăcini: aplicație separată (autentificată) în aceeași bază de cod — titlu propriu, neindexată.
+  if (path === "/radacini" || path.startsWith("/radacini/")) {
+    return build({
+      path,
+      title: "Rădăcini",
+      description: "Pământ, oameni și hrană locală — județul Cluj.",
+      noindex: true,
+    });
   }
 
   if (PRIVATE_PREFIXES.some((p) => path === p || path.startsWith(p.endsWith("/") ? p : `${p}/`))) {

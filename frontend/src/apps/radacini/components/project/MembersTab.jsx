@@ -150,6 +150,7 @@ export default function MembersTab({ project, members, isMember, canCoord, me, r
                       value={m.role}
                       onValueChange={(role) => changeRole(m, role)}
                       options={ROLE_OPTIONS}
+                      disabled={busy}
                       testid={`radacini-membru-rol-${m.user_id}`}
                     />
                   </div>

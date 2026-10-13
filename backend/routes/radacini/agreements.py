@@ -5,8 +5,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
-from .bridge import db, emit, get_current_user, serialize_doc
-from .common import RadaciniRoute, now_iso, oid_or_404, safe_notify
+from .bridge import block_in_impersonation, db, emit, get_current_user, serialize_doc
+from .common import RadaciniRoute, check_price, now_iso, oid_or_404, safe_notify
 from .projects import create_project_for_agreement
 from .requests import (
     ACTIVE_STATUSES,
@@ -22,6 +22,8 @@ from .requests import (
 router = APIRouter(route_class=RadaciniRoute)
 
 EDITABLE = ("draft", "proposed")
+ASSIGNED_AGREEMENT_REASON = "Terenul a fost atribuit altui acord."
+CLAIMABLE_STATUSES = ("published", "paused")  # un teren editat între timp (draft/rejected) trebuie reverificat
 
 
 class TermsPatch(BaseModel):
@@ -38,9 +40,7 @@ class TermsPatch(BaseModel):
     @field_validator("price_ron_per_year")
     @classmethod
     def _price(cls, v: Optional[float]) -> Optional[float]:
-        if v is not None and v < 0:
-            raise ValueError("Prețul nu poate fi negativ.")
-        return v
+        return check_price(v)
 
     @field_validator("crops")
     @classmethod
@@ -129,6 +129,7 @@ async def get_agreement(agreement_id: str, user: dict = Depends(get_current_user
 
 @router.patch("/agreements/{agreement_id}")
 async def patch_agreement(agreement_id: str, body: AgreementPatch, user: dict = Depends(get_current_user)):
+    block_in_impersonation(user, "modificarea acordului")
     doc, access = await _load(agreement_id, user)
     _party_only(access)
     if doc["status"] not in EDITABLE:
@@ -144,11 +145,14 @@ async def patch_agreement(agreement_id: str, body: AgreementPatch, user: dict = 
             merged[key] = None
     parcel = await get_parcel_doc(doc["parcel_id"])
     parcel_area = (parcel or {}).get("area_m2") or old_terms.get("parcel_snapshot", {}).get("area_m2")
+    # „Începe azi sau mai târziu” se cere doar dacă data de început chiar se schimbă (un acord rămas în
+    # negociere după data inițială poate fi totuși ajustat în alte privințe).
+    start_changed = "start_date" in changes and changes["start_date"] != old_terms.get("start_date")
     check_terms(
         merged,
         model=doc["model"],
         parcel_area=parcel_area,
-        require_future_start="start_date" in changes,
+        require_future_start=start_changed,
     )
     if merged == old_terms:
         return {"agreement": serialize_doc(doc)}
@@ -196,6 +200,7 @@ async def patch_agreement(agreement_id: str, body: AgreementPatch, user: dict = 
 
 @router.post("/agreements/{agreement_id}/propose")
 async def propose_agreement(agreement_id: str, user: dict = Depends(get_current_user)):
+    block_in_impersonation(user, "trimiterea acordului spre semnare")
     doc, access = await _load(agreement_id, user)
     _party_only(access)
     if doc["status"] != "draft":
@@ -258,8 +263,45 @@ async def _decline_competing_requests(agreement: dict, user: dict) -> None:
             )
 
 
+async def _cancel_competing_agreements(agreement: dict, user: dict) -> None:
+    """Celelalte acorduri nesemnate (draft/proposed) de pe același teren sunt anulate: terenul a fost atribuit."""
+    others = await db.radacini_agreements.find(
+        {"parcel_id": agreement["parcel_id"], "status": {"$in": list(EDITABLE)}}, {"party_ids": 1}
+    ).to_list(200)
+    now = now_iso()
+    for other in others:
+        if other["_id"] == agreement["_id"]:
+            continue
+        res = await db.radacini_agreements.update_one(
+            {"_id": other["_id"], "status": {"$in": list(EDITABLE)}},
+            {"$set": {
+                "status": "cancelled",
+                "cancelled_at": now,
+                "cancel_reason": ASSIGNED_AGREEMENT_REASON,
+                "updated_at": now,
+            }},
+        )
+        if res.modified_count != 1:
+            continue
+        for party_id in other.get("party_ids") or []:
+            if party_id != str(user["id"]):
+                await safe_notify(
+                    party_id,
+                    "Acord anulat",
+                    ASSIGNED_AGREEMENT_REASON,
+                    link=f"/radacini/acorduri/{other['_id']}",
+                    type_="agreement",
+                )
+        await emit(
+            "radacini.agreement_cancelled",
+            actor=user,
+            payload={"agreement_id": str(other["_id"]), "reason": "assigned_elsewhere"},
+        )
+
+
 @router.post("/agreements/{agreement_id}/sign")
 async def sign_agreement(agreement_id: str, body: SignIn, user: dict = Depends(get_current_user)):
+    block_in_impersonation(user, "semnarea acordului")
     uid = str(user["id"])
     doc, access = await _load(agreement_id, user)
     _party_only(access)
@@ -272,6 +314,8 @@ async def sign_agreement(agreement_id: str, body: SignIn, user: dict = Depends(g
         raise HTTPException(409, "Terenul nu mai există.")
     if parcel.get("active_agreement_id") and parcel["active_agreement_id"] != str(doc["_id"]):
         raise HTTPException(409, "Terenul are deja un acord activ.")
+    if parcel.get("status") not in CLAIMABLE_STATUSES:
+        raise HTTPException(409, "Terenul nu mai este disponibil.")  # ex.: editat între timp, deci de reverificat
 
     now = now_iso()
     res = await db.radacini_agreements.update_one(
@@ -310,43 +354,61 @@ async def sign_agreement(agreement_id: str, body: SignIn, user: dict = Depends(g
         return {"agreement": serialize_doc(doc)}
 
     # Toate părțile au semnat: mai întâi terenul (revendicare condiționată), apoi acordul.
+    agreement_key = str(doc["_id"])
     claim = await db.radacini_parcels.update_one(
         {
             "_id": parcel["_id"],
+            "archived_at": {"$exists": False},
+            "status": {"$in": list(CLAIMABLE_STATUSES)},
             "$or": [
                 {"active_agreement_id": {"$exists": False}},
-                {"active_agreement_id": str(doc["_id"])},
+                {"active_agreement_id": agreement_key},
             ],
         },
-        {"$set": {"active_agreement_id": str(doc["_id"]), "status": "paused", "updated_at": now}},
+        {"$set": {"active_agreement_id": agreement_key, "status": "paused", "updated_at": now}},
     )
     if claim.matched_count != 1:
-        raise HTTPException(409, "Terenul are deja un acord activ.")
+        current = await get_parcel_doc(doc["parcel_id"]) or {}
+        if current.get("active_agreement_id") and current["active_agreement_id"] != agreement_key:
+            raise HTTPException(409, "Terenul are deja un acord activ.")
+        raise HTTPException(409, "Terenul nu mai este disponibil.")
     res = await db.radacini_agreements.update_one(
         {"_id": doc["_id"], "status": "proposed", "version": doc["version"]},
         {"$set": {"status": "signed", "signed_at": now, "updated_at": now}},
     )
-    doc = await db.radacini_agreements.find_one({"_id": doc["_id"]}) or doc
-    if res.modified_count == 1:
-        await _decline_competing_requests(doc, user)
-        await create_project_for_agreement(doc, user)  # idempotent; erorile se loghează
-        await safe_notify(
-            _other_user(doc, user),
-            "Acord semnat",
-            f"Acordul pentru „{parcel.get('title')}” a fost semnat de ambele părți.",
-            link=_link(doc),
-            type_="agreement",
+    fresh = await db.radacini_agreements.find_one({"_id": doc["_id"]}) or doc
+    if res.modified_count != 1:
+        if fresh.get("status") == "signed":
+            # Cealaltă parte a finalizat semnarea simultan: terenul e legit al acestui acord, nu îl eliberăm.
+            return {"agreement": serialize_doc(fresh)}
+        # Acordul a fost anulat/modificat între timp: eliberăm terenul revendicat și restaurăm starea anterioară.
+        await db.radacini_parcels.update_one(
+            {"_id": parcel["_id"], "active_agreement_id": agreement_key},
+            {"$unset": {"active_agreement_id": ""}, "$set": {"status": parcel.get("status"), "updated_at": now_iso()}},
         )
-        await emit(
-            "radacini.agreement_completed",
-            actor=user,
-            payload={"agreement_id": str(doc["_id"]), "parcel_id": doc["parcel_id"]},
-        )
+        raise HTTPException(409, "Acordul a fost modificat între timp. Reîncarcă pagina.")
+    doc = fresh
+    await _decline_competing_requests(doc, user)
+    await _cancel_competing_agreements(doc, user)
+    await create_project_for_agreement(doc, user)  # idempotent; erorile se loghează
+    await safe_notify(
+        _other_user(doc, user),
+        "Acord semnat",
+        f"Acordul pentru „{parcel.get('title')}” a fost semnat de ambele părți.",
+        link=_link(doc),
+        type_="agreement",
+    )
+    await emit(
+        "radacini.agreement_completed",
+        actor=user,
+        payload={"agreement_id": str(doc["_id"]), "parcel_id": doc["parcel_id"]},
+    )
     return {"agreement": serialize_doc(doc)}
 
 
 @router.post("/agreements/{agreement_id}/cancel")
 async def cancel_agreement(agreement_id: str, body: ReasonIn, user: dict = Depends(get_current_user)):
+    block_in_impersonation(user, "anularea acordului")
     doc, access = await _load(agreement_id, user)
     _party_only(access)
     if doc["status"] not in EDITABLE:

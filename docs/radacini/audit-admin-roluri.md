@@ -3,15 +3,25 @@
 Branch: `radacini` · Data: 2026-10-13 · Continuă [audit-agro-faza0.md](audit-agro-faza0.md). **Nu s-a implementat nimic.**
 Etichete: CONFIRMAT (văzut în cod) · PARȚIAL · LIPSĂ · NECESITĂ VALIDARE.
 
+
+> **Erată (2026-10-13, reverificare la nivel de effort ridicat).** Auditul inițial a fost făcut la effort mediu. O reverificare cu dovezi din cod a găsit afirmații greșite sau imprecise, corectate mai jos în text (marcate *[corectat]*):
+> - **Evenimentele `radacini.*` NU apar automat în admin.** `event_bus.emit` scrie doar în `activity_events` (`event_bus.py:60-77`). Activitate Live citește `db.events` (`routes/admin_console.py:700`), User Timeline agregă din users/requests/payments/reviews, Notification Center din `command_center_recos`/`audit_anomalies`, iar Automation Center are 3 șabloane fixe. Integrarea cere cod: o filă/sursă Rădăcini.
+> - **Acțiunile Rădăcini NU ajung în `admin_actions_log`.** Trebuie apelat explicit `admin_console.audit()` (`admin_audit_log`) sau `sub_admin_deps._log_action`.
+> - **Scope-urile sub-adminilor sunt aplicate de un middleware global** (`middleware_scope.py`, ~30 de prefixe `/api/admin/*`), plus `require_admin_scope` în 3 fișiere. Prefixele nemapate trec pentru orice sub-admin, iar `/api/radacini/*` nu e acoperit.
+> - **Tabelele `app.radacini_*` nu sunt create prin migrație.** `pgmongo` le creează la prima scriere (`pgmongo.py:783-852`), doar cu index GIN, fără indexuri pe expresii.
+> - **Escrow:** doar `requests.py:294` e un flag demo. `routes/payments.py` încasează real prin Stripe Checkout (când cheile sunt reale), iar `projects.py` are tranșe din wallet. Eliberarea e doar evidență internă (`wallet_balance`), fără payout.
+> - **Admin:** 15 secțiuni (10 business, 5 infra), 113 intrări (`AdminLayoutMetronic.jsx:90-330`). „Joburi programate” e intrare în Dashboard Business.
+> - **Alte precizări:** `models.py` nu are `ROLES` (are `PUBLIC_REGISTER_ROLES`). KC verifică fondatorul la `knowledge_center.py:171`. KYC permite upload doar specialiștilor. Exportul GDPR nu include colecțiile Rădăcini. Quest-urile sunt legate de vouchere și de rolurile client/specialist. XOS are doar suprafața `client_home`. `service_contracts.py` are semnătură pentru ambele părți și mediere de operator. Rate limiting-ul se aplică doar pe `/api/public`, `/api/p`, `/api/track`, `/api/go`.
+
 ---
 
 ## 1. Rezumat
 
-- **Adminul PropManage e mare:** 2 zone (Business și Infrastructure), 14 secțiuni, aproximativ 120 de intrări în meniu.
+- **Adminul PropManage e mare:** 2 zone (Business și Infrastructure), 15 secțiuni (10 business, 5 infra), 113 intrări în meniu. *[corectat]*
   - Sursa: `frontend/src/views/admin/AdminLayoutMetronic.jsx:90-345` (`NAV_SECTIONS`).
 - **Permisiunile nu se aplică la fel de strict peste tot:**
   - **Zonele și rolurile de admin sunt doar pregătite, nu aplicate**: toți adminii văd ambele zone. Sursa: `backend/routes/admin_zones.py:1-5`.
-  - **Scope-urile sub-adminilor** (`testing/frontend/backend/security/ai/ops`) sunt verificate de backend doar în **3 fișiere de rute**. Sursa: `sub_admin_deps.py:28,63`.
+  - **Scope-urile sub-adminilor** (`testing/frontend/backend/security/ai/ops`) sunt aplicate de un **middleware global** pe ~30 de prefixe `/api/admin/*` (`middleware_scope.py`), plus `require_admin_scope` în 3 fișiere. Prefixele nemapate trec pentru orice sub-admin, iar `/api/radacini/*` nu e acoperit. *[corectat]*
   - Restul rutelor verifică doar `require_role("admin")`.
   - `ownerOnly` / `superAdminOnly` doar ascund intrările din meniu, în frontend.
 - **Knowledge Center** e accesibil doar fondatorului (`OWNER_EMAIL`). Citește toate fișierele `*.md` din `docs/` și `memory/`, plus un registru JSON de relații (50 de noduri, 49 de muchii).
@@ -46,7 +56,7 @@ Etichete: CONFIRMAT (văzut în cod) · PARȚIAL · LIPSĂ · NECESITĂ VALIDARE
 
 | Secțiune (intrări) | Ce face azi | Pentru Rădăcini | Cum |
 |---|---|---|---|
-| **Dashboard Business** (≈30: CEO Dashboard, Briefing, Command Center, Notification Center, Business Health, Operations Center, Automation, Control Tower, Activitate Live…) | panouri de executiv și de operare, majoritatea agregate cu AI | **Selectiv** | Refolosim **Notification Center**, **Automation Center** (reguli DACĂ→ATUNCI), **Activitate Live** și **Control Tower** prin bus-ul de evenimente: evenimentele `radacini.*` apar acolo automat. Panourile CEO, Evolution, War Room și PropBenefits nu au legătură cu Rădăcini. |
+| **Dashboard Business** (≈30: CEO Dashboard, Briefing, Command Center, Notification Center, Business Health, Operations Center, Automation, Control Tower, Activitate Live…) | panouri de executiv și de operare, majoritatea agregate cu AI | **Selectiv** | Refolosim **Notification Center**, **Automation Center** (reguli DACĂ→ATUNCI), **Activitate Live** și **Control Tower** **cu cod de integrare**: `event_bus` scrie doar în `activity_events`, pe care aceste panouri nu îl citesc *[corectat]*. Panourile CEO, Evolution, War Room și PropBenefits nu au legătură cu Rădăcini. |
 | **Utilizatori** (Toți userii, User Timeline, Verificare specialiști, KYC, Beta Testers, Progresie, Experience Tiers) | gestionarea conturilor, verificare, niveluri | **Da (Toți userii, Timeline, KYC)**; Progresie și Tiers nu | Același cont; în fișa utilizatorului adăugăm o filă „Rădăcini” (interese, comunități, terenuri). KYC primește un tip de document nou: dovada dreptului asupra terenului. |
 | **Cereri & Proiecte** (Proiecte, Dispute & NC, Construction) | fluxurile de servicii pentru casă | **Nu direct** | Rădăcini primește propria secțiune „Proiecte agricole”. Disputele le refolosim mai târziu, ca tipar. |
 | **Financiar** (Finanțe & Escrow, Financial Cockpit MRR/ARR) | tranzacții, escrow (doar demo), venit recurent | **Mai târziu** | Cât timp MVP-ul nu are plăți, nu e cazul. Când abonamentul 5 €/lună devine activ: o linie „Rădăcini” în Financial Cockpit. |
@@ -62,7 +72,7 @@ Etichete: CONFIRMAT (văzut în cod) · PARȚIAL · LIPSĂ · NECESITĂ VALIDARE
 | Secțiune | Ce face | Pentru Rădăcini |
 |---|---|---|
 | **Sistem & Configurări** (Setări platformă, Control Administrare, Feature Configurator) | setări globale, flag-uri, quest-uri și vouchere | **Comun.** Flag-ul `RADACINI_ENABLED` se poate muta aici. Quest-urile sezoniere vin în faza 2 de gamification. **Voucherele nu**, pentru că au valoare economică. |
-| **Security & Audit** (Audit Log, Impersonări, AI Security, Audit Juridic IT, Sub-admini, Admin Accounts, Founder Gate) | securitate | **Comun, direct.** Toate acțiunile Rădăcini ajung în `admin_actions_log` și în evenimente. Sub-adminii primesc scope-ul nou `radacini`. |
+| **Security & Audit** (Audit Log, Impersonări, AI Security, Audit Juridic IT, Sub-admini, Admin Accounts, Founder Gate) | securitate | **Comun.** Acțiunile Rădăcini ajung în jurnalul admin doar dacă apelăm explicit `admin_console.audit()` prin `bridge.py` *[corectat]*. Sub-adminii primesc scope-ul nou `radacini`. |
 | **AI & Engineering Lab** (≈14: AI Investigator, Brain, Autonomy, Orchestrator, Design Studio…) | ecosistemul AI intern | **Nu, pentru pilot.** Costă (LLM și egress). Singura excepție utilă mai târziu: un asistent agronomic prin `llm_chat.py`. |
 | **Development & QA** (ToDo, Tester manual, QA Copilot, Playbook, Docs, Bug Memory, Demo Tools și Demo Accounts) | dezvoltare | **Comun.** Conturi demo Rădăcini (proprietar, cultivator, consumator, operator) prin Demo Accounts; scenarii Rădăcini în QA Playbook. |
 | **IT Collaborators Hub** | echipa IT | **Comun**, fără schimbări. |
@@ -74,7 +84,7 @@ Etichete: CONFIRMAT (văzut în cod) · PARȚIAL · LIPSĂ · NECESITĂ VALIDARE
 
 | Fapt | Dovadă | Status |
 |---|---|---|
-| Acces exclusiv fondator, verificat pe server | `routes/knowledge_center.py:1-2,15` | CONFIRMAT |
+| Acces exclusiv fondator, verificat pe server | `routes/knowledge_center.py:171` *[corectat]* | CONFIRMAT |
 | Citește recursiv `docs/**/*.md` și `memory/**/*.md`; în producție, `docs/` și `memory/` sunt copiate în imagine | `knowledge_center.py:187-191`, `backend/Dockerfile:25-26` | CONFIRMAT |
 | Starea documentelor (Draft → Review → Active → Archived) e calculată din evidențe: referințe din cod, aprobarea fondatorului | `knowledge_center.py:3-6` | CONFIRMAT (n-am testat la rulare) |
 | Registrul de relații e un JSON editat manual: 50 de noduri, 49 de muchii | `backend/data/enterprise_registry.json` | CONFIRMAT |
@@ -107,7 +117,7 @@ Principiul: **un singur cont, mai multe „pălării”.** Rolul global PropMana
 | **Super-admin (tu)** | `admin_scope=general` | tot adminul | tot | tot | — |
 
 **Cum construim interfața membrului**
-- Un singur panou `/radacini` cu **carduri care apar după interese.** Folosim XOS (`xos_layouts`, cu o suprafață nouă `radacini_home`) și Page Registry (`allowed_roles` + flag), deci ordinea și vizibilitatea cardurilor se schimbă din admin, fără cod.
+- Un singur panou `/radacini` cu **carduri care apar după interese.** Varianta cu XOS (`radacini_home`) **cere modificare în cod comun**, pentru că registrul XOS are doar `client_home` *[corectat]*. Implementat: cardurile sunt alese în cod după interese, fără XOS.
 - **Mod asistat:** un operator poate crea anunțul unui proprietar în vârstă, cu acordul lui înregistrat. La țară asta contează mult.
 - Pe mobil: mai întâi telefonul, cu acțiunile mari la vedere (marchează activitatea, fotografiază recolta, confirmă ridicarea).
 
@@ -151,7 +161,7 @@ Principiul: **un singur cont, mai multe „pălării”.** Rolul global PropMana
    - `radacini` intră în `ALLOWED_SCOPES` (`sub_admin_deps.py:28`);
    - toate rutele admin Rădăcini folosesc `require_admin_scope("radacini","general")`;
    - adăugăm rolul de zonă `radacini_manager` (Business, product=radacini) și **activăm verificarea zonelor pe server**, măcar pentru rutele noi.
-4. **Bus-ul de evenimente ca liant:** fiecare acțiune Rădăcini emite `radacini.*` prin `event_bus.py`. Apare automat în Activitate Live, User Timeline, Notification Center și Automation Center, fără cod nou de integrare.
+4. **Bus-ul de evenimente:** fiecare acțiune Rădăcini emite `radacini.*` prin `event_bus.py`, dar evenimentele ajung doar în `activity_events` *[corectat]*. Pentru Activitate Live, User Timeline sau Notification Center e nevoie de o sursă nouă, adică modificare aprobată în cod comun, sau de un flux propriu în secțiunea admin Rădăcini (recomandat).
 5. **Meniu și interfață configurabile:** `site_menu` cu cheia `radacini` (meniu separat), Page Registry pentru paginile Rădăcini, XOS pentru cardurile din panou.
 6. **Knowledge Center:** nodurile din registru și eticheta `product`, ca în §5.
 7. **Legături între produse, alese conștient:**
@@ -166,7 +176,7 @@ Principiul: **un singur cont, mai multe „pălării”.** Rolul global PropMana
 
 - **Permisiunile admin nu sunt aplicate** (zonele sunt doar pregătite, scope-urile verificate în 3 fișiere). Un admin nou vede tot. **Trebuie rezolvat înainte de a angaja sau invita un manager Rădăcini.**
 - **Bypass-ul operatorului:** dacă refolosim `role=operator`, dăm acces gratuit la funcțiile plătite și la date PropManage.
-- **Prea multe panouri:** adminul are deja ~120 de intrări. Rădăcini trebuie să rămână la ~6, ca să nu fie greu de folosit.
+- **Prea multe panouri:** adminul are deja 113 intrări *[corectat]*. Rădăcini trebuie să rămână la ~6, ca să nu fie greu de folosit.
 - **Egress și cost:** panourile agregate și AI-ul citesc mult din baza de date. Pentru Rădăcini folosim KPI-uri calculate incremental sau la cerere, nu la fiecare afișare.
 - **KC depinde de un registru JSON editat manual.** Dacă nu-l ținem la zi, harta minte.
 

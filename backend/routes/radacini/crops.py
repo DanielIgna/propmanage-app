@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
 from .bridge import db, emit, get_current_user, serialize_doc
-from .common import RadaciniRoute, mark_demo, now_iso, oid_or_404
+from .common import RadaciniRoute, check_finite, mark_demo, now_iso, oid_or_404
 from .constants import CROPS, CROP_STATUS_IDS
 from .projects import ensure_active, load_project, need_coordinator
 
@@ -51,6 +51,7 @@ class _Common(BaseModel):
     @field_validator("expected_yield_kg", check_fields=False)
     @classmethod
     def _v_yield(cls, v):
+        check_finite(v, "Producția estimată nu este validă.")
         if v is not None and not 0 <= v <= 100_000_000:
             raise ValueError("Producția estimată nu este validă.")
         return v

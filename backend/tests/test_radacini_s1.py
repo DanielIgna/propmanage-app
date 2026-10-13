@@ -6,6 +6,7 @@ Run against a live backend:
 The tests form one ordered scenario (state is carried in the `S` dict); every
 parcel created is archived at module teardown. Titles carry a unique TEST-RAD-<hex> tag.
 """
+import json
 import os
 import uuid
 
@@ -265,10 +266,13 @@ class TestParcelFlow:
             {"offer": {"models": [], "terms": "x"}},
             {"offer": {"models": ["rent"], "terms": "x", "harvest_share_percent": 30}},
             {"offer": {"models": ["harvest_share"], "terms": "x", "harvest_share_percent": 95}},
+            {"offer": {"models": ["rent"], "terms": "x", "price_ron_per_year": 10_000_001}},
+            {"offer": {"models": ["rent"], "terms": "x", "price_ron_per_year": -1}},
         ],
         ids=[
             "area_too_small", "lat_out_of_range", "lng_out_of_range", "title_too_short",
             "bad_locality", "models_empty", "share_percent_without_model", "share_percent_too_high",
+            "price_over_max", "price_negative",
         ],
     )
     def test_create_invalid(self, client, over):
@@ -276,6 +280,17 @@ class TestParcelFlow:
         if r.status_code in (200, 201):  # track so teardown archives it, then fail
             _created_ids.append(_unwrap(r.json(), "parcel").get("id"))
         assert 400 <= r.status_code < 500, r.text
+
+    @pytest.mark.parametrize("literal", ["NaN", "Infinity", "1e999"])
+    def test_create_non_finite_price_400(self, client, literal):
+        """JSON non-finite numbers (NaN/Infinity) must not pass as a price."""
+        raw = json.dumps(_parcel_payload("nan")).replace('"price_ron_per_year": 1200', f'"price_ron_per_year": {literal}')
+        assert f'"price_ron_per_year": {literal}' in raw
+        r = client.post(f"{R}/parcels", data=raw, headers={"Content-Type": "application/json"}, timeout=TIMEOUT)
+        if r.status_code in (200, 201):
+            _created_ids.append(_unwrap(r.json(), "parcel").get("id"))
+        assert r.status_code == 400, r.text
+        assert isinstance(r.json().get("detail"), str)
 
     def test_create_valid(self, client):
         doc = _create_parcel(client, title_suffix="principal")
@@ -565,6 +580,69 @@ class TestPauseResumeOwnership:
         assert anon.get(f"{R}/parcels/{extra['id']}", timeout=TIMEOUT).status_code == 404
 
 
+# ── 7b. a paused parcel edited in content/location must be re-verified ───────
+
+class TestPausedEditReverification:
+    def test_setup_published_then_paused(self, client, admin):
+        p = _create_parcel(client, title_suffix="reverificare")
+        S["rv"] = p["id"]
+        assert client.post(f"{R}/parcels/{p['id']}/submit", timeout=TIMEOUT).status_code == 200
+        r = admin.post(f"{R}/staff/parcels/{p['id']}/verify", json={"decision": "approve"}, timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        assert client.post(f"{R}/parcels/{p['id']}/pause", timeout=TIMEOUT).status_code == 200
+        assert _owner_get(client, p["id"])["status"] == "paused"
+
+    def test_same_values_keep_paused(self, client):
+        before = _owner_get(client, S["rv"])
+        r = client.patch(f"{R}/parcels/{S['rv']}", json={"title": before["title"]}, timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        assert _owner_get(client, S["rv"])["status"] == "paused"
+
+    def test_availability_only_keeps_paused(self, client):
+        r = client.patch(
+            f"{R}/parcels/{S['rv']}",
+            json={"availability_from": "2031-01-01", "availability_to": "2031-12-31"},
+            timeout=TIMEOUT,
+        )
+        assert r.status_code == 200, r.text
+        assert _owner_get(client, S["rv"])["status"] == "paused"
+
+    def test_content_edit_moves_to_draft(self, client, anon):
+        r = client.patch(f"{R}/parcels/{S['rv']}", json={"description": f"{TAG} descriere schimbata"}, timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        assert _unwrap(r.json(), "parcel")["status"] == "draft"
+        assert _owner_get(client, S["rv"])["status"] == "draft"
+        assert anon.get(f"{R}/parcels/{S['rv']}", timeout=TIMEOUT).status_code == 404
+
+    def test_cannot_resume_edited_parcel(self, client):
+        r = client.post(f"{R}/parcels/{S['rv']}/resume", timeout=TIMEOUT)
+        assert r.status_code == 409, r.text
+        assert _owner_get(client, S["rv"])["status"] == "draft"
+
+    def test_location_edit_on_paused_moves_to_draft(self, client, admin):
+        # back to paused through the normal path (resubmit, approve, pause), then change the location
+        assert client.post(f"{R}/parcels/{S['rv']}/submit", timeout=TIMEOUT).status_code == 200
+        r = admin.post(f"{R}/staff/parcels/{S['rv']}/verify", json={"decision": "approve"}, timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        assert client.post(f"{R}/parcels/{S['rv']}/pause", timeout=TIMEOUT).status_code == 200
+        r = client.patch(f"{R}/parcels/{S['rv']}", json={"lat": 46.8, "lng": 23.7}, timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        assert _owner_get(client, S["rv"])["status"] == "draft"
+
+    def test_resubmit_after_edit_and_publish(self, client, admin, anon):
+        assert client.post(f"{R}/parcels/{S['rv']}/submit", timeout=TIMEOUT).status_code == 200
+        r = admin.post(f"{R}/staff/parcels/{S['rv']}/verify", json={"decision": "approve"}, timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        assert _owner_get(client, S["rv"])["status"] == "published"
+        assert anon.get(f"{R}/parcels/{S['rv']}", timeout=TIMEOUT).status_code == 200
+
+    def test_double_verify_conflict(self, admin):
+        """The parcel is no longer pending: a second verification (even a stale one) is a 409."""
+        r = admin.post(f"{R}/staff/parcels/{S['rv']}/verify", json={"decision": "approve"}, timeout=TIMEOUT)
+        assert r.status_code == 409, r.text
+        assert isinstance(r.json().get("detail"), str)
+
+
 # ── 8. staff management + operator area filtering ────────────────────────────
 
 class TestStaffManagement:
@@ -630,6 +708,13 @@ class TestStaffManagement:
             r = admin.get(f"{R}/staff/queue", timeout=TIMEOUT)
             admin_ids = [p["id"] for p in _items(r.json())]
             assert flo["id"] in admin_ids and cluj["id"] in admin_ids
+
+            # Operator sees the full (owner e-mail) view only inside their areas; outside, a pending parcel is a 404
+            r = specialist.get(f"{R}/parcels/{flo['id']}", timeout=TIMEOUT)
+            assert r.status_code == 200, r.text
+            assert _unwrap(r.json(), "parcel").get("owner_email")
+            assert specialist.get(f"{R}/parcels/{cluj['id']}", timeout=TIMEOUT).status_code == 404
+            assert admin.get(f"{R}/parcels/{cluj['id']}", timeout=TIMEOUT).status_code == 200
 
             # Operator may not manage staff, nor verify outside their areas
             r = specialist.post(

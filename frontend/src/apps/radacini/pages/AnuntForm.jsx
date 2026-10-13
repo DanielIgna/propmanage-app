@@ -105,19 +105,21 @@ export default function AnuntForm() {
   const pickup = form.pickup_details.trim();
   const exchangeFor = form.exchange_for.trim();
 
-  const valid =
-    product.length >= 2 &&
-    product.length <= 80 &&
-    !!form.category &&
-    !!form.unit &&
-    qty > 0 &&
-    qty >= reserved &&
-    (!needsPrice || (price > 0 && price <= 10000)) &&
-    (!needsExchange || (exchangeFor.length >= 3 && exchangeFor.length <= 300)) &&
-    !!form.locality &&
-    pickup.length >= 3 &&
-    pickup.length <= 300 &&
-    (!form.available_until || form.available_until >= todayIso());
+  // Primul motiv pentru care formularul nu poate fi trimis (afișat lângă buton).
+  const validationError = (() => {
+    if (product.length < 2 || product.length > 80) return "Produsul trebuie să aibă între 2 și 80 de caractere.";
+    if (!form.category) return "Alege categoria.";
+    if (!form.unit) return "Alege unitatea.";
+    if (!(qty > 0)) return "Cantitatea totală trebuie să fie mai mare decât 0.";
+    if (qty < reserved) return `Cantitatea totală nu poate fi sub ${reserved} (deja rezervat sau confirmat).`;
+    if (needsPrice && !(price > 0 && price <= 10000)) return "Prețul trebuie să fie între 0 și 10 000 RON.";
+    if (needsExchange && (exchangeFor.length < 3 || exchangeFor.length > 300)) return "Descrie ce accepți în schimb (3–300 de caractere).";
+    if (!form.locality) return "Alege localitatea.";
+    if (pickup.length < 3 || pickup.length > 300) return "Detaliile de ridicare trebuie să aibă între 3 și 300 de caractere.";
+    if (form.available_until && form.available_until < todayIso()) return "Data „Disponibil până la” nu poate fi în trecut.";
+    return null;
+  })();
+  const valid = !validationError;
 
   const submit = async (e) => {
     e.preventDefault();
@@ -233,7 +235,12 @@ export default function AnuntForm() {
           </Field>
         </div>
 
-        <div className="sm:col-span-2 flex flex-wrap justify-end gap-2">
+        <div className="sm:col-span-2 flex flex-wrap items-center justify-end gap-2">
+          {validationError && (
+            <p role="status" className="mr-auto text-xs font-semibold text-amber-700 dark:text-amber-300" data-testid="radacini-anunt-eroare-validare">
+              {validationError}
+            </p>
+          )}
           <Link to={editing ? `/radacini/piata/${id}` : "/radacini/piata"} className="inline-flex items-center rounded-xl px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5">
             Renunță
           </Link>

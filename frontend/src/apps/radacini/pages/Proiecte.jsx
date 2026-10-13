@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Briefcase } from "lucide-react";
-import { CARD, DSButton, EmptyState } from "../../../design-system";
+import { AlertTriangle, Briefcase } from "lucide-react";
+import { CARD, EmptyState } from "../../../design-system";
 import { radaciniApi, asList, errMsg } from "../api";
-import { counterOf, fmtArea, fmtPeriod, PageHeader, PageSkeleton, RoleBadge, StatusBadge } from "../shared";
+import { counterOf, fmtArea, fmtPeriod, linkBtnCls, PageHeader, PageSkeleton, RoleBadge, StatusBadge } from "../shared";
 
 function ProjectCard({ p }) {
   return (
@@ -73,16 +73,16 @@ export default function Proiecte() {
     <div className="space-y-5 max-w-4xl" data-testid="radacini-proiecte">
       <PageHeader title="Proiecte" subtitle="Proiectele agricole la care participi: plan de culturi, calendar și contribuții." />
 
-      {data.items.length === 0 ? (
+      {data.error ? (
+        <EmptyState icon={AlertTriangle} title="Nu am putut încărca proiectele" hint={errMsg(data.error)} testid="radacini-proiecte-error" />
+      ) : data.items.length === 0 ? (
         <EmptyState
           icon={Briefcase}
           title="Nu ai niciun proiect"
           hint="Proiectul se creează automat când un acord este semnat de ambele părți."
           action={
-            <Link to="/radacini/acorduri">
-              <DSButton variant="secondary" data-testid="radacini-proiecte-btn-acorduri">
-                Vezi acordurile
-              </DSButton>
+            <Link to="/radacini/acorduri" className={linkBtnCls("secondary")} data-testid="radacini-proiecte-btn-acorduri">
+              Vezi acordurile
             </Link>
           }
           testid="radacini-proiecte-empty"

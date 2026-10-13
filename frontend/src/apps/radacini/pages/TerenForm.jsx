@@ -6,6 +6,7 @@ import { CARD, DSButton, EmptyState } from "../../../design-system";
 import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
 import LocationPicker from "../components/LocationPicker";
+import { useConfirm } from "../components/ConfirmDialog";
 import { radaciniApi, errMsg } from "../api";
 import { useMeta } from "../hooks";
 import {
@@ -74,7 +75,8 @@ const validate = (f) => {
   return null;
 };
 
-const toBody = (f) => {
+// isEdit: la PATCH câmpurile opționale golite se trimit ca null, altfel rămân neschimbate pe server.
+const toBody = (f, isEdit = false) => {
   const body = {
     title: f.title.trim(),
     county: COUNTY,
@@ -89,7 +91,9 @@ const toBody = (f) => {
     offer: { models: f.models, terms: f.terms.trim() },
   };
   if (f.availability_from) body.availability_from = f.availability_from;
+  else if (isEdit) body.availability_from = null;
   if (f.availability_to) body.availability_to = f.availability_to;
+  else if (isEdit) body.availability_to = null;
   if (f.price_ron_per_year !== "" && f.price_ron_per_year != null) body.offer.price_ron_per_year = Number(f.price_ron_per_year);
   if (f.models.includes("harvest_share")) body.offer.harvest_share_percent = Number(f.harvest_share_percent);
   return body;
@@ -106,15 +110,17 @@ export default function TerenForm() {
   const { id: routeId } = useParams();
   const navigate = useNavigate();
   const { meta, loading: metaLoading, error: metaError } = useMeta();
+  const [confirm, confirmDialog] = useConfirm();
   const [editId, setEditId] = useState(routeId || null);
   const [status, setStatus] = useState("draft");
+  const [activeAgreementId, setActiveAgreementId] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(!!routeId);
   const [loadError, setLoadError] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const isEdit = !!editId;
-  const canEdit = !isEdit || EDITABLE_STATUS.includes(status);
+  const canEdit = !isEdit || (EDITABLE_STATUS.includes(status) && !activeAgreementId);
   const canSubmit = !isEdit || SUBMITTABLE_STATUS.includes(status);
   const upd = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -126,6 +132,7 @@ export default function TerenForm() {
       .then((p) => {
         if (!alive) return;
         setStatus(p.status);
+        setActiveAgreementId(p.active_agreement_id || null);
         setForm(fromParcel(p));
       })
       .catch((e) => alive && setLoadError(e))
@@ -138,10 +145,23 @@ export default function TerenForm() {
   const persist = async ({ submit }) => {
     const err = validate(form);
     if (err) return toast.error(err);
+    // Un teren pus pe pauză (deja verificat) revine în ciornă după editare și cere o nouă verificare.
+    if (
+      isEdit &&
+      status === "paused" &&
+      !(await confirm({
+        title: "Salvezi modificările?",
+        description:
+          "Terenul este publicat (acum pe pauză). După salvare iese din listă și revine în ciornă; trebuie trimis din nou spre verificare înainte să fie publicat.",
+        confirmLabel: "Salvează modificările",
+      }))
+    )
+      return;
     setSaving(true);
     let id = editId;
+    let saved = false; // true după ce ciorna a fost salvată (creare sau actualizare)
     try {
-      const body = toBody(form);
+      const body = toBody(form, isEdit);
       if (isEdit) {
         await radaciniApi.updateParcel(editId, body);
       } else {
@@ -150,15 +170,22 @@ export default function TerenForm() {
         setEditId(id);
         setStatus("draft");
       }
+      saved = true;
       if (submit) {
         await radaciniApi.submitParcel(id);
         setStatus("pending_verification");
       }
-      toast.success(submit ? "Trimis spre verificare" : "Ciorna a fost salvată");
+      toast.success(
+        submit
+          ? "Trimis spre verificare"
+          : status === "paused"
+          ? "Modificările au fost salvate. Trimite terenul din nou spre verificare."
+          : "Ciorna a fost salvată"
+      );
       navigate("/radacini/terenurile-mele");
     } catch (e) {
       const msg = errMsg(e, "Nu am putut salva terenul");
-      toast.error(id && submit ? `Ciorna a fost salvată, dar nu am putut trimite: ${msg}` : msg);
+      toast.error(saved && submit ? `Ciorna a fost salvată, dar nu am putut trimite: ${msg}` : msg);
     } finally {
       setSaving(false);
     }
@@ -196,10 +223,17 @@ export default function TerenForm() {
             <StatusBadge status={status} />
           </div>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            {status === "pending_verification"
+            {activeAgreementId
+              ? "Terenul are un acord activ și nu mai poate fi editat."
+              : status === "pending_verification"
               ? "Terenul este în verificare și nu poate fi editat până la decizia operatorului."
               : "Terenul trebuie pus pe pauză înainte de editare."}
           </p>
+          {activeAgreementId && (
+            <Link to={`/radacini/acorduri/${activeAgreementId}`} className={linkBtnCls("primary")} data-testid="radacini-teren-acord-activ">
+              Vezi acordul activ
+            </Link>
+          )}
           <Link to="/radacini/terenurile-mele" className={linkBtnCls("secondary")}>
             Înapoi la terenurile mele
           </Link>
@@ -213,6 +247,7 @@ export default function TerenForm() {
 
   return (
     <div className="space-y-5 max-w-3xl" data-testid="radacini-teren-form">
+      {confirmDialog}
       {back}
       <PageHeader
         title={headerTitle}

@@ -10,12 +10,14 @@ One ordered scenario (state carried in the `S` dict). Roles:
                                            participant / coordinator (only 3 demo accounts exist)
 Setup creates a 5000 m2 parcel (rent), a 3000 m2 request, accepted and signed by both parties;
 the project is created automatically on signing. The parcel carries a unique TEST-RAD-<hex> tag.
-A parcel with a signed agreement cannot be archived through the API (expected: it is is_demo and
-removed by backend/scripts/radacini_purge_demo.py --apply).
+While the agreement is active the parcel cannot be archived through the API; completing the project
+releases it (paused, no active agreement), after which the owner can archive it.
 """
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 import requests
@@ -76,7 +78,8 @@ def _items(data):
 
 
 def _today():
-    return datetime.now(timezone.utc).date()
+    # The API validates dates in Europe/Bucharest (the frontend computes local dates).
+    return datetime.now(ZoneInfo("Europe/Bucharest")).date()
 
 
 def _d(days):
@@ -460,6 +463,16 @@ class TestMembers:
     def test_promote_admin(self, specialist):
         _ok(_set_role(specialist, S["admin_uid"], "coordinator"))
         assert _role_of(_project(specialist), S["admin_uid"]) == "coordinator"
+
+    def test_agreement_parties_cannot_be_removed(self, specialist, admin):
+        # admin is a coordinator here, so the "last coordinator" rule does not apply: only the party rule does
+        for sess in (admin, specialist):
+            r = sess.delete(f"{_pr()}/members/{S['specialist_uid']}", timeout=TIMEOUT)
+            _err(r, 409)
+            assert "Părțile acordului" in r.json()["detail"]
+        p = _project(specialist)
+        assert _role_of(p, S["specialist_uid"]) == "coordinator"
+        assert _role_of(p, S["client_uid"]) == "owner"
 
     def test_demote_specialist_while_another_coordinator_remains(self, specialist, admin):
         _ok(_set_role(specialist, S["specialist_uid"], "participant"))
@@ -929,6 +942,36 @@ class TestContributions:
         assert items[S["c_a3"]]["amount"] == 5
 
 
+# ── 5b. impersonation: an admin acting as a member cannot act on their behalf ──
+
+def _impersonate(target_uid):
+    s = _login(ADMIN_EMAIL, ADMIN_PASSWORDS)
+    r = s.post(
+        f"{API}/admin/impersonate",
+        json={"user_id": target_uid, "reason": "test Radacini: actiuni blocate in impersonare"},
+        timeout=TIMEOUT,
+    )
+    if r.status_code != 200:
+        pytest.skip(f"impersonation unavailable in this environment ({r.status_code})")
+    return s
+
+
+class TestImpersonationBlocked:
+    def test_contributions_and_completion_blocked(self, specialist):
+        s = _impersonate(S["specialist_uid"])
+        try:
+            for r in (
+                _log_contribution(s),
+                _review(s, UNKNOWN_ID, "confirm"),
+                s.post(f"{_pr()}/complete", timeout=TIMEOUT),
+            ):
+                _err(r, 403)
+                assert "impersonare" in r.json()["detail"]
+        finally:
+            s.post(f"{API}/admin/stop-impersonation", timeout=TIMEOUT)
+        assert _project(specialist)["status"] == "active"
+
+
 # ── 6. project completion ────────────────────────────────────────────────────
 
 class TestComplete:
@@ -959,6 +1002,26 @@ class TestComplete:
         assert p["status"] == "completed"
         assert p["completed_at"]
 
+    def test_parcel_released_to_owner(self, client):
+        r = client.get(f"{R}/parcels/{S['pid']}", timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        p = _unwrap(r.json(), "parcel")
+        assert p["status"] == "paused"
+        assert not p.get("active_agreement_id")
+
+    def test_cultivator_still_reads_parcel_approximately(self, specialist, anon):
+        r = specialist.get(f"{R}/parcels/{S['pid']}", timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        p = _unwrap(r.json(), "parcel")
+        assert p["lat"] == pytest.approx(round(LAT, 2))
+        assert "owner_user_id" not in p
+        assert anon.get(f"{R}/parcels/{S['pid']}", timeout=TIMEOUT).status_code == 404
+
+    def test_owner_can_archive_released_parcel(self, client):
+        r = client.delete(f"{R}/parcels/{S['pid']}", timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        assert client.get(f"{R}/parcels/{S['pid']}", timeout=TIMEOUT).status_code == 404
+
     def test_complete_again_409(self, specialist):
         _err(specialist.post(f"{_pr()}/complete", timeout=TIMEOUT), 409)
 
@@ -966,3 +1029,62 @@ class TestComplete:
         r = specialist.get(f"{R}/projects", timeout=TIMEOUT)
         item = next(i for i in _items(r.json()) if _plist_project(i)["id"] == S["project_id"])
         assert _plist_project(item)["status"] == "completed"
+
+
+# ── 7. parallel signing, harvest guard, parcel release ───────────────────────
+
+class TestParallelSigningAndCompletion:
+    def test_setup_proposed_agreement(self, client, admin, specialist):
+        r = client.post(f"{R}/parcels", json=_parcel_payload("parallel", area_m2=4000), timeout=TIMEOUT)
+        assert r.status_code in (200, 201), r.text
+        pid = _unwrap(r.json(), "parcel")["id"]
+        _created_ids.append(pid)
+        S["pid2"] = pid
+        assert client.post(f"{R}/parcels/{pid}/submit", timeout=TIMEOUT).status_code == 200
+        r = admin.post(f"{R}/staff/parcels/{pid}/verify", json={"decision": "approve"}, timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        r = specialist.post(f"{R}/parcels/{pid}/requests", json=_request_body(area_m2=1000), timeout=TIMEOUT)
+        assert r.status_code in (200, 201), r.text
+        rid = _unwrap(r.json(), "request")["id"]
+        r = client.post(f"{R}/requests/{rid}/accept", timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        S["aid2"] = _unwrap(r.json(), "agreement")["id"]
+        assert client.post(f"{R}/agreements/{S['aid2']}/propose", timeout=TIMEOUT).status_code == 200
+
+    def test_parallel_signing_yields_one_signed_agreement_and_one_project(self, client, specialist):
+        def sign(sess):
+            return sess.post(f"{R}/agreements/{S['aid2']}/sign", json={"version": 1}, timeout=TIMEOUT).status_code
+
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            codes = list(ex.map(sign, (client, specialist)))
+        assert codes == [200, 200], codes
+        r = client.get(f"{R}/agreements/{S['aid2']}", timeout=TIMEOUT)
+        assert _unwrap(r.json(), "agreement")["status"] == "signed"
+        r = client.get(f"{R}/parcels/{S['pid2']}", timeout=TIMEOUT)
+        assert _unwrap(r.json(), "parcel")["active_agreement_id"] == S["aid2"]
+        items = [_plist_project(i) for i in _items(specialist.get(f"{R}/projects", timeout=TIMEOUT).json())]
+        mine = [p for p in items if p.get("agreement_id") == S["aid2"]]
+        assert len(mine) == 1, "exactly one project per signed agreement"
+        S["project2"] = mine[0]["id"]
+
+    def test_complete_blocked_by_unconfirmed_harvest(self, client, specialist):
+        pr = f"{R}/projects/{S['project2']}"
+        r = specialist.post(f"{pr}/harvests", json={"crop": "porumb", "quantity_kg": 10}, timeout=TIMEOUT)
+        assert r.status_code in (200, 201), r.text
+        harvest = _unwrap(r.json(), "harvest")
+        assert harvest["status"] == "recorded"  # recorded by the cultivator, awaiting the owner
+        r = specialist.post(f"{pr}/complete", timeout=TIMEOUT)
+        _err(r, 409)
+        assert "recolte neconfirmate" in r.json()["detail"]
+        r = client.post(f"{R}/harvests/{harvest['id']}/confirm", timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+
+    def test_complete_releases_parcel(self, client, specialist):
+        r = specialist.post(f"{R}/projects/{S['project2']}/complete", timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        r = client.get(f"{R}/parcels/{S['pid2']}", timeout=TIMEOUT)
+        p = _unwrap(r.json(), "parcel")
+        assert p["status"] == "paused" and not p.get("active_agreement_id")
+        # the owner can resume it (published again) and archive it
+        assert client.post(f"{R}/parcels/{S['pid2']}/resume", timeout=TIMEOUT).status_code == 200
+        assert client.delete(f"{R}/parcels/{S['pid2']}", timeout=TIMEOUT).status_code == 200

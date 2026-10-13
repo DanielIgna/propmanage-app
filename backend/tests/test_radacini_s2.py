@@ -13,7 +13,9 @@ backend/scripts/radacini_purge_demo.py --apply); all the others are archived at 
 """
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 import requests
@@ -79,7 +81,8 @@ def _items(data):
 
 
 def _today():
-    return datetime.now(timezone.utc).date()
+    # The API validates "start >= today" in Europe/Bucharest (the frontend computes local dates).
+    return datetime.now(ZoneInfo("Europe/Bucharest")).date()
 
 
 def _d(days):
@@ -282,9 +285,11 @@ class TestRequestCreate:
             {"start_date": _d(-3), "end_date": _d(100)},
             {"note": "x" * 1001},
             {"crops": "not-a-list"},
+            {"price_ron_per_year": 10_000_001},
+            {"price_ron_per_year": -5},
         ],
         ids=["area_over_parcel", "area_under_min", "end_equals_start", "end_before_start", "start_in_past",
-             "note_too_long", "crops_not_list"],
+             "note_too_long", "crops_not_list", "price_over_max", "price_negative"],
     )
     def test_validation_rent(self, specialist, over):
         _err(_post_request(specialist, S["pid"], "rent", **over), 400)
@@ -479,6 +484,25 @@ class TestAccept:
     def test_super_admin_cannot_accept(self, admin):
         _err(admin.post(f"{R}/requests/{S['rid']}/accept", timeout=TIMEOUT), 403)
 
+    def test_owner_cannot_accept_own_counter(self, client):
+        """The last proposal (price 1500) was authored by the owner: the requester has to answer first."""
+        r = client.post(f"{R}/requests/{S['rid']}/accept", timeout=TIMEOUT)
+        _err(r, 409)
+        assert "Așteaptă răspunsul solicitantului" in r.json()["detail"]
+        assert _get_request(client, S["rid"])["request"]["status"] == "negotiating"
+
+    def test_requester_agrees_with_counter(self, specialist):
+        r = specialist.post(
+            f"{R}/requests/{S['rid']}/counter",
+            json=_proposal(price_ron_per_year=1500, note=f"{TAG} de acord"),
+            timeout=TIMEOUT,
+        )
+        assert r.status_code in (200, 201), r.text
+        req = _unwrap(r.json(), "request")
+        assert req["status"] == "negotiating"
+        assert req["proposal_by_user_id"] == S["req_uid"]
+        assert len(req["proposals_history"]) == 2
+
     def test_owner_accepts(self, client):
         r = client.post(f"{R}/requests/{S['rid']}/accept", timeout=TIMEOUT)
         assert r.status_code in (200, 201), r.text
@@ -563,8 +587,9 @@ class TestAgreement:
             {"area_m2": PARCEL_AREA + 1},
             {"start_date": _d(30), "end_date": _d(30)},
             {"custom_clauses": "x" * 5001},
+            {"price_ron_per_year": 10_000_001},
         ],
-        ids=["area_over_parcel", "end_equals_start", "clauses_too_long"],
+        ids=["area_over_parcel", "end_equals_start", "clauses_too_long", "price_over_max"],
     )
     def test_patch_validation(self, client, terms):
         _err(client.patch(f"{R}/agreements/{S['aid']}", json={"terms": terms}, timeout=TIMEOUT), 400)
@@ -648,6 +673,15 @@ class TestAfterSigned:
         assert p["status"] == "paused"
         assert p["active_agreement_id"] == S["aid"]
         # paused -> no longer public
+        assert anon.get(f"{R}/parcels/{S['pid']}", timeout=TIMEOUT).status_code == 404
+
+    def test_cultivator_can_read_paused_parcel_approximately(self, specialist, anon):
+        r = specialist.get(f"{R}/parcels/{S['pid']}", timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        p = _unwrap(r.json(), "parcel")
+        assert p["status"] == "paused"
+        assert p["lat"] == pytest.approx(round(LAT, 2)) and p["lng"] == pytest.approx(round(LNG, 2))
+        assert not {"owner_user_id", "active_agreement_id", "verification"} & set(p)
         assert anon.get(f"{R}/parcels/{S['pid']}", timeout=TIMEOUT).status_code == 404
 
     def test_resume_conflict(self, client):
@@ -807,3 +841,142 @@ class TestCancelFlow:
         assert r.status_code == 200, r.text
         assert _unwrap(r.json(), "agreement")["status"] == "cancelled"
         assert _get_parcel(client, p["id"])["status"] == "published"
+
+
+# ── 11. impersonation: an admin acting as a user cannot decide on their behalf ──
+
+def _impersonate(target_uid):
+    s = _login(ADMIN_EMAIL, ADMIN_PASSWORDS)
+    r = s.post(
+        f"{API}/admin/impersonate",
+        json={"user_id": target_uid, "reason": "test Radacini: actiuni blocate in impersonare"},
+        timeout=TIMEOUT,
+    )
+    if r.status_code != 200:
+        pytest.skip(f"impersonation unavailable in this environment ({r.status_code})")
+    return s
+
+
+def _blocked(r):
+    _err(r, 403)
+    assert "impersonare" in r.json()["detail"]
+
+
+class TestImpersonationBlocked:
+    def test_owner_decisions_blocked(self):
+        s = _impersonate(S["owner_uid"])
+        try:
+            _blocked(s.post(f"{R}/parcels/{S['draft_pid']}/submit", timeout=TIMEOUT))
+            _blocked(s.delete(f"{R}/parcels/{S['draft_pid']}", timeout=TIMEOUT))
+            _blocked(s.post(f"{R}/requests/{S['rid']}/accept", timeout=TIMEOUT))
+            _blocked(s.post(f"{R}/requests/{S['rid']}/decline", json={}, timeout=TIMEOUT))
+            _blocked(s.post(f"{R}/agreements/{S['aid']}/propose", timeout=TIMEOUT))
+            _blocked(s.post(f"{R}/agreements/{S['aid']}/sign", json={"version": 1}, timeout=TIMEOUT))
+            _blocked(s.post(f"{R}/agreements/{S['aid']}/cancel", json={}, timeout=TIMEOUT))
+            _blocked(s.patch(f"{R}/agreements/{S['aid']}", json={"terms": {"price_ron_per_year": 1}}, timeout=TIMEOUT))
+        finally:
+            s.post(f"{API}/admin/stop-impersonation", timeout=TIMEOUT)
+
+    def test_requester_decisions_blocked(self):
+        s = _impersonate(S["req_uid"])
+        try:
+            _blocked(s.post(f"{R}/parcels/{S['pid']}/requests", json=_request_body(), timeout=TIMEOUT))
+            _blocked(s.post(f"{R}/requests/{S['rid']}/withdraw", timeout=TIMEOUT))
+            _blocked(s.post(f"{R}/requests/{S['rid']}/counter", json=_proposal(), timeout=TIMEOUT))
+        finally:
+            s.post(f"{API}/admin/stop-impersonation", timeout=TIMEOUT)
+
+    def test_nothing_changed(self, client):
+        assert _get_parcel(client, S["draft_pid"])["status"] == "draft"
+        assert _get_request(client, S["rid"])["request"]["status"] == "accepted"
+
+
+# ── 12. signing: competing agreements, edited parcel ─────────────────────────
+
+class TestCompetingAgreements:
+    def test_setup_two_accepted_requests(self, client, admin, specialist):
+        p = _publish_parcel(client, admin, "competing", area_m2=4000)
+        S["pidc"] = p["id"]
+        r1 = _new_request(specialist, p["id"], area_m2=500, note=f"{TAG} cerere C1")
+        r2 = _new_request(admin, p["id"], area_m2=600, note=f"{TAG} cerere C2")
+        for key, req in (("1", r1), ("2", r2)):
+            r = client.post(f"{R}/requests/{req['id']}/accept", timeout=TIMEOUT)
+            assert r.status_code == 200, r.text
+            S[f"aidc{key}"] = r.json()["agreement"]["id"]
+        assert S["aidc1"] != S["aidc2"]
+
+    def test_patch_with_unchanged_start_date_allowed(self, client):
+        ag = _get_agreement(client, S["aidc1"])
+        r = client.patch(
+            f"{R}/agreements/{S['aidc1']}",
+            json={"terms": {"start_date": ag["terms"]["start_date"], "price_ron_per_year": 900}},
+            timeout=TIMEOUT,
+        )
+        assert r.status_code == 200, r.text
+        assert _unwrap(r.json(), "agreement")["version"] == 2
+
+    def test_propose_both_and_sign_first(self, client, specialist):
+        # the second agreement is proposed too (proposed agreements are cancelled on assignment as well)
+        assert client.post(f"{R}/agreements/{S['aidc2']}/propose", timeout=TIMEOUT).status_code == 200
+        assert client.post(f"{R}/agreements/{S['aidc1']}/propose", timeout=TIMEOUT).status_code == 200
+        for sess in (client, specialist):
+            r = sess.post(f"{R}/agreements/{S['aidc1']}/sign", json={"version": 2}, timeout=TIMEOUT)
+            assert r.status_code == 200, r.text
+        assert _get_agreement(client, S["aidc1"])["status"] == "signed"
+
+    def test_competing_agreement_cancelled(self, client, admin):
+        for sess in (client, admin):
+            ag = _get_agreement(sess, S["aidc2"])
+            assert ag["status"] == "cancelled"
+            assert ag["cancel_reason"] == "Terenul a fost atribuit altui acord."
+            assert ag["cancelled_at"]
+
+    def test_cancelled_agreement_cannot_be_signed(self, admin, client):
+        _4xx(client.post(f"{R}/agreements/{S['aidc2']}/sign", json={"version": 1}, timeout=TIMEOUT))
+        _4xx(admin.post(f"{R}/agreements/{S['aidc2']}/sign", json={"version": 1}, timeout=TIMEOUT))
+        assert _get_parcel(client, S["pidc"])["active_agreement_id"] == S["aidc1"]
+
+
+class TestSignWithEditedParcel:
+    def test_setup_owner_signs_then_edits_parcel(self, client, admin, specialist):
+        p = _publish_parcel(client, admin, "edited-after-accept", area_m2=2000)
+        S["pide"] = p["id"]
+        req = _new_request(specialist, p["id"], area_m2=300, note=f"{TAG} cerere editare")
+        r = client.post(f"{R}/requests/{req['id']}/accept", timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        S["aide"] = r.json()["agreement"]["id"]
+        assert client.post(f"{R}/agreements/{S['aide']}/propose", timeout=TIMEOUT).status_code == 200
+        r = client.post(f"{R}/agreements/{S['aide']}/sign", json={"version": 1}, timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        # the owner pauses the parcel and changes its content: it goes back to draft (re-verification needed)
+        assert client.post(f"{R}/parcels/{p['id']}/pause", timeout=TIMEOUT).status_code == 200
+        r = client.patch(f"{R}/parcels/{p['id']}", json={"description": f"{TAG} editat dupa acceptare"}, timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        assert _get_parcel(client, p["id"])["status"] == "draft"
+
+    def test_cultivator_cannot_sign_unverified_parcel(self, client, specialist):
+        _err(specialist.post(f"{R}/agreements/{S['aide']}/sign", json={"version": 1}, timeout=TIMEOUT), 409)
+        ag = _get_agreement(client, S["aide"])
+        assert ag["status"] == "proposed" and len(ag["signatures"]) == 1
+        assert not _get_parcel(client, S["pide"]).get("active_agreement_id")
+
+    def test_cancel_agreement(self, client):
+        r = client.post(f"{R}/agreements/{S['aide']}/cancel", json={}, timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+
+
+# ── 13. concurrency ──────────────────────────────────────────────────────────
+
+class TestRequestRace:
+    def test_parallel_duplicate_requests_create_one(self, client, admin, specialist):
+        p = _publish_parcel(client, admin, "race", area_m2=2000)
+
+        def go(i):
+            return _post_request(specialist, p["id"], area_m2=300, note=f"{TAG} race {i}").status_code
+
+        with ThreadPoolExecutor(max_workers=5) as ex:
+            codes = list(ex.map(go, range(5)))
+        assert len([c for c in codes if c in (200, 201)]) == 1, codes
+        assert all(c == 409 for c in codes if c not in (200, 201)), codes
+        sent = _items(specialist.get(f"{R}/requests/sent", timeout=TIMEOUT).json())
+        assert len([i for i in sent if i["parcel_id"] == p["id"]]) == 1

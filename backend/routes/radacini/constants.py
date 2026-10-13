@@ -136,6 +136,19 @@ LISTING_MODE_IDS = {m["id"] for m in LISTING_MODES}
 RESERVATION_MODE_IDS = {m["id"] for m in RESERVATION_MODES}
 FAMILY_LABELS = {f["id"]: f["label"] for f in CROP_FAMILIES}
 
+# Limite numerice partajate de validări (S4) și expuse în GET /meta -> limits.
+MAX_HARVEST_KG = 1_000_000
+MAX_LISTING_QTY = 1_000_000
+MAX_LISTING_PRICE_RON = 10_000
+QUANTITY_DECIMALS = 3  # cantitățile se rotunjesc la 0,001 înainte de validare
+
+LIMITS = {
+    "max_harvest_kg": MAX_HARVEST_KG,
+    "max_listing_quantity": MAX_LISTING_QTY,
+    "max_listing_price_ron": MAX_LISTING_PRICE_RON,
+    "quantity_decimals": QUANTITY_DECIMALS,
+}
+
 META = {
     "interests": INTERESTS,
     "offer_models": OFFER_MODELS,
@@ -150,6 +163,7 @@ META = {
     "listing_units": LISTING_UNITS,
     "listing_modes": LISTING_MODES,
     "reservation_modes": RESERVATION_MODES,
+    "limits": LIMITS,
 }
 
 LEGAL_NOTICE = (

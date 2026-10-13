@@ -2,15 +2,14 @@
 
 Corecția = o contribuție nouă cu `corrects_id`; cea veche rămâne în istoric și iese din totaluri.
 """
-from datetime import date
 from datetime import date as _Date  # câmpul `date` umbrește tipul în modelele pydantic
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
-from .bridge import db, emit, get_current_user, serialize_doc
-from .common import RadaciniRoute, mark_demo, now_iso, oid_or_404, safe_notify
+from .bridge import block_in_impersonation, db, emit, get_current_user, serialize_doc
+from .common import RadaciniRoute, check_finite, mark_demo, now_iso, oid_or_404, safe_notify
 from .constants import CONTRIBUTION_KIND_IDS
 from .projects import ensure_active, load_project, need_member, project_link, reviewer_ids, today_str
 
@@ -39,6 +38,7 @@ class ContributionIn(BaseModel):
     @field_validator("amount")
     @classmethod
     def _amount(cls, v: float) -> float:
+        check_finite(v, "Cantitatea trebuie să fie un număr pozitiv.")
         if not 0 < v <= 1_000_000_000:
             raise ValueError("Cantitatea trebuie să fie un număr pozitiv.")
         return v
@@ -132,6 +132,7 @@ async def list_contributions(project_id: str, member: Optional[str] = None, user
 
 @router.post("/projects/{project_id}/contributions")
 async def create_contribution(project_id: str, body: ContributionIn, user: dict = Depends(get_current_user)):
+    block_in_impersonation(user, "înregistrarea contribuției")
     uid = str(user["id"])
     project, access, _ = await load_project(project_id, user)
     need_member(access)
@@ -187,6 +188,7 @@ async def create_contribution(project_id: str, body: ContributionIn, user: dict 
 
 @router.post("/contributions/{contribution_id}/review")
 async def review_contribution(contribution_id: str, body: ReviewIn, user: dict = Depends(get_current_user)):
+    block_in_impersonation(user, "evaluarea contribuției")
     uid = str(user["id"])
     doc = await db.radacini_contributions.find_one({"_id": oid_or_404(contribution_id)})
     if not doc:

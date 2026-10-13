@@ -1,13 +1,13 @@
 """Proiecte agricole Rădăcini: creare la semnarea acordului, membri, roluri, finalizare."""
 import logging
-from datetime import datetime, timezone
 from typing import Optional
 
+from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
-from .bridge import db, emit, get_current_user, serialize_doc
-from .common import RadaciniRoute, mark_demo, now_iso, oid_or_404, safe_notify
+from .bridge import block_in_impersonation, db, emit, get_current_user, serialize_doc
+from .common import RadaciniRoute, mark_demo, now_iso, oid_or_404, safe_notify, today_bucharest
 from .requests import _staff_can_read, get_parcel_doc
 
 log = logging.getLogger(__name__)
@@ -17,7 +17,8 @@ ROLES = ("coordinator", "participant")
 
 
 def today_str() -> str:
-    return datetime.now(timezone.utc).date().isoformat()
+    """Data de azi (AAAA-LL-ZZ) în Europe/Bucharest, ca în frontend."""
+    return today_bucharest().isoformat()
 
 
 def project_link(project_id) -> str:
@@ -80,15 +81,34 @@ async def cas_update(project: dict, fields: dict) -> None:
         raise HTTPException(409, "Proiectul a fost modificat între timp. Reîncarcă pagina.")
 
 
+async def release_parcel(parcel_id, agreement_id: str, status: str = "paused") -> bool:
+    """Eliberează terenul legat de un acord: scoate `active_agreement_id` (doar dacă încă e al acordului dat)
+    și setează `status` (implicit `paused`: proprietarul îl poate edita, relua sau șterge). True dacă s-a schimbat."""
+    if not (isinstance(parcel_id, str) and len(parcel_id) == 24 and ObjectId.is_valid(parcel_id)):
+        return False
+    res = await db.radacini_parcels.update_one(
+        {"_id": ObjectId(parcel_id), "active_agreement_id": str(agreement_id)},
+        {"$unset": {"active_agreement_id": ""}, "$set": {"status": status, "updated_at": now_iso()}},
+    )
+    return res.modified_count == 1
+
+
+async def agreement_party_ids(project: dict) -> set:
+    """Utilizatorii-părți ai acordului din care provine proiectul (proprietar + cultivator)."""
+    aid = project.get("agreement_id")
+    if not (isinstance(aid, str) and len(aid) == 24 and ObjectId.is_valid(aid)):
+        return set()
+    ag = await db.radacini_agreements.find_one({"_id": ObjectId(aid)}, {"party_ids": 1})
+    return {str(u) for u in (ag or {}).get("party_ids", [])}
+
+
 # ----------------------------------------------------------------- creare din acord
 
 async def create_project_for_agreement(agreement: dict, actor: Optional[dict] = None) -> Optional[dict]:
-    """Creează proiectul unui acord semnat. Idempotent; erorile se loghează, nu se propagă."""
+    """Creează proiectul unui acord semnat. Idempotent și sigur la concurență (upsert pe `agreement_id`,
+    serializat de pgmongo cu un lock advisory); erorile se loghează, nu se propagă."""
     try:
         agreement_id = str(agreement["_id"])
-        existing = await db.radacini_projects.find_one({"agreement_id": agreement_id})
-        if existing:
-            return existing
         terms = agreement.get("terms") or {}
         snap = terms.get("parcel_snapshot") or {}
         now = now_iso()
@@ -115,7 +135,12 @@ async def create_project_for_agreement(agreement: dict, actor: Optional[dict] = 
             "created_at": now,
             "updated_at": now,
         })
-        await db.radacini_projects.insert_one(project)
+        res = await db.radacini_projects.update_one(
+            {"agreement_id": agreement_id}, {"$setOnInsert": project}, upsert=True
+        )
+        if res.upserted_id is None:  # există deja (creat de o cerere concurentă sau de un apel anterior)
+            return await db.radacini_projects.find_one({"agreement_id": agreement_id})
+        project["_id"] = res.upserted_id
         for m in members:
             await safe_notify(
                 m["user_id"],
@@ -174,17 +199,23 @@ def _view(project: dict, role: Optional[str], access: str) -> dict:
 async def list_projects(user: dict = Depends(get_current_user)):
     uid = str(user["id"])
     # Completare: acordurile semnate înainte de S3 (sau a căror creare de proiect a eșuat) primesc proiectul acum.
-    signed = await db.radacini_agreements.find({"party_ids": uid, "status": "signed"}).to_list(200)
-    if signed:
+    # Se încarcă doar ID-urile; documentele complete doar pentru acordurile fără proiect (rar).
+    signed_ids = [
+        str(a["_id"])
+        for a in await db.radacini_agreements.find({"party_ids": uid, "status": "signed"}, {"_id": 1}).to_list(200)
+    ]
+    if signed_ids:
         have = {
             p["agreement_id"]
             for p in await db.radacini_projects.find(
-                {"agreement_id": {"$in": [str(a["_id"]) for a in signed]}}, {"agreement_id": 1}
+                {"agreement_id": {"$in": signed_ids}}, {"agreement_id": 1}
             ).to_list(200)
         }
-        for a in signed:
-            if str(a["_id"]) not in have:
-                await create_project_for_agreement(a, user)
+        for aid in signed_ids:
+            if aid not in have:
+                agreement = await db.radacini_agreements.find_one({"_id": ObjectId(aid)})
+                if agreement:
+                    await create_project_for_agreement(agreement, user)
     docs = await db.radacini_projects.find({"member_ids": uid}).sort("updated_at", -1).to_list(200)
     docs = [d for d in docs if member_role(d, uid)]
     ids = [str(d["_id"]) for d in docs]
@@ -243,7 +274,8 @@ async def add_member(project_id: str, body: InviteIn, user: dict = Depends(get_c
     if member_role(doc, tid):
         raise HTTPException(409, "Utilizatorul este deja membru al proiectului.")
     now = now_iso()
-    member = {"user_id": tid, "name": target.get("name") or body.email, "role": "participant", "joined_at": now}
+    # Nu stocăm emailul ca nume (ar apărea în proiect pentru toți membrii).
+    member = {"user_id": tid, "name": target.get("name") or "Membru", "role": "participant", "joined_at": now}
     await cas_update(doc, {"members": [*doc["members"], member], "member_ids": [*doc["member_ids"], tid]})
     await safe_notify(
         tid,
@@ -306,6 +338,8 @@ async def remove_member(project_id: str, member_user_id: str, user: dict = Depen
         raise HTTPException(404, "Membrul nu există în proiect.")
     if current == "owner":
         raise HTTPException(409, "Proprietarul nu poate fi eliminat din proiect.")
+    if member_user_id in await agreement_party_ids(doc):
+        raise HTTPException(409, "Părțile acordului nu pot fi eliminate din proiect.")
     members = [m for m in doc["members"] if m["user_id"] != member_user_id]
     if not any(m["role"] == "coordinator" for m in members):
         raise HTTPException(409, "Nu poți elimina ultimul coordonator.")
@@ -341,8 +375,13 @@ async def remove_member(project_id: str, member_user_id: str, user: dict = Depen
 
 @router.post("/projects/{project_id}/complete")
 async def complete_project(project_id: str, user: dict = Depends(get_current_user)):
+    block_in_impersonation(user, "finalizarea proiectului")
     doc, access, role = await load_project(project_id, user)
     need_coordinator(access, role)
+    if doc.get("status") != "active":
+        raise HTTPException(409, "Proiectul este deja finalizat.")
+    if await db.radacini_harvests.find_one({"project_id": str(doc["_id"]), "status": "recorded"}, {"_id": 1}):
+        raise HTTPException(409, "Există recolte neconfirmate.")
     now = now_iso()
     res = await db.radacini_projects.update_one(
         {"_id": doc["_id"], "status": "active"},
@@ -350,6 +389,12 @@ async def complete_project(project_id: str, user: dict = Depends(get_current_use
     )
     if res.modified_count != 1:
         raise HTTPException(409, "Proiectul este deja finalizat.")
+    # Terenul revine proprietarului (suspendat: îl poate edita, relua sau șterge). Dacă eșuează, deblocarea
+    # leneșă din parcels.py o va face la următoarea acțiune a proprietarului.
+    try:
+        await release_parcel(doc.get("parcel_id"), doc.get("agreement_id"))
+    except Exception:  # noqa: BLE001
+        log.exception("radacini: terenul nu a putut fi eliberat la finalizarea proiectului %s", doc["_id"])
     for m in doc["members"]:
         if m["user_id"] != str(user["id"]):
             await safe_notify(

@@ -6,8 +6,17 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
-from .bridge import db, emit, get_current_user, serialize_doc
-from .common import RadaciniRoute, load_owners, mark_demo, now_iso, oid_or_404, safe_notify
+from .bridge import block_in_impersonation, db, emit, get_current_user, serialize_doc
+from .common import (
+    RadaciniRoute,
+    check_price,
+    load_owners,
+    mark_demo,
+    now_iso,
+    oid_or_404,
+    safe_notify,
+    today_bucharest,
+)
 from .constants import LEGAL_NOTICE, OFFER_MODEL_IDS
 from .members import get_member_doc
 from .staff import get_staff
@@ -36,9 +45,7 @@ class ProposalIn(BaseModel):
     @field_validator("price_ron_per_year")
     @classmethod
     def _price(cls, v: Optional[float]) -> Optional[float]:
-        if v is not None and v < 0:
-            raise ValueError("Prețul nu poate fi negativ.")
-        return v
+        return check_price(v)
 
     @field_validator("crops")
     @classmethod
@@ -112,7 +119,7 @@ def check_terms(t: dict, *, model: str, parcel_area: Optional[int], require_futu
     if parcel_area and area > parcel_area:
         raise HTTPException(400, f"Suprafața nu poate depăși suprafața terenului ({parcel_area} m²).")
     start, end = _as_date(t["start_date"]), _as_date(t["end_date"])
-    if require_future_start and start < datetime.now(timezone.utc).date():
+    if require_future_start and start < today_bucharest():
         raise HTTPException(400, "Data de început nu poate fi în trecut.")
     if end <= start:
         raise HTTPException(400, "Data de final trebuie să fie după data de început.")
@@ -123,8 +130,13 @@ def check_terms(t: dict, *, model: str, parcel_area: Optional[int], require_futu
     elif share is not None:
         raise HTTPException(400, "Procentul din recoltă se completează doar la „Cultivare la parte din recoltă”.")
     price = t.get("price_ron_per_year")
-    if price is not None and price < 0:
-        raise HTTPException(400, "Prețul nu poate fi negativ.")
+    if price is not None:
+        if isinstance(price, bool) or not isinstance(price, (int, float)):
+            raise HTTPException(400, "Prețul trebuie să fie un număr valid.")
+        try:
+            check_price(price)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from None
 
 
 # ----------------------------------------------------------------- helpers
@@ -258,6 +270,7 @@ async def _ensure_member(user: dict) -> dict:
 
 @router.post("/parcels/{parcel_id}/requests")
 async def create_request(parcel_id: str, body: RequestIn, user: dict = Depends(get_current_user)):
+    block_in_impersonation(user, "trimiterea cererii")
     uid = str(user["id"])
     member = await _ensure_member(user)
     parcel = await db.radacini_parcels.find_one({"_id": oid_or_404(parcel_id)})
@@ -272,19 +285,13 @@ async def create_request(parcel_id: str, body: RequestIn, user: dict = Depends(g
     proposal = _proposal_dict(body)
     check_terms(proposal, model=body.model, parcel_area=parcel.get("area_m2"))
 
-    existing = await db.radacini_land_requests.find(
-        {"parcel_id": parcel_id, "requester_user_id": uid, "status": {"$in": list(ACTIVE_STATUSES)}}
-    ).to_list(20)
-    for e in existing:
+    active_filter = {"parcel_id": parcel_id, "requester_user_id": uid, "status": {"$in": list(ACTIVE_STATUSES)}}
+    # Cererile active expirate (30 de zile fără activitate) se închid mai întâi, ca să nu blocheze una nouă.
+    for e in await db.radacini_land_requests.find(active_filter).to_list(20):
         if (await refresh_expiry(e)).get("status") in ACTIVE_STATUSES:
             raise HTTPException(409, "Ai deja o cerere activă pentru acest teren.")
 
     now = now_iso()
-    if "grow" not in (member.get("interests") or []):
-        await db.radacini_members.update_one(
-            {"_id": member["_id"]},
-            {"$set": {"interests": [*(member.get("interests") or []), "grow"], "updated_at": now}},
-        )
     doc = mark_demo({
         "parcel_id": parcel_id,
         "owner_user_id": str(parcel["owner_user_id"]),
@@ -299,7 +306,16 @@ async def create_request(parcel_id: str, body: RequestIn, user: dict = Depends(g
         "created_at": now,
         "updated_at": now,
     })
-    await db.radacini_land_requests.insert_one(doc)
+    # Inserare ca upsert cu același filtru ca verificarea de mai sus: pgmongo serializează upsert-urile pe
+    # colecție (lock advisory), deci două cereri simultane (același solicitant + teren) nu pot trece amândouă.
+    res = await db.radacini_land_requests.update_one(active_filter, {"$setOnInsert": doc}, upsert=True)
+    if res.upserted_id is None:
+        raise HTTPException(409, "Ai deja o cerere activă pentru acest teren.")
+    doc["_id"] = res.upserted_id
+    if "grow" not in (member.get("interests") or []):
+        await db.radacini_members.update_one(
+            {"_id": member["_id"]}, {"$addToSet": {"interests": "grow"}, "$set": {"updated_at": now}}
+        )
     await safe_notify(
         doc["owner_user_id"],
         "Cerere nouă pentru terenul tău",
@@ -393,6 +409,7 @@ async def post_message(request_id: str, body: MessageIn, user: dict = Depends(ge
 
 @router.post("/requests/{request_id}/counter")
 async def counter_request(request_id: str, body: ProposalIn, user: dict = Depends(get_current_user)):
+    block_in_impersonation(user, "trimiterea contrapropunerii")
     doc = await _load_request(request_id)
     _require_party(await party_access(doc, user))
     _require_active(doc)
@@ -462,6 +479,7 @@ async def _close_request(request_id: str, user: dict, *, new_status: str, as_own
 
 @router.post("/requests/{request_id}/decline")
 async def decline_request(request_id: str, body: ReasonIn, user: dict = Depends(get_current_user)):
+    block_in_impersonation(user, "refuzarea cererii")
     doc = await _close_request(request_id, user, new_status="declined", as_owner=True, reason=body.reason)
     message = "Proprietarul a refuzat cererea."
     if body.reason:
@@ -473,6 +491,7 @@ async def decline_request(request_id: str, body: ReasonIn, user: dict = Depends(
 
 @router.post("/requests/{request_id}/withdraw")
 async def withdraw_request(request_id: str, user: dict = Depends(get_current_user)):
+    block_in_impersonation(user, "retragerea cererii")
     doc = await _close_request(request_id, user, new_status="withdrawn", as_owner=False, reason=None)
     await safe_notify(
         doc["owner_user_id"],
@@ -487,13 +506,21 @@ async def withdraw_request(request_id: str, user: dict = Depends(get_current_use
 
 @router.post("/requests/{request_id}/accept")
 async def accept_request(request_id: str, user: dict = Depends(get_current_user)):
+    block_in_impersonation(user, "acceptarea cererii")
     doc = await _load_request(request_id)
     _require_party(await party_access(doc, user))
     if str(user["id"]) != str(doc["owner_user_id"]):
         raise HTTPException(403, "Doar proprietarul poate accepta cererea.")
     _require_active(doc)
+    # Proprietarul acceptă doar propunerea celuilalt (nu o contrapropunere proprie).
+    if str(doc.get("proposal_by_user_id")) == str(doc["owner_user_id"]):
+        raise HTTPException(409, "Așteaptă răspunsul solicitantului.")
     parcel = await get_parcel_doc(doc["parcel_id"])
-    if not parcel or parcel.get("archived_at") or parcel.get("status") != "published":
+    if not parcel or parcel.get("archived_at"):
+        raise HTTPException(409, "Terenul nu mai este disponibil.")
+    if parcel.get("active_agreement_id"):
+        raise HTTPException(409, "Terenul are deja un acord activ.")
+    if parcel.get("status") != "published":
         raise HTTPException(409, "Terenul nu mai este disponibil.")
 
     now = now_iso()
@@ -536,10 +563,15 @@ async def accept_request(request_id: str, user: dict = Depends(get_current_user)
     })
     agreement_id = str(agreement["_id"])
     changes = {"status": "accepted", "decided_at": now, "last_activity_at": now, "updated_at": now, "agreement_id": agreement_id}
+    # Filtru pe `proposal_at`: acordul se creează exact din propunerea citită (nu dintr-o contrapropunere nouă).
     res = await db.radacini_land_requests.update_one(
-        {"_id": doc["_id"], "status": {"$in": list(ACTIVE_STATUSES)}}, {"$set": changes}
+        {"_id": doc["_id"], "status": {"$in": list(ACTIVE_STATUSES)}, "proposal_at": doc.get("proposal_at")},
+        {"$set": changes},
     )
     if res.modified_count != 1:
+        fresh = await db.radacini_land_requests.find_one({"_id": doc["_id"]}, {"status": 1})
+        if fresh and fresh.get("status") in ACTIVE_STATUSES:
+            raise HTTPException(409, "Propunerea s-a schimbat între timp.")
         raise HTTPException(409, "Cererea nu mai este activă.")
     try:
         await db.radacini_agreements.insert_one(agreement)

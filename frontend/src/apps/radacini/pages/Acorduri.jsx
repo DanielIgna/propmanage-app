@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { FileSignature } from "lucide-react";
+import { AlertTriangle, FileSignature } from "lucide-react";
 import { useAuth } from "../../../auth";
-import { CARD, DSButton, EmptyState } from "../../../design-system";
+import { CARD, EmptyState } from "../../../design-system";
 import { radaciniApi, asList, errMsg } from "../api";
 import { useMeta } from "../hooks";
 import {
@@ -11,6 +11,7 @@ import {
   labelOf,
   PageHeader,
   PageSkeleton,
+  linkBtnCls,
   signedCount,
   StatusBadge,
 } from "../shared";
@@ -19,17 +20,17 @@ export default function Acorduri() {
   const { user } = useAuth();
   const { meta } = useMeta();
   // loaded=false până la răspuns: afișăm skeleton.
-  const [data, setData] = useState({ loaded: false, items: [] });
+  const [data, setData] = useState({ loaded: false, items: [], error: null });
 
   useEffect(() => {
     let alive = true;
     radaciniApi
       .agreements()
-      .then((d) => alive && setData({ loaded: true, items: asList(d) }))
+      .then((d) => alive && setData({ loaded: true, items: asList(d), error: null }))
       .catch((e) => {
         if (!alive) return;
         toast.error(errMsg(e, "Nu am putut încărca acordurile"));
-        setData({ loaded: true, items: [] });
+        setData({ loaded: true, items: [], error: e });
       });
     return () => {
       alive = false;
@@ -42,14 +43,16 @@ export default function Acorduri() {
     <div className="space-y-5 max-w-4xl" data-testid="radacini-acorduri">
       <PageHeader title="Acorduri" subtitle="Termenii colaborărilor, versiunile și semnăturile." />
 
-      {data.items.length === 0 ? (
+      {data.error ? (
+        <EmptyState icon={AlertTriangle} title="Nu am putut încărca acordurile" hint={errMsg(data.error)} testid="radacini-acorduri-error" />
+      ) : data.items.length === 0 ? (
         <EmptyState
           icon={FileSignature}
           title="Nu ai niciun acord"
           hint="Acordul se creează automat când o cerere de teren este acceptată."
           action={
-            <Link to="/radacini/cereri">
-              <DSButton variant="secondary">Vezi cererile</DSButton>
+            <Link to="/radacini/cereri" className={linkBtnCls("secondary")}>
+              Vezi cererile
             </Link>
           }
           testid="radacini-acorduri-empty"

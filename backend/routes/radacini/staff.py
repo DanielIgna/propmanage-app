@@ -1,15 +1,13 @@
 """Personal Rădăcini (operator/manager): coada de verificare și gestionarea personalului."""
-import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from .bridge import db, emit, get_current_user, is_super_admin, notify, serialize_doc
-from .common import RadaciniRoute, load_owners, mark_demo, now_iso, oid_or_404
+from .bridge import db, emit, get_current_user, is_super_admin, serialize_doc
+from .common import RadaciniRoute, load_owners, mark_demo, now_iso, oid_or_404, safe_notify
 from .constants import LOCALITIES
 
-log = logging.getLogger(__name__)
 router = APIRouter(route_class=RadaciniRoute)
 
 
@@ -116,7 +114,13 @@ async def verify_parcel(
         "verification": {"by": str(user["id"]), "at": now, "decision": body.decision, "note": body.note},
         "updated_at": now,
     }
-    await db.radacini_parcels.update_one({"_id": doc["_id"]}, {"$set": changes})
+    # Tranziție atomică: se aplică doar dacă terenul încă așteaptă verificarea (doi verificatori simultan → un 409).
+    res = await db.radacini_parcels.update_one(
+        {"_id": doc["_id"], "status": "pending_verification", "archived_at": {"$exists": False}},
+        {"$set": changes},
+    )
+    if res.modified_count != 1:
+        raise HTTPException(409, "Terenul nu așteaptă verificarea.")
     doc = {**doc, **changes}
 
     title = doc.get("title") or "Terenul tău"
@@ -124,16 +128,13 @@ async def verify_parcel(
         notif_title, message = "Terenul a fost aprobat", f"„{title}” este publicat acum."
     else:
         notif_title, message = "Terenul a fost respins", f"„{title}” a fost respins: {body.note}"
-    try:
-        await notify(
-            str(doc.get("owner_user_id")),
-            notif_title,
-            message,
-            type_="verification",
-            link="/radacini/terenurile-mele",
-        )
-    except Exception:  # noqa: BLE001 — notificarea nu trebuie să blocheze verificarea
-        log.warning("radacini: notificarea de verificare nu a putut fi trimisă", exc_info=True)
+    await safe_notify(
+        str(doc.get("owner_user_id")),
+        notif_title,
+        message,
+        link="/radacini/terenurile-mele",
+        type_="verification",
+    )
 
     await emit(
         "radacini.parcel_verified",
@@ -184,8 +185,6 @@ async def add_staff(body: StaffIn, staff: dict = Depends(require_staff("manager"
     if not target:
         raise HTTPException(404, "Nu există un cont PropManage cu acest email.")
     uid = str(target["_id"])
-    if await db.radacini_staff.find_one({"user_id": uid}):
-        raise HTTPException(409, "Utilizatorul face deja parte din personal.")
     doc = mark_demo({
         "user_id": uid,
         "email": target.get("email") or body.email,
@@ -195,7 +194,11 @@ async def add_staff(body: StaffIn, staff: dict = Depends(require_staff("manager"
         "created_at": now_iso(),
         "created_by": str(user["id"]),
     })
-    await db.radacini_staff.insert_one(doc)
+    # Upsert (serializat de pgmongo): două adăugări simultane nu pot crea dubluri.
+    res = await db.radacini_staff.update_one({"user_id": uid}, {"$setOnInsert": doc}, upsert=True)
+    if res.upserted_id is None:
+        raise HTTPException(409, "Utilizatorul face deja parte din personal.")
+    doc["_id"] = res.upserted_id
     return {"staff": serialize_doc(doc)}
 
 

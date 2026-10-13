@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
 
 from .bridge import db, emit, get_current_user, serialize_doc
-from .common import RadaciniRoute, mark_demo, now_iso, oid_or_404, safe_notify
+from .common import RadaciniRoute, check_finite, mark_demo, now_iso, oid_or_404, safe_notify
 from .constants import ACTIVITY_TYPE_IDS
 from .projects import ensure_active, load_project, need_coordinator, need_member, project_link
 
@@ -51,6 +51,7 @@ class _Common(BaseModel):
     @field_validator("duration_h", check_fields=False)
     @classmethod
     def _v_duration(cls, v):
+        check_finite(v, "Durata trebuie să fie între 0 și 24 de ore.")
         if v is not None and not 0 < v <= 24:
             raise ValueError("Durata trebuie să fie între 0 și 24 de ore.")
         return v

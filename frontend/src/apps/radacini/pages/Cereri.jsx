@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Inbox, Send } from "lucide-react";
+import { AlertTriangle, Inbox, Send } from "lucide-react";
 import { CARD, EmptyState, TabBar } from "../../../design-system";
 import { radaciniApi, asList, errMsg } from "../api";
 import { useMeta } from "../hooks";
@@ -59,17 +59,17 @@ export default function Cereri() {
   const { meta } = useMeta();
   const [tab, setTab] = useState("sent");
   // Starea reține ce tab a fost încărcat; până la potrivire afișăm skeleton.
-  const [data, setData] = useState({ tab: null, items: [] });
+  const [data, setData] = useState({ tab: null, items: [], error: null });
 
   useEffect(() => {
     let alive = true;
     const load = tab === "sent" ? radaciniApi.requestsSent : radaciniApi.requestsReceived;
     load()
-      .then((d) => alive && setData({ tab, items: asList(d) }))
+      .then((d) => alive && setData({ tab, items: asList(d), error: null }))
       .catch((e) => {
         if (!alive) return;
         toast.error(errMsg(e, "Nu am putut încărca cererile"));
-        setData({ tab, items: [] });
+        setData({ tab, items: [], error: e });
       });
     return () => {
       alive = false;
@@ -86,6 +86,8 @@ export default function Cereri() {
 
       {loading ? (
         <PageSkeleton />
+      ) : data.error ? (
+        <EmptyState icon={AlertTriangle} title="Nu am putut încărca cererile" hint={errMsg(data.error)} testid={`radacini-cereri-error-${tab}`} />
       ) : data.items.length === 0 ? (
         <EmptyState
           icon={tab === "sent" ? Send : Inbox}

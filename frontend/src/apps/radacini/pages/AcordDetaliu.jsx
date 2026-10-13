@@ -36,6 +36,19 @@ const Row = ({ label, children }) => (
   </div>
 );
 
+// Din corpul formularului păstrăm doar termenii schimbați față de versiunea curentă
+// (altfel serverul revalidează câmpuri neatinse, ex. data de început devenită între timp trecută).
+const changedTerms = (body, cur = {}) => {
+  const same = (k, v) => {
+    const prev = cur[k];
+    if (k === "start_date" || k === "end_date") return String(prev || "").slice(0, 10) === v;
+    if (k === "crops") return JSON.stringify(prev || []) === JSON.stringify(v || []);
+    if (k === "custom_clauses") return (prev || "") === (v || "");
+    return (prev ?? null) === (v ?? null);
+  };
+  return Object.fromEntries(Object.entries(body).filter(([k, v]) => !same(k, v)));
+};
+
 // Termenii unei versiuni (curentă sau din istoric).
 function TermsDetails({ terms = {}, modelLabel }) {
   return (
@@ -133,8 +146,15 @@ export default function AcordDetaliu() {
     run(() => radaciniApi.proposeAgreement(id), "Acordul a fost trimis spre semnare");
   };
 
-  const saveTerms = (body) =>
-    run(() => radaciniApi.updateAgreement(id, body), "Termenii au fost salvați. Versiunea a fost actualizată.", () => setEditOpen(false));
+  const saveTerms = (body) => {
+    const changes = changedTerms(body, a.terms);
+    if (!Object.keys(changes).length) {
+      toast.info("Nu ai modificat niciun termen.");
+      setEditOpen(false);
+      return;
+    }
+    run(() => radaciniApi.updateAgreement(id, changes), "Termenii au fost salvați. Versiunea a fost actualizată.", () => setEditOpen(false));
+  };
 
   const sign = () =>
     run(
@@ -297,6 +317,7 @@ export default function AcordDetaliu() {
               initial={proposalToForm(a.terms, a.model)}
               showNote={false}
               showClauses
+              nullBlank
               submitLabel="Salvează termenii"
               submitting={busy}
               onSubmit={saveTerms}

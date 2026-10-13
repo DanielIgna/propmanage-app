@@ -1,4 +1,4 @@
-import React, { lazy } from "react";
+import React, { lazy, Suspense } from "react";
 import { Route } from "react-router-dom";
 import { RADACINI_ENABLED } from "./config";
 import { RadaciniLayout } from "./RadaciniLayout";
@@ -18,15 +18,20 @@ const Acorduri = lazy(() => import("./pages/Acorduri"));
 const AcordDetaliu = lazy(() => import("./pages/AcordDetaliu"));
 const Proiecte = lazy(() => import("./pages/Proiecte"));
 const ProiectDetaliu = lazy(() => import("./pages/ProiectDetaliu"));
-const Progres = lazy(() => import("./pages/Progres"));
+// Pagina Progres există doar în dev; în build-ul de producție importul dispare (NODE_ENV e înlocuit la build).
+const Progres = process.env.NODE_ENV !== "production" ? lazy(() => import("./pages/Progres")) : null;
 const Piata = lazy(() => import("./pages/Piata"));
 const AnuntDetaliu = lazy(() => import("./pages/AnuntDetaliu"));
 const AnuntForm = lazy(() => import("./pages/AnuntForm"));
 const Rezervari = lazy(() => import("./pages/Rezervari"));
+const Login = lazy(() => import("./pages/Login"));
 
 export function radaciniRoutes() {
   if (!RADACINI_ENABLED) return null;
   return (
+    <>
+    {/* Intrarea Rădăcini e în afara layout-ului (layout-ul cere cont). */}
+    <Route path="/radacini/login" element={<Suspense fallback={null}><Login /></Suspense>} />
     <Route path="/radacini" element={<RadaciniLayout />}>
       <Route index element={<Panou />} />
       <Route path="profil" element={<Profil />} />
@@ -49,7 +54,8 @@ export function radaciniRoutes() {
       <Route path="piata/:id" element={<AnuntDetaliu />} />
       <Route path="piata/:id/editare" element={<AnuntForm />} />
       <Route path="rezervari" element={<Rezervari />} />
-      <Route path="progres" element={<Progres />} />
+      {Progres && <Route path="progres" element={<Progres />} />}
     </Route>
+    </>
   );
 }

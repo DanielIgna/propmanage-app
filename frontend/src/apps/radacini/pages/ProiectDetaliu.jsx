@@ -78,7 +78,7 @@ export default function ProiectDetaliu() {
   const tabs = PROJECT_TABS.map(([tid, label]) => [tid, label, TAB_ICONS[tid]]);
 
   // isMember în tab-uri înseamnă „poate scrie” (membru și proiect nefinalizat).
-  const common = { project, members, isMember: canWrite, myRole, canCoord, me: user?.id, reload };
+  const common = { project, members, isMember: canWrite, isProjectMember: memberOf, myRole, canCoord, me: user?.id, reload };
 
   return (
     <div className="space-y-5 max-w-5xl" data-testid="radacini-proiect-detaliu">

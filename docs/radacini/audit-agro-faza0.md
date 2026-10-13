@@ -9,6 +9,16 @@ Branch: `radacini` · Data: 2026-10-13 · Etapa: **audit și arhitectură. Nu s-
 - **LIPSĂ** — nu există.
 - **NECESITĂ VALIDARE** — trebuie testat la rulare sau verificat de un jurist.
 
+
+> **Erată (2026-10-13, reverificare la nivel de effort ridicat).** Auditul inițial a fost făcut la effort mediu. O reverificare cu dovezi din cod a găsit afirmații greșite sau imprecise, corectate mai jos în text (marcate *[corectat]*):
+> - **Evenimentele `radacini.*` NU apar automat în admin.** `event_bus.emit` scrie doar în `activity_events` (`event_bus.py:60-77`). Activitate Live citește `db.events` (`routes/admin_console.py:700`), User Timeline agregă din users/requests/payments/reviews, Notification Center din `command_center_recos`/`audit_anomalies`, iar Automation Center are 3 șabloane fixe. Integrarea cere cod: o filă/sursă Rădăcini.
+> - **Acțiunile Rădăcini NU ajung în `admin_actions_log`.** Trebuie apelat explicit `admin_console.audit()` (`admin_audit_log`) sau `sub_admin_deps._log_action`.
+> - **Scope-urile sub-adminilor sunt aplicate de un middleware global** (`middleware_scope.py`, ~30 de prefixe `/api/admin/*`), plus `require_admin_scope` în 3 fișiere. Prefixele nemapate trec pentru orice sub-admin, iar `/api/radacini/*` nu e acoperit.
+> - **Tabelele `app.radacini_*` nu sunt create prin migrație.** `pgmongo` le creează la prima scriere (`pgmongo.py:783-852`), doar cu index GIN, fără indexuri pe expresii.
+> - **Escrow:** doar `requests.py:294` e un flag demo. `routes/payments.py` încasează real prin Stripe Checkout (când cheile sunt reale), iar `projects.py` are tranșe din wallet. Eliberarea e doar evidență internă (`wallet_balance`), fără payout.
+> - **Admin:** 15 secțiuni (10 business, 5 infra), 113 intrări (`AdminLayoutMetronic.jsx:90-330`). „Joburi programate” e intrare în Dashboard Business.
+> - **Alte precizări:** `models.py` nu are `ROLES` (are `PUBLIC_REGISTER_ROLES`). KC verifică fondatorul la `knowledge_center.py:171`. KYC permite upload doar specialiștilor. Exportul GDPR nu include colecțiile Rădăcini. Quest-urile sunt legate de vouchere și de rolurile client/specialist. XOS are doar suprafața `client_home`. `service_contracts.py` are semnătură pentru ambele părți și mediere de operator. Rate limiting-ul se aplică doar pe `/api/public`, `/api/p`, `/api/track`, `/api/go`.
+
 ---
 
 ## 1. Rezumat executiv
@@ -16,7 +26,7 @@ Branch: `radacini` · Data: 2026-10-13 · Etapa: **audit și arhitectură. Nu s-
 - PropManage are o **infrastructură comună bună de refolosit**: autentificare (Supabase și sesiune), administrare și jurnal de audit, notificări pe email/in-app/push, stocare de fișiere, geocodare Google, hartă Leaflet, GDPR, KYC, forum de comunitate și un motor de quest-uri. Rădăcini se poate sprijini direct pe ele.
 - **Partea de business din PropManage (marketplace, cereri, proiecte, escrow, abonamente) e construită pentru servicii pentru casă.** Se pot refolosi *tiparele*, nu modulele ca atare.
   - Marketplace-ul pune specialiști să concureze pe o cerere, nu vinde produse.
-  - Escrow-ul e doar un câmp de stare; nu mută bani.
+  - Escrow-ul: banii pot intra real prin Stripe Checkout, dar „eliberarea” e doar evidență internă în wallet, fără payout; pe cereri (`requests.py:294`) e doar un flag demo. *[corectat]*
   - Abonamentul e o plată unică ce prelungește accesul cu N zile; nu e recurent.
   - Proiectele pot fi create doar de un designer.
 - **Recomandare:** domeniul agricol stă într-un modul separat, `radacini` (colecții `radacini_*`, rute `/api/radacini/*`), în aceeași aplicație. Infrastructura comună se folosește printr-un singur punct de legătură, `bridge.py`. **Fără microservicii.**
@@ -44,7 +54,7 @@ Branch: `radacini` · Data: 2026-10-13 · Etapa: **audit și arhitectură. Nu s-
 | Componentă | Ce face real | Dovezi | Status |
 |---|---|---|---|
 | Autentificare | Supabase Auth, cookie httpOnly, Google OAuth, `get_current_user` | `deps.py:27`, `supabase_auth.py`, `routes/auth.py` (46 endpoint-uri) | CONFIRMAT, testat local |
-| Roluri | **Un singur rol pe utilizator** (`user.role`), plus un mecanism „dual-role” limitat la specialist↔client; `require_role(*allowed)` | `deps.py:75-87`, `models.py: ROLES`, `tests/test_phase52_multirole.py` | CONFIRMAT · **nu acoperă rolurile multiple din agro** |
+| Roluri | **Un singur rol pe utilizator** (`user.role`), plus un mecanism „dual-role” limitat la specialist↔client; `require_role(*allowed)` | `deps.py:75-87`, `models.py:9` (`PUBLIC_REGISTER_ROLES`) *[corectat]*, `tests/test_phase52_multirole.py` | CONFIRMAT · **nu acoperă rolurile multiple din agro** |
 | Administratori delegați și aprobări | sub-admini, aprobări, `admin_actions_log` | `routes/sub_admins.py`, `routes/admin_approvals.py` | CONFIRMAT |
 | Multi-tenant | registru `tenants` și rezolvarea tenantului pe fiecare request; fără migrare de date | `backend/tenancy.py`, `routes/tenants.py` | PARȚIAL CONFIRMAT |
 | Hartă | `PmMap`: Google sau, ca rezervă, Leaflet; **doar markere** | `frontend/src/components/PmMap.jsx`, `views/PropertyGIS.jsx` | CONFIRMAT · fără poligoane |
@@ -58,7 +68,7 @@ Branch: `radacini` · Data: 2026-10-13 · Etapa: **audit și arhitectură. Nu s-
 | Cereri (requests) | `open → confirmed → in_progress → completed`, recenzie | `routes/requests.py` | CONFIRMAT |
 | Matching | filtru după categorie și zonă pentru specialiști | `routes/matching.py` (1 endpoint, 86 de linii) | CONFIRMAT · simplu |
 | Proiecte | membri, sarcini, comentarii, atașamente, milestone-uri; **create doar de designer** | `routes/projects.py:1-9` (22 de endpoint-uri) | CONFIRMAT |
-| Escrow | **câmpul `escrow_status: held` se setează fără mișcare de bani** | `routes/requests.py:293-302` | PARȚIAL CONFIRMAT (demo) |
+| Escrow | pe cereri, doar flag demo (`requests.py:293-302`); încasare reală prin Stripe Checkout (`routes/payments.py:28-190`) și tranșe din wallet pe proiecte (`projects.py:432-590`); eliberarea e doar evidență internă, fără payout *[corectat]* | idem | PARȚIAL CONFIRMAT |
 | Plăți | Stripe Checkout `mode: payment` (plată unică) | `stripe_checkout.py:81-100`, `routes/payments.py` | CONFIRMAT |
 | Abonamente | plată unică pentru N zile de acces (`hh_subscriptions.expires_at`); **nu se reînnoiește automat** | `routes/house_health_billing.py:1-10,202-211` | CONFIRMAT |
 | Portofel | `transactions` / `payment_transactions` | `routes/wallet.py`, `tests/test_sec02_direct_wallet_topup.py` | PARȚIAL CONFIRMAT |
@@ -160,7 +170,7 @@ graph LR
 
 ## 6. Modelul conceptual de date
 
-Toate colecțiile sunt de forma `radacini_*`: tabele JSONB `app.radacini_*` create prin migrație. **Nu au FK**: integritatea se verifică în serviciul `radacini` și prin indexuri pe expresii JSONB. Istoricul se păstrează ca evenimente, cu soft-delete (`archived_at`).
+Toate colecțiile sunt de forma `radacini_*`: tabele JSONB `app.radacini_*`. **Azi le creează `pgmongo` la prima scriere, doar cu index GIN** *[corectat]*; trebuie adăugată o migrație (`supabase/migrations`) cu `app.create_collection` și indexuri pe expresii JSONB pentru câmpurile filtrate. **Nu au FK**: integritatea se verifică în serviciul `radacini`. Istoricul se păstrează ca evenimente, cu soft-delete (`archived_at`).
 
 | Entitate | Câmpuri cheie | Relații / cardinalitate | Reguli de acces |
 |---|---|---|---|
@@ -181,7 +191,7 @@ Toate colecțiile sunt de forma `radacini_*`: tabele JSONB `app.radacini_*` crea
 | `radacini_listings` | `seller_member_id`, `product`, `qty`, `unit`, `price_ron?`, `exchange_for?`, `pickup_point`, `status` | 1:N rezervări | public |
 | `radacini_reservations` | `listing_id`, `buyer_member_id`, `qty`, `mode` (bani la ridicare / schimb), `status`, `rating?` | N:1 listare | cumpărătorul + vânzătorul |
 | `radacini_decisions` | `scope` (proiect/comunitate), `question`, `options`, `votes[]`, `result` | N:1 | membrii comunității sau proiectului |
-| Audit | `activity_events` (bus) + `admin_actions_log` | — | admin |
+| Audit | `activity_events` (bus); jurnalul admin (`admin_audit_log`) doar prin apel explicit *[corectat]* | — | admin |
 
 **Nu duplicăm:** utilizatorii, fișierele, notificările, auditul, KYC și GDPR rămân cele existente.
 

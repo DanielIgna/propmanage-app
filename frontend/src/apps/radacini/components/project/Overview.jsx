@@ -18,12 +18,12 @@ export default function Overview({ project, members, canCoord, reload }) {
 
   useEffect(() => {
     let alive = true;
+    const today = todayIso();
     Promise.all([
-      radaciniApi.projectActivities(project.id).catch(() => ({ items: [] })),
+      radaciniApi.projectActivities(project.id, { from: today }).catch(() => ({ items: [] })),
       radaciniApi.projectContributions(project.id).catch(() => ({ totals: [] })),
     ]).then(([acts, contribs]) => {
       if (!alive) return;
-      const today = todayIso();
       const upcoming = asList(acts)
         .filter((a) => a.status === "scheduled" && a.date >= today)
         .sort((a, b) => (a.date + (a.start_time || "")).localeCompare(b.date + (b.start_time || "")))

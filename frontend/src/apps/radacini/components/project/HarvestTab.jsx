@@ -57,6 +57,8 @@ function AllocationsPanel({ harvest, projectId, members, isMember, canCoord, me 
   const pct = total > 0 ? Math.min(100, Math.round((state.allocated_kg / total) * 100)) : 0;
   const kg = Number(form.kg);
   const canAdd = isMember && canCoord && state.remaining_kg > 0;
+  // Ștergerea alocărilor manuale nu depinde de cantitatea rămasă (ex. recolta e alocată integral).
+  const canDelete = isMember && canCoord;
   const addValid = !!form.member && kg > 0 && kg <= state.remaining_kg;
   const memberOpts = members.map((m) => ({ id: m.user_id, label: m.name }));
 
@@ -190,7 +192,7 @@ function AllocationsPanel({ harvest, projectId, members, isMember, canCoord, me 
                       Pune în piață
                     </DSButton>
                   )}
-                  {canAdd && a.basis === "manual" && a.status === "allocated" && (
+                  {canDelete && a.basis === "manual" && a.status === "allocated" && (
                     <DSButton variant="danger" icon={Trash2} disabled={busy === a.id} onClick={() => remove(a)} data-testid={`radacini-alocare-sterge-${a.id}`}>
                       Șterge
                     </DSButton>
@@ -206,12 +208,15 @@ function AllocationsPanel({ harvest, projectId, members, isMember, canCoord, me 
   );
 }
 
-export default function HarvestTab({ project, members = [], isMember, canCoord, me }) {
+// isMember = poate scrie (membru, proiect activ) · isProjectMember = membru al proiectului (și la proiecte finalizate).
+// Personalul (doar citire) primește 403 la alocări, deci nu vede butonul „Alocări”.
+export default function HarvestTab({ project, members = [], isMember, isProjectMember = isMember, canCoord, me }) {
   const [confirm, confirmDialog] = useConfirm();
   const [data, setData] = useState({ loaded: false, items: [], totals: [] });
   const [tick, setTick] = useState(0);
   const [recordOpen, setRecordOpen] = useState(false);
   const [openId, setOpenId] = useState(null);
+  const [confirmingId, setConfirmingId] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -240,6 +245,7 @@ export default function HarvestTab({ project, members = [], isMember, canCoord, 
       }))
     )
       return;
+    setConfirmingId(h.id);
     try {
       await radaciniApi.confirmHarvest(h.id);
       toast.success("Recolta a fost confirmată");
@@ -247,6 +253,8 @@ export default function HarvestTab({ project, members = [], isMember, canCoord, 
       refresh();
     } catch (e) {
       toast.error(errMsg(e, "Recolta nu a putut fi confirmată"));
+    } finally {
+      setConfirmingId(null);
     }
   };
 
@@ -303,11 +311,11 @@ export default function HarvestTab({ project, members = [], isMember, canCoord, 
 
                 <div className="flex flex-wrap gap-2">
                   {isMember && isOwner && h.status === "recorded" && (
-                    <DSButton variant="success" onClick={() => confirmHarvest(h)} data-testid={`radacini-recolta-confirma-${h.id}`}>
-                      Confirmă recolta
+                    <DSButton variant="success" disabled={confirmingId === h.id} onClick={() => confirmHarvest(h)} data-testid={`radacini-recolta-confirma-${h.id}`}>
+                      {confirmingId === h.id ? "Se confirmă…" : "Confirmă recolta"}
                     </DSButton>
                   )}
-                  {h.status === "confirmed" && (
+                  {h.status === "confirmed" && isProjectMember && (
                     <DSButton variant="secondary" onClick={() => setOpenId(open ? null : h.id)} data-testid={`radacini-recolta-alocari-${h.id}`}>
                       {open ? "Ascunde alocările" : "Alocări"}
                     </DSButton>
@@ -318,7 +326,7 @@ export default function HarvestTab({ project, members = [], isMember, canCoord, 
                   <p className="text-xs text-slate-500 dark:text-slate-400">Alocările se fac după confirmarea recoltei.</p>
                 )}
 
-                {open && (
+                {open && isProjectMember && (
                   <AllocationsPanel
                     harvest={h}
                     projectId={project.id}

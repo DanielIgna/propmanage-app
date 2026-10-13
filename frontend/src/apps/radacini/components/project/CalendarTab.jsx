@@ -59,11 +59,18 @@ function ActivityDialog({ open, onOpenChange, activity, crops, types, projectId,
   const save = async () => {
     if (!valid) return;
     const body = { type: form.type, title: form.title.trim(), date: form.date };
+    // La editare (PATCH) câmpurile opționale golite se trimit ca null, altfel serverul le păstrează.
+    const clear = isEdit ? null : undefined;
     if (form.start_time) body.start_time = form.start_time;
+    else if (isEdit) body.start_time = clear;
     if (form.duration_h !== "") body.duration_h = Number(form.duration_h);
+    else if (isEdit) body.duration_h = clear;
     if (form.slots !== "") body.slots = Number(form.slots);
+    else if (isEdit) body.slots = clear;
     if (form.crop_plan_id !== NONE) body.crop_plan_id = form.crop_plan_id;
+    else if (isEdit) body.crop_plan_id = clear;
     if (form.notes.trim()) body.notes = form.notes.trim();
+    else if (isEdit) body.notes = clear;
     setSaving(true);
     try {
       if (isEdit) await radaciniApi.updateActivity(activity.id, body);

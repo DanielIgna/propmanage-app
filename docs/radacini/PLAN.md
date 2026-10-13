@@ -47,12 +47,12 @@ Stări: `draft → pending_verification → published | rejected`; `published �
 |---|---|---|---|
 | POST | `/parcels` | membru (dacă nu are încă interesul `land`, i se adaugă automat; fără profil → 400 „Completează profilul”) | validări: title 3–120, area_m2 100–10 000 000, lat 43.5–48.5, lng 20–30, locality din listă, offer.models ≥1 din enum, harvest_share_percent 1–90 doar dacă există `harvest_share`; status=`draft` |
 | GET | `/parcels/mine` | proprietarul | fără arhivate; sortate după `updated_at` desc |
-| GET | `/parcels` | public (fără autentificare) | doar `published`, nearhivate; filtre `locality`, `model`; `limit` ≤ 50, `skip`; **coordonate rotunjite la 2 zecimale**, fără `owner_user_id`, cu `owner_name` = prenumele |
-| GET | `/parcels/{id}` | public dacă e `published` (varianta aproximativă); proprietarul, personalul sau super-adminul văd tot | 404 altfel |
-| PATCH | `/parcels/{id}` | proprietarul, doar în `draft`/`rejected`/`paused` | aceleași validări; un teren `rejected` editat revine la `draft` |
+| GET | `/parcels` | public (fără autentificare) | doar `published`, nearhivate, fără `is_demo` (decât dacă `RADACINI_MARK_DEMO=true`); filtre `locality`, `model`; `limit` ≤ 50, `skip`; **coordonate rotunjite la 2 zecimale**, fără `owner_user_id`, cu `owner_name` = prenumele |
+| GET | `/parcels/{id}` | public dacă e `published` (varianta aproximativă); proprietarul, managerul/super-adminul și operatorul **din zonele lui** (sau fără zone) văd tot; părțile unui acord semnat văd varianta aproximativă și dacă terenul e suspendat | 404 altfel |
+| PATCH | `/parcels/{id}` | proprietarul, doar în `draft`/`rejected`/`paused` | aceleași validări (preț finit, ≤ 10 000 000); un teren `rejected` editat revine la `draft`; un teren `paused` al cărui conținut/locație se schimbă (title, description, lat, lng, locality, area_m2, access, water_sources, current_crops, offer) revine tot la `draft` și trebuie retrimis la verificare; orice tranziție e atomică (409 dacă starea s-a schimbat între timp) |
 | POST | `/parcels/{id}/submit` | proprietarul, din `draft`/`rejected` | → `pending_verification`; emite `radacini.parcel_submitted` |
-| POST | `/parcels/{id}/pause` · `/resume` | proprietarul | `published` → `paused` · `paused` → `published` |
-| DELETE | `/parcels/{id}` | proprietarul | setează `archived_at`; 409 dacă e `pending_verification` |
+| POST | `/parcels/{id}/pause` · `/resume` | proprietarul | `published` → `paused` · `paused` → `published` (doar dacă n-a fost editat între timp, adică status încă `paused`, și fără acord activ) |
+| DELETE | `/parcels/{id}` | proprietarul | setează `archived_at`; 409 dacă e `pending_verification` sau are acord activ (după finalizarea proiectului terenul e eliberat și poate fi șters) |
 
 ### Personal (`radacini_staff`)
 Document: `{id, user_id, email, name, role: "operator"|"manager", areas: string[] (localități; gol = toate), created_at, created_by}`
@@ -97,7 +97,7 @@ Stări: `sent → viewed → negotiating → accepted | declined | withdrawn | e
 | POST | `/requests/{id}/counter` | părți; nu în stări finale | body = o propunere completă (aceleași validări) → propunerea curentă intră în `proposals_history`; status `negotiating` → `{request}` |
 | POST | `/requests/{id}/decline` | proprietar | body `{reason?}` ≤ 500 → `declined` |
 | POST | `/requests/{id}/withdraw` | solicitant | → `withdrawn` |
-| POST | `/requests/{id}/accept` | proprietar; din `sent`/`viewed`/`negotiating`; terenul încă `published` | atomic → `accepted` + creează acordul v1 în `draft` din propunerea curentă → `{request, agreement}` |
+| POST | `/requests/{id}/accept` | proprietar; din `sent`/`viewed`/`negotiating`; terenul încă `published` | atomic (pe `proposal_at`: 409 „Propunerea s-a schimbat între timp.”) → `accepted` + creează acordul v1 în `draft` din propunerea curentă → `{request, agreement}`; proprietarul nu acceptă o propunere scrisă de el însuși (409 „Așteaptă răspunsul solicitantului.”) și nu acceptă dacă terenul are acord activ |
 
 ### Acorduri (`radacini_agreements`)
 Document: `{id, request_id, parcel_id, parties:[{user_id, role:"owner"|"cultivator", name}], model, terms:{area_m2, start_date, end_date, price_ron_per_year?, harvest_share_percent?, crops[], custom_clauses?, parcel_snapshot:{title, locality, area_m2}}, version, versions_history:[{version, terms, by_user_id, at}], signatures:[{user_id, version, signed_at}], status, legal_notice, signed_at?, cancelled_at?, cancel_reason?, is_demo?, created_at, updated_at}`
@@ -112,7 +112,7 @@ Stări: `draft → proposed → signed`; `draft`/`proposed` → `cancelled`.
 | GET | `/agreements/{id}` | părți, personal, super-admin | `{agreement}` |
 | PATCH | `/agreements/{id}` | părți; doar `draft`/`proposed` | body `{terms}` parțial (aceleași validări ca la propunere + `custom_clauses` ≤ 5000) → versiunea veche intră în `versions_history`, `version += 1`, semnăturile se șterg, status `draft` |
 | POST | `/agreements/{id}/propose` | părți; din `draft` | → `proposed` (versiunea curentă e înghețată pentru semnare) |
-| POST | `/agreements/{id}/sign` | părți; doar `proposed` | body `{version}` trebuie să fie egal cu `version` curentă (altfel 409); o singură semnătură per user și versiune; când toate părțile au semnat versiunea curentă → `signed`, `signed_at`; **terenul** primește `active_agreement_id` și trece în `paused`; celelalte cereri active pe teren → `declined`, cu motivul „Terenul a fost atribuit altui solicitant.” |
+| POST | `/agreements/{id}/sign` | părți; doar `proposed` | body `{version}` trebuie să fie egal cu `version` curentă (altfel 409); o singură semnătură per user și versiune; când toate părțile au semnat versiunea curentă → `signed`, `signed_at`; **terenul** primește `active_agreement_id` și trece în `paused`; celelalte cereri active pe teren → `declined`, cu motivul „Terenul a fost atribuit altui solicitant.”, iar celelalte acorduri `draft`/`proposed` pe același teren → `cancelled`, cu motivul „Terenul a fost atribuit altui acord.” (părțile sunt notificate); dacă după revendicarea terenului acordul nu mai poate fi marcat `signed` → terenul e eliberat și răspunsul e 409; un teren editat între timp (nu `published`/`paused`) nu poate fi revendicat (409) |
 | POST | `/agreements/{id}/cancel` | părți; doar `draft`/`proposed` | body `{reason?}` → `cancelled` (cererea rămâne `accepted`; terenul nu se schimbă) |
 
 **Modificare în S1:** `POST /parcels/{id}/resume`, `PATCH` și `DELETE` pe un teren cu `active_agreement_id` → 409 „Terenul are un acord activ.”
@@ -152,8 +152,8 @@ Stări: `draft → proposed → signed`; `draft`/`proposed` → `cancelled`.
 | GET | `/projects/{id}` | membri, personal, super-admin | `{project}` |
 | POST | `/projects/{id}/members` | coordonator | `{email}` → utilizator existent (404 altfel), nu e deja membru (409) → `participant` |
 | PATCH | `/projects/{id}/members/{user_id}` | coordonator | `{role:"coordinator"\|"participant"}`; rolul `owner` nu se schimbă; trebuie să rămână ≥1 coordonator |
-| DELETE | `/projects/{id}/members/{user_id}` | coordonator (sau membrul însuși) | nu se poate elimina `owner`-ul și nici ultimul coordonator |
-| POST | `/projects/{id}/complete` | coordonator | `active` → `completed` |
+| DELETE | `/projects/{id}/members/{user_id}` | coordonator (sau membrul însuși) | nu se poate elimina `owner`-ul, nici ultimul coordonator, nici o parte a acordului (409) |
+| POST | `/projects/{id}/complete` | coordonator | `active` → `completed`; 409 „Există recolte neconfirmate.” dacă mai sunt recolte `recorded`; terenul e eliberat (`active_agreement_id` șters, `paused`) |
 
 **Plan culturi** `{id, project_id, crop, family, area_m2, sow_date, expected_harvest_date?, expected_yield_kg?, notes?, status:"planned"|"sown"|"growing"|"harvested", created_by, created_at, updated_at}`
 - `GET /projects/{id}/crops` (membri) → `{items, warnings:[string]}`; `warnings` = rotația + suprafața totală > suprafața proiectului.
@@ -245,3 +245,73 @@ Stări: `draft → proposed → signed`; `draft`/`proposed` → `cancelled`.
 - **`/radacini/rezervari`:** file *Cumpăr* / *Vând*, cu acțiuni după stare (Confirmă / Refuză / Ridicat / Nu s-a prezentat / Anulează / Evaluează).
 - **Navigație:** Piață, Rezervări. **Panou:** cardul „Vreau produse locale” arată anunțurile noi din localitatea mea; cardul „Vând produse” arată rezervările de confirmat.
 - **Text vizibil în piață:** „Plata se face la ridicare, direct între voi. Rădăcini nu procesează plăți.”
+
+---
+
+## Reverificare 2026-10-13 (effort ridicat): remedieri și ce lipsește
+
+Revizuire de cod (backend, frontend) și reverificarea auditurilor față de `master-prompt.md`. Corecțiile la audituri sunt consemnate ca erată în fiecare document.
+
+### Runda 1 de remedieri (aplicată)
+- **Securitate și date:**
+  - textul utilizatorilor e curățat în emailuri;
+  - un teren publicat și editat revine la verificare;
+  - operatorul vede detaliile doar în aria lui;
+  - datele demo și de test nu apar public decât în modul demo;
+  - în modul impersonare, acțiunile cu efect juridic sunt blocate.
+- **Concurență:**
+  - semnarea eliberează terenul la eșec și anulează acordurile concurente;
+  - proiectul se creează o singură dată (upsert);
+  - alocarea automată a proprietarului e serializată;
+  - cererile și rezervările nu se mai dublează;
+  - tranzițiile de stare ale terenului sunt condiționate.
+- **Reguli:**
+  - terenul se eliberează la finalizarea proiectului;
+  - proiectul nu se finalizează cu recolte neconfirmate;
+  - părțile acordului nu pot fi eliminate;
+  - „azi” se calculează în fusul Europe/Bucharest.
+- **Egress:**
+  - căutarea în piață folosește token-uri, nu `$regex`;
+  - ratingul e agregat pe vânzător;
+  - completarea proiectelor citește doar id-uri;
+  - notificările pleacă în fundal.
+- **Frontend:**
+  - pagina Progres e reparată și exclusă din build-ul de producție;
+  - 20 de remedieri (date, butoane, cereri redundante, stări de eroare, accesibilitate);
+  - **intrarea Rădăcini** e proprie: `/radacini/login`, titlu „Rădăcini”, fără widget-urile PropManage, `noindex`.
+
+### Runda 2 (următoarea, înainte de S5)
+1. `RADACINI_ENABLED` și `NEXT_PUBLIC_RADACINI_ENABLED` **oprite implicit** (pornite doar local, prin `launch.json`), ca un merge în `main` să nu expună modulul.
+2. **Migrație** `supabase/migrations/*_radacini_collections.sql`: `app.create_collection` pentru toate colecțiile `radacini_*` + indexuri pe expresii (user_id, parcel_id, project_id, listing_id, status). **Se aplică pe bază doar cu aprobare.**
+3. **Poarta juridică:** cererile pe modelele `sale` și `joint_project` sunt dezactivate („necesită aviz juridic”); `mixed` permite preț și procent. Termeni de membru cu clauza „fără cantitate garantată”, prin mecanismul versionat din `legal.py`.
+4. **Locația exactă** pentru părțile unui acord semnat (decizia 6), cu jurnal de acces.
+5. **GDPR:** `GET /api/radacini/me/export` (toate datele Rădăcini ale utilizatorului) și cerere de ștergere; ROPA/DPIA pentru locație și minori.
+6. **Audit:** acțiunile personalului (verificare, personal, moderare) trec prin `admin_console.audit()` (prin `bridge.py`).
+7. **Rate limit** pe rutele publice `/api/radacini/parcels*` și `/meta`.
+8. **Notificări Rădăcini:** subiect „Rădăcini: …”, link absolut, fără „PropManage:” (wrapper propriu peste email/push, fără modificarea `services.notify`).
+9. **Dovada semnăturii:** IP, user-agent și hash-ul termenilor pe fiecare semnătură; PDF server-side (reportlab, cu fonturi DejaVu în imagine) mai târziu.
+
+### Ce lipsește față de cerințe și unde intră
+| Cerință (master prompt) | Stare | Decizie |
+|---|---|---|
+| Gospodării / cont familial, copii | lipsă | S6, după politica pentru minori (GDPR, consimțământ parental) |
+| Comunități agricole (modulul 3), decizii/voturi | lipsă | S6 |
+| Necesar de semințe și unelte, inventar | lipsă | S7 |
+| Lucrări mecanizate prin specialiști PropManage (Capability Engine) | lipsă | S7 |
+| Producție estimată vs efectivă (raport) | parțial | S5 (rapid: comparație în Prezentare proiect) |
+| Echivalent de schimb, oferte mixte bani + produse | parțial (text liber) | rămâne text în pilot; fără valoare transferabilă (juridic) |
+| Comenzi și livrări | parțial (ridicare personală) | amânat după pilot |
+| Abonament 5 €/lună, facturare familie | amânat | după pilot; analiză TVA, taxe Stripe pe sume mici, termeni „fără cantitate garantată” |
+| Investiții colective | amânat | necesită aviz juridic (ASF, asociere, coproprietate) |
+| Gamification | amânat | după pilot; colecție separată, fără legătură cu drepturile |
+| Hartă cu terenuri/proiecte ca zone (poligoane) | lipsă | S6 |
+| Matching / căutare după distanță | lipsă | S6 (filtru pe rază, fără PostGIS în pilot) |
+| Operator: mod asistat, martor la recoltă, puncte de ridicare, neconformități | parțial (doar verificare) | S5–S6 |
+| Dispute și mediere (contribuții contestate, neprezentări, recoltă) | lipsă | S6 (tiparul `disputes.py` + medierea operatorului) |
+| Pagini publice fără cont (hartă terenuri, piață) | lipsă | S6 (SSR) |
+| Fotografii teren/recoltă | lipsă | S6 (Supabase Storage, privat pentru documente) |
+| Integrare admin, KPI, Knowledge Center | lipsă | S5 |
+| Costuri în euro (Maps, email, Stripe, juridic) | lipsă | de completat înainte de pilot |
+
+### Rularea testelor Rădăcini
+`cd backend && ./venv/bin/python -m scripts.radacini_purge_demo --tests-only --apply`, apoi `REACT_APP_BACKEND_URL=http://localhost:8001 ./venv/bin/python -m pytest tests/test_radacini_s1.py tests/test_radacini_s2.py tests/test_radacini_s3.py tests/test_radacini_s4.py -q --noconftest` (serverul local trebuie pornit; testele scriu în `app.radacini_*` din baza comună). Numărul raportat (377) include cazurile parametrizate (354 de funcții `test_*`).

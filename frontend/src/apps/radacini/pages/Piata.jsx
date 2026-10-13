@@ -5,7 +5,7 @@ import { AlertTriangle, Plus, Store } from "lucide-react";
 import { CARD, DSButton, EmptyState } from "../../../design-system";
 import { Input } from "../../../components/ui/input";
 import { radaciniApi, asList, errMsg } from "../api";
-import { useMeta, useSellerRatings } from "../hooks";
+import { useMeta } from "../hooks";
 import {
   Field,
   LISTING_CATEGORIES_FALLBACK,
@@ -42,7 +42,7 @@ const buildParams = (f, q, skip) => ({
   q: q || undefined,
 });
 
-function ListingCard({ l, categories, units, rating }) {
+function ListingCard({ l, categories, units }) {
   const unit = labelOf(units, l.unit);
   const price = fmtPrice(l.price_ron_per_unit, unit);
   const reference = fmtPrice(l.reference_price, unit);
@@ -84,7 +84,7 @@ function ListingCard({ l, categories, units, rating }) {
 
       <div className="flex flex-wrap items-center justify-between gap-2 mt-auto text-xs text-slate-600 dark:text-slate-300">
         <span>Vânzător: {l.seller_name || "—"}</span>
-        {rating && <Stars value={rating.avg} count={rating.count} testid={`radacini-anunt-rating-${l.id}`} />}
+        {l.seller_rating && <Stars value={l.seller_rating.avg} count={l.seller_rating.count} testid={`radacini-anunt-rating-${l.id}`} />}
       </div>
     </Link>
   );
@@ -101,7 +101,6 @@ export default function Piata() {
   const [qDebounced, setQDebounced] = useState("");
   const [state, setState] = useState({ loading: true, items: [], total: 0, error: null });
   const [moreLoading, setMoreLoading] = useState(false);
-  const ratings = useSellerRatings(state.items.map((l) => l.seller_user_id));
 
   useEffect(() => {
     const t = setTimeout(() => setQDebounced(q.trim()), 300);
@@ -206,7 +205,7 @@ export default function Piata() {
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" data-testid="radacini-piata-lista">
             {items.map((l) => (
-              <ListingCard key={l.id} l={l} categories={categories} units={units} rating={ratings[l.seller_user_id]} />
+              <ListingCard key={l.id} l={l} categories={categories} units={units} />
             ))}
           </div>
           {items.length < total && (

@@ -1,9 +1,14 @@
-"""Șterge documentele demo ale modulului Rădăcini (is_demo=true).
+"""Șterge documentele demo ale modulului Rădăcini (is_demo=true) și tot ce depinde de ele.
 
 Implicit rulează în dry-run (doar numără). Cu --apply șterge efectiv.
-Cu --tests-only șterge doar datele lăsate de testele HTTP (terenuri cu „TEST-RAD-” în titlu)
-și tot ce depinde de ele (cereri, mesaje, acorduri, proiecte, culturi, activități, contribuții, recolte, alocări;
-anunțurile cu „TEST-RAD-” în produs și rezervările lor).
+Dependentele NON-demo ale documentelor șterse (cereri, mesaje, acorduri, proiecte, culturi, activități,
+contribuții, recolte, alocări, rezervări) se șterg și ele, ca să nu rămână documente orfane care indică
+spre terenuri / anunțuri / recolte inexistente. Dry-run-ul le listează separat („dependente non-demo”).
+Statisticile de rating (`radacini_seller_stats`) ale vânzătorilor ale căror rezervări evaluate se șterg se
+elimină și ele; se recalculează automat, din rezervările rămase, la prima citire / evaluare.
+
+Cu --tests-only șterge doar datele lăsate de testele HTTP: terenuri demo cu „TEST-RAD-” în titlu și anunțuri
+demo cu „TEST-RAD-” în produs, plus tot ce depinde de ele.
 
 Utilizare (local):
   cd backend && ./venv/bin/python -m scripts.radacini_purge_demo
@@ -15,6 +20,7 @@ import asyncio
 import sys
 from pathlib import Path
 
+from bson import ObjectId
 from dotenv import load_dotenv
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -39,56 +45,113 @@ COLLECTIONS = (
     "radacini_allocations",
     "radacini_listings",
     "radacini_reservations",
+    "radacini_seller_stats",  # (nu există colecții de lock-uri: rezervarea unică se obține prin upsert)
 )
 DEMO_FILTER = {"is_demo": True}
+SCAN_LIMIT = 100000
+IN_CHUNK = 100  # pgmongo traduce `$in` în SQL doar până la 200 de valori
+DELETE_CHUNK = 500
+
+# (colecția-părinte, câmpul din copil care indică spre părinte, copiii). Ordinea e topologică: un copil
+# descoperit într-o muchie (ex. proiecte prin acord) își propagă apoi propriii copii în muchiile următoare.
+EDGES = (
+    ("radacini_parcels", "parcel_id", ("radacini_land_requests", "radacini_agreements", "radacini_projects")),
+    ("radacini_land_requests", "request_id", ("radacini_request_messages", "radacini_agreements")),
+    ("radacini_agreements", "agreement_id", ("radacini_projects",)),
+    (
+        "radacini_projects",
+        "project_id",
+        (
+            "radacini_crop_plans",
+            "radacini_activities",
+            "radacini_contributions",
+            "radacini_harvests",
+            "radacini_allocations",
+        ),
+    ),
+    ("radacini_harvests", "harvest_id", ("radacini_allocations",)),
+    ("radacini_listings", "listing_id", ("radacini_reservations",)),
+)
+
+
+def _chunks(items: list, size: int):
+    for i in range(0, len(items), size):
+        yield items[i:i + size]
+
+
+async def _ids(name: str, flt: dict) -> set:
+    docs = await getattr(db, name).find(flt, {"_id": 1}).limit(SCAN_LIMIT).to_list(SCAN_LIMIT)
+    return {str(d["_id"]) for d in docs}
+
+
+async def _ids_by_field(name: str, field: str, values: set) -> set:
+    out: set = set()
+    for chunk in _chunks(sorted(values), IN_CHUNK):
+        out |= await _ids(name, {field: {"$in": chunk}})
+    return out
+
+
+async def collect(roots: dict) -> tuple[dict, dict]:
+    """(ids de șters per colecție, ids rădăcină per colecție). Închiderea dependențelor urmează EDGES."""
+    ids = {name: set(roots.get(name, ())) for name in COLLECTIONS}
+    for parent, field, children in EDGES:
+        if not ids[parent]:
+            continue
+        for child in children:
+            ids[child] |= await _ids_by_field(child, field, ids[parent])
+    # Statistici de rating: vânzătorii ale căror rezervări evaluate dispar.
+    sellers: set = set()
+    res_ids = sorted(ids["radacini_reservations"])
+    for chunk in _chunks(res_ids, IN_CHUNK):
+        rows = await db.radacini_reservations.find(
+            {"_id": {"$in": [ObjectId(i) for i in chunk]}, "rating": {"$exists": True}}, {"seller_user_id": 1}
+        ).limit(len(chunk)).to_list(len(chunk))
+        sellers |= {r["seller_user_id"] for r in rows if r.get("seller_user_id")}
+    if sellers:
+        ids["radacini_seller_stats"] |= await _ids_by_field("radacini_seller_stats", "seller_user_id", sellers)
+    return ids, {name: set(roots.get(name, ())) for name in COLLECTIONS}
+
+
+async def _delete_ids(name: str, ids: set) -> None:
+    coll = getattr(db, name)
+    for chunk in _chunks(sorted(ids), DELETE_CHUNK):
+        await coll.delete_many({"_id": {"$in": [ObjectId(i) for i in chunk]}})
+
+
+async def _report_and_delete(ids: dict, roots: dict, apply: bool, label: str) -> None:
+    for name in COLLECTIONS:
+        total = ids[name]
+        if not total:
+            print(f"  {name}: 0 {label}")
+            continue
+        dependents = len(total - roots[name])
+        detail = f"{len(roots[name])} {label}" + (f" + {dependents} dependente non-demo" if dependents else "")
+        if apply:
+            await _delete_ids(name, total)
+            print(f"  {name}: șterse {len(total)} ({detail})")
+        else:
+            print(f"  {name}: {detail}")
 
 
 async def run(apply: bool) -> None:
     mode = "APLICARE" if apply else "DRY-RUN (nimic nu se șterge; folosește --apply)"
     print(f"Rădăcini purge demo — {mode}")
-    for name in COLLECTIONS:
-        coll = getattr(db, name)
-        count = await coll.count_documents(DEMO_FILTER)
-        if apply and count:
-            await coll.delete_many(DEMO_FILTER)
-            print(f"  {name}: șterse {count}")
-        else:
-            print(f"  {name}: {count} demo")
+    roots = {name: await _ids(name, DEMO_FILTER) for name in COLLECTIONS}
+    ids, roots = await collect(roots)
+    await _report_and_delete(ids, roots, apply, "demo")
 
 
 async def run_tests_only(apply: bool) -> None:
     mode = "APLICARE" if apply else "DRY-RUN (nimic nu se șterge; folosește --apply)"
     print(f"Rădăcini purge date de test (TEST-RAD-) — {mode}")
-    parcels = await db.radacini_parcels.find({"is_demo": True}, {"title": 1}).to_list(100000)
-    parcel_ids = [str(d["_id"]) for d in parcels if "TEST-RAD-" in (d.get("title") or "")]
-    by_parcel = {"parcel_id": {"$in": parcel_ids}}
-    request_ids = [str(d["_id"]) for d in await db.radacini_land_requests.find(by_parcel, {"_id": 1}).to_list(100000)]
-    project_ids = [str(d["_id"]) for d in await db.radacini_projects.find(by_parcel, {"_id": 1}).to_list(100000)]
-    by_project = {"project_id": {"$in": project_ids}}
-    listings = await db.radacini_listings.find({"is_demo": True}, {"product": 1}).to_list(100000)
-    listing_ids = [str(d["_id"]) for d in listings if "TEST-RAD-" in (d.get("product") or "")]
-    plan = [
-        ("radacini_reservations", {"listing_id": {"$in": listing_ids}}),
-        ("radacini_listings", {"_id": {"$in": [d["_id"] for d in listings if str(d["_id"]) in set(listing_ids)]}}),
-        ("radacini_allocations", by_project),
-        ("radacini_harvests", by_project),
-        ("radacini_contributions", by_project),
-        ("radacini_activities", by_project),
-        ("radacini_crop_plans", by_project),
-        ("radacini_projects", by_parcel),
-        ("radacini_agreements", by_parcel),
-        ("radacini_request_messages", {"request_id": {"$in": request_ids}}),
-        ("radacini_land_requests", by_parcel),
-        ("radacini_parcels", {"_id": {"$in": [d["_id"] for d in parcels if str(d["_id"]) in set(parcel_ids)]}}),
-    ]
-    for name, flt in plan:
-        coll = getattr(db, name)
-        count = await coll.count_documents(flt)
-        if apply and count:
-            await coll.delete_many(flt)
-            print(f"  {name}: șterse {count}")
-        else:
-            print(f"  {name}: {count} de test")
+    parcels = await db.radacini_parcels.find(DEMO_FILTER, {"title": 1}).limit(SCAN_LIMIT).to_list(SCAN_LIMIT)
+    listings = await db.radacini_listings.find(DEMO_FILTER, {"product": 1}).limit(SCAN_LIMIT).to_list(SCAN_LIMIT)
+    roots = {
+        "radacini_parcels": {str(d["_id"]) for d in parcels if "TEST-RAD-" in (d.get("title") or "")},
+        "radacini_listings": {str(d["_id"]) for d in listings if "TEST-RAD-" in (d.get("product") or "")},
+    }
+    ids, roots = await collect(roots)
+    await _report_and_delete(ids, roots, apply, "de test")
 
 
 def main() -> None:

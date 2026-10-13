@@ -6,7 +6,8 @@ import { radaciniApi, asList } from "../api";
 import { PageHeader, linkBtnCls } from "../shared";
 
 // Pagină de dezvoltare: nu se randează în producție.
-const SPRINTS = [
+// Lista depinde de primul proiect (link direct spre fila Recoltă), deci e construită în componentă.
+const buildSprints = (firstProjectId) => [
   {
     id: "S1",
     title: "Fundație, membri, terenuri, personal și coadă de verificare",
@@ -86,7 +87,7 @@ export default function Progres() {
       <PageHeader title="Progres (dev)" subtitle="Stadiul sprinturilor Rădăcini și ce poți încerca în fiecare." />
 
       <section className="space-y-3" data-testid="radacini-progres-sprinturi">
-        {SPRINTS.map((s) => {
+        {buildSprints(firstProjectId).map((s) => {
           const ui = STATUS_UI[s.status];
           const Icon = ui.Icon;
           return (

@@ -39,7 +39,8 @@ const toForm = (c, cropsMeta) => {
   };
 };
 
-const toBody = (f) => {
+// isEdit (PATCH): câmpurile opționale golite se trimit ca null, altfel serverul le păstrează.
+const toBody = (f, isEdit = false) => {
   const body = {
     crop: f.cropId === OTHER ? f.cropText.trim() : f.cropId,
     area_m2: Number(f.area_m2),
@@ -47,8 +48,11 @@ const toBody = (f) => {
     status: f.status,
   };
   if (f.expected_harvest_date) body.expected_harvest_date = f.expected_harvest_date;
+  else if (isEdit) body.expected_harvest_date = null;
   if (f.expected_yield_kg !== "" && f.expected_yield_kg != null) body.expected_yield_kg = Number(f.expected_yield_kg);
+  else if (isEdit) body.expected_yield_kg = null;
   if (f.notes.trim()) body.notes = f.notes.trim();
+  else if (isEdit) body.notes = null;
   return body;
 };
 
@@ -74,7 +78,7 @@ function CropDialog({ open, onOpenChange, crop, cropsMeta, statuses, projectId, 
     if (!valid) return;
     setSaving(true);
     try {
-      const body = toBody(form);
+      const body = toBody(form, isEdit);
       if (isEdit) await radaciniApi.updateCrop(crop.id, body);
       else await radaciniApi.createCrop(projectId, body);
       toast.success(isEdit ? "Cultura a fost actualizată" : "Cultura a fost adăugată");
@@ -152,6 +156,7 @@ export default function CropsTab({ project, canCoord, reload }) {
   const [data, setData] = useState({ loaded: false, items: [], warnings: [] });
   const [tick, setTick] = useState(0);
   const [dialog, setDialog] = useState({ open: false, crop: null });
+  const [busyId, setBusyId] = useState(null); // cultura pentru care rulează o ștergere
 
   useEffect(() => {
     let alive = true;
@@ -180,12 +185,15 @@ export default function CropsTab({ project, canCoord, reload }) {
       }))
     )
       return;
+    setBusyId(c.id);
     try {
       await radaciniApi.deleteCrop(c.id);
       toast.success("Cultura a fost ștearsă");
       refresh();
     } catch (e) {
       toast.error(errMsg(e, "Cultura nu a putut fi ștearsă"));
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -288,8 +296,9 @@ export default function CropsTab({ project, canCoord, reload }) {
                       <button
                         type="button"
                         aria-label="Editează cultura"
+                        disabled={busyId === c.id}
                         onClick={() => setDialog({ open: true, crop: c })}
-                        className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5"
+                        className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 disabled:opacity-50"
                         data-testid={`radacini-cultura-edit-${c.id}`}
                       >
                         <Pencil className="w-4 h-4 text-slate-600 dark:text-slate-300" />
@@ -297,8 +306,9 @@ export default function CropsTab({ project, canCoord, reload }) {
                       <button
                         type="button"
                         aria-label="Șterge cultura"
+                        disabled={busyId === c.id}
                         onClick={() => remove(c)}
-                        className="p-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                        className="p-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 disabled:opacity-50"
                         data-testid={`radacini-cultura-delete-${c.id}`}
                       >
                         <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-300" />

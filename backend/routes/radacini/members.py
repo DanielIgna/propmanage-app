@@ -81,13 +81,13 @@ async def put_my_member(body: MemberIn, user: dict = Depends(get_current_user)):
         "bio": body.bio,
         "updated_at": now,
     }
-    existing = await get_member_doc(uid)
-    if existing:
-        await db.radacini_members.update_one({"_id": existing["_id"]}, {"$set": fields})
-        doc = {**existing, **fields}
-    else:
-        doc = mark_demo({"user_id": uid, **fields, "created_at": now})
-        await db.radacini_members.insert_one(doc)
+    # Upsert pe user_id (serializat de pgmongo): două PUT simultane nu pot crea două profiluri.
+    await db.radacini_members.update_one(
+        {"user_id": uid},
+        {"$set": fields, "$setOnInsert": mark_demo({"user_id": uid, "created_at": now})},
+        upsert=True,
+    )
+    doc = await get_member_doc(uid)
     member = _member_out(doc)
     await emit(
         "radacini.member_updated",

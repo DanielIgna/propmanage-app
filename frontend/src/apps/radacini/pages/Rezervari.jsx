@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { AlertTriangle, ArrowLeftRight } from "lucide-react";
 import { CARD, DSButton, EmptyState, TabBar } from "../../../design-system";
@@ -168,7 +168,9 @@ function ReservationCard({ r, role, units, modes, busy, onAction, onRate }) {
 export default function Rezervari() {
   const { meta } = useMeta();
   const [confirm, confirmDialog] = useConfirm();
-  const [tab, setTab] = useState("buyer");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get("tab") === "seller" ? "seller" : "buyer";
+  const setTab = (t) => setSearchParams(t === "seller" ? { tab: t } : {}, { replace: true });
   const [state, setState] = useState({ loaded: false, items: [], error: null });
   const [tick, setTick] = useState(0);
   const [busy, setBusy] = useState(null);

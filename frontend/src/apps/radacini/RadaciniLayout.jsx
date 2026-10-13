@@ -1,11 +1,11 @@
-import React, { Suspense, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { NavLink, Outlet, Navigate, Link, useLocation } from "react-router-dom";
 import { Sprout, Menu, ArrowLeft } from "lucide-react";
 import { useAuth } from "../../auth";
 import { DSSkeleton } from "../../design-system";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "../../components/ui/sheet";
 import { NAV, canSee } from "./config";
-import { useStaffMe } from "./hooks";
+import { StaffContext, useStaffLoader } from "./hooks";
 
 const linkCls = ({ isActive }) =>
   `flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
@@ -34,9 +34,23 @@ const SidebarNav = ({ items, onNavigate }) => (
 
 export const RadaciniLayout = () => {
   const { user } = useAuth();
-  const { staff } = useStaffMe();
-  const { pathname } = useLocation();
+  const staffState = useStaffLoader();
+  const { staff } = staffState;
+  const { pathname, search } = useLocation();
   const [open, setOpen] = useState(false);
+  // Cel mai lung prefix care se potrivește dă titlul (ex. /radacini/terenuri/abc → Terenuri).
+  const current = NAV.filter(
+    (n) => pathname === n.to || (n.to !== "/radacini" && pathname.startsWith(`${n.to}/`))
+  ).sort((a, b) => b.to.length - a.to.length)[0];
+  const title = current?.label ?? "Rădăcini";
+  // Tab-ul browserului arată Rădăcini, nu PropManage.
+  useEffect(() => {
+    const prev = document.title;
+    document.title = title === "Rădăcini" || title === "Panou" ? "Rădăcini" : `${title} · Rădăcini`;
+    return () => {
+      document.title = prev;
+    };
+  }, [title]);
 
   if (user === null) {
     return (
@@ -45,14 +59,9 @@ export const RadaciniLayout = () => {
       </div>
     );
   }
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to={`/radacini/login?next=${encodeURIComponent(pathname + search)}`} replace />;
 
   const items = NAV.filter((item) => canSee(item, staff));
-  // Cel mai lung prefix care se potrivește dă titlul (ex. /radacini/terenuri/abc → Terenuri).
-  const current = NAV.filter(
-    (n) => pathname === n.to || (n.to !== "/radacini" && pathname.startsWith(`${n.to}/`))
-  ).sort((a, b) => b.to.length - a.to.length)[0];
-  const title = current?.label ?? "Rădăcini";
   const displayName = user.full_name || user.name || user.email;
 
   return (
@@ -90,17 +99,19 @@ export const RadaciniLayout = () => {
                 <p className="text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
               )}
             </div>
-            <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 dark:text-emerald-300 hover:underline">
-              <ArrowLeft className="w-4 h-4" />
+            <Link to="/" className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:underline" data-testid="radacini-inapoi-propmanage">
+              <ArrowLeft className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Înapoi la PropManage</span>
             </Link>
           </div>
         </header>
 
         <main className="flex-1 p-4 md:p-6">
-          <Suspense fallback={<DSSkeleton kpis={3} blocks={2} />}>
-            <Outlet />
-          </Suspense>
+          <StaffContext.Provider value={staffState}>
+            <Suspense fallback={<DSSkeleton kpis={3} blocks={2} />}>
+              <Outlet />
+            </Suspense>
+          </StaffContext.Provider>
         </main>
       </div>
     </div>

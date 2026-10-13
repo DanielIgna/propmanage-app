@@ -37,7 +37,7 @@ export default function LocationPicker({ value, onChange, height = "320px" }) {
       <MapContainer
         center={center}
         zoom={value ? 15 : 11}
-        scrollWheelZoom
+        scrollWheelZoom={false}
         style={{ height, width: "100%", borderRadius: "1rem" }}
       >
         <TileLayer

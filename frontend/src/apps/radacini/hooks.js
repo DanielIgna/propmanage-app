@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth";
 import { radaciniApi } from "./api";
 
@@ -39,8 +39,9 @@ export function useMeta() {
 
 const NO_STAFF = { is_staff: false, role: null, areas: [] };
 
+// Cererea /staff/me se face o singură dată, în RadaciniLayout (useStaffLoader); restul paginilor citesc contextul.
 // user: null = se încarcă · false = neautentificat · obiect = autentificat
-export function useStaffMe() {
+export function useStaffLoader() {
   const { user } = useAuth();
   const [state, setState] = useState({ loading: true, staff: NO_STAFF });
   useEffect(() => {
@@ -54,8 +55,14 @@ export function useStaffMe() {
       alive = false;
     };
   }, [user]);
-  return { staff: state.staff, loading: user === null || (!!user && state.loading) };
+  const loading = user === null || (!!user && state.loading);
+  return useMemo(() => ({ staff: state.staff, loading }), [state.staff, loading]);
 }
+
+export const StaffContext = createContext({ staff: NO_STAFF, loading: false });
+
+// Informațiile despre personal vin din contextul oferit de RadaciniLayout (fără cerere proprie).
+export const useStaffMe = () => useContext(StaffContext);
 
 export function useMember() {
   const { user } = useAuth();
@@ -74,38 +81,4 @@ export function useMember() {
   }, [user, tick]);
   const refresh = useCallback(() => setTick((t) => t + 1), []);
   return { ...state, loading: user === null || (!!user && state.loading), refresh };
-}
-
-// Rating vânzător: o cerere per vânzător și sesiune de browser (cache la nivel de modul).
-const ratingCache = new Map();
-const loadSellerRating = (userId) => {
-  if (!ratingCache.has(userId)) {
-    ratingCache.set(
-      userId,
-      radaciniApi.sellerRating(userId).catch(() => {
-        ratingCache.delete(userId);
-        return null;
-      })
-    );
-  }
-  return ratingCache.get(userId);
-};
-
-// Returnează {[userId]: {avg, count}} pentru vânzătorii dați; se încarcă leneș, unic per vânzător.
-export function useSellerRatings(userIds = []) {
-  const key = [...new Set(userIds.filter(Boolean))].sort().join(",");
-  const [ratings, setRatings] = useState({});
-  useEffect(() => {
-    let alive = true;
-    const ids = key ? key.split(",") : [];
-    ids.forEach((id) =>
-      loadSellerRating(id).then((r) => {
-        if (alive && r) setRatings((s) => ({ ...s, [id]: r }));
-      })
-    );
-    return () => {
-      alive = false;
-    };
-  }, [key]);
-  return ratings;
 }

@@ -99,6 +99,8 @@ export default function CerereDetaliu() {
   const isParty = isOwner || isRequester;
   const active = ACTIVE_REQUEST.includes(request.status);
   const canAct = isParty && active;
+  // Proprietarul nu poate accepta propria contrapropunere: așteaptă răspunsul solicitantului.
+  const awaitingRequester = isOwner && request.proposal_by_user_id === request.owner_user_id;
   const modelLabel = labelOf(meta?.offer_models, request.model);
   const history = request.proposals_history || [];
 
@@ -284,9 +286,15 @@ export default function CerereDetaliu() {
               <div className="flex flex-col gap-2">
                 {isOwner && (
                   <>
-                    <DSButton variant="success" icon={Check} disabled={busy} onClick={accept} className="justify-center" data-testid="radacini-btn-accepta">
-                      Acceptă
-                    </DSButton>
+                    {awaitingRequester ? (
+                      <p className="rounded-xl bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-800 dark:text-amber-200" data-testid="radacini-asteapta-solicitant">
+                        Așteaptă răspunsul solicitantului
+                      </p>
+                    ) : (
+                      <DSButton variant="success" icon={Check} disabled={busy} onClick={accept} className="justify-center" data-testid="radacini-btn-accepta">
+                        Acceptă
+                      </DSButton>
+                    )}
                     <DSButton variant="danger" icon={X} disabled={busy} onClick={() => setDeclineOpen(true)} className="justify-center" data-testid="radacini-btn-refuza">
                       Refuză
                     </DSButton>
@@ -301,7 +309,7 @@ export default function CerereDetaliu() {
                   </DSButton>
                 )}
               </div>
-              {isOwner && (
+              {isOwner && !awaitingRequester && (
                 <p className="text-xs text-slate-500 dark:text-slate-400">Acceptarea creează acordul în ciornă, din propunerea curentă.</p>
               )}
             </section>
@@ -356,7 +364,7 @@ export default function CerereDetaliu() {
               testidPrefix="radacini-contra-form"
               lockedModel={request.model}
               areaMax={request.parcel_area_m2}
-              initial={proposalToForm(request.proposal, request.model)}
+              initial={{ ...proposalToForm(request.proposal, request.model), note: "" }}
               submitLabel="Trimite contrapropunerea"
               submitting={busy}
               onSubmit={counter}

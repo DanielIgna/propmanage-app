@@ -22,8 +22,9 @@ export const proposalToForm = (proposal = {}, model = "") => ({
 const isBlank = (v) => v === "" || v == null;
 
 // Validare de bază în UI (regulile finale le aplică backend-ul; erorile lui apar ca toast).
-// includeModel=false pentru acorduri (modelul e fix). Returnează {body} sau {error}.
-export function buildProposal(f, { includeModel = true, withNote = true, withClauses = false, areaMax } = {}) {
+// includeModel=false pentru acorduri (modelul e fix). nullBlank=true la editare (PATCH): câmpurile opționale
+// golite se trimit ca null, altfel serverul le păstrează. Returnează {body} sau {error}.
+export function buildProposal(f, { includeModel = true, withNote = true, withClauses = false, nullBlank = false, areaMax } = {}) {
   if (includeModel && !f.model) return { error: "Alege modelul de colaborare." };
 
   const area = Number(f.area_m2);
@@ -49,6 +50,8 @@ export function buildProposal(f, { includeModel = true, withNote = true, withCla
     const price = Number(f.price_ron_per_year);
     if (!Number.isFinite(price) || price < 0) return { error: "Prețul nu este valid." };
     body.price_ron_per_year = price;
+  } else if (nullBlank) {
+    body.price_ron_per_year = null;
   }
 
   if (f.model === "harvest_share") {
@@ -74,6 +77,7 @@ export default function ProposalForm({
   initial, // formă de formular (vezi proposalToForm)
   showNote = true,
   showClauses = false,
+  nullBlank = false, // editare (PATCH): câmpurile opționale golite pleacă ca null
   submitLabel = "Trimite",
   submitting = false,
   onSubmit, // (body) => void
@@ -90,7 +94,7 @@ export default function ProposalForm({
 
   const submit = (e) => {
     e.preventDefault();
-    const r = buildProposal(f, { includeModel, withNote: showNote, withClauses: showClauses, areaMax });
+    const r = buildProposal(f, { includeModel, withNote: showNote, withClauses: showClauses, nullBlank, areaMax });
     if (r.error) {
       setError(r.error);
       return;

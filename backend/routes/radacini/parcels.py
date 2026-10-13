@@ -1,19 +1,36 @@
 """Terenuri Rădăcini: CRUD proprietar, listare publică și ciclul de publicare."""
+import os
 from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator, model_validator
 
-from .bridge import db, emit, get_current_user, serialize_doc
-from .common import RadaciniRoute, get_optional_user, load_owners, mark_demo, now_iso, oid_or_404
+from .bridge import block_in_impersonation, db, emit, get_current_user, serialize_doc
+from .common import (
+    RadaciniRoute,
+    check_finite,
+    check_price,
+    get_optional_user,
+    load_owners,
+    mark_demo,
+    now_iso,
+    oid_or_404,
+)
 from .constants import COUNTY, LOCALITIES, OFFER_MODEL_IDS, WATER_SOURCE_IDS
 from .members import get_member_doc
+from .projects import release_parcel
 from .staff import get_staff
 
 router = APIRouter(route_class=RadaciniRoute)
 
 _NON_NULL_FIELDS = ("title", "county", "locality", "lat", "lng", "area_m2", "offer")
+# Câmpurile verificate de personal: dacă un teren suspendat le schimbă, trebuie reverificat (revine în `draft`).
+_CONTENT_FIELDS = (
+    "title", "county", "locality", "lat", "lng", "area_m2",
+    "access", "water_sources", "current_crops", "description", "offer",
+)
+_CHANGED = "Terenul s-a schimbat între timp. Reîncarcă pagina."
 
 
 class OfferIn(BaseModel):
@@ -44,9 +61,7 @@ class OfferIn(BaseModel):
     @field_validator("price_ron_per_year")
     @classmethod
     def _price(cls, v: Optional[float]) -> Optional[float]:
-        if v is not None and v < 0:
-            raise ValueError("Prețul nu poate fi negativ.")
-        return v
+        return check_price(v)
 
     @model_validator(mode="after")
     def _harvest_share(self):
@@ -102,6 +117,7 @@ class ParcelPatch(BaseModel):
     @field_validator("lat")
     @classmethod
     def _lat(cls, v: Optional[float]) -> Optional[float]:
+        check_finite(v, "Latitudinea este în afara zonei Rădăcini.")
         if v is not None and not 43.5 <= v <= 48.5:
             raise ValueError("Latitudinea este în afara zonei Rădăcini.")
         return v
@@ -109,6 +125,7 @@ class ParcelPatch(BaseModel):
     @field_validator("lng")
     @classmethod
     def _lng(cls, v: Optional[float]) -> Optional[float]:
+        check_finite(v, "Longitudinea este în afara zonei Rădăcini.")
         if v is not None and not 20 <= v <= 30:
             raise ValueError("Longitudinea este în afara zonei Rădăcini.")
         return v
@@ -181,11 +198,24 @@ def _public_view(doc: dict, owner: dict) -> dict:
     return out
 
 
+async def _heal_completed(doc: dict) -> dict:
+    """Terenuri rămase legate de un acord al cărui proiect e finalizat (date dinainte de eliberarea automată)
+    sunt eliberate acum: fără `active_agreement_id`, suspendate."""
+    aid = doc.get("active_agreement_id")
+    if not aid:
+        return doc
+    done = await db.radacini_projects.find_one({"agreement_id": str(aid), "status": "completed"}, {"_id": 1})
+    if not done:
+        return doc
+    await release_parcel(str(doc["_id"]), str(aid))
+    return await db.radacini_parcels.find_one({"_id": doc["_id"]}) or doc
+
+
 async def _owned_or_404(parcel_id: str, user: dict) -> dict:
     doc = await db.radacini_parcels.find_one({"_id": oid_or_404(parcel_id)})
     if not doc or doc.get("archived_at") or str(doc.get("owner_user_id")) != str(user["id"]):
         raise HTTPException(404, "Terenul nu există.")
-    return doc
+    return await _heal_completed(doc)
 
 
 def _ensure_no_active_agreement(doc: dict) -> None:
@@ -193,10 +223,30 @@ def _ensure_no_active_agreement(doc: dict) -> None:
         raise HTTPException(409, "Terenul are un acord activ.")
 
 
-async def _set_fields(doc: dict, changes: dict) -> dict:
+async def _transition(doc: dict, changes: dict, *, no_agreement: bool = False) -> dict:
+    """Schimbare atomică: se aplică doar dacă terenul e încă în starea citită (și, opțional, fără acord activ);
+    altfel 409."""
+    flt: dict = {"_id": doc["_id"], "status": doc.get("status"), "archived_at": {"$exists": False}}
+    if no_agreement:
+        flt["active_agreement_id"] = {"$exists": False}
     changes = {**changes, "updated_at": now_iso()}
-    await db.radacini_parcels.update_one({"_id": doc["_id"]}, {"$set": changes})
+    res = await db.radacini_parcels.update_one(flt, {"$set": changes})
+    if res.modified_count != 1:
+        raise HTTPException(409, _CHANGED)
     return {**doc, **changes}
+
+
+async def _is_agreement_party(parcel_id: str, user_id: str) -> bool:
+    """Părțile unui acord semnat pe teren (proprietar/cultivator) văd terenul chiar dacă e suspendat."""
+    ag = await db.radacini_agreements.find_one(
+        {"parcel_id": parcel_id, "party_ids": user_id, "status": "signed"}, {"_id": 1}
+    )
+    return ag is not None
+
+
+def _staff_in_scope(staff: dict, doc: dict) -> bool:
+    """Managerii (și super-adminul) văd tot; operatorii fără zone la fel; ceilalți doar zonele lor."""
+    return staff["role"] == "manager" or not staff["areas"] or doc.get("locality") in staff["areas"]
 
 
 # Ordinea contează: /parcels/mine trebuie declarat înaintea lui /parcels/{parcel_id}.
@@ -222,6 +272,8 @@ async def list_public_parcels(
     if model is not None and model not in OFFER_MODEL_IDS:
         raise HTTPException(400, "Model de ofertă necunoscut.")
     flt: dict = {"status": "published", "archived_at": {"$exists": False}}
+    if os.environ.get("RADACINI_MARK_DEMO", "").lower() != "true":
+        flt["is_demo"] = {"$ne": True}  # datele de test/demo nu apar în lista publică
     if locality:
         flt["locality"] = locality
     if model:
@@ -241,9 +293,8 @@ async def create_parcel(body: ParcelCreate, user: dict = Depends(get_current_use
         raise HTTPException(400, "Completează profilul înainte de a adăuga un teren.")
     now = now_iso()
     if "land" not in (member.get("interests") or []):
-        interests = [*(member.get("interests") or []), "land"]
         await db.radacini_members.update_one(
-            {"_id": member["_id"]}, {"$set": {"interests": interests, "updated_at": now}}
+            {"_id": member["_id"]}, {"$addToSet": {"interests": "land"}, "$set": {"updated_at": now}}
         )
     data = body.model_dump(mode="json")
     data["access"] = data["access"] or ""
@@ -269,13 +320,15 @@ async def get_parcel(parcel_id: str, user: Optional[dict] = Depends(get_optional
     owner_id = str(doc.get("owner_user_id"))
     if user and owner_id == str(user["id"]):
         return {"parcel": serialize_doc(doc)}
-    if user and await get_staff(user):
-        owner = (await load_owners([owner_id])).get(owner_id, {})
-        out = serialize_doc(doc)
-        out["owner_name"] = owner.get("name", "")
-        out["owner_email"] = owner.get("email", "")
-        return {"parcel": out}
-    if doc.get("status") != "published":
+    if user:
+        staff = await get_staff(user)
+        if staff and _staff_in_scope(staff, doc):
+            owner = (await load_owners([owner_id])).get(owner_id, {})
+            out = serialize_doc(doc)
+            out["owner_name"] = owner.get("name", "")
+            out["owner_email"] = owner.get("email", "")
+            return {"parcel": out}
+    if doc.get("status") != "published" and not (user and await _is_agreement_party(str(doc["_id"]), str(user["id"]))):
         raise HTTPException(404, "Terenul nu există.")
     owner = (await load_owners([owner_id])).get(owner_id, {})
     return {"parcel": _public_view(doc, owner)}
@@ -285,7 +338,8 @@ async def get_parcel(parcel_id: str, user: Optional[dict] = Depends(get_optional
 async def patch_parcel(parcel_id: str, body: ParcelPatch, user: dict = Depends(get_current_user)):
     doc = await _owned_or_404(parcel_id, user)
     _ensure_no_active_agreement(doc)
-    if doc.get("status") not in ("draft", "rejected", "paused"):
+    status = doc.get("status")
+    if status not in ("draft", "rejected", "paused"):
         raise HTTPException(409, "Terenul poate fi editat doar în ciornă, respins sau suspendat.")
     changes = body.model_dump(mode="json", exclude_unset=True)
     for key in _NON_NULL_FIELDS:
@@ -297,18 +351,22 @@ async def patch_parcel(parcel_id: str, body: ParcelPatch, user: dict = Depends(g
         raise HTTPException(400, "Data de final a disponibilității este înaintea celei de început.")
     if not changes:
         return {"parcel": serialize_doc(doc)}
-    if doc.get("status") == "rejected":
+    if status == "rejected":
         changes["status"] = "draft"
-    doc = await _set_fields(doc, changes)
+    elif status == "paused" and any(k in changes and changes[k] != doc.get(k) for k in _CONTENT_FIELDS):
+        # Un teren suspendat a fost deja verificat; dacă i se schimbă conținutul sau locația, trebuie reverificat.
+        changes["status"] = "draft"
+    doc = await _transition(doc, changes, no_agreement=True)
     return {"parcel": serialize_doc(doc)}
 
 
 @router.post("/parcels/{parcel_id}/submit")
 async def submit_parcel(parcel_id: str, user: dict = Depends(get_current_user)):
+    block_in_impersonation(user, "trimiterea terenului la verificare")
     doc = await _owned_or_404(parcel_id, user)
     if doc.get("status") not in ("draft", "rejected"):
         raise HTTPException(409, "Terenul nu poate fi trimis la verificare în starea actuală.")
-    doc = await _set_fields(doc, {"status": "pending_verification"})
+    doc = await _transition(doc, {"status": "pending_verification"}, no_agreement=True)
     await emit(
         "radacini.parcel_submitted",
         actor=user,
@@ -322,7 +380,7 @@ async def pause_parcel(parcel_id: str, user: dict = Depends(get_current_user)):
     doc = await _owned_or_404(parcel_id, user)
     if doc.get("status") != "published":
         raise HTTPException(409, "Doar un teren publicat poate fi suspendat.")
-    doc = await _set_fields(doc, {"status": "paused"})
+    doc = await _transition(doc, {"status": "paused"})
     return {"parcel": serialize_doc(doc)}
 
 
@@ -332,15 +390,16 @@ async def resume_parcel(parcel_id: str, user: dict = Depends(get_current_user)):
     _ensure_no_active_agreement(doc)
     if doc.get("status") != "paused":
         raise HTTPException(409, "Doar un teren suspendat poate fi reluat.")
-    doc = await _set_fields(doc, {"status": "published"})
+    doc = await _transition(doc, {"status": "published"}, no_agreement=True)
     return {"parcel": serialize_doc(doc)}
 
 
 @router.delete("/parcels/{parcel_id}")
 async def delete_parcel(parcel_id: str, user: dict = Depends(get_current_user)):
+    block_in_impersonation(user, "ștergerea terenului")
     doc = await _owned_or_404(parcel_id, user)
     _ensure_no_active_agreement(doc)
     if doc.get("status") == "pending_verification":
         raise HTTPException(409, "Terenul așteaptă verificarea și nu poate fi șters acum.")
-    await _set_fields(doc, {"archived_at": now_iso()})
+    await _transition(doc, {"archived_at": now_iso()}, no_agreement=True)
     return {"ok": True}

@@ -20,6 +20,7 @@ export default function Personal() {
   const [error, setError] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [removingId, setRemovingId] = useState(null);
 
   const fetchStaff = useCallback(async () => asList(await radaciniApi.staffList()), []);
 
@@ -62,12 +63,15 @@ export default function Personal() {
 
   const remove = async (m) => {
     if (!(await confirm({ title: "Ștergi accesul?", description: `${m.name || m.email} nu va mai avea acces de personal Rădăcini.`, confirmLabel: "Șterge accesul", danger: true }))) return;
+    setRemovingId(m.user_id);
     try {
       await radaciniApi.removeStaff(m.user_id);
       toast.success("Acces eliminat");
       setItems((list) => list.filter((x) => x.user_id !== m.user_id));
     } catch (err) {
       toast.error(errMsg(err, "Nu am putut elimina accesul"));
+    } finally {
+      setRemovingId(null);
     }
   };
 
@@ -138,7 +142,7 @@ export default function Personal() {
                   {m.areas?.length ? <Chips items={m.areas} /> : <span className="text-xs text-slate-500 dark:text-slate-400">Toate localitățile</span>}
                 </div>
               </div>
-              <DSButton variant="ghost" icon={Trash2} onClick={() => remove(m)} data-testid={`radacini-staff-delete-${m.user_id}`}>
+              <DSButton variant="ghost" icon={Trash2} disabled={removingId === m.user_id} onClick={() => remove(m)} data-testid={`radacini-staff-delete-${m.user_id}`}>
                 Șterge
               </DSButton>
             </div>

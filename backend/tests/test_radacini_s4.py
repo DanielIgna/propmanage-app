@@ -13,9 +13,12 @@ automatically; a crop plan "roșii" 1000 m2 is added by the coordinator, admin i
 Everything carries a unique TEST-RAD-<hex> tag (parcel title, listing products). Listings are closed
 at teardown; the signed parcel is left for backend/scripts/radacini_purge_demo.py --apply.
 """
+from zoneinfo import ZoneInfo
 import os
+import sys
 import uuid
-from datetime import datetime, timedelta, timezone
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 
 import pytest
 import requests
@@ -78,7 +81,8 @@ def _items(data):
 
 
 def _today():
-    return datetime.now(timezone.utc).date()
+    # The API validates dates against "today" in Europe/Bucharest (like the frontend).
+    return datetime.now(ZoneInfo("Europe/Bucharest")).date()
 
 
 def _d(days):
@@ -425,6 +429,10 @@ class TestHarvests:
     def test_quantity_too_large_400(self, specialist):
         _err(_record(specialist, crop_plan_id=S["crop_plan_id"], quantity_kg=1_000_001), 400)
 
+    def test_quantity_rounds_to_zero_400(self, specialist):
+        # validat DUPĂ rotunjirea la 0,001: 0,0004 devine 0
+        _err(_record(specialist, crop_plan_id=S["crop_plan_id"], quantity_kg=0.0004), 400)
+
     def test_missing_crop_and_plan_400(self, specialist):
         _err(_record(specialist, quantity_kg=10), 400)
 
@@ -533,6 +541,9 @@ class TestAllocations:
 
     def test_quantity_zero_400(self, specialist):
         _err(_allocate(specialist, S["h1"], S["admin_uid"], 0), 400)
+
+    def test_quantity_rounds_to_zero_400(self, specialist):
+        _err(_allocate(specialist, S["h1"], S["admin_uid"], 0.0004), 400)
 
     def test_unknown_member_4xx(self, specialist):
         _4xx(_allocate(specialist, S["h1"], UNKNOWN_ID, 5))
@@ -652,6 +663,11 @@ class TestListings:
     def test_quantity_zero_400(self, specialist):
         _err(specialist.post(f"{R}/listings", json=_listing_body(quantity_total=0), timeout=TIMEOUT), 400)
 
+    def test_quantity_and_price_rounding_to_zero_400(self, specialist):
+        _err(specialist.post(f"{R}/listings", json=_listing_body(quantity_total=0.0004), timeout=TIMEOUT), 400)
+        _err(specialist.post(f"{R}/listings", json=_listing_body(price_ron_per_unit=0.004), timeout=TIMEOUT), 400)
+        _err(specialist.post(f"{R}/listings", json=_listing_body(quantity_total=1_000_001), timeout=TIMEOUT), 400)
+
     def test_pickup_details_too_short_400(self, specialist):
         _err(specialist.post(f"{R}/listings", json=_listing_body(pickup_details="a"), timeout=TIMEOUT), 400)
 
@@ -723,6 +739,30 @@ class TestListings:
         r = admin.get(f"{R}/listings", params={"q": TAG, "limit": 1}, timeout=TIMEOUT)
         assert len(_items(r.json())) == 1
 
+    def test_search_by_word_and_prefix(self, admin, specialist):
+        ls = _create_listing(specialist, product=f"{TAG} Tomate cherry", category="legume", price_ron_per_unit=12)
+        S["l_search"] = ls["id"]
+
+        def found(q):
+            r = admin.get(f"{R}/listings", params={"q": q, "limit": 50}, timeout=TIMEOUT)
+            assert r.status_code == 200, r.text
+            return ls["id"] in {i["id"] for i in _items(r.json())}
+
+        assert found(f"{TAG} tomate")            # cuvânt întreg
+        assert found(f"{TAG} TOMATE")            # fără diferență de majuscule
+        assert found(f"{TAG} cherr")             # prefix de cel puțin 3 litere
+        assert found(f"{TAG} tom cher")          # toate cuvintele trebuie să se potrivească
+        assert not found(f"{TAG} tomate banane")  # un cuvânt care nu există în anunț
+        assert not found(f"{TAG} xyzabc")
+
+    def test_seller_name_first_name_only_for_others(self, admin, specialist):
+        r = admin.get(f"{R}/listings", params={"q": TAG, "limit": 50}, timeout=TIMEOUT)
+        item = next(i for i in _items(r.json()) if i["id"] == S["l1"])
+        assert item["seller_name"] and len(item["seller_name"].split()) == 1
+        own = _get_listing(specialist, S["l1"])  # vânzătorul își vede numele întreg
+        assert own["seller_name"].startswith(item["seller_name"])
+        assert "product_tokens" not in item
+
     def test_mine(self, specialist, client):
         r = specialist.get(f"{R}/listings/mine", timeout=TIMEOUT)
         assert r.status_code == 200, r.text
@@ -754,6 +794,7 @@ class TestReservations:
         _err(_reserve(client, S["l1"], 0), 400)
         _err(_reserve(client, S["l1"], -2), 400)
         _err(_reserve(client, S["l1"], 21), 400)  # more than available (20)
+        _err(_reserve(client, S["l1"], 0.0004), 400)  # rotunjit la 0
 
     def test_exchange_without_offer_400(self, client):
         _err(_reserve(client, S["l1"], 3, "exchange"), 400)
@@ -972,6 +1013,111 @@ class TestListingPatchAndClose:
     def test_patch_or_close_closed_4xx(self, specialist):
         _4xx(specialist.patch(f"{R}/listings/{S['l3']}", json={"quantity_total": 20}, timeout=TIMEOUT))
         _4xx(specialist.post(f"{R}/listings/{S['l3']}/close", timeout=TIMEOUT))
+
+
+# ── 5b. hardening: serialization, PATCH rules, visibility ────────────────────
+
+class TestHardening:
+    def test_setup_l4(self, specialist):
+        ls = _create_listing(specialist, product=f"{TAG} cartofi", unit="kg", quantity_total=10,
+                             price_ron_per_unit=3, mode="sale", exchange_for=None)
+        S["l4"] = ls["id"]
+
+    def test_double_click_reservation_one_wins(self, client):
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            rs = list(pool.map(lambda _: _reserve(client, S["l4"], 2), range(2)))
+        codes = sorted(r.status_code for r in rs)
+        assert codes[0] in (200, 201) and codes[1] == 409, [(r.status_code, r.text[:120]) for r in rs]
+        ok = next(r for r in rs if r.status_code in (200, 201))
+        S["r_l4"] = _unwrap(ok.json(), "reservation")["id"]
+        active = [i for i in _mine(client, "buyer") if i["listing_id"] == S["l4"] and i["status"] == "requested"]
+        assert len(active) == 1
+
+    def test_patch_unit_with_requested_reservation_409(self, specialist):
+        r = specialist.patch(f"{R}/listings/{S['l4']}", json={"unit": "buc"}, timeout=TIMEOUT)
+        _err(r, 409)
+        assert _get_listing(specialist, S["l4"])["unit"] == "kg"
+
+    def test_patch_mode_with_requested_reservation_409(self, specialist):
+        r = specialist.patch(
+            f"{R}/listings/{S['l4']}", json={"mode": "exchange", "exchange_for": "Ouă de țară"}, timeout=TIMEOUT
+        )
+        _err(r, 409)
+        assert _get_listing(specialist, S["l4"])["mode"] == "sale"
+
+    def test_patch_total_counts_requested_reservations(self, specialist):
+        # 2 kg sunt doar „requested”, dar tot rezervate
+        _err(specialist.patch(f"{R}/listings/{S['l4']}", json={"quantity_total": 1}, timeout=TIMEOUT), 400)
+        r = specialist.patch(f"{R}/listings/{S['l4']}", json={"quantity_total": 2}, timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        ls = _unwrap(r.json(), "listing")
+        assert ls["quantity_total"] == 2 and ls["quantity_available"] == 2
+        r = specialist.patch(f"{R}/listings/{S['l4']}", json={"quantity_total": 10}, timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+
+    def test_patch_unit_allowed_after_decline(self, specialist):
+        assert _res_status(_act(specialist, S["r_l4"], "decline")) == "declined"
+        r = specialist.patch(f"{R}/listings/{S['l4']}", json={"unit": "buc"}, timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        assert _unwrap(r.json(), "listing")["unit"] == "buc"
+
+    def test_closed_listing_visible_only_to_seller_and_reservers(self, specialist, client, admin):
+        # client a rezervat din l4 (acum refuzată) → vede anunțul închis; admin nu are nicio legătură cu el
+        r = specialist.post(f"{R}/listings/{S['l4']}/close", timeout=TIMEOUT)
+        assert r.status_code == 200, r.text
+        assert _get_listing(specialist, S["l4"])["status"] == "closed"
+        assert _get_listing(client, S["l4"])["status"] == "closed"
+        _err(admin.get(f"{R}/listings/{S['l4']}", timeout=TIMEOUT), 404)
+
+    def test_closed_without_reservation_404(self, specialist, admin):
+        ls = _create_listing(specialist, product=f"{TAG} gutui", quantity_total=3)
+        assert _get_listing(admin, ls["id"])["status"] == "active"
+        assert specialist.post(f"{R}/listings/{ls['id']}/close", timeout=TIMEOUT).status_code == 200
+        _err(admin.get(f"{R}/listings/{ls['id']}", timeout=TIMEOUT), 404)
+        assert _get_listing(specialist, ls["id"])["status"] == "closed"
+
+
+class TestPureHelpers:
+    """Funcții pure din backend (fără HTTP); sar dacă modulele nu pot fi importate din directorul curent."""
+
+    @staticmethod
+    def _mods():
+        backend = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if backend not in sys.path:
+            sys.path.insert(0, backend)
+        try:
+            from routes.radacini import harvests, market
+        except Exception as exc:  # noqa: BLE001
+            pytest.skip(f"backend nu poate fi importat: {exc}")
+        return harvests, market
+
+    def test_owner_share_rounding_and_min_q(self):
+        harvests, _ = self._mods()
+        assert harvests.owner_share(100, 30) == 30.0
+        assert harvests.owner_share(33.3, 30) == 10.0       # 9,99 → 10,0
+        assert harvests.owner_share(0.05, 100) == 0.05      # round(0,05; 1)=0,1 > q → min(q)
+        assert harvests.owner_share(10, 150) == 10.0        # niciodată peste recoltă
+        assert harvests.owner_share(0.04, 30) == pytest.approx(0.012)  # 0,1 kg ar da 0: se păstrează valoarea exactă
+
+    def test_quantity_validated_after_rounding(self):
+        harvests, market = self._mods()
+        assert harvests._checked_qty(0.0006, "x") == 0.001
+        for bad in (0.0004, 0, -1, float("nan"), float("inf"), 1_000_001):
+            with pytest.raises(ValueError):
+                harvests._checked_qty(bad, "x")
+        for bad in (0.0004, float("nan"), float("inf"), 1_000_001):
+            with pytest.raises(ValueError):
+                market._checked_qty(bad)
+
+    def test_product_tokens_words_and_prefixes(self):
+        _, market = self._mods()
+        tokens = market.product_tokens("Roșii cherry")
+        assert tokens[:2] == ["rosii", "cherry"]
+        assert {"ros", "rosi", "cher", "cherr"} <= set(tokens)
+        assert "ro" not in tokens
+        assert len(market.product_tokens(f"{'a' * 25} {'b' * 30} {'c' * 30}")) <= 40  # plafon de intrări
+        assert market.search_tokens("Roșii CHER") == ["rosii", "cher"]
+        assert market.search_tokens("ro") == ["ro"]
 
 
 # ── 6. completed project ─────────────────────────────────────────────────────

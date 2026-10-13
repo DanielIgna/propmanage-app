@@ -5,11 +5,13 @@ Fără plăți online și fără monedă internă: platforma consemnează doar r
 (confirmarea scade, anularea / neprezentarea returnează), ca să nu existe supravânzare.
 """
 import logging
+import math
+import os
 import re
 import statistics
 import unicodedata
 from datetime import date as _Date  # nu denumim câmpuri `date` în modele pydantic
-from typing import Optional
+from typing import Iterable, Optional
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -22,6 +24,8 @@ from .constants import (
     LISTING_MODE_IDS,
     LISTING_UNIT_IDS,
     LOCALITIES,
+    MAX_LISTING_PRICE_RON,
+    MAX_LISTING_QTY,
     RESERVATION_MODE_IDS,
 )
 from .members import get_member_doc
@@ -31,10 +35,19 @@ log = logging.getLogger(__name__)
 router = APIRouter(route_class=RadaciniRoute)
 
 EPS = 1e-6
-MAX_PRICE = 10_000
-MAX_QTY = 1_000_000_000
+MAX_PRICE = MAX_LISTING_PRICE_RON
+MAX_QTY = MAX_LISTING_QTY
 ACTIVE_RES = ("requested", "confirmed")
 RESERVATIONS_LINK = "/radacini/rezervari"
+IN_CHUNK = 100  # pgmongo traduce `$in` în SQL doar până la 200 de valori; peste, încarcă toată colecția
+REF_SAMPLE = 1000  # cele mai recente anunțuri luate în calcul pentru mediana unui produs
+RATING_SCAN_LIMIT = 20000  # doar la calculul inițial al statisticilor unui vânzător
+MAX_TOKENS = 40  # intrări `product_tokens` per anunț
+MAX_QUERY_TOKENS = 5
+MAX_CLOSE_NOTIFY = 200  # notificări trimise la închiderea unui anunț
+LIST_CAP = 500
+QTY_MESSAGE = "Cantitatea trebuie să fie între 0,001 și 1 000 000."
+_TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 
 def listing_link(listing_id) -> str:
@@ -43,6 +56,39 @@ def listing_link(listing_id) -> str:
 
 def _qty(v) -> float:
     return round(float(v), 3)
+
+
+def _checked_qty(v: float) -> float:
+    """Cantitate finită, rotunjită la 0,001 și validată DUPĂ rotunjire (0,0004 devine 0 → respinsă)."""
+    if not math.isfinite(v):
+        raise ValueError(QTY_MESSAGE)
+    r = _qty(v)
+    if not 0 < r <= MAX_QTY:
+        raise ValueError(QTY_MESSAGE)
+    return r
+
+
+def _chunks(items: list, size: int = IN_CHUNK) -> Iterable[list]:
+    for i in range(0, len(items), size):
+        yield items[i:i + size]
+
+
+def _public_filter() -> dict:
+    """Anunțurile demo (`is_demo`) nu apar în piața publică decât când serverul le marchează chiar el
+    (RADACINI_MARK_DEMO=true, mediu local de test)."""
+    if os.environ.get("RADACINI_MARK_DEMO", "").lower() == "true":
+        return {}
+    return {"is_demo": {"$ne": True}}
+
+
+def _first_name(name) -> str:
+    parts = str(name or "").split()
+    return parts[0] if parts else ""
+
+
+def _expired(listing: dict) -> bool:
+    until = listing.get("available_until")
+    return bool(until) and until < today_str()
 
 
 # ----------------------------------------------------------------- produs și preț de referință
@@ -54,6 +100,26 @@ def product_key(text: str) -> str:
     return " ".join(stripped.lower().split())
 
 
+def product_tokens(text: str) -> list[str]:
+    """Cuvintele produsului (normalizate cu `product_key`) + prefixele de cel puțin 3 litere ale fiecărui cuvânt,
+    cel mult `MAX_TOKENS`. Cuvintele întregi vin primele, apoi prefixele în ordinea lungimii, ca tăierea la
+    limită să păstreze prefixele scurte (cele mai folosite la căutare)."""
+    words = list(dict.fromkeys(_TOKEN_RE.findall(product_key(text))))
+    out = list(words)
+    longest = max((len(w) for w in words), default=0)
+    for n in range(3, longest):
+        out.extend(w[:n] for w in words if len(w) > n)
+    return list(dict.fromkeys(out))[:MAX_TOKENS]
+
+
+def search_tokens(q: str) -> list[str]:
+    """Cuvintele căutării care se potrivesc cu `product_tokens` (toate trebuie să existe în anunț).
+    Cuvintele de sub 3 litere se ignoră, cu excepția cazului în care sunt singurele."""
+    words = list(dict.fromkeys(_TOKEN_RE.findall(product_key((q or "")[:200]))))
+    long_words = [w for w in words if len(w) >= 3]
+    return (long_words or words[:1])[:MAX_QUERY_TOKENS]
+
+
 def median_price(prices: list[float]) -> Optional[float]:
     """Mediana prețurilor; `None` dacă există mai puțin de 2 prețuri."""
     if len(prices) < 2:
@@ -62,41 +128,92 @@ def median_price(prices: list[float]) -> Optional[float]:
 
 
 async def reference_prices(listings: list[dict]) -> dict:
-    """{(product_key, unit): mediană|None} pentru anunțurile date — o singură interogare."""
+    """{(product_key, unit): mediană|None} pentru anunțurile date. Interogări cu proiecție și limită explicită
+    (cele mai recente `REF_SAMPLE` anunțuri per grup de chei), nu scanări ale întregii colecții."""
     keys = sorted({l["product_key"] for l in listings if l.get("product_key")})
     if not keys:
         return {}
-    rows = await db.radacini_listings.find(
-        {"status": "active", "quantity_available": {"$gt": 0}, "product_key": {"$in": keys}},
-        {"product_key": 1, "unit": 1, "price_ron_per_unit": 1},
-    ).to_list(20000)
     groups: dict = {}
-    for r in rows:
-        price = r.get("price_ron_per_unit")
-        if isinstance(price, (int, float)) and price > 0:
-            groups.setdefault((r["product_key"], r["unit"]), []).append(float(price))
+    for chunk in _chunks(keys):
+        rows = await db.radacini_listings.find(
+            {
+                "status": "active",
+                "quantity_available": {"$gte": EPS},
+                "product_key": {"$in": chunk},
+                **_public_filter(),
+            },
+            {"product_key": 1, "unit": 1, "price_ron_per_unit": 1},
+        ).sort("created_at", -1).limit(REF_SAMPLE).to_list(REF_SAMPLE)
+        for r in rows:
+            price = r.get("price_ron_per_unit")
+            if isinstance(price, (int, float)) and price > 0:
+                groups.setdefault((r["product_key"], r["unit"]), []).append(float(price))
     wanted = {(l["product_key"], l["unit"]) for l in listings}
     return {k: median_price(groups.get(k, [])) for k in wanted}
 
 
+# ----------------------------------------------------------------- rating vânzători (agregat)
+# `radacini_seller_stats` {seller_user_id, rating_sum, rating_count}: actualizat cu `$inc` la fiecare evaluare,
+# ca citirea ratingului să nu scaneze rezervările. Lipsa documentului se acoperă o singură dată, din rezervări.
+
+def _rating_view(total: float, count: int) -> dict:
+    return {"avg": round(total / count, 2) if count else None, "count": int(count)}
+
+
+async def _rating_totals(seller_ids: list[str]) -> dict:
+    """{seller: (sumă, număr)} calculat din rezervările evaluate (proiecție minimă, limită explicită)."""
+    acc: dict = {}
+    for chunk in _chunks(seller_ids):
+        rows = await db.radacini_reservations.find(
+            {"seller_user_id": {"$in": chunk}, "rating": {"$exists": True}},
+            {"seller_user_id": 1, "rating": 1},
+        ).limit(RATING_SCAN_LIMIT).to_list(RATING_SCAN_LIMIT)
+        for r in rows:
+            if isinstance(r.get("rating"), (int, float)):
+                total, count = acc.get(r["seller_user_id"], (0, 0))
+                acc[r["seller_user_id"]] = (total + r["rating"], count + 1)
+    return acc
+
+
+async def _seed_seller_stats(seller_ids: list[str], persist_empty: bool = True) -> dict:
+    """Creează (o singură dată, upsert `$setOnInsert`) documentele de statistici lipsă. {seller: rating_view}."""
+    totals = await _rating_totals(seller_ids)
+    now = now_iso()
+    out = {}
+    for sid in seller_ids:
+        total, count = totals.get(sid, (0, 0))
+        if count or persist_empty:
+            await db.radacini_seller_stats.update_one(
+                {"seller_user_id": sid},
+                {"$setOnInsert": mark_demo({"rating_sum": total, "rating_count": count, "created_at": now, "updated_at": now})},
+                upsert=True,
+            )
+        out[sid] = _rating_view(total, count)
+    return out
+
+
 async def seller_ratings(seller_ids: list[str]) -> dict:
-    """{seller_user_id: {avg, count}} dintr-o singură interogare."""
+    """{seller_user_id: {avg, count}} din documentele agregate (o interogare per 100 de vânzători)."""
     ids = sorted({s for s in seller_ids if s})
     if not ids:
         return {}
-    rows = await db.radacini_reservations.find(
-        {"seller_user_id": {"$in": ids}, "rating": {"$exists": True}},
-        {"seller_user_id": 1, "rating": 1},
-    ).to_list(50000)
-    return _aggregate_ratings(rows)
+    out: dict = {}
+    for chunk in _chunks(ids):
+        rows = await db.radacini_seller_stats.find(
+            {"seller_user_id": {"$in": chunk}}, {"seller_user_id": 1, "rating_sum": 1, "rating_count": 1}
+        ).limit(len(chunk)).to_list(len(chunk))
+        for r in rows:
+            out[r["seller_user_id"]] = _rating_view(r.get("rating_sum") or 0, r.get("rating_count") or 0)
+    missing = [i for i in ids if i not in out]
+    if missing:
+        out.update(await _seed_seller_stats(missing))
+    return out
 
 
-def _aggregate_ratings(rows: list[dict]) -> dict:
-    acc: dict = {}
-    for r in rows:
-        if isinstance(r.get("rating"), (int, float)):
-            acc.setdefault(r["seller_user_id"], []).append(r["rating"])
-    return {sid: {"avg": round(sum(v) / len(v), 2), "count": len(v)} for sid, v in acc.items()}
+async def _ensure_seller_stats(seller_id: str) -> None:
+    """Înainte de `$inc`: documentul trebuie să existe, altfel evaluările mai vechi s-ar pierde din agregat."""
+    if not await db.radacini_seller_stats.find_one({"seller_user_id": seller_id}, {"_id": 1}):
+        await _seed_seller_stats([seller_id])
 
 
 # ----------------------------------------------------------------- scheme
@@ -129,16 +246,19 @@ class _ListingCommon(BaseModel):
     @field_validator("quantity_total", check_fields=False)
     @classmethod
     def _v_quantity(cls, v):
-        if v is not None and not 0 < v <= MAX_QTY:
-            raise ValueError("Cantitatea trebuie să fie un număr pozitiv.")
-        return v
+        return None if v is None else _checked_qty(v)
 
     @field_validator("price_ron_per_unit", check_fields=False)
     @classmethod
     def _v_price(cls, v):
-        if v is not None and not 0 < v <= MAX_PRICE:
-            raise ValueError("Prețul trebuie să fie între 0 și 10 000 RON.")
-        return v
+        if v is None:
+            return None
+        if not math.isfinite(v):
+            raise ValueError("Prețul trebuie să fie un număr valid.")
+        r = round(v, 2)  # validat după rotunjire: 0,004 RON ar deveni 0
+        if not 0 < r <= MAX_PRICE:
+            raise ValueError("Prețul trebuie să fie între 0,01 și 10 000 RON.")
+        return r
 
     @field_validator("mode", check_fields=False)
     @classmethod
@@ -214,9 +334,7 @@ class ReservationIn(BaseModel):
     @field_validator("quantity")
     @classmethod
     def _quantity(cls, v: float) -> float:
-        if not 0 < v <= MAX_QTY:
-            raise ValueError("Cantitatea trebuie să fie un număr pozitiv.")
-        return v
+        return _checked_qty(v)
 
     @field_validator("mode")
     @classmethod
@@ -295,25 +413,34 @@ async def _require_profile(user: dict, action: str) -> None:
         raise HTTPException(400, f"Completează profilul înainte de {action}.")
 
 
+async def _pending_counts(listing_ids: list[str]) -> dict:
+    counts: dict = {}
+    for chunk in _chunks(listing_ids):
+        rows = await db.radacini_reservations.find(
+            {"listing_id": {"$in": chunk}, "status": "requested"}, {"listing_id": 1}
+        ).limit(20000).to_list(20000)
+        for r in rows:
+            counts[r["listing_id"]] = counts.get(r["listing_id"], 0) + 1
+    return counts
+
+
 async def _present_listings(docs: list[dict], uid: str, with_pending: bool = False) -> list[dict]:
-    """Anunțuri pregătite pentru răspuns: preț de referință și rating, fără interogări pe element."""
+    """Anunțuri pregătite pentru răspuns: preț de referință și rating, fără interogări pe element.
+    Ceilalți utilizatori văd doar prenumele vânzătorului."""
     prices = await reference_prices(docs)
     ratings = await seller_ratings([d["seller_user_id"] for d in docs])
-    pending: dict = {}
-    if with_pending and docs:
-        rows = await db.radacini_reservations.find(
-            {"listing_id": {"$in": [str(d["_id"]) for d in docs]}, "status": "requested"}, {"listing_id": 1}
-        ).to_list(20000)
-        for r in rows:
-            pending[r["listing_id"]] = pending.get(r["listing_id"], 0) + 1
+    pending = await _pending_counts([str(d["_id"]) for d in docs]) if with_pending and docs else {}
     out = []
     for d in docs:
         item = serialize_doc(d)
+        item.pop("product_tokens", None)  # intern: doar pentru căutare
         item["quantity_total"] = _qty(d["quantity_total"])
         item["quantity_available"] = max(_qty(d["quantity_available"]), 0.0)
         item["reference_price"] = prices.get((d["product_key"], d["unit"]))
         item["seller_rating"] = ratings.get(d["seller_user_id"], {"avg": None, "count": 0})
         item["is_mine"] = d["seller_user_id"] == uid
+        if not item["is_mine"]:
+            item["seller_name"] = _first_name(d.get("seller_name"))
         if with_pending:
             item["pending_reservations"] = pending.get(str(d["_id"]), 0)
         out.append(item)
@@ -348,9 +475,10 @@ async def list_listings(
 ):
     flt: dict = {
         "status": "active",
-        "quantity_available": {"$gt": 0},
+        "quantity_available": {"$gte": EPS},  # sub EPS = epuizat (resturi de virgulă mobilă după `$inc`)
         # Anunțurile expirate (available_until trecut) nu mai apar în piață.
         "$or": [{"available_until": None}, {"available_until": {"$gte": today_str()}}],
+        **_public_filter(),
     }
     if locality:
         flt["locality"] = locality
@@ -360,9 +488,13 @@ async def list_listings(
         if mode not in LISTING_MODE_IDS:
             raise HTTPException(400, "Mod necunoscut.")
         flt["mode"] = "both" if mode == "both" else {"$in": [mode, "both"]}
-    key = product_key(q) if q else ""
-    if key:
-        flt["product_key"] = {"$regex": re.escape(key)}
+    # Căutare fără $regex (care ar încărca toate anunțurile active în memorie): fiecare cuvânt al căutării
+    # trebuie să fie un cuvânt sau un prefix (≥ 3 litere) din `product_tokens` → `@>` pe array, tradus în SQL.
+    tokens = search_tokens(q) if q else []
+    if len(tokens) == 1:
+        flt["product_tokens"] = tokens[0]
+    elif tokens:
+        flt["$and"] = [{"product_tokens": t} for t in tokens]
     total = await db.radacini_listings.count_documents(flt)
     docs = await db.radacini_listings.find(flt).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
     return {"items": await _present_listings(docs, str(user["id"])), "total": total}
@@ -371,7 +503,7 @@ async def list_listings(
 @router.get("/listings/mine")
 async def my_listings(user: dict = Depends(get_current_user)):
     uid = str(user["id"])
-    docs = await db.radacini_listings.find({"seller_user_id": uid}).sort("created_at", -1).to_list(500)
+    docs = await db.radacini_listings.find({"seller_user_id": uid}).sort("created_at", -1).limit(LIST_CAP).to_list(LIST_CAP)
     return {"items": await _present_listings(docs, uid, with_pending=True)}
 
 
@@ -379,9 +511,15 @@ async def my_listings(user: dict = Depends(get_current_user)):
 async def get_listing(listing_id: str, user: dict = Depends(get_current_user)):
     uid = str(user["id"])
     doc = await _load_listing(listing_id)
+    lid = str(doc["_id"])
+    if doc["seller_user_id"] != uid and (doc.get("status") != "active" or _expired(doc)):
+        # Anunț închis sau expirat: îl văd doar vânzătorul și cei care au rezervat din el.
+        has_res = await db.radacini_reservations.find_one({"listing_id": lid, "buyer_user_id": uid}, {"_id": 1})
+        if not has_res:
+            raise HTTPException(404, "Anunțul nu există.")
     item = (await _present_listings([doc], uid))[0]
     mine = await db.radacini_reservations.find_one(
-        {"listing_id": str(doc["_id"]), "buyer_user_id": uid, "status": {"$in": list(ACTIVE_RES)}}
+        {"listing_id": lid, "buyer_user_id": uid, "status": {"$in": list(ACTIVE_RES)}}
     )
     item["my_reservation"] = serialize_doc(mine) if mine else None
     return {"listing": item}
@@ -403,6 +541,7 @@ async def create_listing(body: ListingIn, user: dict = Depends(get_current_user)
         "seller_name": user.get("name") or "",
         "product": data["product"],
         "product_key": product_key(data["product"]),
+        "product_tokens": product_tokens(data["product"]),
         "category": data["category"],
         "unit": data["unit"],
         "quantity_total": qty,
@@ -443,12 +582,20 @@ async def patch_listing(listing_id: str, body: ListingPatch, user: dict = Depend
         raise HTTPException(400, "Data limită nu poate fi în trecut.")
     if changes.get("project_id"):
         await _check_project(changes["project_id"], uid)
-    reserved = _qty(doc["quantity_total"] - doc["quantity_available"])
-    if "unit" in changes and changes["unit"] != doc["unit"] and reserved > EPS:
-        raise HTTPException(409, "Unitatea nu se mai poate schimba: există cantitate rezervată.")
+    # Cantitate rezervată = rezervările `requested` + `confirmed` (PLAN: „rezervată sau confirmată”).
+    active = await db.radacini_reservations.find(
+        {"listing_id": str(doc["_id"]), "status": {"$in": list(ACTIVE_RES)}}, {"quantity": 1}
+    ).limit(2000).to_list(2000)
+    reserved = max(_qty(sum(r.get("quantity") or 0 for r in active)), _qty(doc["quantity_total"] - doc["quantity_available"]))
+    if "unit" in changes and changes["unit"] != doc["unit"] and active:
+        raise HTTPException(409, "Unitatea nu se mai poate schimba: există rezervări în curs.")
+    if "mode" in changes and changes["mode"] != doc["mode"] and active:
+        # Include și trecerea la un mod incompatibil cu rezervările în așteptare / confirmate.
+        raise HTTPException(409, "Modul anunțului nu se mai poate schimba: există rezervări în curs.")
     sets = {k: v for k, v in changes.items() if k != "quantity_total"}
     if "product" in sets:
         sets["product_key"] = product_key(sets["product"])
+        sets["product_tokens"] = product_tokens(sets["product"])
     if merged["mode"] == "exchange":
         sets["price_ron_per_unit"] = None
     if merged["mode"] == "sale":
@@ -459,7 +606,7 @@ async def patch_listing(listing_id: str, body: ListingPatch, user: dict = Depend
     if "quantity_total" in changes:
         new_total = _qty(changes["quantity_total"])
         if new_total < reserved - EPS:
-            raise HTTPException(400, "Cantitatea totală nu poate scădea sub cantitatea deja rezervată și confirmată.")
+            raise HTTPException(400, "Cantitatea totală nu poate scădea sub cantitatea deja rezervată sau confirmată.")
         delta = _qty(new_total - doc["quantity_total"])
         if abs(delta) > EPS:
             update["$inc"] = {"quantity_total": delta, "quantity_available": delta}
@@ -471,7 +618,7 @@ async def patch_listing(listing_id: str, body: ListingPatch, user: dict = Depend
         if not fresh or fresh.get("status") != "active":
             raise HTTPException(409, "Anunțul este închis.")
         raise HTTPException(409, "Cantitatea rezervată s-a schimbat între timp. Reîncarcă pagina.")
-    fresh = await db.radacini_listings.find_one({"_id": doc["_id"]}) or doc
+    fresh = await _settle_available(await db.radacini_listings.find_one({"_id": doc["_id"]}) or doc)
     await emit("radacini.listing_updated", actor=user, payload={"listing_id": listing_id})
     return {"listing": (await _present_listings([fresh], uid))[0]}
 
@@ -486,21 +633,22 @@ async def close_listing(listing_id: str, user: dict = Depends(get_current_user))
     )
     if res.modified_count != 1:
         raise HTTPException(409, "Anunțul este deja închis.")
-    pending = await db.radacini_reservations.find({"listing_id": listing_id, "status": "requested"}).to_list(1000)
-    for r in pending:
-        upd = await db.radacini_reservations.update_one(
-            {"_id": r["_id"], "status": "requested"},
-            {"$set": {"status": "cancelled", "cancel_reason": "listing_closed", "updated_at": now}},
+    lid = str(doc["_id"])
+    pending_flt = {"listing_id": lid, "status": "requested"}
+    # Cumpărătorii de notificat (cel mult MAX_CLOSE_NOTIFY), apoi o singură scriere care anulează toate cererile.
+    buyers = await db.radacini_reservations.find(pending_flt, {"buyer_user_id": 1}).limit(MAX_CLOSE_NOTIFY).to_list(MAX_CLOSE_NOTIFY)
+    upd = await db.radacini_reservations.update_many(
+        pending_flt, {"$set": {"status": "cancelled", "cancel_reason": "listing_closed", "updated_at": now}}
+    )
+    for buyer_id in dict.fromkeys(r["buyer_user_id"] for r in buyers):
+        await safe_notify(  # rulează în fundal (nu blochează cererea)
+            buyer_id,
+            "Anunț închis",
+            f"Anunțul „{doc['product']}” a fost închis, iar rezervarea ta a fost anulată.",
+            link=listing_link(listing_id),
+            type_="market",
         )
-        if upd.modified_count == 1:
-            await safe_notify(
-                r["buyer_user_id"],
-                "Anunț închis",
-                f"Anunțul „{doc['product']}” a fost închis, iar rezervarea ta a fost anulată.",
-                link=listing_link(listing_id),
-                type_="market",
-            )
-    await emit("radacini.listing_closed", actor=user, payload={"listing_id": listing_id, "cancelled": len(pending)})
+    await emit("radacini.listing_closed", actor=user, payload={"listing_id": listing_id, "cancelled": upd.modified_count})
     fresh = {**doc, "status": "closed", "updated_at": now}
     return {"listing": (await _present_listings([fresh], uid))[0]}
 
@@ -544,6 +692,18 @@ async def _return_quantity(listing_id: str, qty: float) -> None:
     )
 
 
+async def _settle_available(listing: dict) -> dict:
+    """După `$inc`, resturile de virgulă mobilă (ex. 1e-16) se tratează ca 0: le scriem 0.0, condiționat
+    (nu atingem cantitatea dacă între timp a revenit o rezervare anulată)."""
+    avail = listing.get("quantity_available")
+    if isinstance(avail, (int, float)) and avail != 0 and abs(avail) < EPS:
+        await db.radacini_listings.update_one(
+            {"_id": listing["_id"], "quantity_available": {"$lt": EPS}}, {"$set": {"quantity_available": 0.0}}
+        )
+        return {**listing, "quantity_available": 0.0}
+    return listing
+
+
 async def _notify_other(res: dict, side: str, title: str, text: str, event: str, user: dict, listing_id: str) -> None:
     other = res["seller_user_id"] if side == "buyer" else res["buyer_user_id"]
     await safe_notify(other, title, text, link=RESERVATIONS_LINK, type_="market")
@@ -556,6 +716,7 @@ async def _notify_other(res: dict, side: str, title: str, text: str, event: str,
 async def create_reservation(listing_id: str, body: ReservationIn, user: dict = Depends(get_current_user)):
     uid = str(user["id"])
     listing = await _load_listing(listing_id)
+    listing_id = str(listing["_id"])
     if listing["seller_user_id"] == uid:
         raise HTTPException(403, "Nu poți rezerva din propriul anunț.")
     await _require_profile(user, "a rezerva")
@@ -571,11 +732,6 @@ async def create_reservation(listing_id: str, body: ReservationIn, user: dict = 
         raise HTTPException(400, "Anunțul nu acceptă acest mod de rezervare.")
     if body.mode == "exchange" and not body.exchange_offer:
         raise HTTPException(400, "Spune ce oferi în schimb.")
-    dup = await db.radacini_reservations.find_one(
-        {"listing_id": listing_id, "buyer_user_id": uid, "status": {"$in": list(ACTIVE_RES)}}
-    )
-    if dup:
-        raise HTTPException(409, "Ai deja o rezervare activă pentru acest anunț.")
     now = now_iso()
     doc = mark_demo({
         "listing_id": listing_id,
@@ -591,7 +747,18 @@ async def create_reservation(listing_id: str, body: ReservationIn, user: dict = 
         "created_at": now,
         "updated_at": now,
     })
-    await db.radacini_reservations.insert_one(doc)
+    # O singură rezervare activă per (anunț, cumpărător), fără fereastră între verificare și inserare: upsert
+    # cu `$setOnInsert`. pgmongo serializează upsert-urile unei colecții cu un lock advisory, așa că la două
+    # cereri simultane (dublu-click) a doua vede rezervarea primei și nu inserează nimic → 409. Nu e nevoie de
+    # documente-lock separate, care ar trebui curățate la fiecare tranziție finală a rezervării.
+    ins = await db.radacini_reservations.update_one(
+        {"listing_id": listing_id, "buyer_user_id": uid, "status": {"$in": list(ACTIVE_RES)}},
+        {"$setOnInsert": doc},
+        upsert=True,
+    )
+    if ins.upserted_id is None:
+        raise HTTPException(409, "Ai deja o rezervare activă pentru acest anunț.")
+    doc["_id"] = ins.upserted_id
     await safe_notify(
         listing["seller_user_id"],
         "Rezervare nouă",
@@ -612,11 +779,11 @@ async def my_reservations(role: str = "buyer", user: dict = Depends(get_current_
     if role not in ("buyer", "seller"):
         raise HTTPException(400, "Rolul trebuie să fie buyer sau seller.")
     uid = str(user["id"])
-    docs = await db.radacini_reservations.find({f"{role}_user_id": uid}).sort("created_at", -1).to_list(500)
+    docs = await db.radacini_reservations.find({f"{role}_user_id": uid}).sort("created_at", -1).limit(LIST_CAP).to_list(LIST_CAP)
     ids = sorted({d["listing_id"] for d in docs})
     listings: dict = {}
     if ids:
-        rows = await db.radacini_listings.find({"_id": {"$in": [ObjectId(i) for i in ids]}}).to_list(len(ids))
+        rows = await db.radacini_listings.find({"_id": {"$in": [ObjectId(i) for i in ids]}}).limit(len(ids)).to_list(len(ids))
         listings = {str(r["_id"]): r for r in rows}
     return {"items": [_res_view(d, listings.get(d["listing_id"]), role) for d in docs]}
 
@@ -649,7 +816,9 @@ async def confirm_reservation(reservation_id: str, user: dict = Depends(get_curr
         f"Rezervarea ta pentru „{listing.get('product', '')}” a fost confirmată. Vezi detaliile de ridicare.",
         "radacini.reservation_confirmed", user, res["listing_id"],
     )
-    fresh_listing = await db.radacini_listings.find_one({"_id": ObjectId(res["listing_id"])}) or listing
+    fresh_listing = await _settle_available(
+        await db.radacini_listings.find_one({"_id": ObjectId(res["listing_id"])}) or listing
+    )
     return {"reservation": _res_view(res, fresh_listing, side)}
 
 
@@ -724,11 +893,24 @@ async def rate_reservation(reservation_id: str, body: RatingIn, user: dict = Dep
         raise HTTPException(409, "Poți evalua doar o rezervare ridicată.")
     now = now_iso()
     fields = {"rating": body.rating, "rating_comment": body.comment, "rated_at": now, "updated_at": now}
+    await _ensure_seller_stats(res["seller_user_id"])  # înainte de evaluare: agregatul trebuie să conțină și evaluările vechi
     upd = await db.radacini_reservations.update_one(
         {"_id": res["_id"], "status": "picked_up", "rating": {"$exists": False}}, {"$set": fields}
     )
     if upd.modified_count != 1:
         raise HTTPException(409, "Rezervarea a fost deja evaluată.")
+    try:
+        await db.radacini_seller_stats.update_one(
+            {"seller_user_id": res["seller_user_id"]},
+            {
+                "$inc": {"rating_sum": body.rating, "rating_count": 1},
+                "$set": {"updated_at": now},
+                "$setOnInsert": mark_demo({"created_at": now}),
+            },
+            upsert=True,
+        )
+    except Exception:  # noqa: BLE001 - evaluarea e deja salvată; agregatul se poate reface din rezervări
+        log.exception("radacini: agregatul de rating nu a putut fi actualizat pentru %s", res["seller_user_id"])
     await safe_notify(
         res["seller_user_id"],
         "Evaluare primită",
@@ -746,8 +928,11 @@ async def rate_reservation(reservation_id: str, body: RatingIn, user: dict = Dep
 
 @router.get("/sellers/{user_id}/rating")
 async def seller_rating(user_id: str, user: dict = Depends(get_current_user)):
-    rows = await db.radacini_reservations.find(
-        {"seller_user_id": user_id, "rating": {"$exists": True}}, {"seller_user_id": 1, "rating": 1}
-    ).to_list(50000)
-    agg = _aggregate_ratings(rows).get(user_id)
-    return agg or {"avg": None, "count": 0}
+    if not (isinstance(user_id, str) and len(user_id) == 24 and ObjectId.is_valid(user_id)):
+        return {"avg": None, "count": 0}
+    stats = await db.radacini_seller_stats.find_one({"seller_user_id": user_id})
+    if stats:
+        return _rating_view(stats.get("rating_sum") or 0, stats.get("rating_count") or 0)
+    # Lipsă: se calculează o dată din rezervări; se salvează doar dacă există evaluări (nu creăm documente
+    # pentru orice id cerut).
+    return (await _seed_seller_stats([user_id], persist_empty=False))[user_id]
