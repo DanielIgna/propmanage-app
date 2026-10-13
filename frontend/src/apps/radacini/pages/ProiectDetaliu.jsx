@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Briefcase, CalendarDays, Users, Wallet, Sprout } from "lucide-react";
+import { ArrowLeft, Briefcase, CalendarDays, Users, Wallet, Sprout, Wheat } from "lucide-react";
 import { useAuth } from "../../../auth";
 import { EmptyState, TabBar } from "../../../design-system";
 import { radaciniApi, errMsg } from "../api";
@@ -10,12 +10,14 @@ import CropsTab from "../components/project/CropsTab";
 import CalendarTab from "../components/project/CalendarTab";
 import ContributionsTab from "../components/project/ContributionsTab";
 import MembersTab from "../components/project/MembersTab";
+import HarvestTab from "../components/project/HarvestTab";
 
 const TAB_ICONS = {
   prezentare: Briefcase,
   plan: Sprout,
   calendar: CalendarDays,
   contributii: Wallet,
+  recolta: Wheat,
   membri: Users,
 };
 
@@ -117,6 +119,7 @@ export default function ProiectDetaliu() {
         {active === "plan" && <CropsTab {...common} />}
         {active === "calendar" && <CalendarTab {...common} />}
         {active === "contributii" && <ContributionsTab {...common} />}
+        {active === "recolta" && <HarvestTab {...common} />}
         {active === "membri" && <MembersTab {...common} />}
       </div>
     </div>

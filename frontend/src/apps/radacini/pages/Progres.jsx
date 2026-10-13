@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { CheckCircle2, CircleDashed, Clock } from "lucide-react";
 import { CARD } from "../../../design-system";
+import { radaciniApi, asList } from "../api";
 import { PageHeader, linkBtnCls } from "../shared";
 
 // Pagină de dezvoltare: nu se randează în producție.
@@ -35,8 +36,12 @@ const SPRINTS = [
   {
     id: "S4",
     title: "Recoltă, alocare și piață locală (listări, rezervări, schimb)",
-    status: "progress",
-    links: [],
+    status: "done",
+    links: [
+      { to: "/radacini/piata", label: "Piață" },
+      { to: "/radacini/rezervari", label: "Rezervări" },
+      { to: firstProjectId ? `/radacini/proiecte/${firstProjectId}?tab=recolta` : "/radacini/proiecte", label: "Proiecte → Recoltă" },
+    ],
   },
   {
     id: "S5",
@@ -60,6 +65,20 @@ const DEMO_ACCOUNTS = [
 ];
 
 export default function Progres() {
+  // Primul proiect (dacă există), ca să se poată deschide direct fila Recoltă.
+  const [firstProjectId, setFirstProjectId] = useState(null);
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return undefined;
+    let alive = true;
+    radaciniApi
+      .projects()
+      .then((d) => alive && setFirstProjectId(asList(d)[0]?.id || null))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   if (process.env.NODE_ENV === "production") return <Navigate to="/radacini" replace />;
 
   return (

@@ -1,4 +1,5 @@
 import {
+  ArrowLeftRight,
   Briefcase,
   ClipboardCheck,
   FileSignature,
@@ -8,6 +9,7 @@ import {
   MapPin,
   Settings,
   Sprout,
+  Store,
   UserRound,
   Users,
 } from "lucide-react";
@@ -22,6 +24,8 @@ const NAV_ITEMS = [
   { to: "/radacini/cereri", label: "Cereri", icon: Inbox, testid: "radacini-nav-cereri" },
   { to: "/radacini/acorduri", label: "Acorduri", icon: FileSignature, testid: "radacini-nav-acorduri" },
   { to: "/radacini/proiecte", label: "Proiecte", icon: Briefcase, testid: "radacini-nav-proiecte" },
+  { to: "/radacini/piata", label: "Piață", icon: Store, testid: "radacini-nav-piata" },
+  { to: "/radacini/rezervari", label: "Rezervări", icon: ArrowLeftRight, testid: "radacini-nav-rezervari" },
   { to: "/radacini/profil", label: "Profil", icon: UserRound, testid: "radacini-nav-profil" },
   { to: "/radacini/operator", label: "Operator", icon: ClipboardCheck, requires: "staff", testid: "radacini-nav-operator" },
   { to: "/radacini/personal", label: "Personal", icon: Users, requires: "manager", testid: "radacini-nav-personal" },

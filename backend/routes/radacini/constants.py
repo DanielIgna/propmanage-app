@@ -96,10 +96,44 @@ CONTRIBUTION_KINDS = [
     {"id": "land", "label": "Teren"},
 ]
 
+LISTING_CATEGORIES = [
+    {"id": "legume", "label": "Legume"},
+    {"id": "fructe", "label": "Fructe"},
+    {"id": "cereale", "label": "Cereale"},
+    {"id": "lactate", "label": "Lactate"},
+    {"id": "ouă", "label": "Ouă"},
+    {"id": "miere", "label": "Miere"},
+    {"id": "conserve", "label": "Conserve"},
+    {"id": "altele", "label": "Altele"},
+]
+
+LISTING_UNITS = [
+    {"id": "kg", "label": "kg"},
+    {"id": "buc", "label": "buc"},
+    {"id": "legătură", "label": "legătură"},
+    {"id": "borcan", "label": "borcan"},
+    {"id": "litru", "label": "litru"},
+]
+
+LISTING_MODES = [
+    {"id": "sale", "label": "Vânzare"},
+    {"id": "exchange", "label": "Schimb"},
+    {"id": "both", "label": "Vânzare sau schimb"},
+]
+
+RESERVATION_MODES = [
+    {"id": "cash_on_pickup", "label": "Plată la ridicare"},
+    {"id": "exchange", "label": "Schimb"},
+]
+
 CROP_IDS = {c["id"] for c in CROPS}
 CROP_STATUS_IDS = {c["id"] for c in CROP_STATUSES}
 ACTIVITY_TYPE_IDS = {a["id"] for a in ACTIVITY_TYPES}
 CONTRIBUTION_KIND_IDS = {k["id"] for k in CONTRIBUTION_KINDS}
+LISTING_CATEGORY_IDS = {c["id"] for c in LISTING_CATEGORIES}
+LISTING_UNIT_IDS = {u["id"] for u in LISTING_UNITS}
+LISTING_MODE_IDS = {m["id"] for m in LISTING_MODES}
+RESERVATION_MODE_IDS = {m["id"] for m in RESERVATION_MODES}
 FAMILY_LABELS = {f["id"]: f["label"] for f in CROP_FAMILIES}
 
 META = {
@@ -112,6 +146,10 @@ META = {
     "crop_statuses": CROP_STATUSES,
     "activity_types": ACTIVITY_TYPES,
     "contribution_kinds": CONTRIBUTION_KINDS,
+    "listing_categories": LISTING_CATEGORIES,
+    "listing_units": LISTING_UNITS,
+    "listing_modes": LISTING_MODES,
+    "reservation_modes": RESERVATION_MODES,
 }
 
 LEGAL_NOTICE = (

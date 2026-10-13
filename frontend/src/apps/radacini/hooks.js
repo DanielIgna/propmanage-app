@@ -75,3 +75,37 @@ export function useMember() {
   const refresh = useCallback(() => setTick((t) => t + 1), []);
   return { ...state, loading: user === null || (!!user && state.loading), refresh };
 }
+
+// Rating vânzător: o cerere per vânzător și sesiune de browser (cache la nivel de modul).
+const ratingCache = new Map();
+const loadSellerRating = (userId) => {
+  if (!ratingCache.has(userId)) {
+    ratingCache.set(
+      userId,
+      radaciniApi.sellerRating(userId).catch(() => {
+        ratingCache.delete(userId);
+        return null;
+      })
+    );
+  }
+  return ratingCache.get(userId);
+};
+
+// Returnează {[userId]: {avg, count}} pentru vânzătorii dați; se încarcă leneș, unic per vânzător.
+export function useSellerRatings(userIds = []) {
+  const key = [...new Set(userIds.filter(Boolean))].sort().join(",");
+  const [ratings, setRatings] = useState({});
+  useEffect(() => {
+    let alive = true;
+    const ids = key ? key.split(",") : [];
+    ids.forEach((id) =>
+      loadSellerRating(id).then((r) => {
+        if (alive && r) setRatings((s) => ({ ...s, [id]: r }));
+      })
+    );
+    return () => {
+      alive = false;
+    };
+  }, [key]);
+  return ratings;
+}

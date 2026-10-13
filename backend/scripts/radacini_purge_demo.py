@@ -2,7 +2,8 @@
 
 Implicit rulează în dry-run (doar numără). Cu --apply șterge efectiv.
 Cu --tests-only șterge doar datele lăsate de testele HTTP (terenuri cu „TEST-RAD-” în titlu)
-și tot ce depinde de ele (cereri, mesaje, acorduri, proiecte, culturi, activități, contribuții).
+și tot ce depinde de ele (cereri, mesaje, acorduri, proiecte, culturi, activități, contribuții, recolte, alocări;
+anunțurile cu „TEST-RAD-” în produs și rezervările lor).
 
 Utilizare (local):
   cd backend && ./venv/bin/python -m scripts.radacini_purge_demo
@@ -34,6 +35,10 @@ COLLECTIONS = (
     "radacini_crop_plans",
     "radacini_activities",
     "radacini_contributions",
+    "radacini_harvests",
+    "radacini_allocations",
+    "radacini_listings",
+    "radacini_reservations",
 )
 DEMO_FILTER = {"is_demo": True}
 
@@ -60,7 +65,13 @@ async def run_tests_only(apply: bool) -> None:
     request_ids = [str(d["_id"]) for d in await db.radacini_land_requests.find(by_parcel, {"_id": 1}).to_list(100000)]
     project_ids = [str(d["_id"]) for d in await db.radacini_projects.find(by_parcel, {"_id": 1}).to_list(100000)]
     by_project = {"project_id": {"$in": project_ids}}
+    listings = await db.radacini_listings.find({"is_demo": True}, {"product": 1}).to_list(100000)
+    listing_ids = [str(d["_id"]) for d in listings if "TEST-RAD-" in (d.get("product") or "")]
     plan = [
+        ("radacini_reservations", {"listing_id": {"$in": listing_ids}}),
+        ("radacini_listings", {"_id": {"$in": [d["_id"] for d in listings if str(d["_id"]) in set(listing_ids)]}}),
+        ("radacini_allocations", by_project),
+        ("radacini_harvests", by_project),
         ("radacini_contributions", by_project),
         ("radacini_activities", by_project),
         ("radacini_crop_plans", by_project),

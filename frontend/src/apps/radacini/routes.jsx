@@ -19,6 +19,10 @@ const AcordDetaliu = lazy(() => import("./pages/AcordDetaliu"));
 const Proiecte = lazy(() => import("./pages/Proiecte"));
 const ProiectDetaliu = lazy(() => import("./pages/ProiectDetaliu"));
 const Progres = lazy(() => import("./pages/Progres"));
+const Piata = lazy(() => import("./pages/Piata"));
+const AnuntDetaliu = lazy(() => import("./pages/AnuntDetaliu"));
+const AnuntForm = lazy(() => import("./pages/AnuntForm"));
+const Rezervari = lazy(() => import("./pages/Rezervari"));
 
 export function radaciniRoutes() {
   if (!RADACINI_ENABLED) return null;
@@ -40,6 +44,11 @@ export function radaciniRoutes() {
       <Route path="setari" element={<Setari />} />
       <Route path="proiecte" element={<Proiecte />} />
       <Route path="proiecte/:id" element={<ProiectDetaliu />} />
+      <Route path="piata" element={<Piata />} />
+      <Route path="piata/nou" element={<AnuntForm />} />
+      <Route path="piata/:id" element={<AnuntDetaliu />} />
+      <Route path="piata/:id/editare" element={<AnuntForm />} />
+      <Route path="rezervari" element={<Rezervari />} />
       <Route path="progres" element={<Progres />} />
     </Route>
   );

@@ -8,7 +8,7 @@ Decizii luate (2026-10-13): modul în aceeași aplicație; aceleași conturi; MV
 | S1 | Fundație + Membri + Terenuri + Personal (operator/manager) + coadă de verificare | gata (60 teste API, flux verificat în browser) |
 | S2 | Cereri de teren + negociere + acorduri cu versiune | gata (155 teste S1+S2, flux verificat în browser) |
 | S3 | Proiect agricol: membri, plan culturi, activități, contribuții | gata (264 teste S1–S3, verificat în browser) |
-| S4 | Recoltă + alocare + piață locală (listări, rezervări, schimb) | — |
+| S4 | Recoltă + alocare + piață locală (listări, rezervări, schimb) | gata (377 teste S1–S4) |
 | S5 | Admin: comutator Produs, secțiune Rădăcini, KPI, noduri Knowledge Center | — |
 
 ---
@@ -185,3 +185,63 @@ Stări: `draft → proposed → signed`; `draft`/`proposed` → `cancelled`.
 
 ### Pagina Progres (dev)
 `/radacini/progres`: lista sprinturilor cu stare, ce se poate încerca (linkuri) și conturile demo (doar emailurile; parolele sunt în `backend/seed.py`). Se vede doar când `NODE_ENV !== "production"`.
+
+---
+
+## S4 — contract: recoltă, alocare, piață locală
+
+### Decizii
+- **Fără plăți online.** Plata se face la ridicare, în afara platformei, sau prin schimb. Platforma doar consemnează.
+- **Recolta** o înregistrează un coordonator și o confirmă proprietarul (`owner`). Dacă proprietarul e și coordonator, confirmarea e automată.
+- **Alocarea pornește din acord:** la `harvest_share`, proprietarul primește automat `harvest_share_percent` % (rotunjit la 0,1 kg); la celelalte modele, 0. Restul îl împart coordonatorii între membri. Fiecare primitor confirmă „Primit”.
+- **Piața:** orice membru Rădăcini publică produse, nu doar din proiecte. Pe fiecare anunț se arată **prețul de referință** = mediana prețurilor active pentru același produs (normalizat: litere mici, fără diacritice) și aceeași unitate.
+- **Fără monedă internă și fără sold de schimb:** „schimbul” e un text liber („ce aș primi în schimb”).
+
+### Colecții
+`radacini_harvests`, `radacini_allocations`, `radacini_listings`, `radacini_reservations`.
+
+**Recoltă** `{id, project_id, crop_plan_id?, crop, quantity_kg, date, note?, recorded_by, status:"recorded"|"confirmed", confirmed_by?, confirmed_at?, created_at}`
+- `GET /projects/{id}/harvests` (membri, personal) → `{items, totals:[{crop, quantity_kg}]}`
+- `POST /projects/{id}/harvests` (coordonator; proiect activ) `{crop_plan_id?, crop?, quantity_kg>0 (≤ 1 000 000), date ≤ azi, note?}`: `crop` se ia din planul de cultură dacă există `crop_plan_id`. Planul trece în `harvested`. Se notifică proprietarul.
+- `POST /harvests/{id}/confirm` (proprietarul; din `recorded`) → `confirmed`. **Alocările se pot face doar pe recolte `confirmed`.**
+
+**Alocare** `{id, harvest_id, project_id, member_user_id, member_name, quantity_kg, basis:"agreement_share"|"manual", status:"allocated"|"received", received_at?, created_by, created_at}`
+- La confirmarea recoltei, alocarea `agreement_share` pentru proprietar se creează automat, dacă procentul e > 0.
+- `GET /harvests/{id}/allocations` (membri) → `{items, allocated_kg, remaining_kg}`
+- `POST /harvests/{id}/allocations` (coordonator) `{member_user_id (membru al proiectului), quantity_kg>0}`: suma ≤ cantitatea recoltei (atomic față de alocările existente; 400 dacă depășește) → `{allocation}`
+- `DELETE /allocations/{id}` (coordonator; doar `manual` și doar `allocated`)
+- `POST /allocations/{id}/received` (primitorul) → `received`
+
+**Anunț (listing)** `{id, seller_user_id, seller_name, product, product_key, category:"legume"|"fructe"|"cereale"|"lactate"|"ouă"|"miere"|"conserve"|"altele", unit:"kg"|"buc"|"legătură"|"borcan"|"litru", quantity_total, quantity_available, price_ron_per_unit?, mode:"sale"|"exchange"|"both", exchange_for?, locality, pickup_details, available_until?, project_id?, status:"active"|"closed", created_at, updated_at}`
+- `GET /listings?locality=&category=&q=&mode=&skip=&limit≤50` (autentificat) → `{items, total}`: doar `active` cu `quantity_available > 0`; fiecare are `reference_price`, adică mediana sau `null` dacă există mai puțin de 2 prețuri.
+- `GET /listings/mine` → `{items}` · `GET /listings/{id}` → `{listing}` (cu `reference_price`)
+- `POST /listings` (membru) – validări:
+  - `product` 2–80;
+  - `quantity_total` > 0;
+  - `price_ron_per_unit` obligatoriu dacă `mode` ∈ {sale, both} (0 < preț ≤ 10 000);
+  - `exchange_for` obligatoriu dacă `mode` ∈ {exchange, both} (3–300);
+  - `locality` din listă;
+  - `pickup_details` 3–300;
+  - `available_until` ≥ azi;
+  - `project_id` opțional: vânzătorul trebuie să fie membru al proiectului.
+- `PATCH /listings/{id}` (vânzătorul; doar `active`): `quantity_total` nu poate scădea sub cantitatea deja rezervată sau confirmată.
+- `POST /listings/{id}/close` (vânzătorul) → `closed`; rezervările `requested` se anulează automat și se notifică cumpărătorii.
+
+**Rezervare** `{id, listing_id, seller_user_id, buyer_user_id, buyer_name, quantity, mode:"cash_on_pickup"|"exchange", exchange_offer?, message?, status:"requested"|"confirmed"|"picked_up"|"cancelled"|"no_show"|"declined", rating?, rating_comment?, created_at, updated_at}`
+- `POST /listings/{id}/reservations` (membru ≠ vânzător; anunț `active`): `quantity` între 0 și `quantity_available`; `mode` compatibil cu anunțul; `exchange_offer` obligatoriu la `exchange`; o singură rezervare `requested`/`confirmed` per cumpărător și anunț (409) → `requested`.
+- `GET /reservations/mine?role=buyer|seller` → `{items}`, cu `listing_product`, `listing_unit`, `counterpart_name`
+- `POST /reservations/{id}/confirm` (vânzătorul; din `requested`): **scade atomic `quantity_available`** (409 dacă nu mai e destulă cantitate) → `confirmed`
+- `POST /reservations/{id}/decline` (vânzătorul; din `requested`) → `declined`
+- `POST /reservations/{id}/cancel` (cumpărătorul din `requested`/`confirmed`, vânzătorul din `confirmed`): la `confirmed`, cantitatea se returnează în `quantity_available`.
+- `POST /reservations/{id}/picked-up` (vânzătorul; din `confirmed`) → `picked_up` · `POST /reservations/{id}/no-show` (vânzătorul; din `confirmed`) → `no_show`; cantitatea se returnează.
+- `POST /reservations/{id}/rate` (cumpărătorul; doar `picked_up`, o singură dată) `{rating 1–5, comment? ≤ 300}`
+- `GET /sellers/{user_id}/rating` → `{avg, count}` (din rezervările evaluate)
+
+### Frontend
+- **Proiect:** fila nouă *Recoltă* (înregistrare, confirmare de către proprietar, alocări pe membri cu bara alocat/rămas, „Am primit”, totaluri pe cultură). Din recoltă se poate publica rapid un anunț în piață, completat cu produsul, cantitatea alocată mie și `project_id`.
+- **`/radacini/piata`:** filtre (localitate, categorie, căutare, mod), carduri cu preț/unitate, **preț de referință**, disponibil, vânzător cu rating.
+- **`/radacini/piata/:id`:** detaliu + dialogul de rezervare (cantitate, plată la ridicare sau schimb + ce oferi, mesaj).
+- **`/radacini/piata/nou`** și **`/radacini/piata/:id/editare`:** formularul anunțului.
+- **`/radacini/rezervari`:** file *Cumpăr* / *Vând*, cu acțiuni după stare (Confirmă / Refuză / Ridicat / Nu s-a prezentat / Anulează / Evaluează).
+- **Navigație:** Piață, Rezervări. **Panou:** cardul „Vreau produse locale” arată anunțurile noi din localitatea mea; cardul „Vând produse” arată rezervările de confirmat.
+- **Text vizibil în piață:** „Plata se face la ridicare, direct între voi. Rădăcini nu procesează plăți.”

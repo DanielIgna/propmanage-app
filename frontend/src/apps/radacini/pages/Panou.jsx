@@ -5,7 +5,7 @@ import { CARD, EmptyState } from "../../../design-system";
 import { Layers } from "lucide-react";
 import { radaciniApi, asList } from "../api";
 import { useMember, useMeta } from "../hooks";
-import { ACTIVE_REQUEST, counterOf, labelOf, linkBtnCls, PageSkeleton, fmtPeriod } from "../shared";
+import { ACTIVE_REQUEST, counterOf, fmtPrice, labelOf, linkBtnCls, PageSkeleton, fmtPeriod } from "../shared";
 
 const pluralTeren = (n) => (n === 1 ? "1 teren" : `${n} terenuri`);
 
@@ -67,8 +67,73 @@ function ProiecteCard() {
   );
 }
 
-function InterestCard({ id, label, parcelCount, requestCount }) {
+// Ultimele anunțuri din localitatea mea (interes consume).
+function ConsumeCard({ label, listings, localities }) {
   const base = `${CARD} p-5 flex flex-col gap-3`;
+  return (
+    <div className={base} data-testid="radacini-card-consume">
+      <p className="font-bold text-slate-900 dark:text-white">{label}</p>
+      {listings === null ? (
+        <p className="text-sm text-slate-600 dark:text-slate-300">Se încarcă…</p>
+      ) : listings.length === 0 ? (
+        <p className="text-sm text-slate-600 dark:text-slate-300" data-testid="radacini-card-consume-gol">
+          Niciun anunț nou în {localities || "localitatea ta"}.
+        </p>
+      ) : (
+        <ul className="space-y-2" data-testid="radacini-card-consume-lista">
+          {listings.map((l) => (
+            <li key={l.id} className="text-sm">
+              <Link to={`/radacini/piata/${l.id}`} className="font-semibold text-slate-900 dark:text-white hover:underline break-words">
+                {l.product}
+              </Link>
+              <span className="text-slate-500 dark:text-slate-400">
+                {" "}· {Number(l.quantity_available || 0).toLocaleString("ro-RO")} {l.unit}
+                {fmtPrice(l.price_ron_per_unit, l.unit) ? ` · ${fmtPrice(l.price_ron_per_unit, l.unit)}` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-auto flex flex-wrap gap-2">
+        <Link to={`/radacini/piata${localities ? `?locality=${encodeURIComponent(localities)}` : ""}`} className={linkBtnCls()} data-testid="radacini-btn-piata">
+          Vezi piața
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// Rezervările care așteaptă confirmarea mea (interes sell).
+function SellCard({ label, toConfirm }) {
+  const base = `${CARD} p-5 flex flex-col gap-3`;
+  return (
+    <div className={base} data-testid="radacini-card-sell">
+      <p className="font-bold text-slate-900 dark:text-white">{label}</p>
+      <p className="text-sm text-slate-600 dark:text-slate-300" data-testid="radacini-card-sell-confirmare">
+        {toConfirm === null ? "Se încarcă…" : `Rezervări de confirmat: ${toConfirm}`}
+      </p>
+      <div className="mt-auto flex flex-wrap gap-2">
+        <Link to="/radacini/piata/nou" className={linkBtnCls()} data-testid="radacini-btn-publica-anunt">
+          Publică un anunț
+        </Link>
+        <Link to="/radacini/rezervari" className={linkBtnCls("secondary")} data-testid="radacini-btn-rezervari">
+          Rezervările mele
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function InterestCard({ id, label, parcelCount, requestCount, localListings, toConfirm, localities }) {
+  const base = `${CARD} p-5 flex flex-col gap-3`;
+
+  if (id === "consume") {
+    return <ConsumeCard label={label} listings={localListings} localities={localities} />;
+  }
+
+  if (id === "sell") {
+    return <SellCard label={label} toConfirm={toConfirm} />;
+  }
 
   if (id === "land") {
     return (
@@ -135,6 +200,10 @@ export default function Panou() {
   const wantsGrow = !!member?.interests?.includes("grow");
   // received = cereri primite încă active (terenuri) · sent = cereri trimise încă active (cultivare)
   const [requestCounts, setRequestCounts] = useState({ received: null, sent: null });
+  const wantsConsume = !!member?.interests?.includes("consume");
+  const wantsSell = !!member?.interests?.includes("sell");
+  const [localListings, setLocalListings] = useState(null);
+  const [toConfirm, setToConfirm] = useState(null);
 
   useEffect(() => {
     radaciniApi.health().then(() => setApiStatus("ok")).catch(() => setApiStatus("down"));
@@ -151,6 +220,30 @@ export default function Panou() {
       alive = false;
     };
   }, [wantsLand]);
+
+  useEffect(() => {
+    if (!wantsConsume || !member?.locality) return undefined;
+    let alive = true;
+    radaciniApi
+      .listings({ locality: member.locality, limit: 3 })
+      .then((d) => alive && setLocalListings(asList(d).slice(0, 3)))
+      .catch(() => alive && setLocalListings([]));
+    return () => {
+      alive = false;
+    };
+  }, [wantsConsume, member?.locality]);
+
+  useEffect(() => {
+    if (!wantsSell) return undefined;
+    let alive = true;
+    radaciniApi
+      .myReservations("seller")
+      .then((d) => alive && setToConfirm(asList(d).filter((r) => r.status === "requested").length))
+      .catch(() => alive && setToConfirm(0));
+    return () => {
+      alive = false;
+    };
+  }, [wantsSell]);
 
   useEffect(() => {
     if (!wantsLand && !wantsGrow) return undefined;
@@ -218,6 +311,9 @@ export default function Panou() {
               label={labelOf(meta?.interests, id)}
               parcelCount={parcelCount}
               requestCount={id === "land" ? requestCounts.received : id === "grow" ? requestCounts.sent : null}
+              localListings={localListings}
+              toConfirm={toConfirm}
+              localities={member?.locality}
             />
           ))}
         </div>

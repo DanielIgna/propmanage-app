@@ -87,6 +87,36 @@ export const radaciniApi = {
   createContribution: (id, body) => data(api.post(`/radacini/projects/${id}/contributions`, body)),
   reviewContribution: (contribId, decision, note) =>
     data(api.post(`/radacini/contributions/${contribId}/review`, note ? { decision, note } : { decision })),
+
+  // Recoltă (S4). Singulare învelite: {harvest}, {allocation}. Liste: {items, totals} · {items, allocated_kg, remaining_kg}.
+  projectHarvests: (id) => data(api.get(`/radacini/projects/${id}/harvests`)),
+  createHarvest: (id, body) => data(api.post(`/radacini/projects/${id}/harvests`, body)).then((d) => d?.harvest ?? d),
+  confirmHarvest: (id) => data(api.post(`/radacini/harvests/${id}/confirm`)).then((d) => d?.harvest ?? d),
+  harvestAllocations: (id) => data(api.get(`/radacini/harvests/${id}/allocations`)),
+  createAllocation: (id, body) => data(api.post(`/radacini/harvests/${id}/allocations`, body)).then((d) => d?.allocation ?? d),
+  deleteAllocation: (id) => data(api.delete(`/radacini/allocations/${id}`)),
+  allocationReceived: (id) => data(api.post(`/radacini/allocations/${id}/received`)).then((d) => d?.allocation ?? d),
+
+  // Piață (S4). Singulare învelite: {listing}, {reservation}. Liste: {items} · listări: {items, total}.
+  listings: (params) => data(api.get("/radacini/listings", { params })),
+  myListings: () => data(api.get("/radacini/listings/mine")),
+  listing: (id) => data(api.get(`/radacini/listings/${id}`)).then((d) => d?.listing ?? d),
+  createListing: (body) => data(api.post("/radacini/listings", body)).then((d) => d?.listing ?? d),
+  updateListing: (id, body) => data(api.patch(`/radacini/listings/${id}`, body)).then((d) => d?.listing ?? d),
+  closeListing: (id) => data(api.post(`/radacini/listings/${id}/close`)).then((d) => d?.listing ?? d),
+
+  // Rezervări (S4). role = "buyer" | "seller".
+  createReservation: (listingId, body) =>
+    data(api.post(`/radacini/listings/${listingId}/reservations`, body)).then((d) => d?.reservation ?? d),
+  myReservations: (role) => data(api.get("/radacini/reservations/mine", { params: { role } })),
+  confirmReservation: (id) => data(api.post(`/radacini/reservations/${id}/confirm`)).then((d) => d?.reservation ?? d),
+  declineReservation: (id) => data(api.post(`/radacini/reservations/${id}/decline`)).then((d) => d?.reservation ?? d),
+  cancelReservation: (id) => data(api.post(`/radacini/reservations/${id}/cancel`)).then((d) => d?.reservation ?? d),
+  pickedUpReservation: (id) => data(api.post(`/radacini/reservations/${id}/picked-up`)).then((d) => d?.reservation ?? d),
+  noShowReservation: (id) => data(api.post(`/radacini/reservations/${id}/no-show`)).then((d) => d?.reservation ?? d),
+  rateReservation: (id, body) => data(api.post(`/radacini/reservations/${id}/rate`, body)).then((d) => d?.reservation ?? d),
+  // {avg, count}
+  sellerRating: (userId) => data(api.get(`/radacini/sellers/${userId}/rating`)),
 };
 
 // Listele pot veni ca array sau învelite; acceptăm ambele forme.

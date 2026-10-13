@@ -36,6 +36,15 @@ export const STATUS = {
   logged: { label: "În așteptare", cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
   confirmed: { label: "Confirmată", cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
   disputed: { label: "Contestată", cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300" },
+  // Recoltă și alocare (S4). „confirmed" e deja în listă (Confirmată).
+  recorded: { label: "Înregistrată", cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
+  allocated: { label: "Alocat", cls: "bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300" },
+  received: { label: "Primit", cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
+  // Piață (S4): „cancelled" are alt sens la rezervări, vezi RESERVATION_STATUS.
+  closed: { label: "Închis", cls: "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300" },
+  requested: { label: "Cerută", cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
+  picked_up: { label: "Ridicată", cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
+  no_show: { label: "Neprezentare", cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300" },
 };
 
 export const PROJECT_ROLE = {
@@ -85,6 +94,7 @@ export const PROJECT_TABS = [
   ["plan", "Plan culturi"],
   ["calendar", "Calendar"],
   ["contributii", "Contribuții"],
+  ["recolta", "Recoltă"],
   ["membri", "Membri"],
 ];
 
@@ -226,3 +236,87 @@ export const PageSkeleton = () => (
     <DSSkeleton kpis={3} blocks={2} />
   </div>
 );
+
+// ── Recoltă, alocare, piață (S4) ────────────────────────────────────────────
+
+export const BASIS_LABEL = { agreement_share: "Conform acordului", manual: "Manual" };
+export const BASIS_CLS = {
+  agreement_share: "bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
+  manual: "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200",
+};
+
+const RES_CANCELLED = { label: "Anulată", cls: "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300" };
+export const RESERVATION_STATUS = {
+  requested: STATUS.requested,
+  confirmed: STATUS.confirmed,
+  picked_up: STATUS.picked_up,
+  cancelled: RES_CANCELLED,
+  no_show: STATUS.no_show,
+  declined: STATUS.declined,
+};
+
+// Fallback-uri pentru meta (folosite până apare în GET /meta).
+export const LISTING_CATEGORIES_FALLBACK = [
+  { id: "legume", label: "Legume" },
+  { id: "fructe", label: "Fructe" },
+  { id: "cereale", label: "Cereale" },
+  { id: "lactate", label: "Lactate" },
+  { id: "ouă", label: "Ouă" },
+  { id: "miere", label: "Miere" },
+  { id: "conserve", label: "Conserve" },
+  { id: "altele", label: "Altele" },
+];
+export const LISTING_UNITS_FALLBACK = [
+  { id: "kg", label: "kg" },
+  { id: "buc", label: "buc" },
+  { id: "legătură", label: "legătură" },
+  { id: "borcan", label: "borcan" },
+  { id: "litru", label: "litru" },
+];
+export const RESERVATION_MODES_FALLBACK = [
+  { id: "cash_on_pickup", label: "Plată la ridicare" },
+  { id: "exchange", label: "Schimb" },
+];
+// Modurile anunțului nu vin din meta (sunt fixe în contract).
+export const LISTING_MODES = [
+  { id: "sale", label: "Vânzare" },
+  { id: "exchange", label: "Schimb" },
+  { id: "both", label: "Vânzare sau schimb" },
+];
+export const PICKUP_NOTICE = "Plata se face la ridicare, direct între voi. Rădăcini nu procesează plăți.";
+
+// Modurile de rezervare permise de un anunț (sale → plată, exchange → schimb, both → ambele).
+export const allowedReservationModes = (listingMode) =>
+  listingMode === "exchange" ? ["exchange"] : listingMode === "sale" ? ["cash_on_pickup"] : ["cash_on_pickup", "exchange"];
+
+export const fmtKg = (v) => `${Number(v || 0).toLocaleString("ro-RO", { maximumFractionDigits: 1 })} kg`;
+export const fmtPrice = (v, unit) =>
+  v == null || v === "" ? null : `${Number(v).toLocaleString("ro-RO", { maximumFractionDigits: 2 })} RON/${unit || "unitate"}`;
+
+export const StatusPill = ({ def, testid }) => (
+  <span data-testid={testid} className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap ${def.cls}`}>
+    {def.label}
+  </span>
+);
+
+export const ReservationBadge = ({ status, testid }) => (
+  <StatusPill def={RESERVATION_STATUS[status] || { label: status || "—", cls: "bg-slate-100 text-slate-600" }} testid={testid} />
+);
+
+export const BasisBadge = ({ basis, testid }) => (
+  <span data-testid={testid} className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap ${BASIS_CLS[basis] || BASIS_CLS.manual}`}>
+    {BASIS_LABEL[basis] || basis || "—"}
+  </span>
+);
+
+// Stele pentru rating (value = număr sau null).
+export const Stars = ({ value, count, testid }) => {
+  if (!count) return <span data-testid={testid} className="text-xs text-slate-500 dark:text-slate-400">Fără evaluări</span>;
+  return (
+    <span data-testid={testid} className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-slate-200">
+      <span className="text-amber-500">★</span>
+      {Number(value || 0).toLocaleString("ro-RO", { maximumFractionDigits: 1 })}
+      <span className="text-slate-500 dark:text-slate-400">({count})</span>
+    </span>
+  );
+};
