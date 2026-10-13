@@ -57,6 +57,36 @@ export const radaciniApi = {
     data(api.post(`/radacini/agreements/${id}/sign`, { version })).then((d) => d?.agreement ?? d),
   cancelAgreement: (id, reason) =>
     data(api.post(`/radacini/agreements/${id}/cancel`, reason ? { reason } : {})).then((d) => d?.agreement ?? d),
+
+  // Proiecte agricole (S3). Singulare învelite: {project}, {crop}, {activity}, {contribution}.
+  // Liste: {items}; plan culturi: + warnings; contribuții: + totals.
+  projects: () => data(api.get("/radacini/projects")),
+  project: (id) => data(api.get(`/radacini/projects/${id}`)).then((d) => d?.project ?? d),
+  addProjectMember: (id, email) => data(api.post(`/radacini/projects/${id}/members`, { email })),
+  updateProjectMember: (id, userId, role) => data(api.patch(`/radacini/projects/${id}/members/${userId}`, { role })),
+  removeProjectMember: (id, userId) => data(api.delete(`/radacini/projects/${id}/members/${userId}`)),
+  completeProject: (id) => data(api.post(`/radacini/projects/${id}/complete`)),
+
+  // Plan culturi
+  projectCrops: (id) => data(api.get(`/radacini/projects/${id}/crops`)),
+  createCrop: (id, body) => data(api.post(`/radacini/projects/${id}/crops`, body)),
+  updateCrop: (cropId, body) => data(api.patch(`/radacini/crops/${cropId}`, body)),
+  deleteCrop: (cropId) => data(api.delete(`/radacini/crops/${cropId}`)),
+
+  // Activități
+  projectActivities: (id, params) => data(api.get(`/radacini/projects/${id}/activities`, { params })),
+  createActivity: (id, body) => data(api.post(`/radacini/projects/${id}/activities`, body)),
+  updateActivity: (actId, body) => data(api.patch(`/radacini/activities/${actId}`, body)),
+  joinActivity: (actId) => data(api.post(`/radacini/activities/${actId}/join`)),
+  leaveActivity: (actId) => data(api.post(`/radacini/activities/${actId}/leave`)),
+  doneActivity: (actId) => data(api.post(`/radacini/activities/${actId}/done`)),
+  cancelActivity: (actId) => data(api.post(`/radacini/activities/${actId}/cancel`)),
+
+  // Contribuții (append-only; corecțiile = contribuție nouă cu corrects_id)
+  projectContributions: (id, params) => data(api.get(`/radacini/projects/${id}/contributions`, { params })),
+  createContribution: (id, body) => data(api.post(`/radacini/projects/${id}/contributions`, body)),
+  reviewContribution: (contribId, decision, note) =>
+    data(api.post(`/radacini/contributions/${contribId}/review`, note ? { decision, note } : { decision })),
 };
 
 // Listele pot veni ca array sau învelite; acceptăm ambele forme.

@@ -16,6 +16,9 @@ const Cereri = lazy(() => import("./pages/Cereri"));
 const CerereDetaliu = lazy(() => import("./pages/CerereDetaliu"));
 const Acorduri = lazy(() => import("./pages/Acorduri"));
 const AcordDetaliu = lazy(() => import("./pages/AcordDetaliu"));
+const Proiecte = lazy(() => import("./pages/Proiecte"));
+const ProiectDetaliu = lazy(() => import("./pages/ProiectDetaliu"));
+const Progres = lazy(() => import("./pages/Progres"));
 
 export function radaciniRoutes() {
   if (!RADACINI_ENABLED) return null;
@@ -35,6 +38,9 @@ export function radaciniRoutes() {
       <Route path="operator" element={<Operator />} />
       <Route path="personal" element={<Personal />} />
       <Route path="setari" element={<Setari />} />
+      <Route path="proiecte" element={<Proiecte />} />
+      <Route path="proiecte/:id" element={<ProiectDetaliu />} />
+      <Route path="progres" element={<Progres />} />
     </Route>
   );
 }

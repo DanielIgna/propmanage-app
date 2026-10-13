@@ -7,6 +7,7 @@ from pydantic import BaseModel, field_validator
 
 from .bridge import db, emit, get_current_user, serialize_doc
 from .common import RadaciniRoute, now_iso, oid_or_404, safe_notify
+from .projects import create_project_for_agreement
 from .requests import (
     ACTIVE_STATUSES,
     ASSIGNED_ELSEWHERE_REASON,
@@ -328,6 +329,7 @@ async def sign_agreement(agreement_id: str, body: SignIn, user: dict = Depends(g
     doc = await db.radacini_agreements.find_one({"_id": doc["_id"]}) or doc
     if res.modified_count == 1:
         await _decline_competing_requests(doc, user)
+        await create_project_for_agreement(doc, user)  # idempotent; erorile se loghează
         await safe_notify(
             _other_user(doc, user),
             "Acord semnat",

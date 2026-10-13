@@ -5,9 +5,67 @@ import { CARD, EmptyState } from "../../../design-system";
 import { Layers } from "lucide-react";
 import { radaciniApi, asList } from "../api";
 import { useMember, useMeta } from "../hooks";
-import { ACTIVE_REQUEST, labelOf, linkBtnCls, PageSkeleton } from "../shared";
+import { ACTIVE_REQUEST, counterOf, labelOf, linkBtnCls, PageSkeleton, fmtPeriod } from "../shared";
 
 const pluralTeren = (n) => (n === 1 ? "1 teren" : `${n} terenuri`);
+
+// Proiectele mele: contoarele vin din GET /projects (activități viitoare, contribuții în așteptare).
+function ProiecteCard() {
+  const [state, setState] = useState({ loaded: false, items: [] });
+
+  useEffect(() => {
+    let alive = true;
+    radaciniApi
+      .projects()
+      .then((d) => alive && setState({ loaded: true, items: asList(d) }))
+      .catch(() => alive && setState({ loaded: true, items: [] }));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (!state.loaded) return <PageSkeleton />;
+
+  return (
+    <section className={`${CARD} p-5 space-y-4`} data-testid="radacini-card-proiecte">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-base font-bold text-slate-900 dark:text-white">Proiectele mele</h3>
+        <Link to="/radacini/proiecte" className="text-sm font-semibold text-emerald-700 dark:text-emerald-300 hover:underline" data-testid="radacini-card-proiecte-toate">
+          Vezi toate
+        </Link>
+      </div>
+
+      {state.items.length === 0 ? (
+        <p className="text-sm text-slate-600 dark:text-slate-300" data-testid="radacini-card-proiecte-gol">
+          Nu participi la niciun proiect. Proiectul apare când un acord este semnat.
+        </p>
+      ) : (
+        <ul className="divide-y divide-slate-100 dark:divide-white/5">
+          {state.items.slice(0, 3).map((p) => (
+            <li key={p.id} className="py-3 flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <Link to={`/radacini/proiecte/${p.id}`} className="font-semibold text-slate-900 dark:text-white hover:underline break-words">
+                  {p.title || "Proiect agricol"}
+                </Link>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {p.start_date ? fmtPeriod(p.start_date, p.end_date) : "—"}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs font-semibold">
+                <span className="rounded-md bg-sky-50 dark:bg-sky-500/15 px-2 py-1 text-sky-700 dark:text-sky-300" data-testid={`radacini-card-proiecte-activitati-${p.id}`}>
+                  Activități următoare: {counterOf(p, "upcoming_activities")}
+                </span>
+                <span className="rounded-md bg-amber-50 dark:bg-amber-500/15 px-2 py-1 text-amber-700 dark:text-amber-300" data-testid={`radacini-card-proiecte-contributii-${p.id}`}>
+                  Contribuții de confirmat: {counterOf(p, "contributions_to_review")}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 function InterestCard({ id, label, parcelCount, requestCount }) {
   const base = `${CARD} p-5 flex flex-col gap-3`;
@@ -164,6 +222,8 @@ export default function Panou() {
           ))}
         </div>
       )}
+
+      <ProiecteCard />
     </div>
   );
 }

@@ -7,7 +7,7 @@ Decizii luate (2026-10-13): modul în aceeași aplicație; aceleași conturi; MV
 |---|---|---|
 | S1 | Fundație + Membri + Terenuri + Personal (operator/manager) + coadă de verificare | gata (60 teste API, flux verificat în browser) |
 | S2 | Cereri de teren + negociere + acorduri cu versiune | gata (155 teste S1+S2, flux verificat în browser) |
-| S3 | Proiect agricol: membri, plan culturi, activități, contribuții | — |
+| S3 | Proiect agricol: membri, plan culturi, activități, contribuții | gata (264 teste S1–S3, verificat în browser) |
 | S4 | Recoltă + alocare + piață locală (listări, rezervări, schimb) | — |
 | S5 | Admin: comutator Produs, secțiune Rădăcini, KPI, noduri Knowledge Center | — |
 
@@ -129,3 +129,59 @@ Stări: `draft → proposed → signed`; `draft`/`proposed` → `cancelled`.
   - Editează termenii, Trimite spre semnare, Semnează (cu bifa „Am citit și sunt de acord cu versiunea X”), Anulează;
   - vizualizare de tipărit (`window.print`).
 - **Navigație:** Cereri și Acorduri. **Panou:** numărul de cereri primite care așteaptă răspuns.
+
+---
+
+## S3 — contract: proiect agricol (membri, plan culturi, activități, contribuții)
+
+### Decizii
+- **Proiectul se creează automat** când acordul devine `signed`: titlul vine din teren, perioada din termeni.
+- **Membri inițiali:** cultivatorul ca `coordinator` și proprietarul ca `owner`. Coordonatorul poate invita alți utilizatori existenți (după email) ca `participant` și poate promova un participant la `coordinator`.
+- **Contribuțiile nu sunt bani, puncte sau drepturi.** Sunt o evidență, doar adăugare (append-only); corecțiile se fac prin înregistrări noi (`corrects_id`). Tipul „bani” consemnează doar o sumă cheltuită în afara platformei.
+- **Confirmarea contribuțiilor o face un coordonator, alta decât autorul.** Contribuțiile unui coordonator le confirmă alt coordonator sau proprietarul.
+- **Rotația culturilor:** doar avertizare, după familia culturii, dacă aceeași familie a fost pe același teren în proiectul anterior. Nu blochează nimic.
+
+### Colecții
+`radacini_projects`, `radacini_crop_plans`, `radacini_activities`, `radacini_contributions` (aceleași reguli ca în S1/S2).
+
+**Proiect:** `{id, agreement_id, parcel_id, title, locality, area_m2, start_date, end_date, members:[{user_id, name, role:"owner"|"coordinator"|"participant", joined_at}], member_ids[], status:"active"|"completed", completed_at?, created_at, updated_at}`
+
+| Metodă | Cale | Cine | Reguli |
+|---|---|---|---|
+| GET | `/projects` | autentificat | proiectele în care e membru → `{items}`, cu `role` (rolul meu) și contoare (planuri, activități viitoare, contribuții în așteptare) |
+| GET | `/projects/{id}` | membri, personal, super-admin | `{project}` |
+| POST | `/projects/{id}/members` | coordonator | `{email}` → utilizator existent (404 altfel), nu e deja membru (409) → `participant` |
+| PATCH | `/projects/{id}/members/{user_id}` | coordonator | `{role:"coordinator"\|"participant"}`; rolul `owner` nu se schimbă; trebuie să rămână ≥1 coordonator |
+| DELETE | `/projects/{id}/members/{user_id}` | coordonator (sau membrul însuși) | nu se poate elimina `owner`-ul și nici ultimul coordonator |
+| POST | `/projects/{id}/complete` | coordonator | `active` → `completed` |
+
+**Plan culturi** `{id, project_id, crop, family, area_m2, sow_date, expected_harvest_date?, expected_yield_kg?, notes?, status:"planned"|"sown"|"growing"|"harvested", created_by, created_at, updated_at}`
+- `GET /projects/{id}/crops` (membri) → `{items, warnings:[string]}`; `warnings` = rotația + suprafața totală > suprafața proiectului.
+- `POST /projects/{id}/crops` · `PATCH /crops/{id}` · `DELETE /crops/{id}` (coordonator): `crop` din `meta.crops` sau text liber (familia → `"other"`); suma suprafețelor ≤ suprafața proiectului (altfel 400); `expected_yield_kg` e etichetat în interfață ca **estimare**.
+- `meta.crops`: `[{id, label, family}]`, cu cel puțin roșii, ardei, castraveți, varză, cartofi, ceapă, usturoi, morcovi, fasole, mazăre, porumb, grâu, dovlecei, salată, căpșuni. Familii: solanacee, cucurbitacee, brasicacee, liliacee, leguminoase, umbelifere, cereale, asteracee, rozacee, other.
+
+**Activități** `{id, project_id, type:"planting"|"maintenance"|"irrigation"|"harvest"|"work_day"|"other", title, date, start_time?, duration_h?, slots?, participants:[user_id], crop_plan_id?, status:"scheduled"|"done"|"cancelled", notes?, created_by, created_at, updated_at}`
+- `GET /projects/{id}/activities?from=&to=` (membri) → `{items}`, sortate după dată.
+- `POST /projects/{id}/activities` · `PATCH /activities/{id}` (coordonator; doar `scheduled`).
+- `POST /activities/{id}/join` · `/leave` (orice membru; `slots` e respectat → 409 când e plin; doar `scheduled`).
+- `POST /activities/{id}/done` · `/cancel` (coordonator).
+
+**Contribuții** `{id, project_id, member_user_id, member_name, kind:"labor_hours"|"materials"|"money"|"tools"|"land", amount, unit, description, activity_id?, date, status:"logged"|"confirmed"|"disputed", reviewed_by?, reviewed_at?, review_note?, corrects_id?, created_at}`
+- `GET /projects/{id}/contributions?member=` (membri) → `{items, totals:[{member_user_id, member_name, kind, unit, confirmed, pending}]}`
+- `POST /projects/{id}/contributions` (orice membru, pentru sine): `amount` > 0; unitatea implicită pe tip (`labor_hours` → „ore”, `money` → „RON”, restul text liber ≤ 20); `description` 3–300; `date` ≤ azi.
+- `POST /contributions/{id}/review` (coordonator diferit de autor; dacă autorul e singurul coordonator, poate confirma proprietarul) `{decision:"confirm"|"dispute", note?}` (nota e obligatorie la `dispute`); doar din `logged`.
+- Nu există PATCH sau DELETE. Corecția = o contribuție nouă cu `corrects_id`, iar cea veche rămâne în istoric.
+
+### Frontend
+- **Navigație:** Proiecte. **Panou:** cardul „Proiectele mele” (activitățile următoare + contribuțiile de confirmat).
+- **`/radacini/proiecte`:** lista proiectelor.
+- **`/radacini/proiecte/:id`**, cu file:
+  - *Prezentare* (perioadă, suprafață, link spre acord, următoarele 5 activități, totaluri);
+  - *Plan culturi* (tabel + formular, avertizări vizibile, bară de ocupare a suprafeței);
+  - *Calendar* (listă pe săptămâni, butoane Particip / Nu mai particip, Marchează făcut);
+  - *Contribuții* (formular, listă cu stări, Confirmă / Contestă pentru cine are dreptul, totaluri pe membru);
+  - *Membri* (invită după email, schimbă rolul, elimină).
+- **Avertisment permanent în fila Contribuții:** „Contribuțiile sunt o evidență a implicării. Nu reprezintă bani, puncte sau drepturi asupra recoltei; împărțirea recoltei urmează acordul semnat.”
+
+### Pagina Progres (dev)
+`/radacini/progres`: lista sprinturilor cu stare, ce se poate încerca (linkuri) și conturile demo (doar emailurile; parolele sunt în `backend/seed.py`). Se vede doar când `NODE_ENV !== "production"`.

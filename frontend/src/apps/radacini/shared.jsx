@@ -24,6 +24,85 @@ export const STATUS = {
   proposed: { label: "Trimis spre semnare", cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
   signed: { label: "Semnat", cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
   cancelled: { label: "Anulat", cls: "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300" },
+  // Proiecte (S3)
+  active: { label: "Activ", cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
+  completed: { label: "Finalizat", cls: "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200" },
+  planned: { label: "Planificată", cls: "bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300" },
+  sown: { label: "Semănată", cls: "bg-lime-50 text-lime-700 dark:bg-lime-500/15 dark:text-lime-300" },
+  growing: { label: "În creștere", cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
+  harvested: { label: "Recoltată", cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
+  scheduled: { label: "Programată", cls: "bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300" },
+  done: { label: "Făcută", cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
+  logged: { label: "În așteptare", cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
+  confirmed: { label: "Confirmată", cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
+  disputed: { label: "Contestată", cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300" },
+};
+
+export const PROJECT_ROLE = {
+  owner: { label: "Proprietar", cls: "bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300" },
+  coordinator: { label: "Coordonator", cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
+  participant: { label: "Participant", cls: "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-200" },
+};
+
+export const RoleBadge = ({ role, testid }) => {
+  const r = PROJECT_ROLE[role] || { label: role || "—", cls: "bg-slate-100 text-slate-600" };
+  return (
+    <span data-testid={testid} className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap ${r.cls}`}>
+      {r.label}
+    </span>
+  );
+};
+
+export const ACTIVITY_TYPES = [
+  { id: "planting", label: "Plantare" },
+  { id: "maintenance", label: "Întreținere" },
+  { id: "irrigation", label: "Irigare" },
+  { id: "harvest", label: "Recoltare" },
+  { id: "work_day", label: "Zi de lucru" },
+  { id: "other", label: "Altele" },
+];
+
+export const CONTRIBUTION_KINDS = [
+  { id: "labor_hours", label: "Muncă (ore)", unit: "ore" },
+  { id: "materials", label: "Materiale", unit: "buc" },
+  { id: "money", label: "Bani cheltuiți", unit: "RON" },
+  { id: "tools", label: "Unelte", unit: "buc" },
+  { id: "land", label: "Teren", unit: "m²" },
+];
+
+// Unitățile forțate de backend (nu se pot schimba).
+export const FORCED_UNIT = { labor_hours: "ore", money: "RON" };
+
+export const CROP_STATUSES = [
+  { id: "planned", label: "Planificată" },
+  { id: "sown", label: "Semănată" },
+  { id: "growing", label: "În creștere" },
+  { id: "harvested", label: "Recoltată" },
+];
+
+export const PROJECT_TABS = [
+  ["prezentare", "Prezentare"],
+  ["plan", "Plan culturi"],
+  ["calendar", "Calendar"],
+  ["contributii", "Contribuții"],
+  ["membri", "Membri"],
+];
+
+export const PROJECT_DISCLAIMER =
+  "Contribuțiile sunt o evidență a implicării. Nu reprezintă bani, puncte sau drepturi asupra recoltei; împărțirea recoltei urmează acordul semnat.";
+
+// Contoarele din GET /projects (counters = {crops, upcoming_activities, pending_contributions}).
+export const counterOf = (p, key) => p?.counts?.[key] ?? 0;
+
+// Opțiuni {id,label} din meta (dacă există), altfel valorile implicite.
+export const optsOr = (fromMeta, fallback) =>
+  Array.isArray(fromMeta) && fromMeta.length ? fromMeta.map((x) => ({ id: x.id, label: x.label })) : fallback;
+
+// Ziua de azi ca "YYYY-MM-DD" (ora locală), pentru input type=date.
+export const todayIso = () => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
 // Cereri încă active (negociabile); celelalte stări sunt finale.
