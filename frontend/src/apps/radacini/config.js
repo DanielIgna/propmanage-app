@@ -1,6 +1,7 @@
 import {
   ArrowLeftRight,
   Briefcase,
+  FlaskConical,
   ClipboardCheck,
   FileSignature,
   Inbox,
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { to: "/radacini/profil", label: "Profil", icon: UserRound, testid: "radacini-nav-profil" },
   { to: "/radacini/operator", label: "Operator", icon: ClipboardCheck, requires: "staff", testid: "radacini-nav-operator" },
   { to: "/radacini/personal", label: "Personal", icon: Users, requires: "manager", testid: "radacini-nav-personal" },
+  { to: "/radacini/conturi-test", label: "Conturi de test", icon: FlaskConical, requires: "superadmin", testid: "radacini-nav-conturi-test" },
   { to: "/radacini/setari", label: "Setări", icon: Settings, testid: "radacini-nav-setari" },
 ];
 
@@ -40,8 +42,9 @@ const DEV_ITEMS =
 
 export const NAV = [...NAV_ITEMS, ...DEV_ITEMS];
 
-export const canSee = (item, staff) => {
+export const canSee = (item, staff, user) => {
   if (!item.requires) return true;
+  if (item.requires === "superadmin") return staff?.role === "manager" && user?.role === "admin";
   if (item.requires === "staff") return !!staff?.is_staff;
   if (item.requires === "manager") return staff?.role === "manager";
   return false;

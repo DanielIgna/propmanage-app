@@ -26,9 +26,9 @@ from pydantic import BaseModel, Field
 
 from db import db
 from core_utils import (
-    JWT_SECRET, JWT_ALGORITHM, create_impersonation_token, serialize_doc,
+    create_impersonation_token, serialize_doc,
 )
-from deps import get_current_user, require_role
+from deps import _user_from_token, get_current_user, require_role
 
 
 router = APIRouter(prefix="/api", tags=["impersonation"])
@@ -246,16 +246,18 @@ async def stop_impersonation(
     if not admin_token:
         raise HTTPException(409, "Cookie-ul admin lipsește; deconectează-te și reconectează-te.")
 
-    # Validate the stashed token is a real, non-expired admin access token
+    # Validate the stashed token is a real, non-expired admin access token.
+    # It can be a legacy HS256 token or a Supabase JWT (Google / Supabase login) — resolve it
+    # exactly like get_current_user does, then require a non-impersonating admin.
     try:
-        payload = jwt.decode(admin_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        if payload.get("type") != "access":
-            raise HTTPException(409, "Cookie admin invalid (type).")
-        if payload.get("impersonation"):
-            raise HTTPException(409, "Cookie admin invalid (nested impersonation).")
+        stashed_user, payload = await _user_from_token(admin_token)
     except jwt.ExpiredSignatureError:
         raise HTTPException(409, "Sesiunea admin a expirat. Loghează-te din nou.")
     except jwt.InvalidTokenError:
+        raise HTTPException(409, "Cookie admin invalid.")
+    if payload and payload.get("impersonation"):
+        raise HTTPException(409, "Cookie admin invalid (nested impersonation).")
+    if not stashed_user or stashed_user.get("role") != "admin":
         raise HTTPException(409, "Cookie admin invalid.")
 
     # Mark the log entry as ended

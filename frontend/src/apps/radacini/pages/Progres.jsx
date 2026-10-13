@@ -17,6 +17,7 @@ const buildSprints = (firstProjectId) => [
       { to: "/radacini/terenurile-mele/nou", label: "Adaugă teren" },
       { to: "/radacini/terenuri", label: "Terenuri" },
       { to: "/radacini/operator", label: "Operator" },
+      { to: "/radacini/conturi-test", label: "Conturi de test" },
     ],
   },
   {

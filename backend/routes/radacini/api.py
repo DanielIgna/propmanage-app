@@ -9,7 +9,7 @@ import os
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from . import activities, agreements, contributions, crops, harvests, market, members, parcels, projects, requests, staff
+from . import activities, agreements, contributions, crops, harvests, market, members, parcels, projects, requests, staff, test_accounts
 from .bridge import get_current_user
 from .constants import META
 
@@ -55,3 +55,4 @@ router.include_router(activities.router)
 router.include_router(contributions.router)
 router.include_router(harvests.router)
 router.include_router(market.router)
+router.include_router(test_accounts.router)

@@ -23,6 +23,12 @@ export const radaciniApi = {
   resumeParcel: (id) => data(api.post(`/radacini/parcels/${id}/resume`)),
   deleteParcel: (id) => data(api.delete(`/radacini/parcels/${id}`)),
 
+  // Conturi de test (doar super-admin)
+  testAccounts: () => data(api.get("/radacini/test-accounts")),
+  ensureTestAccounts: () => data(api.post("/radacini/test-accounts/ensure")),
+  seedDemoScenario: () => data(api.post("/radacini/test-accounts/seed")),
+  resetDemoScenario: () => data(api.post("/radacini/test-accounts/reset")),
+
   // Personal (operator / manager)
   staffMe: () => data(api.get("/radacini/staff/me")),
   staffQueue: () => data(api.get("/radacini/staff/queue")),
@@ -120,9 +126,13 @@ export const radaciniApi = {
 // Listele pot veni ca array sau învelite; acceptăm ambele forme.
 export const asList = (d) => (Array.isArray(d) ? d : d?.items || d?.results || []);
 
+export const IMPERSONATION_BLOCKED_MSG =
+  "În modul test (impersonare) semnarea/acceptarea e blocată pentru siguranță. Pentru fluxul complet folosește conturile demo cu parolă (client@/specialist@propmanage.io).";
+
 // Mesaj de eroare lizibil: FastAPI 422 trimite `detail` ca listă de {msg}.
 export const errMsg = (e, fallback = "A apărut o eroare") => {
   const d = e?.response?.data?.detail;
+  if (e?.response?.status === 403 && /impersonar/i.test(typeof d === "string" ? d : "")) return IMPERSONATION_BLOCKED_MSG;
   if (typeof d === "string") return d;
   if (Array.isArray(d) && d.length) return d.map((x) => x?.msg).filter(Boolean).join(" · ") || fallback;
   return String(apiErr(e, fallback));

@@ -24,6 +24,7 @@ const Piata = lazy(() => import("./pages/Piata"));
 const AnuntDetaliu = lazy(() => import("./pages/AnuntDetaliu"));
 const AnuntForm = lazy(() => import("./pages/AnuntForm"));
 const Rezervari = lazy(() => import("./pages/Rezervari"));
+const ConturiTest = lazy(() => import("./pages/ConturiTest"));
 const Login = lazy(() => import("./pages/Login"));
 
 export function radaciniRoutes() {
@@ -46,6 +47,7 @@ export function radaciniRoutes() {
       <Route path="acorduri/:id" element={<AcordDetaliu />} />
       <Route path="operator" element={<Operator />} />
       <Route path="personal" element={<Personal />} />
+      <Route path="conturi-test" element={<ConturiTest />} />
       <Route path="setari" element={<Setari />} />
       <Route path="proiecte" element={<Proiecte />} />
       <Route path="proiecte/:id" element={<ProiectDetaliu />} />

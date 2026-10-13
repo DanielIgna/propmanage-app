@@ -1,7 +1,11 @@
 import React, { Suspense, useEffect, useState } from "react";
 import { NavLink, Outlet, Navigate, Link, useLocation } from "react-router-dom";
 import { Sprout, Menu, ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
+import { api } from "../../lib/api";
 import { useAuth } from "../../auth";
+import { errMsg } from "./api";
+import { impersonatePersona, loadCachedPersonas } from "./testAccounts";
 import { DSSkeleton } from "../../design-system";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "../../components/ui/sheet";
 import { NAV, canSee } from "./config";
@@ -52,6 +56,32 @@ export const RadaciniLayout = () => {
     };
   }, [title]);
 
+  const imp = user?.impersonation;
+  const [switching, setSwitching] = useState(false);
+  const stopTest = async () => {
+    setSwitching(true);
+    try {
+      await api.post("/admin/stop-impersonation");
+      window.location.href = "/radacini/conturi-test";
+    } catch (e) {
+      toast.error(errMsg(e));
+      setSwitching(false);
+    }
+  };
+  const switchTo = async (key) => {
+    const p = loadCachedPersonas().find((x) => x.key === key);
+    if (!p) return;
+    setSwitching(true);
+    try {
+      // Impersonarea imbricată e refuzată: ieșim întâi din contul curent.
+      await api.post("/admin/stop-impersonation");
+      await impersonatePersona(p);
+    } catch (e) {
+      toast.error(errMsg(e));
+      setSwitching(false);
+    }
+  };
+
   if (user === null) {
     return (
       <div className="p-6">
@@ -61,11 +91,35 @@ export const RadaciniLayout = () => {
   }
   if (!user) return <Navigate to={`/radacini/login?next=${encodeURIComponent(pathname + search)}`} replace />;
 
-  const items = NAV.filter((item) => canSee(item, staff));
+  const items = NAV.filter((item) => canSee(item, staff, user));
   const displayName = user.full_name || user.name || user.email;
 
   return (
-    <div className="min-h-screen flex bg-slate-50 dark:bg-[#0b0c0d]">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0b0c0d]">
+      {imp && (
+        <div className="sticky top-0 z-30 flex flex-wrap items-center gap-3 px-4 py-2 bg-amber-400 text-amber-950 text-sm font-semibold print:hidden" data-testid="radacini-test-bar">
+          <span>Ești în contul de test {displayName}</span>
+          <button type="button" disabled={switching} onClick={stopTest} className="underline disabled:opacity-60" data-testid="radacini-test-revino">
+            Revino la contul tău
+          </button>
+          {loadCachedPersonas().length > 0 && (
+            <select
+              aria-label="Schimbă contul de test"
+              disabled={switching}
+              value=""
+              onChange={(e) => e.target.value && switchTo(e.target.value)}
+              className="ml-auto rounded-md border border-amber-600 bg-amber-50 px-2 py-1 text-xs"
+              data-testid="radacini-test-switch"
+            >
+              <option value="">Schimbă contul…</option>
+              {loadCachedPersonas().map((p) => (
+                <option key={p.key} value={p.key}>{p.name} · {p.label}</option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+      <div className="flex-1 flex min-h-0">
       {/* Sidebar desktop */}
       <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-slate-200 dark:border-white/10 bg-white dark:bg-[#111213] print:hidden">
         <Brand />
@@ -113,6 +167,7 @@ export const RadaciniLayout = () => {
             </Suspense>
           </StaffContext.Provider>
         </main>
+      </div>
       </div>
     </div>
   );

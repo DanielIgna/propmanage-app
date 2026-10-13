@@ -228,7 +228,7 @@ function App() {
         <AuthProvider>
           <BrowserRouter>
             <ErrorBoundary>
-              <ImpersonationBanner />
+              <NotOnRadacini><ImpersonationBanner /></NotOnRadacini>
               <RoleThemeApplier />
               <AnalyticsRouteTracker />
               <ExplainThisMount />
