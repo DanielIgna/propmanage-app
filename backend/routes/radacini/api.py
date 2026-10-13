@@ -9,7 +9,9 @@ import os
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from deps import get_current_user
+from . import members, parcels, staff
+from .bridge import get_current_user
+from .constants import META
 
 RADACINI_ENABLED = os.environ.get("RADACINI_ENABLED", "true").lower() in ("1", "true", "yes")
 
@@ -35,3 +37,13 @@ async def me(user: dict = Depends(get_current_user)):
         "name": user.get("name"),
         "role": user.get("role"),
     }
+
+
+@router.get("/meta")
+async def meta():
+    return META
+
+
+router.include_router(members.router)
+router.include_router(parcels.router)
+router.include_router(staff.router)

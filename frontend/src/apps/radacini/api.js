@@ -1,0 +1,44 @@
+// Wrappers pentru contractul API Rădăcini S1 (docs/radacini/PLAN.md). Toate rutele sunt sub /api/radacini.
+import { api, apiErr } from "../../lib/api";
+
+const data = (p) => p.then((r) => r.data);
+
+export const radaciniApi = {
+  health: () => data(api.get("/radacini/health")),
+  meta: () => data(api.get("/radacini/meta")),
+
+  // Membri
+  memberMe: () => data(api.get("/radacini/members/me")),
+  saveMember: (body) => data(api.put("/radacini/members/me", body)),
+
+  // Terenuri
+  parcels: (params) => data(api.get("/radacini/parcels", { params })),
+  // Răspunsul single vine învelit: {parcel}.
+  parcel: (id) => data(api.get(`/radacini/parcels/${id}`)).then((d) => d?.parcel ?? d),
+  myParcels: () => data(api.get("/radacini/parcels/mine")),
+  createParcel: (body) => data(api.post("/radacini/parcels", body)),
+  updateParcel: (id, body) => data(api.patch(`/radacini/parcels/${id}`, body)),
+  submitParcel: (id) => data(api.post(`/radacini/parcels/${id}/submit`)),
+  pauseParcel: (id) => data(api.post(`/radacini/parcels/${id}/pause`)),
+  resumeParcel: (id) => data(api.post(`/radacini/parcels/${id}/resume`)),
+  deleteParcel: (id) => data(api.delete(`/radacini/parcels/${id}`)),
+
+  // Personal (operator / manager)
+  staffMe: () => data(api.get("/radacini/staff/me")),
+  staffQueue: () => data(api.get("/radacini/staff/queue")),
+  verifyParcel: (id, body) => data(api.post(`/radacini/staff/parcels/${id}/verify`, body)),
+  staffList: () => data(api.get("/radacini/staff")),
+  addStaff: (body) => data(api.post("/radacini/staff", body)),
+  removeStaff: (userId) => data(api.delete(`/radacini/staff/${userId}`)),
+};
+
+// Listele pot veni ca array sau învelite; acceptăm ambele forme.
+export const asList = (d) => (Array.isArray(d) ? d : d?.items || d?.results || []);
+
+// Mesaj de eroare lizibil: FastAPI 422 trimite `detail` ca listă de {msg}.
+export const errMsg = (e, fallback = "A apărut o eroare") => {
+  const d = e?.response?.data?.detail;
+  if (typeof d === "string") return d;
+  if (Array.isArray(d) && d.length) return d.map((x) => x?.msg).filter(Boolean).join(" · ") || fallback;
+  return String(apiErr(e, fallback));
+};
