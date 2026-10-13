@@ -173,7 +173,7 @@ def _first_name(name: Optional[str]) -> str:
 
 def _public_view(doc: dict, owner: dict) -> dict:
     out = serialize_doc(doc)
-    for key in ("owner_user_id", "verification", "archived_at"):
+    for key in ("owner_user_id", "verification", "archived_at", "active_agreement_id"):
         out.pop(key, None)
     out["lat"] = round(out["lat"], 2)
     out["lng"] = round(out["lng"], 2)
@@ -186,6 +186,11 @@ async def _owned_or_404(parcel_id: str, user: dict) -> dict:
     if not doc or doc.get("archived_at") or str(doc.get("owner_user_id")) != str(user["id"]):
         raise HTTPException(404, "Terenul nu există.")
     return doc
+
+
+def _ensure_no_active_agreement(doc: dict) -> None:
+    if doc.get("active_agreement_id"):
+        raise HTTPException(409, "Terenul are un acord activ.")
 
 
 async def _set_fields(doc: dict, changes: dict) -> dict:
@@ -279,6 +284,7 @@ async def get_parcel(parcel_id: str, user: Optional[dict] = Depends(get_optional
 @router.patch("/parcels/{parcel_id}")
 async def patch_parcel(parcel_id: str, body: ParcelPatch, user: dict = Depends(get_current_user)):
     doc = await _owned_or_404(parcel_id, user)
+    _ensure_no_active_agreement(doc)
     if doc.get("status") not in ("draft", "rejected", "paused"):
         raise HTTPException(409, "Terenul poate fi editat doar în ciornă, respins sau suspendat.")
     changes = body.model_dump(mode="json", exclude_unset=True)
@@ -323,6 +329,7 @@ async def pause_parcel(parcel_id: str, user: dict = Depends(get_current_user)):
 @router.post("/parcels/{parcel_id}/resume")
 async def resume_parcel(parcel_id: str, user: dict = Depends(get_current_user)):
     doc = await _owned_or_404(parcel_id, user)
+    _ensure_no_active_agreement(doc)
     if doc.get("status") != "paused":
         raise HTTPException(409, "Doar un teren suspendat poate fi reluat.")
     doc = await _set_fields(doc, {"status": "published"})
@@ -332,6 +339,7 @@ async def resume_parcel(parcel_id: str, user: dict = Depends(get_current_user)):
 @router.delete("/parcels/{parcel_id}")
 async def delete_parcel(parcel_id: str, user: dict = Depends(get_current_user)):
     doc = await _owned_or_404(parcel_id, user)
+    _ensure_no_active_agreement(doc)
     if doc.get("status") == "pending_verification":
         raise HTTPException(409, "Terenul așteaptă verificarea și nu poate fi șters acum.")
     await _set_fields(doc, {"archived_at": now_iso()})

@@ -5,11 +5,11 @@ import { CARD, EmptyState } from "../../../design-system";
 import { Layers } from "lucide-react";
 import { radaciniApi, asList } from "../api";
 import { useMember, useMeta } from "../hooks";
-import { labelOf, linkBtnCls, PageSkeleton } from "../shared";
+import { ACTIVE_REQUEST, labelOf, linkBtnCls, PageSkeleton } from "../shared";
 
 const pluralTeren = (n) => (n === 1 ? "1 teren" : `${n} terenuri`);
 
-function InterestCard({ id, label, parcelCount }) {
+function InterestCard({ id, label, parcelCount, requestCount }) {
   const base = `${CARD} p-5 flex flex-col gap-3`;
 
   if (id === "land") {
@@ -19,12 +19,18 @@ function InterestCard({ id, label, parcelCount }) {
         <p className="text-sm text-slate-600 dark:text-slate-300">
           {parcelCount === null ? "Se încarcă…" : pluralTeren(parcelCount)}
         </p>
+        <p className="text-sm text-slate-600 dark:text-slate-300" data-testid="radacini-card-land-cereri">
+          {requestCount === null ? "Cereri: se încarcă…" : `Cereri primite în așteptare: ${requestCount}`}
+        </p>
         <div className="mt-auto flex flex-wrap gap-2">
           <Link to="/radacini/terenurile-mele/nou" className={linkBtnCls()} data-testid="radacini-btn-adauga-teren">
             Adaugă teren
           </Link>
           <Link to="/radacini/terenurile-mele" className={linkBtnCls("secondary")}>
             Terenurile mele
+          </Link>
+          <Link to="/radacini/cereri" className={linkBtnCls("secondary")} data-testid="radacini-btn-cereri-primite">
+            Vezi cererile
           </Link>
         </div>
       </div>
@@ -36,9 +42,15 @@ function InterestCard({ id, label, parcelCount }) {
       <div className={base} data-testid="radacini-card-grow">
         <p className="font-bold text-slate-900 dark:text-white">{label}</p>
         <p className="text-sm text-slate-600 dark:text-slate-300">Găsește un teren publicat din zona ta.</p>
-        <div className="mt-auto">
+        <p className="text-sm text-slate-600 dark:text-slate-300" data-testid="radacini-card-grow-cereri">
+          {requestCount === null ? "Cereri active: se încarcă…" : `Cereri active trimise: ${requestCount}`}
+        </p>
+        <div className="mt-auto flex flex-wrap gap-2">
           <Link to="/radacini/terenuri" className={linkBtnCls()} data-testid="radacini-btn-cauta-teren">
             Caută teren
+          </Link>
+          <Link to="/radacini/cereri" className={linkBtnCls("secondary")} data-testid="radacini-btn-cererile-mele">
+            Cererile mele
           </Link>
         </div>
       </div>
@@ -62,6 +74,9 @@ export default function Panou() {
   const [apiStatus, setApiStatus] = useState("checking"); // checking | ok | down
   const [parcelCount, setParcelCount] = useState(null);
   const wantsLand = !!member?.interests?.includes("land");
+  const wantsGrow = !!member?.interests?.includes("grow");
+  // received = cereri primite încă active (terenuri) · sent = cereri trimise încă active (cultivare)
+  const [requestCounts, setRequestCounts] = useState({ received: null, sent: null });
 
   useEffect(() => {
     radaciniApi.health().then(() => setApiStatus("ok")).catch(() => setApiStatus("down"));
@@ -78,6 +93,27 @@ export default function Panou() {
       alive = false;
     };
   }, [wantsLand]);
+
+  useEffect(() => {
+    if (!wantsLand && !wantsGrow) return undefined;
+    let alive = true;
+    const countActive = (d) => asList(d).filter((r) => ACTIVE_REQUEST.includes(r.status)).length;
+    if (wantsLand) {
+      radaciniApi
+        .requestsReceived()
+        .then((d) => alive && setRequestCounts((c) => ({ ...c, received: countActive(d) })))
+        .catch(() => alive && setRequestCounts((c) => ({ ...c, received: 0 })));
+    }
+    if (wantsGrow) {
+      radaciniApi
+        .requestsSent()
+        .then((d) => alive && setRequestCounts((c) => ({ ...c, sent: countActive(d) })))
+        .catch(() => alive && setRequestCounts((c) => ({ ...c, sent: 0 })));
+    }
+    return () => {
+      alive = false;
+    };
+  }, [wantsLand, wantsGrow]);
 
   const badge =
     apiStatus === "ok"
@@ -123,6 +159,7 @@ export default function Panou() {
               id={id}
               label={labelOf(meta?.interests, id)}
               parcelCount={parcelCount}
+              requestCount={id === "land" ? requestCounts.received : id === "grow" ? requestCounts.sent : null}
             />
           ))}
         </div>

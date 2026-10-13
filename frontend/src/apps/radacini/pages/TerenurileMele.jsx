@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useConfirm } from "../components/ConfirmDialog";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { CARD, DSButton, EmptyState } from "../../../design-system";
@@ -11,6 +12,7 @@ const EDITABLE = ["draft", "rejected", "paused"];
 const SUBMITTABLE = ["draft", "rejected"];
 
 export default function TerenurileMele() {
+  const [confirm, confirmDialog] = useConfirm();
   const { meta } = useMeta();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,8 +45,8 @@ export default function TerenurileMele() {
     }
   };
 
-  const remove = (p) => {
-    if (!window.confirm(`Ștergi terenul „${p.title}”? Nu mai apare în listă.`)) return;
+  const remove = async (p) => {
+    if (!(await confirm({ title: "Ștergi terenul?", description: `„${p.title}” nu va mai apărea în listă.`, confirmLabel: "Șterge terenul", danger: true }))) return;
     run(p, () => radaciniApi.deleteParcel(p.id), "Terenul a fost șters");
   };
 
@@ -106,6 +108,7 @@ export default function TerenurileMele() {
 
   return (
     <div className="space-y-5" data-testid="radacini-terenurile-mele">
+      {confirmDialog}
       <PageHeader
         title="Terenurile mele"
         subtitle={`Terenurile tale din ${COUNTY}. Un teren ajunge public după verificarea operatorului.`}

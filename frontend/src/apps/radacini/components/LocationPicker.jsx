@@ -33,7 +33,7 @@ export default function LocationPicker({ value, onChange, height = "320px" }) {
 
   const center = value ? [value.lat, value.lng] : DEFAULT_CENTER;
   return (
-    <div className="space-y-2" data-testid="radacini-location-picker">
+    <div className="relative isolate space-y-2" data-testid="radacini-location-picker">
       <MapContainer
         center={center}
         zoom={value ? 15 : 11}

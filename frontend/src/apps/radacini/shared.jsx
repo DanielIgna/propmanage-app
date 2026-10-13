@@ -12,7 +12,33 @@ export const STATUS = {
   published: { label: "Publicat", cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
   rejected: { label: "Respins", cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300" },
   paused: { label: "Pauză", cls: "bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300" },
+  // Cereri de teren (S2)
+  sent: { label: "Trimisă", cls: "bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300" },
+  viewed: { label: "Văzută", cls: "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300" },
+  negotiating: { label: "În negociere", cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
+  accepted: { label: "Acceptată", cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
+  declined: { label: "Refuzată", cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300" },
+  withdrawn: { label: "Retrasă", cls: "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300" },
+  expired: { label: "Expirată", cls: "bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400" },
+  // Acorduri (S2): „draft" = Ciornă, deja în STATUS
+  proposed: { label: "Trimis spre semnare", cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
+  signed: { label: "Semnat", cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
+  cancelled: { label: "Anulat", cls: "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300" },
 };
+
+// Cereri încă active (negociabile); celelalte stări sunt finale.
+export const ACTIVE_REQUEST = ["sent", "viewed", "negotiating"];
+
+export const ROLE_LABEL = { owner: "Proprietar", cultivator: "Cultivator" };
+
+// Semnătura contează doar pentru versiunea curentă; o modificare resetează semnăturile în backend.
+export const signedFor = (a, userId) => (a?.signatures || []).some((s) => s.user_id === userId && s.version === a.version);
+export const signedCount = (a) => (a?.parties || []).filter((p) => signedFor(a, p.user_id)).length;
+
+export const fmtRon = (v) => (v == null || v === "" ? null : `${Number(v).toLocaleString("ro-RO")} RON / an`);
+export const fmtPeriod = (from, to) => `${fmtDate(from)} – ${fmtDate(to)}`;
+export const fmtDateTime = (iso) =>
+  iso ? new Date(iso).toLocaleString("ro-RO", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 
 export const ROLES = [
   { id: "operator", label: "Operator" },

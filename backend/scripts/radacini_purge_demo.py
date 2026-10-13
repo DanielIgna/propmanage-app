@@ -20,7 +20,14 @@ if str(BACKEND_DIR) not in sys.path:
 
 from db import db  # noqa: E402
 
-COLLECTIONS = ("radacini_members", "radacini_parcels", "radacini_staff")
+COLLECTIONS = (
+    "radacini_members",
+    "radacini_parcels",
+    "radacini_staff",
+    "radacini_land_requests",
+    "radacini_request_messages",
+    "radacini_agreements",
+)
 DEMO_FILTER = {"is_demo": True}
 
 

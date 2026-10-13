@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useConfirm } from "../components/ConfirmDialog";
 import { toast } from "sonner";
 import { AlertTriangle, ShieldOff, Trash2, UserPlus, Users } from "lucide-react";
 import { CARD, DSButton, EmptyState } from "../../../design-system";
@@ -10,6 +11,7 @@ import { CheckGroup, Chips, Field, labelOf, PageHeader, PageSkeleton, ROLES, Sel
 const EMPTY_FORM = { email: "", role: "operator", areas: [] };
 
 export default function Personal() {
+  const [confirm, confirmDialog] = useConfirm();
   const { staff, loading: staffLoading } = useStaffMe();
   const { meta } = useMeta();
   const isManager = staff?.role === "manager";
@@ -59,7 +61,7 @@ export default function Personal() {
   };
 
   const remove = async (m) => {
-    if (!window.confirm(`Ștergi accesul pentru ${m.name || m.email}?`)) return;
+    if (!(await confirm({ title: "Ștergi accesul?", description: `${m.name || m.email} nu va mai avea acces de personal Rădăcini.`, confirmLabel: "Șterge accesul", danger: true }))) return;
     try {
       await radaciniApi.removeStaff(m.user_id);
       toast.success("Acces eliminat");
@@ -73,6 +75,7 @@ export default function Personal() {
 
   return (
     <div className="space-y-6" data-testid="radacini-personal">
+      {confirmDialog}
       <PageHeader title="Personal Rădăcini" subtitle="Operatorii verifică terenurile. Managerii gestionează accesul." />
 
       <form onSubmit={add} className={`${CARD} p-5 md:p-6 space-y-5`} data-testid="radacini-personal-form">

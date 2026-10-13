@@ -30,6 +30,33 @@ export const radaciniApi = {
   staffList: () => data(api.get("/radacini/staff")),
   addStaff: (body) => data(api.post("/radacini/staff", body)),
   removeStaff: (userId) => data(api.delete(`/radacini/staff/${userId}`)),
+
+  // Cereri de teren (S2). Singulare învelite: {request}, {message}, {agreement}, {request, messages}, {request, agreement}.
+  createRequest: (parcelId, body) =>
+    data(api.post(`/radacini/parcels/${parcelId}/requests`, body)).then((d) => d?.request ?? d),
+  requestsSent: () => data(api.get("/radacini/requests/sent")),
+  requestsReceived: () => data(api.get("/radacini/requests/received")),
+  // Returnează {request, messages}.
+  request: (id) => data(api.get(`/radacini/requests/${id}`)),
+  sendRequestMessage: (id, text) =>
+    data(api.post(`/radacini/requests/${id}/messages`, { text })).then((d) => d?.message ?? d),
+  counterRequest: (id, body) => data(api.post(`/radacini/requests/${id}/counter`, body)).then((d) => d?.request ?? d),
+  declineRequest: (id, reason) => data(api.post(`/radacini/requests/${id}/decline`, reason ? { reason } : {})),
+  withdrawRequest: (id) => data(api.post(`/radacini/requests/${id}/withdraw`)),
+  // Returnează {request, agreement}.
+  acceptRequest: (id) => data(api.post(`/radacini/requests/${id}/accept`)),
+
+  // Acorduri (S2)
+  agreements: () => data(api.get("/radacini/agreements")),
+  agreement: (id) => data(api.get(`/radacini/agreements/${id}`)).then((d) => d?.agreement ?? d),
+  // body = termenii (parțial): {terms: {...}}
+  updateAgreement: (id, terms) =>
+    data(api.patch(`/radacini/agreements/${id}`, { terms })).then((d) => d?.agreement ?? d),
+  proposeAgreement: (id) => data(api.post(`/radacini/agreements/${id}/propose`)).then((d) => d?.agreement ?? d),
+  signAgreement: (id, version) =>
+    data(api.post(`/radacini/agreements/${id}/sign`, { version })).then((d) => d?.agreement ?? d),
+  cancelAgreement: (id, reason) =>
+    data(api.post(`/radacini/agreements/${id}/cancel`, reason ? { reason } : {})).then((d) => d?.agreement ?? d),
 };
 
 // Listele pot veni ca array sau învelite; acceptăm ambele forme.

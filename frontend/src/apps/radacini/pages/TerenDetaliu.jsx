@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, MapPin } from "lucide-react";
-import { CARD, EmptyState } from "../../../design-system";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
+import { ArrowLeft, MapPin, Send } from "lucide-react";
+import { CARD, DSButton, EmptyState } from "../../../design-system";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
+import { useAuth } from "../../../auth";
 import ApproxMap from "../components/ApproxMap";
+import ProposalForm from "../components/ProposalForm";
 import { radaciniApi, errMsg } from "../api";
 import { useMeta } from "../hooks";
 import { Chips, COUNTY, fmtArea, fmtDate, labelOf, PageSkeleton, StatusBadge } from "../shared";
@@ -16,10 +20,14 @@ const Row = ({ label, children }) => (
 
 export default function TerenDetaliu() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { meta } = useMeta();
   const [p, setP] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [reqOpen, setReqOpen] = useState(false);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -34,6 +42,23 @@ export default function TerenDetaliu() {
       alive = false;
     };
   }, [id]);
+
+  // Proprietarul nu își poate cere propriul teren (backend: 403). Vizualizarea publică nu include owner_user_id:
+  // în acel caz butonul apare și eroarea backend-ului ajunge în toast.
+  const isOwner = !!user && !!p?.owner_user_id && p.owner_user_id === user.id;
+
+  const sendRequest = async (body) => {
+    setSending(true);
+    try {
+      const request = await radaciniApi.createRequest(p.id, body);
+      toast.success("Cererea a fost trimisă");
+      navigate(`/radacini/cereri/${request.id}`);
+    } catch (e) {
+      toast.error(errMsg(e, "Nu am putut trimite cererea"));
+    } finally {
+      setSending(false);
+    }
+  };
 
   const back = (
     <Link to="/radacini/terenuri" className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 dark:text-emerald-300 hover:underline">
@@ -58,6 +83,7 @@ export default function TerenDetaliu() {
 
   const offer = p.offer || {};
   const models = (offer.models || []).map((m) => labelOf(meta?.offer_models, m));
+  const modelOpts = (offer.models || []).map((m) => ({ id: m, label: labelOf(meta?.offer_models, m) }));
   const water = (p.water_sources || []).map((w) => labelOf(meta?.water_sources, w));
   const availability =
     p.availability_from || p.availability_to
@@ -75,7 +101,14 @@ export default function TerenDetaliu() {
             {p.locality} · {COUNTY}
           </p>
         </div>
-        {p.status && p.status !== "published" && <StatusBadge status={p.status} />}
+        <div className="flex flex-wrap items-center gap-2">
+          {p.status && p.status !== "published" && <StatusBadge status={p.status} />}
+          {p.status === "published" && !isOwner && (
+            <DSButton icon={Send} onClick={() => setReqOpen(true)} data-testid="radacini-btn-solicita">
+              Solicită terenul
+            </DSButton>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -112,6 +145,27 @@ export default function TerenDetaliu() {
         </div>
         <ApproxMap points={[{ id: p.id, lat: p.lat, lng: p.lng, title: p.title, subtitle: `${p.locality} · locație aproximativă` }]} height="280px" />
       </section>
+
+      <Dialog open={reqOpen} onOpenChange={(open) => !sending && setReqOpen(open)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" data-testid="radacini-cerere-dialog">
+          <DialogHeader>
+            <DialogTitle>Solicită terenul</DialogTitle>
+            <DialogDescription>Propune condițiile. Proprietarul poate accepta, refuza sau face o contrapropunere.</DialogDescription>
+          </DialogHeader>
+          {reqOpen && (
+            <ProposalForm
+              idPrefix="cerere"
+              testidPrefix="radacini-cerere-form"
+              models={modelOpts}
+              areaMax={p.area_m2}
+              submitLabel="Trimite cererea"
+              submitting={sending}
+              onSubmit={sendRequest}
+              onCancel={() => setReqOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

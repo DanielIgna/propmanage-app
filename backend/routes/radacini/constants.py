@@ -44,3 +44,9 @@ META = {
     "water_sources": WATER_SOURCES,
     "localities": LOCALITIES,
 }
+
+LEGAL_NOTICE = (
+    "Acest acord consemnează înțelegerea dintre părți în platforma Rădăcini. "
+    "Nu înlocuiește contractul de arendă/închiriere în forma cerută de lege și nici "
+    "înregistrarea acestuia la primărie, unde este cazul."
+)

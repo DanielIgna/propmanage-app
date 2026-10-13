@@ -9,7 +9,7 @@ import os
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from . import members, parcels, staff
+from . import agreements, members, parcels, requests, staff
 from .bridge import get_current_user
 from .constants import META
 
@@ -47,3 +47,5 @@ async def meta():
 router.include_router(members.router)
 router.include_router(parcels.router)
 router.include_router(staff.router)
+router.include_router(requests.router)
+router.include_router(agreements.router)

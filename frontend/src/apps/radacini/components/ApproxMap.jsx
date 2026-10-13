@@ -22,7 +22,7 @@ function FitToPoints({ points }) {
 export default function ApproxMap({ points = [], height = "380px", emptyLabel = "Niciun teren de afișat." }) {
   const withCoords = points.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
   return (
-    <div className="relative rounded-3xl overflow-hidden border border-white/10" style={{ height }} data-testid="radacini-approx-map">
+    <div className="relative isolate rounded-3xl overflow-hidden border border-white/10" style={{ height }} data-testid="radacini-approx-map">
       <MapContainer center={DEFAULT_CENTER} zoom={10} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
         <FitToPoints points={withCoords} />

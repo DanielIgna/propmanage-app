@@ -12,6 +12,10 @@ const TerenForm = lazy(() => import("./pages/TerenForm"));
 const Operator = lazy(() => import("./pages/Operator"));
 const Personal = lazy(() => import("./pages/Personal"));
 const Setari = lazy(() => import("./pages/Setari"));
+const Cereri = lazy(() => import("./pages/Cereri"));
+const CerereDetaliu = lazy(() => import("./pages/CerereDetaliu"));
+const Acorduri = lazy(() => import("./pages/Acorduri"));
+const AcordDetaliu = lazy(() => import("./pages/AcordDetaliu"));
 
 export function radaciniRoutes() {
   if (!RADACINI_ENABLED) return null;
@@ -24,6 +28,10 @@ export function radaciniRoutes() {
       <Route path="terenurile-mele" element={<TerenurileMele />} />
       <Route path="terenurile-mele/nou" element={<TerenForm />} />
       <Route path="terenurile-mele/:id/editare" element={<TerenForm />} />
+      <Route path="cereri" element={<Cereri />} />
+      <Route path="cereri/:id" element={<CerereDetaliu />} />
+      <Route path="acorduri" element={<Acorduri />} />
+      <Route path="acorduri/:id" element={<AcordDetaliu />} />
       <Route path="operator" element={<Operator />} />
       <Route path="personal" element={<Personal />} />
       <Route path="setari" element={<Setari />} />

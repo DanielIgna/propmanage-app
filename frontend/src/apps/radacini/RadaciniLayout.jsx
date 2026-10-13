@@ -58,13 +58,13 @@ export const RadaciniLayout = () => {
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-[#0b0c0d]">
       {/* Sidebar desktop */}
-      <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-slate-200 dark:border-white/10 bg-white dark:bg-[#111213]">
+      <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-slate-200 dark:border-white/10 bg-white dark:bg-[#111213] print:hidden">
         <Brand />
         <SidebarNav items={items} />
       </aside>
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="sticky top-0 z-10 flex items-center gap-3 h-16 px-4 md:px-6 border-b border-slate-200 dark:border-white/10 bg-white/90 dark:bg-[#111213]/90 backdrop-blur">
+        <header className="sticky top-0 z-10 flex items-center gap-3 h-16 px-4 md:px-6 border-b border-slate-200 dark:border-white/10 bg-white/90 dark:bg-[#111213]/90 backdrop-blur print:hidden">
           {/* Sidebar mobil */}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>

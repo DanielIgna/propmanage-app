@@ -1,4 +1,5 @@
 """Helpere comune Rădăcini: timp, marcaj demo, ID-uri, utilizatori, erori de validare."""
+import logging
 import os
 from datetime import datetime, timezone
 from typing import Iterable, Optional
@@ -8,7 +9,9 @@ from fastapi import HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
 
-from .bridge import db, get_current_user
+from .bridge import db, get_current_user, notify
+
+log = logging.getLogger(__name__)
 
 
 def now_iso() -> str:
@@ -26,6 +29,14 @@ def oid_or_404(id_: str) -> ObjectId:
     if not (isinstance(id_, str) and len(id_) == 24 and ObjectId.is_valid(id_)):
         raise HTTPException(404, "Nu există.")
     return ObjectId(id_)
+
+
+async def safe_notify(user_id: str, title: str, message: str, link: Optional[str] = None, type_: str = "info") -> None:
+    """Notificare care nu blochează niciodată acțiunea principală."""
+    try:
+        await notify(str(user_id), title, message, type_=type_, link=link)
+    except Exception:  # noqa: BLE001
+        log.warning("radacini: notificarea nu a putut fi trimisă", exc_info=True)
 
 
 async def get_optional_user(request: Request) -> Optional[dict]:

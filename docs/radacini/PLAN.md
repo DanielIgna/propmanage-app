@@ -5,8 +5,8 @@ Decizii luate (2026-10-13): modul în aceeași aplicație; aceleași conturi; MV
 
 | Sprint | Conținut | Stare |
 |---|---|---|
-| S1 | Fundație + Membri + Terenuri + Personal (operator/manager) + coadă de verificare | gata local (60 teste API, flux verificat în browser), necommis |
-| S2 | Cereri de teren + negociere + acorduri cu versiune | — |
+| S1 | Fundație + Membri + Terenuri + Personal (operator/manager) + coadă de verificare | gata (60 teste API, flux verificat în browser) |
+| S2 | Cereri de teren + negociere + acorduri cu versiune | gata (155 teste S1+S2, flux verificat în browser) |
 | S3 | Proiect agricol: membri, plan culturi, activități, contribuții | — |
 | S4 | Recoltă + alocare + piață locală (listări, rezervări, schimb) | — |
 | S5 | Admin: comutator Produs, secțiune Rădăcini, KPI, noduri Knowledge Center | — |
@@ -69,3 +69,63 @@ Navigație: Panou · Terenuri · Terenurile mele · Profil · Operator (doar dac
 - **Terenurile mele** (`/radacini/terenurile-mele`, `/nou`, `/:id/editare`): listă cu badge-uri de stare și acțiuni; formular cu selectare pe hartă (click = punct; centrul implicit Cluj-Napoca 46.7712, 23.6236).
 - **Operator** (`/radacini/operator`): coada de verificare cu hartă mică, Aprobă / Respinge cu notă.
 - **Personal** (`/radacini/personal`): listă + adăugare după email + ștergere.
+
+---
+
+## S2 — contract: cereri de teren, negociere, acorduri
+
+### Reguli comune (în plus față de S1)
+- Colecții noi: `radacini_land_requests`, `radacini_request_messages`, `radacini_agreements`. Sunt aceleași reguli (`is_demo`, `serialize_doc`, evenimente `radacini.*`, mesaje de eroare în română, validare → 400).
+- **Atomicitate:** tranzițiile de stare se fac cu `update_one({"_id":…, "status": <stare așteptată>}, …)` și se verifică `modified_count == 1`, altfel 409. Așa evităm dubla acceptare sau dubla semnare.
+- **„Părți”** = proprietarul terenului și solicitantul. Personalul Rădăcini (operator în aria lui, manager) și super-adminul pot **citi** cererile și acordurile, dar nu acționează în ele.
+- **Expirare:** o cerere activă fără activitate de 30 de zile e tratată ca `expired`. Starea se calculează la citire și se salvează leneș, fără cron (din cauza egress-ului).
+- Notificări (`notify`) către cealaltă parte la fiecare acțiune; linkuri `/radacini/cereri/{id}` și `/radacini/acorduri/{id}`.
+
+### Cereri (`radacini_land_requests`)
+Document: `{id, parcel_id, owner_user_id, requester_user_id, model, proposal:{area_m2, start_date, end_date, price_ron_per_year?, harvest_share_percent?, crops[], note?}, proposals_history:[{proposal, by_user_id, at}], status, last_activity_at, decided_at?, decline_reason?, agreement_id?, is_demo?, created_at, updated_at}`
+
+Stări: `sent → viewed → negotiating → accepted | declined | withdrawn | expired`.
+- `viewed`: setat automat la prima deschidere de către proprietar.
+- `negotiating`: după primul mesaj sau prima contrapropunere.
+
+| Metodă | Cale | Cine | Reguli |
+|---|---|---|---|
+| POST | `/parcels/{id}/requests` | membru, diferit de proprietar (fără profil → 400; i se adaugă interesul `grow`) | terenul trebuie să fie `published` (altfel 409); `model` ∈ `parcel.offer.models`; o singură cerere activă (`sent`/`viewed`/`negotiating`) per solicitant și teren (altfel 409); `area_m2` între 100 și suprafața terenului; `start_date` ≥ azi, `end_date` > `start_date`; `harvest_share_percent` (1–90) obligatoriu doar pentru `harvest_share`, interzis altfel; `note` ≤ 1000 → `{request}` cu status `sent` |
+| GET | `/requests/sent` · `/requests/received` | autentificat | `{items}`; fiecare are și `parcel_title`, `parcel_locality`, `counterpart_name` |
+| GET | `/requests/{id}` | părți, personal, super-admin | `{request, messages}`, mesajele sortate crescător |
+| POST | `/requests/{id}/messages` | părți; nu în stări finale | body `{text}` 1–2000 → `{message}`; cererea devine `negotiating` |
+| POST | `/requests/{id}/counter` | părți; nu în stări finale | body = o propunere completă (aceleași validări) → propunerea curentă intră în `proposals_history`; status `negotiating` → `{request}` |
+| POST | `/requests/{id}/decline` | proprietar | body `{reason?}` ≤ 500 → `declined` |
+| POST | `/requests/{id}/withdraw` | solicitant | → `withdrawn` |
+| POST | `/requests/{id}/accept` | proprietar; din `sent`/`viewed`/`negotiating`; terenul încă `published` | atomic → `accepted` + creează acordul v1 în `draft` din propunerea curentă → `{request, agreement}` |
+
+### Acorduri (`radacini_agreements`)
+Document: `{id, request_id, parcel_id, parties:[{user_id, role:"owner"|"cultivator", name}], model, terms:{area_m2, start_date, end_date, price_ron_per_year?, harvest_share_percent?, crops[], custom_clauses?, parcel_snapshot:{title, locality, area_m2}}, version, versions_history:[{version, terms, by_user_id, at}], signatures:[{user_id, version, signed_at}], status, legal_notice, signed_at?, cancelled_at?, cancel_reason?, is_demo?, created_at, updated_at}`
+
+Stări: `draft → proposed → signed`; `draft`/`proposed` → `cancelled`.
+
+`legal_notice` (text fix): „Acest acord consemnează înțelegerea dintre părți în platforma Rădăcini. Nu înlocuiește contractul de arendă/închiriere în forma cerută de lege și nici înregistrarea acestuia la primărie, unde este cazul.”
+
+| Metodă | Cale | Cine | Reguli |
+|---|---|---|---|
+| GET | `/agreements` | autentificat | acordurile în care e parte → `{items}` |
+| GET | `/agreements/{id}` | părți, personal, super-admin | `{agreement}` |
+| PATCH | `/agreements/{id}` | părți; doar `draft`/`proposed` | body `{terms}` parțial (aceleași validări ca la propunere + `custom_clauses` ≤ 5000) → versiunea veche intră în `versions_history`, `version += 1`, semnăturile se șterg, status `draft` |
+| POST | `/agreements/{id}/propose` | părți; din `draft` | → `proposed` (versiunea curentă e înghețată pentru semnare) |
+| POST | `/agreements/{id}/sign` | părți; doar `proposed` | body `{version}` trebuie să fie egal cu `version` curentă (altfel 409); o singură semnătură per user și versiune; când toate părțile au semnat versiunea curentă → `signed`, `signed_at`; **terenul** primește `active_agreement_id` și trece în `paused`; celelalte cereri active pe teren → `declined`, cu motivul „Terenul a fost atribuit altui solicitant.” |
+| POST | `/agreements/{id}/cancel` | părți; doar `draft`/`proposed` | body `{reason?}` → `cancelled` (cererea rămâne `accepted`; terenul nu se schimbă) |
+
+**Modificare în S1:** `POST /parcels/{id}/resume`, `PATCH` și `DELETE` pe un teren cu `active_agreement_id` → 409 „Terenul are un acord activ.”
+
+### Frontend
+- **Detaliu teren:** butonul „Solicită terenul” (doar pentru cei care nu sunt proprietarii, teren `published`) deschide un formular cu model (din oferta terenului), suprafață, perioadă, preț sau procent, culturi și mesaj.
+- **`/radacini/cereri`:** file *Trimise* / *Primite*, cu badge-uri de stare (sent=Trimisă, viewed=Văzută, negotiating=În negociere, accepted=Acceptată, declined=Refuzată, withdrawn=Retrasă, expired=Expirată).
+- **`/radacini/cereri/:id`:**
+  - propunerea curentă și istoricul propunerilor, conversația;
+  - acțiunile după rol: Acceptă, Refuză, Contrapropunere, Retrage, Trimite mesaj;
+  - link spre acord după acceptare.
+- **`/radacini/acorduri`** și **`/radacini/acorduri/:id`:**
+  - termenii, versiunea, istoricul versiunilor, semnăturile, nota legală vizibilă;
+  - Editează termenii, Trimite spre semnare, Semnează (cu bifa „Am citit și sunt de acord cu versiunea X”), Anulează;
+  - vizualizare de tipărit (`window.print`).
+- **Navigație:** Cereri și Acorduri. **Panou:** numărul de cereri primite care așteaptă răspuns.
