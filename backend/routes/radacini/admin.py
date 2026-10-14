@@ -549,3 +549,26 @@ async def audit_log(
         "created_at": d.get("created_at"),
     } for d in docs]
     return {"items": items, "next_before": items[-1]["created_at"] if len(items) == limit else None}
+
+
+# ------------------------------------------------------------------------------------------ termeni (S8)
+
+@router.get("/legal/acceptances")
+async def legal_acceptances(
+    type: Optional[str] = Query(None, pattern="^(terms|privacy)$"),
+    version: Optional[str] = Query(None, max_length=40),
+    limit: int = Query(100, ge=1, le=200),
+    _: dict = Depends(_manager),
+):
+    """Acceptările termenilor Rădăcini (cele mai noi primele), filtrabile după tip și versiune."""
+    flt: dict = {}
+    if type:
+        flt["type"] = type
+    if version:
+        flt["version"] = version
+    docs = await db.radacini_legal_acceptances.find(flt).sort("accepted_at", -1).limit(limit).to_list(limit)
+    return {"items": [{
+        "id": str(d["_id"]), "user_id": d.get("user_id"), "type": d.get("type"), "version": d.get("version"),
+        "accepted_at": d.get("accepted_at"), "ip": d.get("ip"), "user_agent": d.get("user_agent"),
+        "revoked_at": d.get("revoked_at"),
+    } for d in docs]}

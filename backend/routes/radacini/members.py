@@ -1,7 +1,7 @@
 """Membri Rădăcini: profilul propriu (interese, localitate, bio)."""
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
 from .bridge import db, emit, get_current_user, serialize_doc
@@ -10,7 +10,9 @@ from .constants import COUNTY, INTEREST_IDS, LOCALITIES
 
 router = APIRouter(route_class=RadaciniRoute)
 
-_MEMBER_FIELDS = ("id", "user_id", "interests", "county", "locality", "bio", "created_at", "updated_at")
+_MEMBER_FIELDS = ("id", "user_id", "interests", "county", "locality", "bio", "created_at", "updated_at", "onboarding")
+
+ONBOARDING_STEPS = ("terms", "profile", "discover", "notifications")
 
 
 class MemberIn(BaseModel):
@@ -53,9 +55,35 @@ class MemberIn(BaseModel):
         return v or None
 
 
-def _member_out(doc: dict) -> dict:
+class StepIn(BaseModel):
+    step: str
+
+    @field_validator("step")
+    @classmethod
+    def _step(cls, v: str) -> str:
+        if v not in ONBOARDING_STEPS:
+            raise ValueError("Pas de ghid necunoscut.")
+        return v
+
+
+def _onboarding_view(member_ob: Optional[dict], pre_ob: Optional[dict]) -> dict:
+    """Ghidul de pornire: pașii din profil + cei salvați înainte de crearea profilului (doar „terms”)."""
+    steps = list((member_ob or {}).get("steps_done") or [])
+    for s in (pre_ob or {}).get("steps_done") or []:
+        if s not in steps:
+            steps.append(s)
+    return {"completed_at": (member_ob or {}).get("completed_at"), "steps_done": steps}
+
+
+def _member_out(doc: dict, pre_ob: Optional[dict] = None) -> dict:
     data = serialize_doc(doc)
-    return {k: data.get(k) for k in _MEMBER_FIELDS}
+    out = {k: data.get(k) for k in _MEMBER_FIELDS}
+    out["onboarding"] = _onboarding_view(doc.get("onboarding"), pre_ob)
+    return out
+
+
+async def _pre_onboarding(user_id: str) -> Optional[dict]:
+    return await db.radacini_onboarding.find_one({"user_id": str(user_id)})
 
 
 async def get_member_doc(user_id: str) -> Optional[dict]:
@@ -65,9 +93,10 @@ async def get_member_doc(user_id: str) -> Optional[dict]:
 @router.get("/members/me")
 async def get_my_member(user: dict = Depends(get_current_user)):
     doc = await get_member_doc(user["id"])
+    pre = await _pre_onboarding(user["id"])
     if not doc:
-        return {"exists": False}
-    return {"exists": True, "member": _member_out(doc)}
+        return {"exists": False, "onboarding": _onboarding_view(None, pre)}
+    return {"exists": True, "member": _member_out(doc, pre), "onboarding": _onboarding_view(doc.get("onboarding"), pre)}
 
 
 @router.put("/members/me")
@@ -88,10 +117,60 @@ async def put_my_member(body: MemberIn, user: dict = Depends(get_current_user)):
         upsert=True,
     )
     doc = await get_member_doc(uid)
-    member = _member_out(doc)
+    member = _member_out(doc, await _pre_onboarding(uid))
     await emit(
         "radacini.member_updated",
         actor=user,
         payload={"member_id": member["id"], "locality": body.locality, "interests": body.interests},
     )
     return {"member": member}
+
+
+# ------------------------------------------------------------------ onboarding
+# Fără profil de membru, doar pasul „terms” se poate salva (în `radacini_onboarding`, cheie user_id);
+# la citire se îmbină cu pașii din profil. Celelalte acțiuni cer profilul (409 „Completează profilul”).
+
+NEED_PROFILE = "Completează profilul."
+
+
+@router.post("/members/me/onboarding")
+async def onboarding_step(body: StepIn, user: dict = Depends(get_current_user)):
+    uid = str(user["id"])
+    now = now_iso()
+    member = await get_member_doc(uid)
+    if member:
+        await db.radacini_members.update_one(
+            {"user_id": uid}, {"$addToSet": {"onboarding.steps_done": body.step}, "$set": {"updated_at": now}})
+    elif body.step == "terms":
+        await db.radacini_onboarding.update_one(
+            {"user_id": uid}, {"$addToSet": {"steps_done": body.step},
+                               "$setOnInsert": mark_demo({"user_id": uid, "created_at": now})}, upsert=True)
+    else:
+        raise HTTPException(409, NEED_PROFILE)
+    member = await get_member_doc(uid)
+    pre = await _pre_onboarding(uid)
+    return {"onboarding": _onboarding_view((member or {}).get("onboarding"), pre)}
+
+
+@router.post("/members/me/onboarding/complete")
+async def onboarding_complete(user: dict = Depends(get_current_user)):
+    uid = str(user["id"])
+    if not await get_member_doc(uid):
+        raise HTTPException(409, NEED_PROFILE)
+    now = now_iso()
+    await db.radacini_members.update_one(
+        {"user_id": uid}, {"$set": {"onboarding.completed_at": now, "updated_at": now}})
+    member = await get_member_doc(uid)
+    return {"onboarding": _onboarding_view(member.get("onboarding"), await _pre_onboarding(uid))}
+
+
+@router.post("/members/me/onboarding/reset")
+async def onboarding_reset(user: dict = Depends(get_current_user)):
+    """Reia ghidul din Setări: șterge pașii și data finalizării (acceptarea termenilor rămâne valabilă)."""
+    uid = str(user["id"])
+    if not await get_member_doc(uid):
+        raise HTTPException(409, NEED_PROFILE)
+    await db.radacini_members.update_one(
+        {"user_id": uid}, {"$set": {"onboarding": {"steps_done": [], "completed_at": None}, "updated_at": now_iso()}})
+    await db.radacini_onboarding.delete_many({"user_id": uid})
+    return {"onboarding": _onboarding_view(None, None)}

@@ -10,6 +10,10 @@ import { DSSkeleton } from "../../design-system";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "../../components/ui/sheet";
 import { NAV, canSee } from "./config";
 import { StaffContext, useStaffLoader } from "./hooks";
+import { TermsGateProvider } from "./components/TermsGate";
+import OnboardingGuide from "./components/OnboardingGuide";
+import MobileNav from "./components/MobileNav";
+import PwaHead from "./components/PwaHead";
 
 const linkCls = ({ isActive }) =>
   `flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
@@ -160,15 +164,20 @@ export const RadaciniLayout = () => {
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-6">
+        <main className="flex-1 p-4 pb-24 md:p-6 print:pb-0">
           <StaffContext.Provider value={staffState}>
-            <Suspense fallback={<DSSkeleton kpis={3} blocks={2} />}>
-              <Outlet />
-            </Suspense>
+            <TermsGateProvider>
+              <Suspense fallback={<DSSkeleton kpis={3} blocks={2} />}>
+                <Outlet />
+              </Suspense>
+              <OnboardingGuide />
+            </TermsGateProvider>
           </StaffContext.Provider>
         </main>
       </div>
       </div>
+      <PwaHead />
+      <MobileNav onMenu={() => setOpen(true)} />
     </div>
   );
 };

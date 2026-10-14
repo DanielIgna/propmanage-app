@@ -275,7 +275,11 @@ frontend/node_modules/.cache/default-development/246.pack
 
 # Next.js / OpenNext (frontend)
 frontend/.next/
+frontend/.next-preview/
 frontend/.open-next/
 frontend/next-env.d.ts
 frontend/cloudflare-env.d.ts
 frontend/.dev.vars
+
+# Rădăcini — documente-sursă pentru analiza composesoratelor (pot conține date personale; nu se versionează)
+docs/radacini/composesorate/surse/

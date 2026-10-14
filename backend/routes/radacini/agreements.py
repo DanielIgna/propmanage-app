@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
 
 from .bridge import block_in_impersonation, db, emit, get_current_user, is_super_admin, serialize_doc
+from .legal_terms import require_terms
 from .common import RadaciniRoute, check_price, now_iso, oid_or_404, safe_notify
 from .projects import create_project_for_agreement
 from .requests import (
@@ -345,7 +346,7 @@ async def _cancel_competing_agreements(agreement: dict, user: dict) -> None:
         )
 
 
-@router.post("/agreements/{agreement_id}/sign")
+@router.post("/agreements/{agreement_id}/sign", dependencies=[Depends(require_terms)])
 async def sign_agreement(
     agreement_id: str, body: SignIn, request: Request, user: dict = Depends(get_current_user)
 ):

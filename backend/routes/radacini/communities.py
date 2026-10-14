@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
 from .bridge import db, emit, get_current_user, serialize_doc
+from .legal_terms import require_terms
 from .common import RadaciniRoute, mark_demo, now_iso, oid_or_404, safe_notify
 from .constants import LOCALITIES
 
@@ -134,7 +135,7 @@ async def list_communities(locality: Optional[str] = None, q: Optional[str] = No
     return {"items": [_community_out(d, mine.get(str(d["_id"]))) for d in docs]}
 
 
-@router.post("/communities")
+@router.post("/communities", dependencies=[Depends(require_terms)])
 async def create_community(body: CommunityIn, user: dict = Depends(get_current_user)):
     uid = str(user["id"])
     if await db.radacini_communities.count_documents({"created_by": uid}) >= MAX_CREATED_PER_USER:
@@ -187,7 +188,7 @@ async def _insert_membership(community: dict, user: dict, status: str) -> bool:
     return res.upserted_id is not None
 
 
-@router.post("/communities/{community_id}/join")
+@router.post("/communities/{community_id}/join", dependencies=[Depends(require_terms)])
 async def join_community(community_id: str, user: dict = Depends(get_current_user)):
     community = await _load_community(community_id)
     status = "active" if community.get("visibility") == "open" else "pending"

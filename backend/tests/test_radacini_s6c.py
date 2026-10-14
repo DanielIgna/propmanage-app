@@ -70,6 +70,8 @@ def _login(email, passwords):
     s = requests.Session()
     for pwd in passwords:
         if s.post(f"{api}/auth/login", json={"email": email, "password": pwd}, timeout=20).status_code == 200:
+            for d in s.get(f"{api}/radacini/legal/documents", timeout=20).json().get("items", []):
+                s.post(f"{api}/radacini/legal/accept", json={"type": d["type"], "version": d["version"]}, timeout=20)
             return s, api
     pytest.skip(f"login failed for {email}")
 

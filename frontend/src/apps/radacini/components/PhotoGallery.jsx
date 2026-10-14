@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ImagePlus, Trash2 } from "lucide-react";
+import { Camera, ImagePlus, Trash2 } from "lucide-react";
 import { CARD, DSButton } from "../../../design-system";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
 import { useConfirm } from "./ConfirmDialog";
@@ -22,6 +22,7 @@ export default function PhotoGallery({ targetType, targetId, canUpload = false, 
   const [busyId, setBusyId] = useState(null);
   const [viewing, setViewing] = useState(null);
   const fileRef = useRef(null);
+  const camRef = useRef(null);
 
   const load = useCallback(async () => {
     try {
@@ -85,6 +86,7 @@ export default function PhotoGallery({ targetType, targetId, canUpload = false, 
         {canUpload && (
           <>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onFile} data-testid="radacini-galerie-input" />
+            <input ref={camRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={onFile} data-testid="radacini-galerie-camera-input" />
             <DSButton
               variant="secondary"
               icon={ImagePlus}
@@ -93,6 +95,16 @@ export default function PhotoGallery({ targetType, targetId, canUpload = false, 
               data-testid="radacini-galerie-incarca"
             >
               {uploading ? "Se încarcă…" : "Adaugă fotografie"}
+            </DSButton>
+            <DSButton
+              variant="secondary"
+              icon={Camera}
+              className="md:hidden"
+              disabled={uploading || items.length >= MAX_PHOTOS}
+              onClick={() => camRef.current?.click()}
+              data-testid="radacini-galerie-camera"
+            >
+              Fă o poză
             </DSButton>
           </>
         )}

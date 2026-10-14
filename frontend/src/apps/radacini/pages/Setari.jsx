@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Download, Trash2 } from "lucide-react";
 import { useAuth } from "../../../auth";
 import { CARD, DSButton } from "../../../design-system";
 import { useConfirm } from "../components/ConfirmDialog";
 import { radaciniApi, errMsg } from "../api";
+import { s8Api, ONBOARDING_OPEN_EVENT } from "../api_s8";
 
 export default function Setari() {
   const { user } = useAuth();
@@ -12,6 +13,19 @@ export default function Setari() {
   const [exporting, setExporting] = useState(false);
   const [requesting, setRequesting] = useState(false);
   const [requested, setRequested] = useState(false);
+
+  const [accepted, setAccepted] = useState(null);
+  useEffect(() => {
+    s8Api.legalMe().then((d) => setAccepted(d?.accepted || [])).catch(() => setAccepted([]));
+  }, []);
+  const restartGuide = async () => {
+    try {
+      await s8Api.onboardingReset();
+      window.dispatchEvent(new Event(ONBOARDING_OPEN_EVENT));
+    } catch (e) {
+      toast.error(errMsg(e, "Nu am putut relua ghidul"));
+    }
+  };
 
   const downloadData = async () => {
     setExporting(true);
@@ -70,6 +84,21 @@ export default function Setari() {
         <p className="text-sm text-slate-600 dark:text-slate-300">Nume: {user?.full_name || user?.name || "—"}</p>
         <p className="text-sm text-slate-600 dark:text-slate-300">Email: {user?.email || "—"}</p>
       </div>
+
+      <section className={`${CARD} p-5 space-y-3`} data-testid="radacini-setari-termeni">
+        <h2 className="text-base font-bold text-slate-900 dark:text-white">Termeni și ghid</h2>
+        {accepted && accepted.length === 0 && <p className="text-sm text-slate-600 dark:text-slate-300">Nu ai acceptat încă termenii.</p>}
+        {accepted?.map((a, i) => (
+          <p key={`${a.type}-${i}`} className="text-sm text-slate-600 dark:text-slate-300">
+            {a.type === "privacy" ? "Confidențialitate" : "Termeni"} · versiunea {a.version}
+            {a.accepted_at ? ` · acceptat la ${new Date(a.accepted_at).toLocaleDateString("ro-RO")}` : ""}
+          </p>
+        ))}
+        <div className="flex flex-wrap gap-2">
+          <a href="/radacini/termeni" target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-700 underline self-center">Citește termenii</a>
+          <DSButton variant="secondary" onClick={restartGuide} data-testid="radacini-reia-ghid">Reia ghidul</DSButton>
+        </div>
+      </section>
 
       <section className={`${CARD} p-5 space-y-4`} data-testid="radacini-gdpr">
         <div className="space-y-1">

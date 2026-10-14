@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
 from .bridge import block_in_impersonation, db, emit, get_current_user, serialize_doc
+from .legal_terms import require_terms
 from .common import (
     RadaciniRoute,
     check_price,
@@ -274,7 +275,7 @@ async def _ensure_member(user: dict) -> dict:
 
 # ----------------------------------------------------------------- rute
 
-@router.post("/parcels/{parcel_id}/requests")
+@router.post("/parcels/{parcel_id}/requests", dependencies=[Depends(require_terms)])
 async def create_request(parcel_id: str, body: RequestIn, user: dict = Depends(get_current_user)):
     block_in_impersonation(user, "trimiterea cererii")
     # Poarta juridică: `sale` și `joint_project` se pot afișa în ofertă, dar nu se pot solicita (încă).

@@ -18,6 +18,9 @@ log = logging.getLogger(__name__)
 router = APIRouter(route_class=RadaciniRoute)
 
 EMAIL_DOMAIN = "test.radacini.ro"
+TERMS_VERSION = "2026-10-pilot"  # versiunea curentă din legal_terms.py
+ONBOARDING_ALL = ("terms", "profile", "discover", "notifications")
+CONSENT_VERSION = "2026-10"  # ca în households.py
 
 PERSONAS = [
     {"key": "proprietar", "name": "Ion Pop", "label": "Proprietar de teren", "locality": "Florești",
@@ -102,6 +105,15 @@ async def _ensure(admin: dict) -> list:
              "$set": {"updated_at": now}},
             upsert=True,
         )
+        member = await db.radacini_members.find_one({"user_id": uid})
+        if member and not member.get("onboarding"):  # personajele nu mai trec prin ghidul de pornire
+            await db.radacini_members.update_one(
+                {"user_id": uid}, {"$set": {"onboarding": {"steps_done": list(ONBOARDING_ALL), "completed_at": now}}})
+        for doc_type in ("terms", "privacy"):  # termenii Rădăcini acceptați automat (idempotent)
+            f = {"user_id": uid, "type": doc_type, "version": TERMS_VERSION}
+            if not await db.radacini_legal_acceptances.find_one(f):
+                await db.radacini_legal_acceptances.insert_one({
+                    **f, "accepted_at": now, "ip": "127.0.0.1", "user_agent": "radacini-test-persona", "is_demo": True})
         if p["staff"]:
             await db.radacini_staff.update_one(
                 {"user_id": uid},
@@ -127,6 +139,9 @@ COLLECTIONS = [
     "radacini_projects", "radacini_crop_plans", "radacini_activities", "radacini_contributions",
     "radacini_harvests", "radacini_allocations", "radacini_listings", "radacini_reservations",
     "radacini_seller_stats",
+    "radacini_communities", "radacini_community_members", "radacini_community_posts", "radacini_decisions",
+    "radacini_households", "radacini_consents", "radacini_disputes", "radacini_project_needs",
+    "radacini_providers", "radacini_service_requests",
 ]
 SEED_TAG = {"is_demo": True, "demo_seed": True}
 
@@ -166,6 +181,8 @@ def _build_scenario(U: dict) -> dict:
     ACT_DONE, ACT_WORK, ACT_IRR = oid(), oid(), oid()
     H1, H2 = oid(), oid()
     L1, L2, L3, L4, L5 = (oid() for _ in range(5))
+    CM, POST1, POST2, DEC1, HH, DSP = (oid() for _ in range(6))
+    RES2, N_SEM, N_FUR, CT_SEM, CT_FUR, SREQ = (oid() for _ in range(6))
     sid = str
 
     def verification(at):
@@ -348,6 +365,14 @@ def _build_scenario(U: dict) -> dict:
                 ts(25), sid(ACT_DONE), reviewer=ion),
         contrib(andrei, "materials", 10, "kg", "Compost adus pentru stratul de castraveți", d(-4), "logged", ts(4)),
         contrib(maria, "money", 120, "RON", "Semințe și răsaduri", d(-28), "confirmed", ts(28), reviewer=ion),
+        {"_id": CT_SEM, "project_id": pr, "member_user_id": maria, "member_name": name["familie"],
+         "kind": "materials", "amount": 1.0, "unit": "kg", "description": "Adus pentru necesar: Semințe fasole",
+         "activity_id": None, "date": d(-1), "status": "logged", "corrects_id": None, "need_id": sid(N_SEM),
+         "created_at": ts(1)},
+        {"_id": CT_FUR, "project_id": pr, "member_user_id": ion, "member_name": name["proprietar"],
+         "kind": "tools", "amount": 1.0, "unit": "buc", "description": "Adus pentru necesar: Furtun irigații",
+         "activity_id": None, "date": d(-2), "status": "logged", "corrects_id": None, "need_id": sid(N_FUR),
+         "created_at": ts(2)},
     ]
 
     harvests = [
@@ -408,7 +433,8 @@ def _build_scenario(U: dict) -> dict:
     reservations = [
         reservation(L1, elena, andrei, 3, "cash_on_pickup", "requested", ts(0, 6),
                     message="Pot trece sâmbătă dimineață?"),
-        reservation(L2, elena, andrei, 10, "cash_on_pickup", "confirmed", ts(3), extra={"updated_at": ts(2)}),
+        reservation(L2, elena, andrei, 10, "cash_on_pickup", "confirmed", ts(3),
+                    extra={"_id": RES2, "updated_at": ts(2)}),
         reservation(L3, elena, andrei, 1, "cash_on_pickup", "picked_up", ts(7), extra={
             "updated_at": ts(5), "rating": 5, "rating_comment": "Miere excelentă, vânzătoare foarte amabilă!",
             "rated_at": ts(5)}),
@@ -417,7 +443,87 @@ def _build_scenario(U: dict) -> dict:
     ]
     stats = [{"seller_user_id": elena, "rating_sum": 5, "rating_count": 1, "created_at": ts(5), "updated_at": ts(5)}]
 
+    # ---- S6: comunitate deschisă (Florești), anunțuri, decizie în vot
+    communities = [{"_id": CM, "name": "Grădinarii din Florești", "locality": "Florești",
+                    "description": "Grădinari amatori din Florești: schimbăm semințe, sfaturi și zile de lucru.",
+                    "visibility": "open", "created_by": ion, "members_count": 3, "created_at": ts(20)}]
+    cm = sid(CM)
+    community_members = [
+        {"community_id": cm, "user_id": ion, "name": "Ion", "role": "coordinator", "status": "active", "joined_at": ts(20)},
+        {"community_id": cm, "user_id": maria, "name": "Maria", "role": "member", "status": "active", "joined_at": ts(18)},
+        {"community_id": cm, "user_id": andrei, "name": "Andrei", "role": "member", "status": "active", "joined_at": ts(15)},
+    ]
+    posts = [
+        {"_id": POST1, "community_id": cm, "author_id": ion, "author_name": "Ion",
+         "text": "Bun venit! Regula casei: ne ajutăm între vecini și păstrăm grădina curată.",
+         "pinned": True, "created_at": ts(19)},
+        {"_id": POST2, "community_id": cm, "author_id": maria, "author_name": "Maria",
+         "text": "Am semințe de fasole în plus, cine vrea să încerce soiul?", "pinned": False, "created_at": ts(2)},
+    ]
+    decisions = [{
+        "_id": DEC1, "scope": "community", "scope_id": cm, "question": "Ziua de lucru: sâmbătă sau duminică?",
+        "options": ["Sâmbătă", "Duminică"], "closes_at": (now + timedelta(days=5)).isoformat(),
+        "created_by": ion, "status": "open", "votes": [{"user_id": maria, "option_index": 0, "at": ts(1)}],
+        "rev": 1, "created_at": ts(3)}]
+
+    # ---- S6: gospodăria Mariei (adult acceptat + minor cu consimțământ)
+    households = [{
+        "_id": HH, "name": "Familia Ionescu", "owner_user_id": maria,
+        "members": [
+            {"user_id": maria, "name": "Maria", "relation": "titular", "is_minor": False, "status": "active"},
+            {"user_id": andrei, "name": "Andrei", "relation": "partener", "is_minor": False, "status": "active",
+             "invited_at": ts(10), "accepted_at": ts(9)},
+            {"name": "Ana", "relation": "fiică", "is_minor": True, "birth_year": 2016},
+        ],
+        "member_ids": [maria, andrei], "invited_user_ids": [], "rev": 2, "created_at": ts(10), "updated_at": ts(9)}]
+    consents = [{"user_id": maria, "kind": "minor_data", "subject_name": "Ana", "version": CONSENT_VERSION,
+                 "at": ts(10), "ip": "127.0.0.1", "user_agent": "radacini-test-persona", "household_id": sid(HH)}]
+
+    # ---- S6: dispută în mediere (rezervarea confirmată Andrei–Elena)
+    disputes = [{
+        "_id": DSP, "scope_type": "reservation", "scope_id": sid(RES2), "opened_by": andrei,
+        "against_user_id": elena, "party_ids": [andrei, elena],
+        "reason": "Ouăle ridicate nu au fost cele convenite (am primit mai puține decât în rezervare).",
+        "status": "in_mediation", "mediator_user_id": vasile, "taken_at": ts(0, 20),
+        "messages": [
+            {"user_id": andrei, "name": name["consumator"], "at": ts(1),
+             "text": "Am ridicat doar 6 ouă din cele 10 rezervate."},
+            {"user_id": vasile, "name": name["operator"], "at": ts(0, 20),
+             "text": "Bună ziua, am preluat disputa. Elena, puteți completa diferența sâmbătă?"},
+        ],
+        "locality": "Gilău", "created_at": ts(1, 2), "updated_at": ts(0, 20)}]
+
+    # ---- S7: necesar pe proiect, prestator, cerere de lucrare
+    needs = [
+        {"_id": N_SEM, "project_id": pr, "kind": "seeds", "item": "Semințe fasole", "quantity": 2.0, "unit": "kg",
+         "status": "needed",
+         "pledges": [
+             {"user_id": maria, "name": "Maria", "quantity": 1.0, "at": ts(3), "fulfilled": True,
+              "fulfilled_at": ts(1), "contribution_id": sid(CT_SEM)},
+             {"user_id": andrei, "name": "Andrei", "quantity": 0.5, "at": ts(2), "fulfilled": False}],
+         "created_by": maria, "rev": 3, "created_at": ts(4), "updated_at": ts(1)},
+        {"_id": N_FUR, "project_id": pr, "kind": "tools", "item": "Furtun irigații", "quantity": 1.0, "unit": "buc",
+         "status": "covered",
+         "pledges": [{"user_id": ion, "name": "Ion", "quantity": 1.0, "at": ts(4), "fulfilled": True,
+                      "fulfilled_at": ts(2), "contribution_id": sid(CT_FUR)}],
+         "created_by": maria, "rev": 2, "created_at": ts(5), "updated_at": ts(2)},
+    ]
+    providers = [{"user_id": vasile, "name": name["operator"], "services": ["arat", "frezat", "transport"],
+                  "localities": ["Florești", "Gilău"], "note": "Tractor cu plug și freză, disponibil în weekend.",
+                  "active": True, "rating_sum": 0, "rating_count": 0, "created_at": ts(12), "updated_at": ts(12)}]
+    service_requests = [{
+        "_id": SREQ, "project_id": pr, "service_type": "arat", "description": "Arat 1500 m²",
+        "area_m2": 1500.0, "window_from": d(3), "window_to": d(20), "locality": "Florești", "status": "open",
+        "offers": [{"provider_user_id": vasile, "name": name["operator"], "price_ron_indicative": 300.0,
+                    "message": "Pot veni sâmbăta viitoare, preț orientativ, plata direct.", "at": ts(0, 6)}],
+        "created_by": maria, "rev": 1, "created_at": ts(1), "updated_at": ts(0, 6)}]
+
     return {
+        "radacini_communities": communities, "radacini_community_members": community_members,
+        "radacini_community_posts": posts, "radacini_decisions": decisions,
+        "radacini_households": households, "radacini_consents": consents, "radacini_disputes": disputes,
+        "radacini_project_needs": needs, "radacini_providers": providers,
+        "radacini_service_requests": service_requests,
         "radacini_parcels": parcels, "radacini_land_requests": requests, "radacini_request_messages": messages,
         "radacini_agreements": agreements, "radacini_projects": projects, "radacini_crop_plans": crops,
         "radacini_activities": activities, "radacini_contributions": contributions,
@@ -450,9 +556,24 @@ async def _delete_seed() -> dict:
     proj_ids = await ids("radacini_projects", flt(parcel_id=parcel_ids, agreement_id=agr_ids))
     harv_ids = await ids("radacini_harvests", flt(project_id=proj_ids))
     res_flt = flt(listing_id=listing_ids)
+    comm_ids = await ids("radacini_communities", {"demo_seed": True})
+    hh_ids = await ids("radacini_households", {"demo_seed": True})
+    res_ids = await ids("radacini_reservations", res_flt)
+    contrib_ids = await ids("radacini_contributions", flt(project_id=proj_ids))
     sellers = sorted({r["seller_user_id"] for r in await coll("radacini_reservations").find(
         res_flt, {"seller_user_id": 1}).to_list(5000)})
 
+    # S6/S7: disputele și deciziile legate de obiectele demo, comunitatea cu dependențele ei, necesarul și cererile
+    await delete("radacini_disputes", flt(scope_id=[*res_ids, *agr_ids, *harv_ids, *contrib_ids]))
+    await delete("radacini_decisions", flt(scope_id=[*comm_ids, *proj_ids]))
+    for n in ("radacini_community_posts", "radacini_community_members"):
+        await delete(n, flt(community_id=comm_ids))
+    await delete("radacini_communities", {"demo_seed": True})
+    await delete("radacini_consents", flt(household_id=hh_ids))
+    await delete("radacini_households", {"demo_seed": True})
+    await delete("radacini_providers", {"demo_seed": True})
+    for n in ("radacini_project_needs", "radacini_service_requests"):
+        await delete(n, flt(project_id=proj_ids))
     if req_ids:
         await delete("radacini_request_messages", {"request_id": {"$in": req_ids}})
     await delete("radacini_request_messages", {"demo_seed": True})
@@ -479,7 +600,16 @@ async def seed_demo_scenario(admin: dict = Depends(require_super_admin)):
     for name in COLLECTIONS:
         if await getattr(db, name).find_one({"demo_seed": True}, {"_id": 1}):
             raise HTTPException(409, "Datele demo există deja. Resetează-le întâi.")
-    scenario = _build_scenario(await _persona_ids())
+    ids = await _persona_ids()
+    scenario = _build_scenario(ids)
+    # Un singur profil de gospodărie/prestator per utilizator: dacă există deja unul real, nu-l atingem.
+    skipped = []
+    if await db.radacini_households.find_one({"owner_user_id": ids["familie"]}, {"_id": 1}):
+        scenario["radacini_households"], scenario["radacini_consents"] = [], []
+        skipped.append("households")
+    if await db.radacini_providers.find_one({"user_id": ids["operator"]}, {"_id": 1}):
+        scenario["radacini_providers"] = []
+        skipped.append("providers")
     counts: dict = {}
     try:
         for name, docs in scenario.items():
@@ -491,7 +621,7 @@ async def seed_demo_scenario(admin: dict = Depends(require_super_admin)):
         await _delete_seed()
         raise HTTPException(500, "Scenariul demo nu a putut fi creat. Nu s-a păstrat nimic.")
     await audit_staff(admin, "test_accounts.seed", "radacini_test_accounts", None, {"counts": counts, "total": sum(counts.values())})
-    return {"ok": True, "counts": counts, "total": sum(counts.values())}
+    return {"ok": True, "counts": counts, "total": sum(counts.values()), "skipped": skipped}
 
 
 @router.post("/test-accounts/reset")

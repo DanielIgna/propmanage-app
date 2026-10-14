@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
 from .bridge import block_in_impersonation, db, emit, get_current_user, serialize_doc
+from .legal_terms import require_terms
 from .common import RadaciniRoute, mark_demo, now_iso, oid_or_404, safe_notify
 from .projects import ensure_active, load_project, need_coordinator, need_member, project_link, today_str
 
@@ -152,7 +153,7 @@ async def create_need(project_id: str, body: NeedIn, user: dict = Depends(get_cu
     return {"need": _view(doc, str(user["id"]))}
 
 
-@router.post("/needs/{need_id}/pledge")
+@router.post("/needs/{need_id}/pledge", dependencies=[Depends(require_terms)])
 async def pledge_need(need_id: str, body: PledgeIn, user: dict = Depends(get_current_user)):
     block_in_impersonation(user, "promisiunea de necesar")
     uid = str(user["id"])

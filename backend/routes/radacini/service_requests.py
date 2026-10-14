@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
 from .bridge import block_in_impersonation, db, emit, get_current_user, serialize_doc
+from .legal_terms import require_terms
 from .common import RadaciniRoute, mark_demo, now_iso, oid_or_404, safe_notify
 from .constants import LOCALITIES
 from .projects import ensure_active, load_project, need_coordinator, project_link, today_str
@@ -376,7 +377,7 @@ async def open_service_requests(user: dict = Depends(get_current_user)):
     return {"items": items}
 
 
-@router.post("/service-requests/{request_id}/offers")
+@router.post("/service-requests/{request_id}/offers", dependencies=[Depends(require_terms)])
 async def make_offer(request_id: str, body: OfferIn, user: dict = Depends(get_current_user)):
     block_in_impersonation(user, "oferta de lucrare")
     uid = str(user["id"])

@@ -65,6 +65,9 @@ COLLECTIONS = (
     "radacini_project_needs",
     "radacini_providers",
     "radacini_service_requests",
+    # S8 (documentele legale nu sunt demo; acceptările și onboarding-ul conturilor de test sunt is_demo)
+    "radacini_legal_acceptances",
+    "radacini_onboarding",
 )
 DEMO_FILTER = {"is_demo": True}
 SCAN_LIMIT = 100000

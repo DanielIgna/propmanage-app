@@ -12,7 +12,7 @@ Decizii luate (2026-10-13): modul în aceeași aplicație; aceleași conturi; MV
 | S5 | Administrare Rădăcini (KPI, activitate, membri, moderare, GDPR, audit) + intrare în adminul PropManage + Knowledge Center | gata (52 teste; total 519) |
 | S6 | Comunități, gospodării, decizii, hartă cu zone, distanță, dispute, pagini publice, fotografii | gata (S6+S7: 65 teste; regresie 519) |
 | S7 | Necesar semințe/unelte, lucrări mecanizate și prestatori | gata |
-| S8 | Pregătirea pilotului: termeni Rădăcini, onboarding, mobil/PWA, demo extins, dosar jurist, costuri | în lucru |
+| S8 | Pregătirea pilotului: termeni Rădăcini, onboarding, mobil/PWA, demo extins, dosar jurist, costuri | gata (suită completă: 591 teste) |
 
 ---
 

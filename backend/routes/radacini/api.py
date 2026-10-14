@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from . import (
     activities, admin, agreements, communities, contributions, crops, decisions, disputes, gdpr, harvests,
-    households, market, members, needs, parcels, photos, projects, public, requests, service_requests, staff,
+    households, legal_terms, market, members, needs, parcels, photos, projects, public, requests, service_requests, staff,
     test_accounts,
 )
 from .bridge import get_current_user
@@ -52,6 +52,7 @@ async def meta():
 
 
 router.include_router(members.router)
+router.include_router(legal_terms.router)
 router.include_router(parcels.router)
 # disputes înaintea staff: /staff/disputes trebuie potrivit înaintea rutelor /staff/{…}
 router.include_router(disputes.router)

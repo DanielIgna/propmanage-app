@@ -13,23 +13,34 @@ const SCENARIO = {
     "Terenuri: unul publicat, unul în verificare, o ciornă și unul cu acord semnat",
     "Acord semnat cu Maria și Proiectul din acesta (recoltă de confirmat: castraveți)",
     "Piață: anunțul tău de roșii (preț de referință)",
+    "Comunități: coordonator în „Grădinarii din Florești” (anunț fixat, decizie în vot)",
   ],
   familie: [
     "Cereri trimise: una așteaptă răspuns, una acceptată",
     "Acord semnat și Proiect: culturi, calendar, contribuții și recolte",
     "Piață: anunțul tău de castraveți și o cerere de schimb pentru ouă",
+    "Gospodăria mea: „Familia Ionescu” (Andrei adult, Ana minor cu consimțământ)",
+    "Proiect → Necesar: semințe de fasole (promisiuni) · Lucrări: „Arat 1500 m²” cu oferta lui Vasile",
+    "Comunitate: ai votat decizia despre ziua de lucru",
   ],
   producator: [
     "Piață: 3 anunțuri (roșii, ouă, miere) cu rezervări de confirmat",
     "Cereri primite: Andrei (refuzată) și un acord trimis spre semnare",
     "Teren propriu publicat (Solar Gilău) și o cerere în negociere la terenul lui Ion",
+    "Dispute: parte într-o dispută în mediere (rezervarea de ouă cu Andrei)",
   ],
   consumator: [
     "Rezervări: una în așteptare, una confirmată, una ridicată și evaluată",
     "Acord de semnat cu Elena (semnarea e blocată în modul de impersonare)",
     "Participant în proiectul familiei: alocare de 10 kg de recoltă",
+    "Dispute: ai deschis o dispută pe rezervarea de ouă (în mediere)",
+    "Comunitate: poți vota decizia despre ziua de lucru · Necesar: promisiune de 0,5 kg de adus",
   ],
-  operator: ["Operator: 1 teren în verificare (Teren arabil Gilău, 1 ha)"],
+  operator: [
+    "Operator: 1 teren în verificare (Teren arabil Gilău, 1 ha)",
+    "Dispute: mediator pe disputa rezervării de ouă",
+    "Prestator: arat, frezat, transport · ofertă de 300 RON pentru „Arat 1500 m²”",
+  ],
   manager: ["Operator: 1 teren în verificare; vede toate localitățile și personalul"],
 };
 

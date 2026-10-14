@@ -47,6 +47,13 @@ _created_ids = []
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
+def _accept_terms(s):
+    """Termenii Rădăcini (S8) sunt obligatorii pentru acțiuni: contul de test îi acceptă pe cei curenți."""
+    docs = s.get(f"{API}/radacini/legal/documents", timeout=TIMEOUT).json().get("items", [])
+    for d in docs:
+        s.post(f"{API}/radacini/legal/accept", json={"type": d["type"], "version": d["version"]}, timeout=TIMEOUT)
+
+
 def _login(email, passwords):
     s = requests.Session()
     last = None
@@ -54,6 +61,7 @@ def _login(email, passwords):
         r = s.post(f"{API}/auth/login", json={"email": email, "password": pwd}, timeout=TIMEOUT)
         last = r.status_code
         if r.status_code == 200:
+            _accept_terms(s)
             return s
     pytest.skip(f"Login failed for {email} (last={last})")
 

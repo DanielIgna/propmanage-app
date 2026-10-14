@@ -33,6 +33,7 @@ const ComunitateDetaliu = lazy(() => import("./pages/ComunitateDetaliu"));
 const Gospodaria = lazy(() => import("./pages/Gospodaria"));
 const Dispute = lazy(() => import("./pages/Dispute"));
 const DisputaDetaliu = lazy(() => import("./pages/DisputaDetaliu"));
+const Termeni = lazy(() => import("./pages/Termeni"));
 const Prestator = lazy(() => import("./pages/Prestator"));
 
 export function radaciniRoutes() {
@@ -43,6 +44,7 @@ export function radaciniRoutes() {
     <Route path="/radacini/login" element={<Suspense fallback={null}><Login /></Suspense>} />
     {/* Pagina publică, fără cont. */}
     <Route path="/radacini/descopera" element={<Suspense fallback={null}><Descopera /></Suspense>} />
+    <Route path="/radacini/termeni" element={<Suspense fallback={null}><Termeni /></Suspense>} />
     <Route path="/radacini" element={<RadaciniLayout />}>
       <Route index element={<Panou />} />
       <Route path="profil" element={<Profil />} />

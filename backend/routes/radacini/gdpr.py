@@ -114,6 +114,7 @@ async def export_my_data(user: dict = Depends(get_current_user)):
         "seller_stats": serialize_doc(stats),
         "location_access_log": await _location_access(uid, [p["id"] for p in parcels], truncated),
         "deletion_requests": await fetch("radacini_deletion_requests", {"user_id": uid}, "deletion_requests"),
+        "legal_acceptances": await db.radacini_legal_acceptances.find({"user_id": uid}).limit(100).to_list(100),
         "truncated": sorted(set(truncated)),
     }
     return JSONResponse(

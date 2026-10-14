@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
 
 from .bridge import db, emit, get_current_user, serialize_doc
+from .legal_terms import require_terms
 from .common import RadaciniRoute, mark_demo, now_iso, oid_or_404, safe_notify
 from .constants import (
     LISTING_CATEGORY_IDS,
@@ -556,7 +557,7 @@ async def get_listing(listing_id: str, user: dict = Depends(get_current_user)):
     return {"listing": item}
 
 
-@router.post("/listings")
+@router.post("/listings", dependencies=[Depends(require_terms)])
 async def create_listing(body: ListingIn, user: dict = Depends(get_current_user)):
     uid = str(user["id"])
     await _require_profile(user, "a publica un anunț")
@@ -743,7 +744,7 @@ async def _notify_other(res: dict, side: str, title: str, text: str, event: str,
 
 # ----------------------------------------------------------------- rute: rezervări
 
-@router.post("/listings/{listing_id}/reservations")
+@router.post("/listings/{listing_id}/reservations", dependencies=[Depends(require_terms)])
 async def create_reservation(listing_id: str, body: ReservationIn, user: dict = Depends(get_current_user)):
     uid = str(user["id"])
     listing = await _load_listing(listing_id)

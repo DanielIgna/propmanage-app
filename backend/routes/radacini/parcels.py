@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator, model_validator
 
 from .bridge import block_in_impersonation, db, emit, get_current_user, serialize_doc
+from .legal_terms import require_terms
 from .common import (
     RadaciniRoute,
     check_finite,
@@ -377,7 +378,7 @@ async def list_public_parcels(
     return {"items": items, "total": total}
 
 
-@router.post("/parcels")
+@router.post("/parcels", dependencies=[Depends(require_terms)])
 async def create_parcel(body: ParcelCreate, user: dict = Depends(get_current_user)):
     uid = str(user["id"])
     member = await get_member_doc(uid)
@@ -485,7 +486,7 @@ async def patch_parcel(parcel_id: str, body: ParcelPatch, user: dict = Depends(g
     return out
 
 
-@router.post("/parcels/{parcel_id}/submit")
+@router.post("/parcels/{parcel_id}/submit", dependencies=[Depends(require_terms)])
 async def submit_parcel(parcel_id: str, user: dict = Depends(get_current_user)):
     block_in_impersonation(user, "trimiterea terenului la verificare")
     doc = await _owned_or_404(parcel_id, user)
