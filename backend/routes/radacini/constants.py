@@ -9,14 +9,17 @@ INTERESTS = [
     {"id": "community", "label": "Comunitate și evenimente"},
 ]
 
+# `requestable`: modelele `sale` și `joint_project` pot fi afișate în ofertele terenurilor, dar cererile pe ele
+# sunt blocate până la avizul juridic (POST /parcels/{id}/requests -> 409).
 OFFER_MODELS = [
-    {"id": "rent", "label": "Arendă / închiriere"},
-    {"id": "harvest_share", "label": "Cultivare la parte din recoltă"},
-    {"id": "fixed_fee", "label": "Cultivare contra sumă fixă"},
-    {"id": "mixed", "label": "Model mixt"},
-    {"id": "sale", "label": "Vânzare"},
-    {"id": "joint_project", "label": "Proiect comun"},
+    {"id": "rent", "label": "Arendă / închiriere", "requestable": True},
+    {"id": "harvest_share", "label": "Cultivare la parte din recoltă", "requestable": True},
+    {"id": "fixed_fee", "label": "Cultivare contra sumă fixă", "requestable": True},
+    {"id": "mixed", "label": "Model mixt", "requestable": True},
+    {"id": "sale", "label": "Vânzare", "requestable": False},
+    {"id": "joint_project", "label": "Proiect comun", "requestable": False},
 ]
+LEGAL_GATE_MESSAGE = "Acest model necesită aviz juridic și nu e încă disponibil în platformă."
 
 WATER_SOURCES = [
     {"id": "well", "label": "Fântână"},
@@ -36,6 +39,7 @@ COUNTY = "Cluj"
 
 INTEREST_IDS = {i["id"] for i in INTERESTS}
 OFFER_MODEL_IDS = {m["id"] for m in OFFER_MODELS}
+REQUESTABLE_MODEL_IDS = {m["id"] for m in OFFER_MODELS if m["requestable"]}
 WATER_SOURCE_IDS = {w["id"] for w in WATER_SOURCES}
 
 CROP_FAMILIES = [

@@ -141,14 +141,14 @@ def _harvest_view(h: dict, project: dict, allocs: Optional[list[dict]] = None) -
 
 
 async def _agreement_percent(project: dict) -> int:
-    """Procentul din recoltă al proprietarului, doar dacă acordul e `harvest_share`."""
+    """Procentul din recoltă al proprietarului, pentru acordurile `harvest_share` și `mixed` (procent opțional)."""
     agreement_id = project.get("agreement_id")
     if not agreement_id or len(str(agreement_id)) != 24 or not ObjectId.is_valid(str(agreement_id)):
         return 0
     agreement = await db.radacini_agreements.find_one(
         {"_id": ObjectId(str(agreement_id))}, {"model": 1, "terms.harvest_share_percent": 1}
     )
-    if not agreement or agreement.get("model") != "harvest_share":
+    if not agreement or agreement.get("model") not in ("harvest_share", "mixed"):
         return 0
     pct = (agreement.get("terms") or {}).get("harvest_share_percent") or 0
     return pct if isinstance(pct, (int, float)) and pct > 0 else 0

@@ -1,7 +1,10 @@
 """Terenuri Rădăcini: CRUD proprietar, listare publică și ciclul de publicare."""
+import logging
 import os
 from datetime import date
 from typing import Optional
+
+from bson import ObjectId
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator, model_validator
@@ -22,6 +25,7 @@ from .members import get_member_doc
 from .projects import release_parcel
 from .staff import get_staff
 
+log = logging.getLogger(__name__)
 router = APIRouter(route_class=RadaciniRoute)
 
 _NON_NULL_FIELDS = ("title", "county", "locality", "lat", "lng", "area_m2", "offer")
@@ -65,11 +69,18 @@ class OfferIn(BaseModel):
 
     @model_validator(mode="after")
     def _harvest_share(self):
+        pct = self.harvest_share_percent
         if "harvest_share" in self.models:
-            if self.harvest_share_percent is None or not 1 <= self.harvest_share_percent <= 90:
+            if pct is None or not 1 <= pct <= 90:
                 raise ValueError("Procentul din recoltă trebuie să fie între 1 și 90.")
-        elif self.harvest_share_percent is not None:
-            raise ValueError("Procentul din recoltă se completează doar la „Cultivare la parte din recoltă”.")
+        elif "mixed" in self.models:
+            # Modelul mixt poate combina prețul cu un procent din recoltă (opțional, 1–90).
+            if pct is not None and not 1 <= pct <= 90:
+                raise ValueError("Procentul din recoltă trebuie să fie între 1 și 90.")
+        elif pct is not None:
+            raise ValueError(
+                "Procentul din recoltă se completează doar la „Cultivare la parte din recoltă” sau „Model mixt”."
+            )
         return self
 
 
@@ -236,6 +247,36 @@ async def _transition(doc: dict, changes: dict, *, no_agreement: bool = False) -
     return {**doc, **changes}
 
 
+async def _exact_location_agreement(doc: dict, user_id: str) -> Optional[str]:
+    """Id-ul acordului semnat și ACTIV pe teren (terenul îi aparține încă) din care `user_id` e parte, altfel None.
+    Doar părțile unui astfel de acord văd coordonatele exacte; după eliberarea terenului (proiect finalizat)
+    dreptul încetează."""
+    aid = doc.get("active_agreement_id")
+    if not (isinstance(aid, str) and len(aid) == 24 and ObjectId.is_valid(aid)):
+        return None
+    ag = await db.radacini_agreements.find_one(
+        {"_id": ObjectId(aid), "parcel_id": str(doc["_id"]), "party_ids": user_id, "status": "signed"}, {"_id": 1}
+    )
+    return str(ag["_id"]) if ag else None
+
+
+async def _log_location_access(doc: dict, user_id: str, agreement_id: Optional[str], role: str) -> bool:
+    """Jurnal append-only al citirilor de locație exactă de către alții decât proprietarul. True dacă s-a scris."""
+    entry = mark_demo({
+        "parcel_id": str(doc["_id"]),
+        "user_id": user_id,
+        "agreement_id": agreement_id,
+        "role": role,
+        "at": now_iso(),
+    })
+    try:
+        await db.radacini_location_access_log.insert_one(entry)
+        return True
+    except Exception:  # noqa: BLE001
+        log.warning("radacini: jurnalul de acces la locație nu a putut fi scris", exc_info=True)
+        return False
+
+
 async def _is_agreement_party(parcel_id: str, user_id: str) -> bool:
     """Părțile unui acord semnat pe teren (proprietar/cultivator) văd terenul chiar dacă e suspendat."""
     ag = await db.radacini_agreements.find_one(
@@ -327,11 +368,21 @@ async def get_parcel(parcel_id: str, user: Optional[dict] = Depends(get_optional
             out = serialize_doc(doc)
             out["owner_name"] = owner.get("name", "")
             out["owner_email"] = owner.get("email", "")
+            # Citirea de către personal rămâne neschimbată, dar și ea se jurnalizează (fără acord asociat).
+            await _log_location_access(doc, str(user["id"]), None, "staff")
             return {"parcel": out}
     if doc.get("status") != "published" and not (user and await _is_agreement_party(str(doc["_id"]), str(user["id"]))):
         raise HTTPException(404, "Terenul nu există.")
     owner = (await load_owners([owner_id])).get(owner_id, {})
-    return {"parcel": _public_view(doc, owner)}
+    out = _public_view(doc, owner)
+    if user:
+        agreement_id = await _exact_location_agreement(doc, str(user["id"]))
+        # Cultivatorul unui acord semnat vede coordonatele exacte; dacă citirea nu poate fi jurnalizată, rămâne
+        # vederea rotunjită (nu dezvăluim locația fără urmă de audit).
+        if agreement_id and await _log_location_access(doc, str(user["id"]), agreement_id, "cultivator"):
+            out["lat"], out["lng"] = doc["lat"], doc["lng"]
+            out["exact_location"] = True
+    return {"parcel": out}
 
 
 @router.patch("/parcels/{parcel_id}")

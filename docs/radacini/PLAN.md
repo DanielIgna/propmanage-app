@@ -9,7 +9,7 @@ Decizii luate (2026-10-13): modul în aceeași aplicație; aceleași conturi; MV
 | S2 | Cereri de teren + negociere + acorduri cu versiune | gata (155 teste S1+S2, flux verificat în browser) |
 | S3 | Proiect agricol: membri, plan culturi, activități, contribuții | gata (264 teste S1–S3, verificat în browser) |
 | S4 | Recoltă + alocare + piață locală (listări, rezervări, schimb) | gata (377 teste S1–S4) |
-| S5 | Admin: comutator Produs, secțiune Rădăcini, KPI, noduri Knowledge Center | — |
+| S5 | Administrare Rădăcini (KPI, activitate, membri, moderare, GDPR, audit) + intrare în adminul PropManage + Knowledge Center | gata (52 teste; total 519) |
 
 ---
 
@@ -280,7 +280,7 @@ Revizuire de cod (backend, frontend) și reverificarea auditurilor față de `ma
   - 20 de remedieri (date, butoane, cereri redundante, stări de eroare, accesibilitate);
   - **intrarea Rădăcini** e proprie: `/radacini/login`, titlu „Rădăcini”, fără widget-urile PropManage, `noindex`.
 
-### Runda 2 (următoarea, înainte de S5)
+### Runda 2 (aplicată 2026-10-14; migrația scrisă, neaplicată)
 1. `RADACINI_ENABLED` și `NEXT_PUBLIC_RADACINI_ENABLED` **oprite implicit** (pornite doar local, prin `launch.json`), ca un merge în `main` să nu expună modulul.
 2. **Migrație** `supabase/migrations/*_radacini_collections.sql`: `app.create_collection` pentru toate colecțiile `radacini_*` + indexuri pe expresii (user_id, parcel_id, project_id, listing_id, status). **Se aplică pe bază doar cu aprobare.**
 3. **Poarta juridică:** cererile pe modelele `sale` și `joint_project` sunt dezactivate („necesită aviz juridic”); `mixed` permite preț și procent. Termeni de membru cu clauza „fără cantitate garantată”, prin mecanismul versionat din `legal.py`.
@@ -315,3 +315,30 @@ Revizuire de cod (backend, frontend) și reverificarea auditurilor față de `ma
 
 ### Rularea testelor Rădăcini
 `cd backend && ./venv/bin/python -m scripts.radacini_purge_demo --tests-only --apply`, apoi `REACT_APP_BACKEND_URL=http://localhost:8001 ./venv/bin/python -m pytest tests/test_radacini_s1.py tests/test_radacini_s2.py tests/test_radacini_s3.py tests/test_radacini_s4.py -q --noconftest` (serverul local trebuie pornit; testele scriu în `app.radacini_*` din baza comună). Numărul raportat (377) include cazurile parametrizate (354 de funcții `test_*`).
+
+---
+
+## S5 — contract: administrarea Rădăcini
+
+### Decizii
+- **Administrarea stă în aplicația Rădăcini:** secțiunea `/radacini/admin/*`, vizibilă doar personalului cu rol `manager` (inclusiv super-adminul). Nu în adminul PropManage, care are 113 intrări și nu aplică permisiuni pe zone.
+- **În adminul PropManage** se adaugă o singură intrare, „Rădăcini” (zona business), care deschide `/radacini/admin`. Modificarea e minimă, în `AdminLayoutMetronic.jsx`.
+- **Fluxul de activitate** se citește din `activity_events` (filtrat `radacini.*`): acolo scrie deja `event_bus`. Nu se modifică panourile PropManage.
+- **KPI-urile** sunt calculate la cerere, cu proiecții și limite, plus un cache în memorie de 5 minute (egress).
+- **Knowledge Center:** noduri `radacini:*` în `backend/data/enterprise_registry.json` și `docs/radacini/DECISION_REGISTER.md`.
+
+### Backend (`/api/radacini/admin/*`, doar `manager`)
+- `GET /admin/kpis` → `{members, members_by_interest{}, parcels_by_status{}, requests_by_status{}, agreements_signed, projects_active, harvest_kg_confirmed, listings_active, reservations_by_status{}, pending_verification, open_deletion_requests, generated_at}`
+- `GET /admin/activity?limit≤100&before=` → evenimentele `radacini.*` din `activity_events`, cu numele actorului (fără email), cele mai noi primele.
+- `GET /admin/members?q=&interest=&locality=&skip&limit≤50` → membri cu nume, localitate, interese, număr de terenuri, proiecte și anunțuri.
+- `GET /admin/parcels?status=&locality=` · `GET /admin/listings?status=` · `POST /admin/listings/{id}/close` (moderare, cu motiv; notifică vânzătorul; audit).
+- `GET /admin/deletion-requests` · `POST /admin/deletion-requests/{id}/resolve` `{decision:"done"|"rejected", note}`. Ștergerea efectivă e manuală în pilot; aici se marchează și se notifică.
+- `GET /admin/audit?limit` → intrările de audit Rădăcini (din jurnalul admin, filtrate pe acțiunile `radacini.*`).
+
+### Frontend (`/radacini/admin`, navigația „Administrare”, doar manager)
+- **Prezentare:** carduri KPI (membri, terenuri pe stări, cereri, acorduri semnate, proiecte active, kg recoltate, anunțuri active, rezervări) și grafice simple.
+- **Activitate:** fluxul evenimentelor, cu filtru pe tip.
+- **Membri:** tabel cu căutare și filtre.
+- **Moderare:** terenuri pe stări (link spre coada operatorului) și anunțuri, cu închidere motivată.
+- **Cereri GDPR:** listă și rezolvare.
+- **Personal și Conturi de test:** linkuri spre paginile existente.

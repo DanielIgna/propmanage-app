@@ -6,10 +6,11 @@ import { CARD, DSButton, EmptyState } from "../../../design-system";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
 import { useAuth } from "../../../auth";
 import ApproxMap from "../components/ApproxMap";
+import ExactMap from "../components/ExactMap";
 import ProposalForm from "../components/ProposalForm";
 import { radaciniApi, errMsg } from "../api";
 import { useMeta } from "../hooks";
-import { Chips, COUNTY, fmtArea, fmtDate, labelOf, PageSkeleton, StatusBadge } from "../shared";
+import { Chips, COUNTY, fmtArea, fmtDate, isRequestable, labelOf, NOT_REQUESTABLE_NOTE, PageSkeleton, StatusBadge } from "../shared";
 
 const Row = ({ label, children }) => (
   <div className="flex flex-col sm:flex-row sm:gap-4 py-2 border-b border-slate-100 dark:border-white/5 last:border-0">
@@ -82,8 +83,16 @@ export default function TerenDetaliu() {
   }
 
   const offer = p.offer || {};
-  const models = (offer.models || []).map((m) => labelOf(meta?.offer_models, m));
-  const modelOpts = (offer.models || []).map((m) => ({ id: m, label: labelOf(meta?.offer_models, m) }));
+  const allModels = (offer.models || []).map((m) => ({
+    id: m,
+    label: labelOf(meta?.offer_models, m),
+    requestable: isRequestable(meta?.offer_models, m),
+  }));
+  // Doar modelele solicitabile intră în dialogul „Solicită terenul”.
+  const modelOpts = allModels.filter((m) => m.requestable).map(({ id: mid, label }) => ({ id: mid, label }));
+  const canRequest = p.status === "published" && !isOwner && modelOpts.length > 0;
+  const noneRequestable = p.status === "published" && !isOwner && allModels.length > 0 && modelOpts.length === 0;
+  const exact = p.exact_location === true;
   const water = (p.water_sources || []).map((w) => labelOf(meta?.water_sources, w));
   const availability =
     p.availability_from || p.availability_to
@@ -103,13 +112,22 @@ export default function TerenDetaliu() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {p.status && p.status !== "published" && <StatusBadge status={p.status} />}
-          {p.status === "published" && !isOwner && (
+          {canRequest && (
             <DSButton icon={Send} onClick={() => setReqOpen(true)} data-testid="radacini-btn-solicita">
               Solicită terenul
             </DSButton>
           )}
         </div>
       </div>
+
+      {noneRequestable && (
+        <div
+          className="rounded-xl border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-100"
+          data-testid="radacini-teren-nesolicitabil"
+        >
+          Terenul nu poate fi solicitat încă: modelele oferite sunt marcate „{NOT_REQUESTABLE_NOTE}”.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <section className={`${CARD} p-5`}>
@@ -129,7 +147,24 @@ export default function TerenDetaliu() {
         <section className={`${CARD} p-5`}>
           <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2">Ofertă</h3>
           <dl>
-            <Row label="Model">{models.length ? <Chips items={models} /> : "Nespecificat"}</Row>
+            <Row label="Model">
+              {allModels.length ? (
+                <ul className="space-y-1.5">
+                  {allModels.map((m) => (
+                    <li key={m.id} className="flex flex-wrap items-center gap-1.5" data-testid={`radacini-model-${m.id}`}>
+                      <Chips items={[m.label]} />
+                      {!m.requestable && (
+                        <span className="rounded-md bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:text-amber-200">
+                          {NOT_REQUESTABLE_NOTE}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                "Nespecificat"
+              )}
+            </Row>
             {offer.price_ron_per_year != null && <Row label="Preț">{`${offer.price_ron_per_year} RON / an`}</Row>}
             {offer.harvest_share_percent != null && <Row label="Parte din recoltă">{`${offer.harvest_share_percent}%`}</Row>}
             {offer.terms && <Row label="Condiții">{<span className="whitespace-pre-line">{offer.terms}</span>}</Row>}
@@ -141,9 +176,18 @@ export default function TerenDetaliu() {
       <section className={`${CARD} p-5 space-y-3`}>
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">Locație</h3>
-          <span className="text-xs text-slate-500 dark:text-slate-400">Aproximativă</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">{exact ? "Exactă" : "Aproximativă"}</span>
         </div>
-        <ApproxMap points={[{ id: p.id, lat: p.lat, lng: p.lng, title: p.title, subtitle: `${p.locality} · locație aproximativă` }]} height="280px" />
+        {exact ? (
+          <>
+            <ExactMap lat={p.lat} lng={p.lng} height="280px" />
+            <p className="text-xs text-slate-500 dark:text-slate-400" data-testid="radacini-locatie-exacta-nota">
+              Locația exactă e vizibilă doar părților acordului; accesul e înregistrat.
+            </p>
+          </>
+        ) : (
+          <ApproxMap points={[{ id: p.id, lat: p.lat, lng: p.lng, title: p.title, subtitle: `${p.locality} · locație aproximativă` }]} height="280px" />
+        )}
       </section>
 
       <Dialog open={reqOpen} onOpenChange={(open) => !sending && setReqOpen(open)}>

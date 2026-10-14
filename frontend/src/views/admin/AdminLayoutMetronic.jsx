@@ -7,7 +7,7 @@ import {
   FileText, Mail, MapPin, Award, Settings, Search, Bell, Sun, Moon,
   LogOut, Menu, X, ChevronLeft, Building2, ChevronDown, ChevronRight, Sparkles, Bot, Zap, Inbox,
   UserCheck, Home, Wrench, Briefcase, Code2, Shield, Lightbulb, Bug, Compass, Layers, BookOpenCheck, GraduationCap, Gamepad2, Trophy, BarChart3, Eye, Heart,
-  Star, Clock, Command, Network, Megaphone, Brain, Rocket, Activity, KeyRound, Server, Palette, Map, Target, Download, ShoppingBag
+  Star, Clock, Command, Network, Megaphone, Brain, Rocket, Activity, KeyRound, Server, Palette, Map, Target, Download, ShoppingBag, Sprout
 } from "lucide-react";
 import { useAuth } from "../../auth";
 import { useTheme as useGlobalTheme } from "../../contexts/ThemeContext";
@@ -126,6 +126,7 @@ const NAV_SECTIONS = [
       { id: "ui_rules", label: "XOS · UI Rules", icon: ShieldCheck, badge: "XOS", href: "/admin/ui-rules" },
       { id: "content_manager", label: "XOS · Content Manager", icon: Sparkles, badge: "XOS", href: "/admin/content-manager" },
       { id: "control_tower", label: "Control Tower", icon: LayoutDashboard, badge: "NEW", href: "/admin/control-tower" },
+      { id: "radacini_admin", label: "Rădăcini", icon: Sprout, badge: "AGRO", href: "/radacini/admin" },
       { id: "activity", label: "Activitate Live", icon: Sparkles },
     ],
   },

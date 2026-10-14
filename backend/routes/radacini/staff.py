@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .bridge import db, emit, get_current_user, is_super_admin, serialize_doc
-from .common import RadaciniRoute, load_owners, mark_demo, now_iso, oid_or_404, safe_notify
+from .common import RadaciniRoute, audit_staff, load_owners, mark_demo, now_iso, oid_or_404, safe_notify
 from .constants import LOCALITIES
 
 router = APIRouter(route_class=RadaciniRoute)
@@ -122,6 +122,12 @@ async def verify_parcel(
     if res.modified_count != 1:
         raise HTTPException(409, "Terenul nu așteaptă verificarea.")
     doc = {**doc, **changes}
+    await audit_staff(user, f"parcel.{body.decision}", "radacini_parcel", doc["_id"], {
+        "owner_user_id": str(doc.get("owner_user_id")),
+        "locality": doc.get("locality"),
+        "staff_role": staff["role"],
+        "note": body.note,
+    })
 
     title = doc.get("title") or "Terenul tău"
     if approved:
@@ -199,13 +205,19 @@ async def add_staff(body: StaffIn, staff: dict = Depends(require_staff("manager"
     if res.upserted_id is None:
         raise HTTPException(409, "Utilizatorul face deja parte din personal.")
     doc["_id"] = res.upserted_id
+    await audit_staff(user, "staff.add", "radacini_staff", uid, {
+        "email": doc["email"], "role": body.role, "areas": body.areas,
+    })
     return {"staff": serialize_doc(doc)}
 
 
 @router.delete("/staff/{user_id}")
-async def remove_staff(user_id: str, _: dict = Depends(require_staff("manager"))):
+async def remove_staff(user_id: str, staff: dict = Depends(require_staff("manager"))):
     doc = await db.radacini_staff.find_one({"user_id": str(user_id)})
     if not doc:
         raise HTTPException(404, "Membrul de personal nu există.")
     await db.radacini_staff.delete_one({"_id": doc["_id"]})
+    await audit_staff(staff["user"], "staff.remove", "radacini_staff", str(user_id), {
+        "email": doc.get("email"), "role": doc.get("role"), "areas": doc.get("areas") or [],
+    })
     return {"ok": True}

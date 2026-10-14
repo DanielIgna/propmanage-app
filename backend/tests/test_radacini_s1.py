@@ -192,6 +192,10 @@ class TestMeta:
         d = r.json()
         assert INTEREST_IDS <= {i["id"] for i in d["interests"]}
         assert MODEL_IDS <= {i["id"] for i in d["offer_models"]}
+        # legal gate: sale / joint_project stay listed (display) but cannot be requested yet
+        requestable = {i["id"]: i.get("requestable") for i in d["offer_models"]}
+        assert requestable["sale"] is False and requestable["joint_project"] is False
+        assert all(requestable[m] is True for m in ("rent", "harvest_share", "fixed_fee", "mixed"))
         assert WATER_IDS <= {i["id"] for i in d["water_sources"]}
         assert CLUJ in d["localities"]
         assert FLORESTI in d["localities"]
@@ -266,12 +270,16 @@ class TestParcelFlow:
             {"offer": {"models": [], "terms": "x"}},
             {"offer": {"models": ["rent"], "terms": "x", "harvest_share_percent": 30}},
             {"offer": {"models": ["harvest_share"], "terms": "x", "harvest_share_percent": 95}},
+            {"offer": {"models": ["harvest_share"], "terms": "x"}},
+            {"offer": {"models": ["mixed"], "terms": "x", "price_ron_per_year": 100, "harvest_share_percent": 95}},
+            {"offer": {"models": ["mixed"], "terms": "x", "harvest_share_percent": 0}},
             {"offer": {"models": ["rent"], "terms": "x", "price_ron_per_year": 10_000_001}},
             {"offer": {"models": ["rent"], "terms": "x", "price_ron_per_year": -1}},
         ],
         ids=[
             "area_too_small", "lat_out_of_range", "lng_out_of_range", "title_too_short",
             "bad_locality", "models_empty", "share_percent_without_model", "share_percent_too_high",
+            "share_percent_missing", "mixed_percent_too_high", "mixed_percent_zero",
             "price_over_max", "price_negative",
         ],
     )
@@ -304,6 +312,18 @@ class TestParcelFlow:
         # `land` is added to the member interests automatically
         r = client.get(f"{R}/members/me", timeout=TIMEOUT)
         assert "land" in r.json()["member"]["interests"]
+
+    def test_create_mixed_offer_price_and_percent(self, client):
+        """`mixed` may combine a yearly price with a harvest percent (percent optional, 1-90)."""
+        offer = {"models": ["mixed"], "terms": "Termeni mixt", "price_ron_per_year": 800, "harvest_share_percent": 20}
+        doc = _create_parcel(client, title_suffix="mixt", offer=offer)
+        assert doc["offer"]["models"] == ["mixed"]
+        assert doc["offer"]["price_ron_per_year"] == 800
+        assert doc["offer"]["harvest_share_percent"] == 20
+        # percent is optional with `mixed`
+        doc2 = _create_parcel(client, title_suffix="mixt fara procent",
+                              offer={"models": ["mixed"], "terms": "x", "price_ron_per_year": 500})
+        assert doc2["offer"].get("harvest_share_percent") is None
 
     def test_mine_contains_it(self, client):
         r = client.get(f"{R}/parcels/mine", timeout=TIMEOUT)

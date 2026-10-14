@@ -17,7 +17,7 @@ from .common import (
     safe_notify,
     today_bucharest,
 )
-from .constants import LEGAL_NOTICE, OFFER_MODEL_IDS
+from .constants import LEGAL_GATE_MESSAGE, LEGAL_NOTICE, OFFER_MODEL_IDS, REQUESTABLE_MODEL_IDS
 from .members import get_member_doc
 from .staff import get_staff
 
@@ -127,8 +127,14 @@ def check_terms(t: dict, *, model: str, parcel_area: Optional[int], require_futu
     if model == "harvest_share":
         if share is None or not 1 <= share <= 90:
             raise HTTPException(400, "Procentul din recoltă trebuie să fie între 1 și 90.")
+    elif model == "mixed":
+        # Modelul mixt: preț și/sau procent din recoltă; procentul e opțional, dar dacă e dat, între 1 și 90.
+        if share is not None and (isinstance(share, bool) or not isinstance(share, int) or not 1 <= share <= 90):
+            raise HTTPException(400, "Procentul din recoltă trebuie să fie între 1 și 90.")
     elif share is not None:
-        raise HTTPException(400, "Procentul din recoltă se completează doar la „Cultivare la parte din recoltă”.")
+        raise HTTPException(
+            400, "Procentul din recoltă se completează doar la „Cultivare la parte din recoltă” sau „Model mixt”."
+        )
     price = t.get("price_ron_per_year")
     if price is not None:
         if isinstance(price, bool) or not isinstance(price, (int, float)):
@@ -271,6 +277,9 @@ async def _ensure_member(user: dict) -> dict:
 @router.post("/parcels/{parcel_id}/requests")
 async def create_request(parcel_id: str, body: RequestIn, user: dict = Depends(get_current_user)):
     block_in_impersonation(user, "trimiterea cererii")
+    # Poarta juridică: `sale` și `joint_project` se pot afișa în ofertă, dar nu se pot solicita (încă).
+    if body.model not in REQUESTABLE_MODEL_IDS:
+        raise HTTPException(409, LEGAL_GATE_MESSAGE)
     uid = str(user["id"])
     member = await _ensure_member(user)
     parcel = await db.radacini_parcels.find_one({"_id": oid_or_404(parcel_id)})
@@ -512,6 +521,8 @@ async def accept_request(request_id: str, user: dict = Depends(get_current_user)
     if str(user["id"]) != str(doc["owner_user_id"]):
         raise HTTPException(403, "Doar proprietarul poate accepta cererea.")
     _require_active(doc)
+    if doc.get("model") not in REQUESTABLE_MODEL_IDS:  # cerere anterioară porții juridice
+        raise HTTPException(409, LEGAL_GATE_MESSAGE)
     # Proprietarul acceptă doar propunerea celuilalt (nu o contrapropunere proprie).
     if str(doc.get("proposal_by_user_id")) == str(doc["owner_user_id"]):
         raise HTTPException(409, "Așteaptă răspunsul solicitantului.")

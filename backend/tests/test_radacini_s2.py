@@ -11,6 +11,8 @@ Every parcel carries a unique TEST-RAD-<hex> tag. Parcels with a signed agreemen
 archived through the API (expected: they are is_demo and removed by
 backend/scripts/radacini_purge_demo.py --apply); all the others are archived at teardown.
 """
+import hashlib
+import json
 import os
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -42,6 +44,7 @@ LEGAL_NOTICE = (
     "și nici înregistrarea acestuia la primărie, unde este cazul."
 )
 LOST_REASON = "Terenul a fost atribuit altui solicitant."
+LEGAL_GATE = "Acest model necesită aviz juridic și nu e încă disponibil în platformă."
 
 PARCEL_AREA = 5000
 
@@ -93,6 +96,19 @@ def _err(r, code):
     """Assert an error response: exact status code and a string `detail`."""
     assert r.status_code == code, f"expected {code}, got {r.status_code}: {r.text[:300]}"
     assert isinstance(r.json().get("detail"), str), r.text[:300]
+
+
+def _expected_terms_hash(ag):
+    """sha256 of the canonical JSON {"terms": ..., "version": ...} (spec: docs/radacini/PLAN.md, round 2)."""
+    canonical = json.dumps(
+        {"terms": ag["terms"], "version": ag["version"]},
+        sort_keys=True, ensure_ascii=False, separators=(",", ":"),
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _sig_of(ag, uid):
+    return next(s for s in ag["signatures"] if s["user_id"] == uid)
 
 
 def _4xx(r):
@@ -339,6 +355,63 @@ class TestRequestCreate:
         assert req["model"] == "harvest_share"
         assert req["proposal"]["harvest_share_percent"] == 25
         S["rid_b"] = req["id"]
+
+
+# ── 1b. legal gate (sale / joint_project) and the mixed model ───────────────
+
+class TestLegalGateAndMixed:
+    def test_setup_parcel_with_all_models(self, client, admin):
+        offer = {
+            "models": ["rent", "mixed", "sale", "joint_project"],
+            "terms": "Termeni de test",
+            "price_ron_per_year": 1200,
+            "harvest_share_percent": 30,
+        }
+        p = _publish_parcel(client, admin, "gate", offer=offer)
+        S["gate_pid"] = p["id"]
+        assert set(_get_parcel(client, p["id"])["offer"]["models"]) == {"rent", "mixed", "sale", "joint_project"}
+
+    @pytest.mark.parametrize("model", ["sale", "joint_project"])
+    def test_sale_and_joint_project_blocked(self, specialist, model):
+        """Both stay selectable in the parcel offer (display) but a request on them is a 409."""
+        r = _post_request(specialist, S["gate_pid"], model)
+        _err(r, 409)
+        assert r.json()["detail"] == LEGAL_GATE
+        # the gate applies before the "model not offered" check
+        r = _post_request(specialist, S["pid"], model)
+        _err(r, 409)
+        assert r.json()["detail"] == LEGAL_GATE
+
+    @pytest.mark.parametrize("pct", [0, 91, 95])
+    def test_mixed_percent_range(self, specialist, pct):
+        _err(_post_request(specialist, S["gate_pid"], "mixed", harvest_share_percent=pct), 400)
+
+    def test_mixed_with_price_and_percent_ok(self, specialist):
+        r = _post_request(specialist, S["gate_pid"], "mixed", harvest_share_percent=25, price_ron_per_year=700)
+        assert r.status_code in (200, 201), r.text
+        req = _unwrap(r.json(), "request")
+        assert req["model"] == "mixed"
+        assert req["proposal"]["price_ron_per_year"] == 700
+        assert req["proposal"]["harvest_share_percent"] == 25
+        w = specialist.post(f"{R}/requests/{req['id']}/withdraw", timeout=TIMEOUT)
+        assert w.status_code == 200, w.text
+
+    def test_mixed_percent_optional(self, specialist):
+        r = _post_request(specialist, S["gate_pid"], "mixed", price_ron_per_year=900)
+        assert r.status_code in (200, 201), r.text
+        req = _unwrap(r.json(), "request")
+        assert req["proposal"].get("harvest_share_percent") is None
+        w = specialist.post(f"{R}/requests/{req['id']}/withdraw", timeout=TIMEOUT)
+        assert w.status_code == 200, w.text
+
+    def test_percent_still_forbidden_with_rent(self, specialist):
+        _err(_post_request(specialist, S["gate_pid"], "rent", harvest_share_percent=25), 400)
+
+    def test_non_party_sees_rounded_coordinates(self, specialist):
+        """A published parcel read by a signed-in non-party keeps the rounded public view."""
+        p = _get_parcel(specialist, S["gate_pid"])
+        assert p["lat"] == pytest.approx(round(LAT, 2)) and p["lng"] == pytest.approx(round(LNG, 2))
+        assert not p.get("exact_location")
 
 
 # ── 2. visibility ────────────────────────────────────────────────────────────
@@ -596,10 +669,18 @@ class TestAgreement:
         ag = _get_agreement(client, S["aid"])
         assert ag["version"] == 1 and ag["status"] == "draft"
 
+    def test_draft_has_no_terms_hash(self, client):
+        assert _get_agreement(client, S["aid"]).get("terms_hash") is None
+
     def test_propose(self, client):
         r = client.post(f"{R}/agreements/{S['aid']}/propose", timeout=TIMEOUT)
         assert r.status_code == 200, r.text
-        assert _unwrap(r.json(), "agreement")["status"] == "proposed"
+        ag = _unwrap(r.json(), "agreement")
+        assert ag["status"] == "proposed"
+        assert len(ag["terms_hash"]) == 64 and int(ag["terms_hash"], 16) >= 0
+        assert ag["terms_hash"] == _expected_terms_hash(ag)
+        assert _get_agreement(client, S["aid"])["terms_hash"] == ag["terms_hash"]
+        S["hash_v1"] = ag["terms_hash"]
 
     def test_propose_again_conflict(self, client):
         _err(client.post(f"{R}/agreements/{S['aid']}/propose", timeout=TIMEOUT), 409)
@@ -615,6 +696,7 @@ class TestAgreement:
         assert ag["version"] == 2
         assert ag["status"] == "draft"
         assert ag["signatures"] == []
+        assert ag.get("terms_hash") is None  # back to draft: the hash is set again on "propose"
         assert ag["terms"]["price_ron_per_year"] == 1800
         assert ag["terms"]["custom_clauses"] == f"{TAG} clauză"
         assert ag["terms"]["area_m2"] == 1000  # partial patch keeps other terms
@@ -625,7 +707,11 @@ class TestAgreement:
     def test_propose_v2(self, specialist):
         r = specialist.post(f"{R}/agreements/{S['aid']}/propose", timeout=TIMEOUT)
         assert r.status_code == 200, r.text
-        assert _unwrap(r.json(), "agreement")["status"] == "proposed"
+        ag = _unwrap(r.json(), "agreement")
+        assert ag["status"] == "proposed"
+        assert ag["terms_hash"] != S["hash_v1"]
+        assert ag["terms_hash"] == _expected_terms_hash(ag)
+        S["hash_v2"] = ag["terms_hash"]
 
     def test_sign_stale_version_conflict(self, client):
         _err(client.post(f"{R}/agreements/{S['aid']}/sign", json={"version": 1}, timeout=TIMEOUT), 409)
@@ -636,7 +722,12 @@ class TestAgreement:
         _err(admin.post(f"{R}/agreements/{S['aid']}/sign", json={"version": 2}, timeout=TIMEOUT), 403)
 
     def test_owner_signs_v2_still_proposed(self, client):
-        r = client.post(f"{R}/agreements/{S['aid']}/sign", json={"version": 2}, timeout=TIMEOUT)
+        # X-Forwarded-For: the first value is the signer's IP
+        r = client.post(
+            f"{R}/agreements/{S['aid']}/sign", json={"version": 2},
+            headers={"X-Forwarded-For": "203.0.113.7, 10.0.0.1", "User-Agent": f"{TAG}-owner-ua/1.0"},
+            timeout=TIMEOUT,
+        )
         assert r.status_code == 200, r.text
         ag = _unwrap(r.json(), "agreement")
         assert ag["status"] == "proposed"
@@ -645,6 +736,29 @@ class TestAgreement:
         assert ag["signatures"][0]["version"] == 2
         assert ag["signatures"][0]["signed_at"]
         assert not ag.get("signed_at")
+        # signature evidence is visible to the signer himself
+        sig = ag["signatures"][0]
+        assert sig["ip"] == "203.0.113.7"
+        assert sig["user_agent"] == f"{TAG}-owner-ua/1.0"
+        assert sig["terms_hash"] == S["hash_v2"] == ag["terms_hash"] == _expected_terms_hash(ag)
+
+    def test_signature_evidence_hidden_from_counterpart(self, client, specialist, admin):
+        """ip / user_agent only for the signer and the super-admin; the terms hash stays visible."""
+        for fetch in (
+            lambda: _get_agreement(specialist, S["aid"]),
+            lambda: next(
+                i for i in _items(specialist.get(f"{R}/agreements", timeout=TIMEOUT).json()) if i["id"] == S["aid"]
+            ),
+        ):
+            ag = fetch()
+            sig = _sig_of(ag, S["owner_uid"])
+            assert "ip" not in sig and "user_agent" not in sig
+            assert sig["terms_hash"] == S["hash_v2"] and sig["signed_at"]
+            assert ag["terms_hash"] == S["hash_v2"]
+        own = _sig_of(_get_agreement(client, S["aid"]), S["owner_uid"])
+        assert own["ip"] == "203.0.113.7" and own["user_agent"] == f"{TAG}-owner-ua/1.0"
+        adm = _sig_of(_get_agreement(admin, S["aid"]), S["owner_uid"])  # super-admin sees everything
+        assert adm["ip"] == "203.0.113.7" and adm["user_agent"] == f"{TAG}-owner-ua/1.0"
 
     def test_owner_signs_twice_rejected(self, client):
         _4xx(client.post(f"{R}/agreements/{S['aid']}/sign", json={"version": 2}, timeout=TIMEOUT))
@@ -654,7 +768,10 @@ class TestAgreement:
         assert _get_request(admin, S["rid_b"])["request"]["status"] in ("sent", "viewed", "negotiating")
 
     def test_cultivator_signs_v2_signed(self, specialist):
-        r = specialist.post(f"{R}/agreements/{S['aid']}/sign", json={"version": 2}, timeout=TIMEOUT)
+        long_ua = "UA-" + "x" * 400
+        r = specialist.post(
+            f"{R}/agreements/{S['aid']}/sign", json={"version": 2}, headers={"User-Agent": long_ua}, timeout=TIMEOUT
+        )
         assert r.status_code == 200, r.text
         ag = _unwrap(r.json(), "agreement")
         assert ag["status"] == "signed"
@@ -663,6 +780,27 @@ class TestAgreement:
         assert {s["user_id"] for s in ag["signatures"]} == {S["owner_uid"], S["req_uid"]}
         assert all(s["version"] == 2 for s in ag["signatures"])
         assert ag["version"] == 2
+        # evidence: own ip / truncated user agent; both signatures carry the same terms hash
+        mine = _sig_of(ag, S["req_uid"])
+        assert isinstance(mine["ip"], str) and mine["ip"]
+        assert mine["user_agent"] == long_ua[:300] and len(mine["user_agent"]) == 300
+        theirs = _sig_of(ag, S["owner_uid"])
+        assert "ip" not in theirs and "user_agent" not in theirs  # the owner's evidence is not exposed
+        assert mine["terms_hash"] == theirs["terms_hash"] == S["hash_v2"] == ag["terms_hash"]
+
+    def test_signed_evidence_visibility(self, client, specialist, admin):
+        """After both signatures: each party sees only its own evidence, the super-admin sees both."""
+        for sess, own_uid, other_uid in (
+            (client, S["owner_uid"], S["req_uid"]),
+            (specialist, S["req_uid"], S["owner_uid"]),
+        ):
+            ag = _get_agreement(sess, S["aid"])
+            assert ag["status"] == "signed" and ag["terms_hash"] == S["hash_v2"]
+            assert _sig_of(ag, own_uid)["ip"] and _sig_of(ag, own_uid)["user_agent"]
+            other = _sig_of(ag, other_uid)
+            assert "ip" not in other and "user_agent" not in other and other["terms_hash"] == S["hash_v2"]
+        ag = _get_agreement(admin, S["aid"])
+        assert all(s["ip"] and s["user_agent"] and s["terms_hash"] == S["hash_v2"] for s in ag["signatures"])
 
 
 # ── 7. effects of the signature ──────────────────────────────────────────────
@@ -675,13 +813,16 @@ class TestAfterSigned:
         # paused -> no longer public
         assert anon.get(f"{R}/parcels/{S['pid']}", timeout=TIMEOUT).status_code == 404
 
-    def test_cultivator_can_read_paused_parcel_approximately(self, specialist, anon):
+    def test_cultivator_reads_exact_location_of_paused_parcel(self, specialist, anon):
+        """Parties of a signed agreement see the exact coordinates (the read is logged server-side)."""
         r = specialist.get(f"{R}/parcels/{S['pid']}", timeout=TIMEOUT)
         assert r.status_code == 200, r.text
         p = _unwrap(r.json(), "parcel")
         assert p["status"] == "paused"
-        assert p["lat"] == pytest.approx(round(LAT, 2)) and p["lng"] == pytest.approx(round(LNG, 2))
-        assert not {"owner_user_id", "active_agreement_id", "verification"} & set(p)
+        assert p["exact_location"] is True
+        assert p["lat"] == pytest.approx(LAT) and p["lng"] == pytest.approx(LNG)
+        assert p["locality"] == FLORESTI and p["access"]
+        assert not {"owner_user_id", "active_agreement_id", "verification", "owner_email"} & set(p)
         assert anon.get(f"{R}/parcels/{S['pid']}", timeout=TIMEOUT).status_code == 404
 
     def test_resume_conflict(self, client):

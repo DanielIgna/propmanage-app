@@ -8,7 +8,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 
 from .bridge import db, get_current_user, is_super_admin
-from .common import RadaciniRoute, now_iso, today_bucharest
+from .common import RadaciniRoute, audit_staff, now_iso, today_bucharest
 from .constants import COUNTY, LEGAL_NOTICE
 from .harvests import owner_share
 from .market import product_key, product_tokens
@@ -115,7 +115,9 @@ async def _ensure(admin: dict) -> list:
 
 @router.post("/test-accounts/ensure")
 async def ensure_test_accounts(admin: dict = Depends(require_super_admin)):
-    return {"ok": True, "created": await _ensure(admin)}
+    created = await _ensure(admin)
+    await audit_staff(admin, "test_accounts.ensure", "radacini_test_accounts", None, {"created": created})
+    return {"ok": True, "created": created}
 
 
 # ----------------------------------------------------------------- scenariu demo
@@ -488,10 +490,12 @@ async def seed_demo_scenario(admin: dict = Depends(require_super_admin)):
         log.exception("radacini: scenariul demo nu a putut fi creat; se curăță documentele inserate")
         await _delete_seed()
         raise HTTPException(500, "Scenariul demo nu a putut fi creat. Nu s-a păstrat nimic.")
+    await audit_staff(admin, "test_accounts.seed", "radacini_test_accounts", None, {"counts": counts, "total": sum(counts.values())})
     return {"ok": True, "counts": counts, "total": sum(counts.values())}
 
 
 @router.post("/test-accounts/reset")
 async def reset_demo_scenario(admin: dict = Depends(require_super_admin)):
     counts = await _delete_seed()
+    await audit_staff(admin, "test_accounts.reset", "radacini_test_accounts", None, {"counts": counts, "total": sum(counts.values())})
     return {"ok": True, "counts": counts, "total": sum(counts.values())}

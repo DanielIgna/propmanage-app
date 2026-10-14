@@ -14,6 +14,7 @@ import {
   COUNTY,
   Field,
   isoToDateInput,
+  NOT_REQUESTABLE_NOTE,
   PageHeader,
   PageSkeleton,
   SelectField,
@@ -242,7 +243,7 @@ export default function TerenForm() {
     );
   }
 
-  const models = meta.offer_models;
+  const models = (meta.offer_models || []).map((m) => (m.requestable === false ? { ...m, badge: NOT_REQUESTABLE_NOTE } : m));
   const harvestChosen = form.models.includes("harvest_share");
 
   return (
@@ -316,7 +317,7 @@ export default function TerenForm() {
         </Section>
 
         <Section title="Ofertă">
-          <Field label="Model de ofertă" hint="Alege cel puțin unul.">
+          <Field label="Model de ofertă" hint="Alege cel puțin unul. Modelele marcate nu pot fi solicitate încă.">
             <CheckGroup name="model" options={models} value={form.models} onChange={(v) => upd("models", v)} testid="radacini-form-model" columns="sm:grid-cols-1" />
           </Field>
 

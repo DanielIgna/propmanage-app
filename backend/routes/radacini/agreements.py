@@ -1,11 +1,14 @@
 """Acorduri Rădăcini: termeni versionați, propunere spre semnare, semnare și anulare."""
+import hashlib
+import ipaddress
+import json
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
 
-from .bridge import block_in_impersonation, db, emit, get_current_user, serialize_doc
+from .bridge import block_in_impersonation, db, emit, get_current_user, is_super_admin, serialize_doc
 from .common import RadaciniRoute, check_price, now_iso, oid_or_404, safe_notify
 from .projects import create_project_for_agreement
 from .requests import (
@@ -66,6 +69,47 @@ class SignIn(BaseModel):
     version: int
 
 
+# Dovada semnăturii: câmpuri vizibile doar semnatarului însuși și super-adminului.
+_PRIVATE_EVIDENCE = ("ip", "user_agent")
+_USER_AGENT_MAX = 300
+_TERMS_CHANGED = "Termenii s-au schimbat; reîncarcă acordul."
+
+
+def compute_terms_hash(terms: dict, version: int) -> str:
+    """SHA-256 (hex) al JSON-ului canonic `{"terms": <termeni>, "version": <versiune>}`
+    (sort_keys, ensure_ascii=False, separators compacte, UTF-8)."""
+    canonical = json.dumps(
+        {"terms": terms, "version": version},
+        sort_keys=True, ensure_ascii=False, separators=(",", ":"), default=str,
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _client_ip(request: Request) -> str:
+    """IP-ul semnatarului: prima valoare din X-Forwarded-For (dacă e o adresă validă), altfel peer-ul direct."""
+    first = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    if first:
+        try:
+            return str(ipaddress.ip_address(first))
+        except ValueError:
+            pass
+    return (request.client.host if request.client else "")[:64]
+
+
+def _present(doc: dict, user: dict) -> dict:
+    """Acordul serializat pentru `user`: IP-ul și user-agent-ul din semnături se văd doar de către semnatarul
+    însuși și de super-admin; `terms_hash` e mereu prezent (null cât timp acordul nu a fost trimis spre semnare)."""
+    out = serialize_doc(doc)
+    uid = str(user["id"])
+    full = is_super_admin(user)
+    out["signatures"] = [
+        s if (full or s.get("user_id") == uid) else {k: v for k, v in s.items() if k not in _PRIVATE_EVIDENCE}
+        for s in out.get("signatures") or []
+    ]
+    out.setdefault("terms_hash", None)
+    return out
+
+
 def _is_party(doc: dict, user: dict) -> bool:
     return any(p.get("user_id") == str(user["id"]) for p in doc.get("parties", []))
 
@@ -107,7 +151,7 @@ async def list_agreements(user: dict = Depends(get_current_user)):
     parcels = await load_parcels(d.get("parcel_id") for d in docs)
     items = []
     for d in docs:
-        item = serialize_doc(d)
+        item = _present(d, user)
         parcel = parcels.get(str(d.get("parcel_id")), {})
         item["parcel_title"] = parcel.get("title") or d["terms"].get("parcel_snapshot", {}).get("title", "")
         item["parcel_locality"] = parcel.get("locality") or d["terms"].get("parcel_snapshot", {}).get("locality", "")
@@ -119,7 +163,7 @@ async def list_agreements(user: dict = Depends(get_current_user)):
 @router.get("/agreements/{agreement_id}")
 async def get_agreement(agreement_id: str, user: dict = Depends(get_current_user)):
     doc, _ = await _load(agreement_id, user)
-    out = serialize_doc(doc)
+    out = _present(doc, user)
     parcel = (await load_parcels([doc.get("parcel_id")])).get(str(doc.get("parcel_id")), {})
     snap = doc["terms"].get("parcel_snapshot", {})
     out["parcel_title"] = parcel.get("title") or snap.get("title", "")
@@ -155,7 +199,7 @@ async def patch_agreement(agreement_id: str, body: AgreementPatch, user: dict = 
         require_future_start=start_changed,
     )
     if merged == old_terms:
-        return {"agreement": serialize_doc(doc)}
+        return {"agreement": _present(doc, user)}
 
     now = now_iso()
     res = await db.radacini_agreements.update_one(
@@ -170,6 +214,7 @@ async def patch_agreement(agreement_id: str, body: AgreementPatch, user: dict = 
                 "terms_at": now,
                 "updated_at": now,
             },
+            "$unset": {"terms_hash": ""},  # acordul revine în ciornă; hash-ul se recalculează la „propose”
             "$push": {
                 "versions_history": {
                     "version": doc["version"],
@@ -195,7 +240,7 @@ async def patch_agreement(agreement_id: str, body: AgreementPatch, user: dict = 
         payload={"agreement_id": str(doc["_id"]), "version": doc["version"] + 1},
     )
     fresh = await db.radacini_agreements.find_one({"_id": doc["_id"]})
-    return {"agreement": serialize_doc(fresh)}
+    return {"agreement": _present(fresh, user)}
 
 
 @router.post("/agreements/{agreement_id}/propose")
@@ -206,9 +251,10 @@ async def propose_agreement(agreement_id: str, user: dict = Depends(get_current_
     if doc["status"] != "draft":
         raise HTTPException(409, "Doar un acord în ciornă poate fi trimis spre semnare.")
     now = now_iso()
+    terms_hash = compute_terms_hash(doc["terms"], doc["version"])
     res = await db.radacini_agreements.update_one(
         {"_id": doc["_id"], "status": "draft", "version": doc["version"]},
-        {"$set": {"status": "proposed", "updated_at": now}},
+        {"$set": {"status": "proposed", "terms_hash": terms_hash, "updated_at": now}},
     )
     if res.modified_count != 1:
         raise HTTPException(409, "Acordul a fost modificat între timp. Reîncarcă pagina.")
@@ -224,7 +270,7 @@ async def propose_agreement(agreement_id: str, user: dict = Depends(get_current_
         actor=user,
         payload={"agreement_id": str(doc["_id"]), "version": doc["version"]},
     )
-    return {"agreement": serialize_doc({**doc, "status": "proposed", "updated_at": now})}
+    return {"agreement": _present({**doc, "status": "proposed", "terms_hash": terms_hash, "updated_at": now}, user)}
 
 
 async def _decline_competing_requests(agreement: dict, user: dict) -> None:
@@ -300,7 +346,9 @@ async def _cancel_competing_agreements(agreement: dict, user: dict) -> None:
 
 
 @router.post("/agreements/{agreement_id}/sign")
-async def sign_agreement(agreement_id: str, body: SignIn, user: dict = Depends(get_current_user)):
+async def sign_agreement(
+    agreement_id: str, body: SignIn, request: Request, user: dict = Depends(get_current_user)
+):
     block_in_impersonation(user, "semnarea acordului")
     uid = str(user["id"])
     doc, access = await _load(agreement_id, user)
@@ -309,6 +357,11 @@ async def sign_agreement(agreement_id: str, body: SignIn, user: dict = Depends(g
         raise HTTPException(409, "Acordul nu este trimis spre semnare.")
     if body.version != doc["version"]:
         raise HTTPException(409, "Versiunea acordului s-a schimbat. Citește din nou termenii.")
+    # Termenii semnați trebuie să fie exact cei trimiși spre semnare (hash-ul fixat la „propose”). Un acord
+    # trimis înainte de introducerea hash-ului nu are valoare stocată: primește hash-ul acum, la prima semnătură.
+    terms_hash = compute_terms_hash(doc["terms"], doc["version"])
+    if doc.get("terms_hash") and doc["terms_hash"] != terms_hash:
+        raise HTTPException(409, _TERMS_CHANGED)
     parcel = await get_parcel_doc(doc["parcel_id"])
     if not parcel or parcel.get("archived_at"):
         raise HTTPException(409, "Terenul nu mai există.")
@@ -326,8 +379,17 @@ async def sign_agreement(agreement_id: str, body: SignIn, user: dict = Depends(g
             "signatures.user_id": {"$ne": uid},
         },
         {
-            "$push": {"signatures": {"user_id": uid, "version": doc["version"], "signed_at": now}},
-            "$set": {"updated_at": now},
+            "$push": {
+                "signatures": {
+                    "user_id": uid,
+                    "version": doc["version"],
+                    "signed_at": now,
+                    "ip": _client_ip(request),
+                    "user_agent": (request.headers.get("user-agent") or "")[:_USER_AGENT_MAX],
+                    "terms_hash": terms_hash,
+                }
+            },
+            "$set": {"updated_at": now, "terms_hash": terms_hash},
         },
     )
     if res.modified_count != 1:
@@ -351,7 +413,7 @@ async def sign_agreement(agreement_id: str, body: SignIn, user: dict = Depends(g
             link=_link(doc),
             type_="agreement",
         )
-        return {"agreement": serialize_doc(doc)}
+        return {"agreement": _present(doc, user)}
 
     # Toate părțile au semnat: mai întâi terenul (revendicare condiționată), apoi acordul.
     agreement_key = str(doc["_id"])
@@ -380,7 +442,7 @@ async def sign_agreement(agreement_id: str, body: SignIn, user: dict = Depends(g
     if res.modified_count != 1:
         if fresh.get("status") == "signed":
             # Cealaltă parte a finalizat semnarea simultan: terenul e legit al acestui acord, nu îl eliberăm.
-            return {"agreement": serialize_doc(fresh)}
+            return {"agreement": _present(fresh, user)}
         # Acordul a fost anulat/modificat între timp: eliberăm terenul revendicat și restaurăm starea anterioară.
         await db.radacini_parcels.update_one(
             {"_id": parcel["_id"], "active_agreement_id": agreement_key},
@@ -403,7 +465,7 @@ async def sign_agreement(agreement_id: str, body: SignIn, user: dict = Depends(g
         actor=user,
         payload={"agreement_id": str(doc["_id"]), "parcel_id": doc["parcel_id"]},
     )
-    return {"agreement": serialize_doc(doc)}
+    return {"agreement": _present(doc, user)}
 
 
 @router.post("/agreements/{agreement_id}/cancel")
@@ -427,4 +489,4 @@ async def cancel_agreement(agreement_id: str, body: ReasonIn, user: dict = Depen
         message += f" Motiv: {body.reason}"
     await safe_notify(_other_user(doc, user), "Acord anulat", message, link=_link(doc), type_="agreement")
     await emit("radacini.agreement_cancelled", actor=user, payload={"agreement_id": str(doc["_id"])})
-    return {"agreement": serialize_doc({**doc, **changes})}
+    return {"agreement": _present({**doc, **changes}, user)}

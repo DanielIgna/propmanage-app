@@ -64,6 +64,10 @@ export const radaciniApi = {
   cancelAgreement: (id, reason) =>
     data(api.post(`/radacini/agreements/${id}/cancel`, reason ? { reason } : {})).then((d) => d?.agreement ?? d),
 
+  // GDPR: export JSON al datelor proprii și cerere de ștergere (409 dacă există deja una în curs).
+  exportMyData: () => data(api.get("/radacini/me/export")),
+  requestDataDeletion: () => data(api.post("/radacini/me/delete-request")),
+
   // Proiecte agricole (S3). Singulare învelite: {project}, {crop}, {activity}, {contribution}.
   // Liste: {items}; plan culturi: + warnings; contribuții: + totals.
   projects: () => data(api.get("/radacini/projects")),
@@ -121,6 +125,20 @@ export const radaciniApi = {
   pickedUpReservation: (id) => data(api.post(`/radacini/reservations/${id}/picked-up`)).then((d) => d?.reservation ?? d),
   noShowReservation: (id) => data(api.post(`/radacini/reservations/${id}/no-show`)).then((d) => d?.reservation ?? d),
   rateReservation: (id, body) => data(api.post(`/radacini/reservations/${id}/rate`, body)).then((d) => d?.reservation ?? d),
+
+  // Administrare (S5, doar manager). Liste: {items, total?}; adminKpis: obiect plat cu contoare.
+  adminKpis: () => data(api.get("/radacini/admin/kpis")),
+  // before = created_at al ultimului eveniment primit (paginare spre vechi).
+  adminActivity: ({ limit = 50, before } = {}) =>
+    data(api.get("/radacini/admin/activity", { params: before ? { limit, before } : { limit } })),
+  adminMembers: (params) => data(api.get("/radacini/admin/members", { params })),
+  adminParcels: (params) => data(api.get("/radacini/admin/parcels", { params })),
+  adminListings: (params) => data(api.get("/radacini/admin/listings", { params })),
+  adminCloseListing: (id, reason) => data(api.post(`/radacini/admin/listings/${id}/close`, { reason })),
+  adminDeletionRequests: (params) => data(api.get("/radacini/admin/deletion-requests", { params })),
+  adminResolveDeletion: (id, decision, note) =>
+    data(api.post(`/radacini/admin/deletion-requests/${id}/resolve`, note ? { decision, note } : { decision })),
+  adminAudit: ({ limit = 100 } = {}) => data(api.get("/radacini/admin/audit", { params: { limit } })),
 };
 
 // Listele pot veni ca array sau învelite; acceptăm ambele forme.

@@ -9,13 +9,14 @@ import {
   ListChecks,
   MapPin,
   Settings,
+  ShieldCheck,
   Sprout,
   Store,
   UserRound,
   Users,
 } from "lucide-react";
 
-export const RADACINI_ENABLED = (process.env.NEXT_PUBLIC_RADACINI_ENABLED ?? "true") !== "false";
+export const RADACINI_ENABLED = process.env.NEXT_PUBLIC_RADACINI_ENABLED === "true";
 
 // requires: "staff" = is_staff · "manager" = role manager · absent = vizibil pentru toți
 const NAV_ITEMS = [
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { to: "/radacini/rezervari", label: "Rezervări", icon: ArrowLeftRight, testid: "radacini-nav-rezervari" },
   { to: "/radacini/profil", label: "Profil", icon: UserRound, testid: "radacini-nav-profil" },
   { to: "/radacini/operator", label: "Operator", icon: ClipboardCheck, requires: "staff", testid: "radacini-nav-operator" },
+  { to: "/radacini/admin", label: "Administrare", icon: ShieldCheck, requires: "manager", testid: "radacini-nav-admin" },
   { to: "/radacini/personal", label: "Personal", icon: Users, requires: "manager", testid: "radacini-nav-personal" },
   { to: "/radacini/conturi-test", label: "Conturi de test", icon: FlaskConical, requires: "superadmin", testid: "radacini-nav-conturi-test" },
   { to: "/radacini/setari", label: "Setări", icon: Settings, testid: "radacini-nav-setari" },

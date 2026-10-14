@@ -11,6 +11,7 @@ const TerenurileMele = lazy(() => import("./pages/TerenurileMele"));
 const TerenForm = lazy(() => import("./pages/TerenForm"));
 const Operator = lazy(() => import("./pages/Operator"));
 const Personal = lazy(() => import("./pages/Personal"));
+const Administrare = lazy(() => import("./pages/admin/Administrare"));
 const Setari = lazy(() => import("./pages/Setari"));
 const Cereri = lazy(() => import("./pages/Cereri"));
 const CerereDetaliu = lazy(() => import("./pages/CerereDetaliu"));
@@ -46,6 +47,7 @@ export function radaciniRoutes() {
       <Route path="acorduri" element={<Acorduri />} />
       <Route path="acorduri/:id" element={<AcordDetaliu />} />
       <Route path="operator" element={<Operator />} />
+      <Route path="admin" element={<Administrare />} />
       <Route path="personal" element={<Personal />} />
       <Route path="conturi-test" element={<ConturiTest />} />
       <Route path="setari" element={<Setari />} />

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useConfirm } from "../components/ConfirmDialog";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Ban, Check, ChevronDown, FileSignature, Pencil, Printer, Send, ShieldOff } from "lucide-react";
+import { ArrowLeft, Ban, Check, ChevronDown, Copy, FileSignature, Pencil, Printer, Send, ShieldOff } from "lucide-react";
 import { useAuth } from "../../../auth";
 import { CARD, DSButton, EmptyState } from "../../../design-system";
 import { Checkbox } from "../../../components/ui/checkbox";
@@ -22,6 +22,7 @@ import {
   labelOf,
   PageSkeleton,
   ROLE_LABEL,
+  shortBrowser,
   signedFor,
   StatusBadge,
 } from "../shared";
@@ -127,6 +128,15 @@ export default function AcordDetaliu() {
   const history = a.versions_history || [];
   const legal = a.legal_notice || LEGAL_FALLBACK;
 
+  const copyHash = async () => {
+    try {
+      await navigator.clipboard.writeText(a.terms_hash);
+      toast.success("Amprenta a fost copiată");
+    } catch {
+      toast.error("Nu am putut copia amprenta");
+    }
+  };
+
   const run = async (fn, okMsg, after) => {
     setBusy(true);
     try {
@@ -188,6 +198,24 @@ export default function AcordDetaliu() {
             {snap.locality ? `${snap.locality} · ` : ""}Versiunea {a.version}
             {a.signed_at ? ` · Semnat la ${fmtDateTime(a.signed_at)}` : ""}
           </p>
+          {a.terms_hash && (
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 print:text-slate-700" data-testid="radacini-acord-hash">
+              Amprentă termeni:
+              <code className="font-mono text-slate-700 dark:text-slate-200 print:text-black" title={a.terms_hash}>
+                {String(a.terms_hash).slice(0, 12)}
+              </code>
+              <button
+                type="button"
+                onClick={copyHash}
+                aria-label="Copiază amprenta termenilor"
+                title="Copiază amprenta completă"
+                className="print:hidden rounded p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-800 dark:hover:text-white"
+                data-testid="radacini-acord-hash-copy"
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">
           <StatusBadge status={a.status} testid="radacini-acord-status" />
@@ -233,7 +261,15 @@ export default function AcordDetaliu() {
                       <p className="text-xs text-slate-500 dark:text-slate-400">{ROLE_LABEL[p.role] || p.role}</p>
                     </div>
                     {sig ? (
-                      <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">Semnat la {fmtDateTime(sig.signed_at)}</span>
+                      <div className="text-right">
+                        <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">Semnat la {fmtDateTime(sig.signed_at)}</span>
+                        {sig.user_id === user?.id && sig.ip && (
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 print:text-slate-700" data-testid="radacini-semnatura-detalii">
+                            semnat de pe {sig.ip}
+                            {sig.user_agent ? ` · ${shortBrowser(sig.user_agent)}` : ""}
+                          </p>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                         {a.status === "proposed" ? "Nesemnat" : "Nesemnat (ciornă)"}

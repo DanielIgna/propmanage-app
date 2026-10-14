@@ -7,8 +7,13 @@ spre terenuri / anunțuri / recolte inexistente. Dry-run-ul le listează separat
 Statisticile de rating (`radacini_seller_stats`) ale vânzătorilor ale căror rezervări evaluate se șterg se
 elimină și ele; se recalculează automat, din rezervările rămase, la prima citire / evaluare.
 
+Jurnalul de acces la locația exactă (`radacini_location_access_log`) se șterge împreună cu terenurile la care
+se referă (câmpul `parcel_id`) sau când e marcat demo. Cererile de ștergere GDPR (`radacini_deletion_requests`)
+se șterg doar dacă sunt marcate demo (cele reale nu au `is_demo`).
+
 Cu --tests-only șterge doar datele lăsate de testele HTTP: terenuri demo cu „TEST-RAD-” în titlu și anunțuri
-demo cu „TEST-RAD-” în produs, plus tot ce depinde de ele.
+demo cu „TEST-RAD-” în produs, plus tot ce depinde de ele, plus cererile de ștergere marcate demo (testele GDPR
+le creează pe conturile de test).
 
 Utilizare (local):
   cd backend && ./venv/bin/python -m scripts.radacini_purge_demo
@@ -46,6 +51,8 @@ COLLECTIONS = (
     "radacini_listings",
     "radacini_reservations",
     "radacini_seller_stats",  # (nu există colecții de lock-uri: rezervarea unică se obține prin upsert)
+    "radacini_location_access_log",
+    "radacini_deletion_requests",
 )
 DEMO_FILTER = {"is_demo": True}
 SCAN_LIMIT = 100000
@@ -55,7 +62,11 @@ DELETE_CHUNK = 500
 # (colecția-părinte, câmpul din copil care indică spre părinte, copiii). Ordinea e topologică: un copil
 # descoperit într-o muchie (ex. proiecte prin acord) își propagă apoi propriii copii în muchiile următoare.
 EDGES = (
-    ("radacini_parcels", "parcel_id", ("radacini_land_requests", "radacini_agreements", "radacini_projects")),
+    (
+        "radacini_parcels",
+        "parcel_id",
+        ("radacini_land_requests", "radacini_agreements", "radacini_projects", "radacini_location_access_log"),
+    ),
     ("radacini_land_requests", "request_id", ("radacini_request_messages", "radacini_agreements")),
     ("radacini_agreements", "agreement_id", ("radacini_projects",)),
     (
@@ -149,6 +160,7 @@ async def run_tests_only(apply: bool) -> None:
     roots = {
         "radacini_parcels": {str(d["_id"]) for d in parcels if "TEST-RAD-" in (d.get("title") or "")},
         "radacini_listings": {str(d["_id"]) for d in listings if "TEST-RAD-" in (d.get("product") or "")},
+        "radacini_deletion_requests": await _ids("radacini_deletion_requests", DEMO_FILTER),
     }
     ids, roots = await collect(roots)
     await _report_and_delete(ids, roots, apply, "de test")

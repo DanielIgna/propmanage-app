@@ -142,6 +142,39 @@ export const StatusBadge = ({ status, testid }) => {
 export const labelOf = (list, id) => list?.find((x) => x.id === id)?.label ?? id;
 
 // Listele de stringuri (localități) → opțiuni {id,label}.
+// Modelele cu requestable === false (vânzare, proiect comun) se pot oferi, dar nu se pot solicita încă.
+export const NOT_REQUESTABLE_NOTE = "În curând · necesită aviz juridic";
+export const isRequestable = (list, id) => list?.find((x) => x.id === id)?.requestable !== false;
+
+// User-Agent -> "Chrome pe macOS" (scurt, pentru afișare lângă semnătură).
+export const shortBrowser = (ua) => {
+  if (!ua) return "";
+  const browser = /Edg\//.test(ua)
+    ? "Edge"
+    : /OPR\/|Opera/.test(ua)
+      ? "Opera"
+      : /Firefox\//.test(ua)
+        ? "Firefox"
+        : /Chrome\/|CriOS\//.test(ua)
+          ? "Chrome"
+          : /Safari\//.test(ua)
+            ? "Safari"
+            : "";
+  const os = /Android/.test(ua)
+    ? "Android"
+    : /iPhone|iPad|iPod/.test(ua)
+      ? "iOS"
+      : /Windows/.test(ua)
+        ? "Windows"
+        : /Mac OS X|Macintosh/.test(ua)
+          ? "macOS"
+          : /Linux/.test(ua)
+            ? "Linux"
+            : "";
+  if (browser && os) return `${browser} pe ${os}`;
+  return browser || os || "browser necunoscut";
+};
+
 export const toOpts = (arr = []) => arr.map((x) => (typeof x === "string" ? { id: x, label: x } : x));
 
 export const linkBtnCls = (variant = "primary") =>
@@ -221,6 +254,11 @@ export const CheckGroup = ({ name, options, value = [], onChange, testid, column
             data-testid={`${testid}-${o.id}`}
           />
           <span className="text-slate-700 dark:text-slate-200">{o.label}</span>
+          {o.badge && (
+            <span className="ml-auto rounded-md bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:text-amber-200 text-right">
+              {o.badge}
+            </span>
+          )}
         </label>
       );
     })}

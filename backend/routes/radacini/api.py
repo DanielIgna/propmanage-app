@@ -9,11 +9,13 @@ import os
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from . import activities, agreements, contributions, crops, harvests, market, members, parcels, projects, requests, staff, test_accounts
+from . import activities, admin, agreements, contributions, crops, gdpr, harvests, market, members, parcels, projects, requests, staff, test_accounts
 from .bridge import get_current_user
+from .common import public_rate_limit
 from .constants import META
 
-RADACINI_ENABLED = os.environ.get("RADACINI_ENABLED", "true").lower() in ("1", "true", "yes")
+# Oprit implicit: un merge în `main` nu expune modulul. Se pornește explicit (1/true/yes), de ex. local prin launch.json.
+RADACINI_ENABLED = os.environ.get("RADACINI_ENABLED", "false").strip().lower() in ("1", "true", "yes")
 
 
 async def _enabled():
@@ -21,7 +23,8 @@ async def _enabled():
         raise HTTPException(404, "Not Found")
 
 
-router = APIRouter(prefix="/api/radacini", tags=["radacini"], dependencies=[Depends(_enabled)])
+# `public_rate_limit` acoperă doar GET /meta și GET /parcels* (vezi common.py); restul rutelor trec nemodificate.
+router = APIRouter(prefix="/api/radacini", tags=["radacini"], dependencies=[Depends(_enabled), Depends(public_rate_limit)])
 
 
 @router.get("/health")
@@ -56,3 +59,5 @@ router.include_router(contributions.router)
 router.include_router(harvests.router)
 router.include_router(market.router)
 router.include_router(test_accounts.router)
+router.include_router(gdpr.router)
+router.include_router(admin.router)

@@ -60,6 +60,15 @@ export function buildProposal(f, { includeModel = true, withNote = true, withCla
       return { error: "Procentul din recoltă trebuie să fie între 1 și 90." };
     }
     body.harvest_share_percent = share;
+  } else if (f.model === "mixed") {
+    // Model mixt: preț și procent din recoltă, ambele opționale.
+    if (!isBlank(f.harvest_share_percent)) {
+      const share = Number(f.harvest_share_percent);
+      if (!Number.isFinite(share) || share < 1 || share > 90) return { error: "Procentul din recoltă trebuie să fie între 1 și 90." };
+      body.harvest_share_percent = share;
+    } else if (nullBlank) {
+      body.harvest_share_percent = null;
+    }
   }
 
   if (withNote && f.note.trim()) body.note = f.note.trim();
@@ -142,7 +151,7 @@ export default function ProposalForm({
           <Input id={id("end")} type="date" value={f.end_date} onChange={(e) => upd("end_date", e.target.value)} data-testid={tid("end")} />
         </Field>
 
-        <Field label="Preț (RON / an)" htmlFor={id("price")} hint="Opțional.">
+        <Field label="Preț (RON / an)" htmlFor={id("price")} hint={f.model === "mixed" ? "Opțional. Se poate combina cu partea din recoltă." : "Opțional."}>
           <Input
             id={id("price")}
             type="number"
@@ -153,8 +162,8 @@ export default function ProposalForm({
           />
         </Field>
 
-        {f.model === "harvest_share" && (
-          <Field label="Parte din recoltă (%)" htmlFor={id("share")} hint="Între 1% și 90%.">
+        {(f.model === "harvest_share" || f.model === "mixed") && (
+          <Field label="Parte din recoltă (%)" htmlFor={id("share")} hint={f.model === "mixed" ? "Opțional. Între 1% și 90%." : "Între 1% și 90%."}>
             <Input
               id={id("share")}
               type="number"

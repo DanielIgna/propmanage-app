@@ -231,7 +231,7 @@ function App() {
               <NotOnRadacini><ImpersonationBanner /></NotOnRadacini>
               <RoleThemeApplier />
               <AnalyticsRouteTracker />
-              <ExplainThisMount />
+              <NotOnRadacini><ExplainThisMount /></NotOnRadacini>
               <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center"><div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>}>
               <Routes>
               <Route path="/" element={<LandingPage />} />
