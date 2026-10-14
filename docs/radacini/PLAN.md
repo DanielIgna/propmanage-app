@@ -280,7 +280,7 @@ Revizuire de cod (backend, frontend) și reverificarea auditurilor față de `ma
   - 20 de remedieri (date, butoane, cereri redundante, stări de eroare, accesibilitate);
   - **intrarea Rădăcini** e proprie: `/radacini/login`, titlu „Rădăcini”, fără widget-urile PropManage, `noindex`.
 
-### Runda 2 (aplicată 2026-10-14; migrația scrisă, neaplicată)
+### Runda 2 (aplicată 2026-10-14; migrația — doar colecțiile, fără indexuri btree — aplicată pe baza comună pe 2026-10-14)
 1. `RADACINI_ENABLED` și `NEXT_PUBLIC_RADACINI_ENABLED` **oprite implicit** (pornite doar local, prin `launch.json`), ca un merge în `main` să nu expună modulul.
 2. **Migrație** `supabase/migrations/*_radacini_collections.sql`: `app.create_collection` pentru toate colecțiile `radacini_*` + indexuri pe expresii (user_id, parcel_id, project_id, listing_id, status). **Se aplică pe bază doar cu aprobare.**
 3. **Poarta juridică:** cererile pe modelele `sale` și `joint_project` sunt dezactivate („necesită aviz juridic”); `mixed` permite preț și procent. Termeni de membru cu clauza „fără cantitate garantată”, prin mecanismul versionat din `legal.py`.
