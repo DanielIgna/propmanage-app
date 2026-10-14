@@ -35,6 +35,10 @@ const Dispute = lazy(() => import("./pages/Dispute"));
 const DisputaDetaliu = lazy(() => import("./pages/DisputaDetaliu"));
 const Termeni = lazy(() => import("./pages/Termeni"));
 const Prestator = lazy(() => import("./pages/Prestator"));
+const Composesorate = lazy(() => import("./pages/composesorate/Composesorate"));
+const AsociatieDetaliu = lazy(() => import("./pages/composesorate/AsociatieDetaliu"));
+const Revendica = lazy(() => import("./pages/composesorate/Revendica"));
+const GhidMembru = lazy(() => import("./pages/composesorate/GhidMembru"));
 
 export function radaciniRoutes() {
   if (!RADACINI_ENABLED) return null;
@@ -75,6 +79,10 @@ export function radaciniRoutes() {
       <Route path="dispute" element={<Dispute />} />
       <Route path="dispute/:id" element={<DisputaDetaliu />} />
       <Route path="prestator" element={<Prestator />} />
+      <Route path="composesorate" element={<Composesorate />} />
+      <Route path="composesorate/revendica" element={<Revendica />} />
+      <Route path="composesorate/ghid" element={<GhidMembru />} />
+      <Route path="composesorate/:id" element={<AsociatieDetaliu />} />
       {Progres && <Route path="progres" element={<Progres />} />}
     </Route>
     </>

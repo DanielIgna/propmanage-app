@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../../auth";
 import { CARD, EmptyState } from "../../../design-system";
 import { Layers } from "lucide-react";
+import AssocAlertsCard from "../components/assoc/AssocAlertsCard";
 import { radaciniApi, asList } from "../api";
 import { useMember, useMeta } from "../hooks";
 import { ACTIVE_REQUEST, counterOf, fmtPrice, labelOf, linkBtnCls, PageSkeleton, fmtPeriod } from "../shared";
@@ -302,6 +303,7 @@ export default function Panou() {
       )}
 
       <ProiecteCard />
+      <AssocAlertsCard />
     </div>
   );
 }

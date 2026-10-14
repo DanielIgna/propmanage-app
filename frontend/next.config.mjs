@@ -8,6 +8,9 @@ const BACKEND_URL = (process.env.BACKEND_URL || "http://localhost:8001").replace
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Optional separate build dir, so a second `next dev` (e.g. a preview on another port) can run
+  // next to the main one — Next refuses two dev servers sharing the same .next/dev lock.
+  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   // The SPA calls `${NEXT_PUBLIC_BACKEND_URL}/api/...`; empty = same origin (via the rewrites below).
   env: {
     NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL ?? "",

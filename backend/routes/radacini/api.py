@@ -10,6 +10,7 @@ import os
 from fastapi import APIRouter, Depends, HTTPException
 
 from . import (
+    assoc_accountability, assoc_core, assoc_demo, assoc_governance,
     activities, admin, agreements, communities, contributions, crops, decisions, disputes, gdpr, harvests,
     households, legal_terms, market, members, needs, parcels, photos, projects, public, requests, service_requests, staff,
     test_accounts,
@@ -67,6 +68,12 @@ router.include_router(harvests.router)
 router.include_router(market.router)
 router.include_router(test_accounts.router)
 router.include_router(gdpr.router)
+# Composesorate (S9): rutele fixe (/assoc/alerts/mine, /assoc/claims/mine, /assoc/meetings/…)
+# se montează înaintea celor cu parametru (/assoc/{id}).
+router.include_router(assoc_demo.router)
+router.include_router(assoc_accountability.router)
+router.include_router(assoc_governance.router)
+router.include_router(assoc_core.router)
 router.include_router(admin.router)
 router.include_router(communities.router)
 router.include_router(households.router)

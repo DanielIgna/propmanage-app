@@ -13,6 +13,7 @@ Decizii luate (2026-10-13): modul în aceeași aplicație; aceleași conturi; MV
 | S6 | Comunități, gospodării, decizii, hartă cu zone, distanță, dispute, pagini publice, fotografii | gata (S6+S7: 65 teste; regresie 519) |
 | S7 | Necesar semințe/unelte, lucrări mecanizate și prestatori | gata |
 | S8 | Pregătirea pilotului: termeni Rădăcini, onboarding, mobil/PWA, demo extins, dosar jurist, costuri | gata (suită completă: 591 teste) |
+| S9 | Composesorate — model demonstrativ (registru, revendicări, documente, ședințe, mandate, petiții, calendar, finanțe, transparență, jurnal) | gata (23 teste S9; suita completă 613) |
 
 ---
 
@@ -470,3 +471,100 @@ Scenariul generat include și: o comunitate deschisă (Florești) cu anunțuri �
 ### Documente
 - `docs/radacini/DOSAR_JURIST.md`: întrebările juridice concrete, cu trimitere la funcțiile din aplicație. Acoperă arenda și înregistrarea, vânzarea de alimente (DSV), barterul și fiscalitatea, rolul de intermediar, GDPR (localizare, minori, consimțăminte), investițiile colective (ASF), disputele și răspunderea, plus termenii pilot de revizuit.
 - `docs/radacini/COSTURI_PILOT.md`: estimări în euro pe lună pentru pilot (100–500 de membri), cu ipoteze explicite: Supabase (DB, egress, storage), Railway, Cloudflare, Google Maps/Geocoding (sau OSM gratuit), email, jurist (estimare de piață, de validat).
+
+---
+
+## S9 — contract: modulul Composesorate (model demonstrativ)
+
+Structura logică și motivarea: `docs/radacini/composesorate/MODUL_DESIGN.md`. **Doar date fictive în S9.** Funcțiile digitale completează procedurile din statut; voturile din aplicație sunt consultative.
+
+### Reguli comune
+- Prefix `/api/radacini/assoc`. Colecții `radacini_assoc_*`, plus `radacini_associations`.
+- **Rol în asociație:** membru verificat (rând din registru legat de `user_id`), CA (`council_role` ∈ president, vice_president, secretary, cashier, forest_pasture), cenzor (`censor`). **Super-adminul Rădăcini și managerul** au acces de operator: pot crea asociații și vedea tot. **Operatorul** are acces doar la asociațiile la care a fost asignat de manager.
+- **Jurnalul de răspundere:** orice scriere a CA, a operatorului sau a managerului adaugă `radacini_assoc_audit {association_id, actor_user_id, actor_role, action, target_type, target_id, before?, after?, at}`. Jurnalul e **doar cu adăugare** și nu are ruta de ștergere. Membrii văd un rezumat (acțiune, rol, dată), cenzorii și managerii îl văd complet.
+- **Documentele** sunt fișiere private în Supabase Storage (`radacini/assoc/<id>/docs/<uuid>.<ext>`, pdf/jpeg/png/webp, ≤10 MB), cu SHA-256 calculat pe server. Nu se șterg; se adaugă o versiune nouă (`replaces_id`). Fiecare descărcare se înregistrează în `radacini_assoc_doc_access`.
+- **Notificări** prin `safe_notify`; conturile de test nu primesc email. Acțiunile cu efect juridic blochează impersonarea.
+
+### Reguli statutare configurabile (`association.rules`)
+Implicit, valorile din statutul Ciunca:
+
+```json
+{"aga_months_deadlines": ["04-30", "11-30"], "balance_deadline": "03-31", "budget_month": 11, "pasture_plan_deadline": "10-31",
+ "convocation_days": 15, "quorum_first": "majority_shares", "second_convocation_day": 7,
+ "major_quorum": {"members_majority": true, "shares_fraction": 0.6667},
+ "extraordinary_petition": {"members_fraction": 0.25, "shares_fraction": 0.25},
+ "agenda_petition": {"members_fraction": 0.10, "days_before": 5},
+ "proxy_limits": {"max_members": 5, "max_shares_fraction": 0.05},
+ "max_member_shares_fraction": 0.05, "contest_days": 15, "prescription_years": 5,
+ "profit_split": {"council_max": 0.10, "reserve_max": 0.20, "charity_max": 0.20, "investment_max": 0.20},
+ "info_request_days": 30, "censor_check_months": [3, 6, 9, 12]}
+```
+
+### A. Asociații, registru, revendicări (`assoc_core.py`)
+- `POST /assoc` (manager): `{name, type, localities[], description, legal{cui?, court?, registered_at?}, rules?, patrimony[{cf, topo, area_ha, category, toponym}]}`.
+- `GET /assoc` (public, fără date personale): nume, localități, suprafață totală, număr de membri, scor de transparență. `GET /assoc/{id}` (public + secțiunile mele, dacă sunt membru) · `PATCH /assoc/{id}` (CA/manager).
+- `GET /assoc/{id}/me` → rolul meu, rândul meu din registru (cote, surse), revendicările mele.
+- **Registru:**
+  - `GET /assoc/{id}/members` (CA, cenzori, operator): filtre pe stare și căutare;
+  - `POST /assoc/{id}/members` (CA): un rând;
+  - `POST /assoc/{id}/members/import` (CA/manager): CSV cu `code,name,shares,sources,status,locality`, validat, cu raport de erori;
+  - `PATCH /assoc/{id}/members/{mid}` (CA): stare, cote, surse, funcție; schimbarea cotelor cere `reason` + `document_id` opțional.
+- **Participare:** `GET /assoc/{id}/participation` → `{total_shares, members_count, active_members, active_shares, unknown_shares, deceased_unresolved, quorum_needed_shares, gap_to_quorum, by_status{}}`.
+- **Revendicări:**
+  - `POST /assoc/{id}/claims` (utilizator autentificat): `{kind:"self"|"heir", member_code?, name_on_record?, relation?, note, document_ids[]}`;
+  - `GET /assoc/{id}/claims` (CA) · `GET /assoc/claims/mine`;
+  - `POST /assoc/claims/{cid}/decide` (CA: `{decision:"approve"|"reject", note (obligatorie la reject), member_id?}`). La aprobare: `self` leagă `user_id` de rândul existent și îl trece în `confirmed`; `heir` creează un rând nou cu `status: heir_pending` până la decizia AGA.
+
+### B. Documente, ședințe, mandate, petiții, cereri (`assoc_governance.py`)
+- **Documente:**
+  - `POST /assoc/{id}/documents` (CA/operator, multipart): `type, title, date, visibility (members|council), replaces_id?`;
+  - `GET /assoc/{id}/documents` (după vizibilitate);
+  - `GET /assoc/documents/{did}/file` (stream, înregistrează accesul);
+  - `GET /assoc/documents/{did}/access-log` (CA, cenzori).
+- **Ședințe:**
+  - `POST /assoc/{id}/meetings` (CA): `{kind:"aga_ordinary"|"aga_extraordinary"|"council", date, place, agenda[{title, details}], material_ids[]}`;
+  - `POST /meetings/{mid}/convene` (CA): trimite notificări tuturor membrilor activi/confirmați; înregistrează `convocations[{member_id, channel, sent_at, delivered?, read_at?}]`; avertizare dacă `date - azi < convocation_days`; cere ca CA să consemneze și trimiterea prin recomandată, cu dovadă încărcată;
+  - `POST /meetings/{mid}/ack` (membru): confirmă primirea;
+  - `POST /meetings/{mid}/attendance` (CA): `{present_member_ids[], mandates_ids[]}` → calculează `represented_shares`, `quorum_met` (prima convocare: majoritatea cotelor; a doua convocare, din ziua 7: fără cvorum, **marcat vizibil „ținută fără cvorum (art. 9(2))”**);
+  - `POST /meetings/{mid}/decisions` (CA): `[{title, result_text, votes_for?, votes_against?, abstentions?}]` + `minutes_document_id` → `contest_until = date + contest_days`;
+  - `GET /assoc/{id}/meetings` · `GET /meetings/{mid}`.
+- **Mandate:**
+  - `POST /meetings/{mid}/mandates` (membru): `{representative_member_id, document_id?}`. Reprezentantul trebuie să fie membru; limitele `proxy_limits` sunt verificate pe ședință → 409 la depășire.
+  - `DELETE /mandates/{id}` (mandantul, înainte de ședință).
+- **Petiții:**
+  - `POST /assoc/{id}/petitions` (membru): `{kind:"extraordinary_aga"|"agenda_item", title, text, meeting_id? (la agenda_item)}`;
+  - `POST /petitions/{pid}/sign` (membru, o singură dată);
+  - `GET /assoc/{id}/petitions` → semnături (număr de membri, cote), prag, `threshold_met`; la atingerea pragului se notifică președintele și CA, iar termenul de răspuns e 10 zile pentru AGA extraordinară;
+  - `POST /petitions/{pid}/respond` (CA).
+- **Cereri de informații:**
+  - `POST /assoc/{id}/requests` (membru) `{subject, text}` → `due_at = +info_request_days`;
+  - `POST /requests/{rid}/answer` (CA) `{text, document_id?}`;
+  - `GET /assoc/{id}/requests` (CA: toate; membru: ale lui) — întârziatele sunt marcate.
+
+### C. Calendar, finanțe, transparență, jurnal, demo (`assoc_accountability.py`)
+- **Calendar:**
+  - `GET /assoc/{id}/obligations?year=` → generate din `rules` pentru anul cerut, plus starea calculată din dovezi (AGA ținută în termen = ședință AGA ordinară cu data ≤ deadline; bilanț = document `balance` cu data ≤ 31.03; raport cenzori trimestrial = document `censor_report` în trimestru);
+  - `POST /obligations/{key}/evidence` (CA) pentru dovezi manuale.
+- **Finanțe:**
+  - `POST /assoc/{id}/finance/years` (CA/casier): `{year, revenues{category: amount}, expenses{…}, net_profit, split{council, reserve, charity, investment, members}}`, validat față de `profit_split` maxim;
+  - `POST /finance/years/{y}/distribute` → calculează sumele per membru, proporțional cu cotele, cu `prescribes_at = AGA date + prescription_years`;
+  - `GET /assoc/{id}/finance` (membri: sinteză + sumele mele; CA: tot) · `POST /distributions/{id}/paid` (casier).
+  - Alertă (la citire și în panoul membrului) pentru sume neridicate cu mai puțin de 12 luni până la prescriere.
+- **Transparență:** `GET /assoc/{id}/transparency` → scor 0–100 și componentele (obligații, documente obligatorii, cereri în termen, participare).
+- **Jurnal:** `GET /assoc/{id}/audit` (cenzori/manager: complet; membri: rezumat).
+- **Demo:**
+  - `POST /assoc/demo/seed` (super-admin): creează „Composesoratul Demo Valea Verde” (fictiv) cu ~60 de membri fictivi, cote fracționare (1/12, 1/15…), surse „Nr X = …”, cu stări mixte (~10% activi); 3 conturi de test legate (Ion = președinte, Maria = membru confirmat, Andrei = moștenitor în curs), cenzorul Vasile; documente exemplu (fișiere text/pdf generate); o AGA din trecut ținută la a doua convocare fără cvorum; o AGA viitoare convocată; o petiție în curs; obligații întârziate; un an financiar cu sume aproape de prescriere; o cerere de informații restantă;
+  - `POST /assoc/demo/reset` · totul e marcat `demo_seed: true`.
+
+### Frontend (`frontend/src/apps/radacini/pages/composesorate/`)
+- **Navigație:** „Composesorate” (lista mea + căutare publică).
+- **Pagina asociației** (`/radacini/composesorate/:id`), cu file:
+  - **Prezentare:** scor de transparență, patrimoniu, organe, următoarea ședință, alerte;
+  - **Cota mea:** cote, surse, documentele mele, sumele cuvenite cu prescrierea, revendicări;
+  - **Registru** (CA/cenzori): tabel, import CSV, panou de participare;
+  - **Documente:** listă după tip, versiuni, hash vizibil, jurnal de acces pentru CA;
+  - **Ședințe:** convocare cu confirmări, prezență, cvorum, hotărâri cu termen de contestare;
+  - **Petiții**, **Cereri**, **Calendar**, **Finanțe**, **Jurnal**.
+- **Pagini dedicate:** „Revendică / Sunt moștenitor” și un ghid scurt pentru membri vârstnici, cu texte mari și pași simpli.
+- **Panou:** cardul „Composesoratele mele” (alerte: convocări neconfirmate, sume aproape de prescriere, petiții).
+- **Administrare:** fila „Composesorate” (listă, creare, asignare operatori).

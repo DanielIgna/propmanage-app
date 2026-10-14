@@ -25,6 +25,31 @@ Fondatorul a fost secretar, este membru în administrare și membru moștenitor.
 - **Conducere fără competențe digitale** și, în cazul observat, fără bună-voință. Aceasta poate fi influențată de alții să ia decizii dăunătoare.
 - **Cazul de referință** e un composesorat **semifuncțional**, din care fac parte fondatorul. Modulul, după ce e bine documentat, va fi prezentat și **composesoratelor funcționale**, care sunt partenerii mai probabili pentru pilot.
 
+### 2.1.1 Lipsa actelor (raportat de fondator, 2026-10-14)
+- **În cazul de referință, actele lipsesc, inclusiv originalele.** Fondatorul relatează că pierderea lor ar fi fost înscenată, că actele ar fi fost sustrase și că ar fi dispărut chiar și din arhive publice. Sunt **afirmații de verificat pe căile legale**; platforma nu le tranșează.
+- **Consecința:** membrii și moștenitorii **nu știu ce drepturi au** (ce cotă, din partea cui, pe ce suprafață). Situația e haotică.
+- **Ce schimbă pentru analiză:** problema centrală devine **reconstituirea dovezilor**, înaintea transparenței pe documente existente. H2 („registru neactualizat”) se extinde la „registru inexistent sau necontrolabil”.
+
+**Surse alternative din care se pot reconstitui informații** (de verificat cu juristul ce se poate obține și de către cine):
+- **Cartea funciară** (OCPI / ANCPI): extrase CF și istoricul înscrierilor pe imobilele composesoratului; planuri cadastrale.
+- **Instanța** care a înscris sau reconstituit composesoratul: dosarul de înscriere, hotărârile, eventualele litigii.
+- **Comisia locală și comisia județeană de fond funciar (prefectura):** hotărâri de reconstituire, anexe, tabele nominale depuse la reconstituire.
+- **Primăria:** registrul agricol, evidențe fiscale (impozit pe teren sau pădure plătit de composesorat), adeverințe.
+- **Ocolul silvic:** contracte de administrare sau servicii, amenajamentul silvic (care identifică proprietarul și suprafețele), evidențele exploatărilor.
+- **ANAF / registre fiscale:** declarații, situații financiare depuse.
+- **Notari:** certificate de moștenitor care menționează drepturi în composesorat (din dosarele succesorale ale membrilor).
+- **Membrii și familiile lor:** copii vechi ale tabelelor, chitanțe de cotizație sau de împărțire a veniturilor, adeverințe, convocatoare, fotografii ale documentelor, scrisori.
+- **Arhivele Naționale:** documente istorice (de la înființare: acte de constituire, liste de membri din perioada interbelică), dacă mai există copii sau fonduri conexe.
+
+**Ce înseamnă pentru modul** (idei de rafinat):
+1. **Reconstituirea registrului din dovezi:** fiecare membru sau moștenitor încarcă ce are (certificat de moștenitor, extras CF, adeverință, copie veche de tabel). Fiecare dovadă primește o **proveniență** (de unde vine), un **stadiu de verificare** (nevalidată, coroborată, confirmată de document oficial) și **legături** (persoană → cotă → sursă).
+2. **Documente care nu mai pot dispărea:** fiecare document încărcat sau publicat primește amprentă digitală (hash) și dată. Se păstrează în **copii distribuite**, accesibile tuturor membrilor îndreptățiți, cu jurnal de acces. Ștergerea e imposibilă; se adaugă doar versiuni noi.
+3. **Harta moștenirilor:** arbore „de la membrul fondator la moștenitorii de azi”, construit din dovezi. Fiecare persoană își vede poziția și ce acte îi lipsesc.
+4. **Ghid de reconstituire:** ce cereri se fac, la ce instituții, cu modele de cereri (de validat juridic). Stadiul fiecărei cereri e urmărit în platformă.
+5. **Dosar pentru avocat sau autorități**, generat din dovezile strânse: cronologie, documente, lipsuri. Sprijină demersurile legale ale membrilor, fără ca platforma să acuze pe cineva.
+
+**De adăugat în `DOSAR_JURIST.md` (Faza 1):** căile legale de reconstituire a actelor pierdute sau sustrase; cine are calitate să ceară copii de la fiecare instituție; dacă lipsa actelor afectează funcționarea legală a composesoratului (AGA, conducere, contracte); ce valoare probatorie au copiile și declarațiile membrilor; ce demersuri au membrii dacă suspectează sustragerea documentelor (fără ca platforma să facă acuzații).
+
 ### 2.2 Cerințe care rezultă (de rafinat în Faza 1)
 1. **Cont pentru fiecare membru și moștenitor,** cu acces la datele proprii: cotă, istoric, documentele care îl privesc.
 2. **Actualizarea datelor de contact de către membru,** cu validare de către secretariat și istoric. Rezolvă domiciliile neactualizate.

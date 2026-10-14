@@ -68,6 +68,20 @@ COLLECTIONS = (
     # S8 (documentele legale nu sunt demo; acceptările și onboarding-ul conturilor de test sunt is_demo)
     "radacini_legal_acceptances",
     "radacini_onboarding",
+    # S9 (Composesorate)
+    "radacini_associations",
+    "radacini_assoc_members",
+    "radacini_assoc_claims",
+    "radacini_assoc_audit",
+    "radacini_assoc_documents",
+    "radacini_assoc_doc_access",
+    "radacini_assoc_meetings",
+    "radacini_assoc_mandates",
+    "radacini_assoc_petitions",
+    "radacini_assoc_requests",
+    "radacini_assoc_obligation_evidence",
+    "radacini_assoc_finance_years",
+    "radacini_assoc_distributions",
 )
 DEMO_FILTER = {"is_demo": True}
 SCAN_LIMIT = 100000
@@ -181,12 +195,54 @@ async def run_tests_only(apply: bool) -> None:
     await _report_and_delete(ids, roots, apply, "de test")
 
 
+ASSOC_CHILDREN = (
+    "radacini_assoc_members", "radacini_assoc_claims", "radacini_assoc_audit", "radacini_assoc_documents",
+    "radacini_assoc_meetings", "radacini_assoc_petitions", "radacini_assoc_requests",
+    "radacini_assoc_obligation_evidence", "radacini_assoc_finance_years", "radacini_assoc_distributions",
+)
+
+
+async def purge_test_associations(apply: bool) -> None:
+    """Asociațiile create de testele HTTP (nume cu „TEST-RAD-”) și tot ce ține de ele (după association_id).
+    Mandatele și accesările documentelor se leagă de ședințe/documente; se șterg după acestea."""
+    assocs = await db.radacini_associations.find({}, {"name": 1}).limit(SCAN_LIMIT).to_list(SCAN_LIMIT)
+    ids = [str(a["_id"]) for a in assocs if "TEST-RAD-" in (a.get("name") or "") or (a.get("name") or "").startswith(("Test S9B ", "Test S9C "))]
+    if not ids:
+        print("  radacini_associations: 0 de test")
+        return
+    meeting_ids, doc_ids = [], []
+    for i in range(0, len(ids), 100):
+        chunk = {"association_id": {"$in": ids[i:i + 100]}}
+        meeting_ids += [str(d["_id"]) for d in await db.radacini_assoc_meetings.find(chunk, {"_id": 1}).to_list(SCAN_LIMIT)]
+        doc_ids += [str(d["_id"]) for d in await db.radacini_assoc_documents.find(chunk, {"_id": 1}).to_list(SCAN_LIMIT)]
+    plan = [("radacini_assoc_mandates", "meeting_id", meeting_ids), ("radacini_assoc_doc_access", "document_id", doc_ids)]
+    plan += [(name, "association_id", ids) for name in ASSOC_CHILDREN]
+    for name, field, values in plan:
+        coll = getattr(db, name)
+        total = 0
+        for i in range(0, len(values), 100):
+            flt = {field: {"$in": values[i:i + 100]}}
+            n = await coll.count_documents(flt)
+            if apply and n:
+                await coll.delete_many(flt)
+            total += n
+        print(f"  {name}: {'șterse' if apply else 'de test'} {total}")
+    from bson import ObjectId
+    oids = [ObjectId(x) for x in ids if ObjectId.is_valid(x)]
+    if apply:
+        await db.radacini_associations.delete_many({"_id": {"$in": oids}})
+    print(f"  radacini_associations: {'șterse' if apply else 'de test'} {len(oids)}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--apply", action="store_true", help="șterge efectiv documentele demo")
     parser.add_argument("--tests-only", action="store_true", help="doar datele lăsate de testele HTTP (TEST-RAD-)")
     args = parser.parse_args()
-    asyncio.run(run_tests_only(apply=args.apply) if args.tests_only else run(apply=args.apply))
+    async def _tests_only():
+        await run_tests_only(apply=args.apply)
+        await purge_test_associations(apply=args.apply)
+    asyncio.run(_tests_only() if args.tests_only else run(apply=args.apply))
 
 
 if __name__ == "__main__":
