@@ -1,5 +1,6 @@
 """Terenuri Rădăcini: CRUD proprietar, listare publică și ciclul de publicare."""
 import logging
+import math
 import os
 from datetime import date
 from typing import Optional
@@ -21,6 +22,7 @@ from .common import (
     oid_or_404,
 )
 from .constants import COUNTY, LOCALITIES, OFFER_MODEL_IDS, WATER_SOURCE_IDS
+from .geo import area_warning, bbox, haversine_km, in_romania_bbox, validate_polygon
 from .members import get_member_doc
 from .projects import release_parcel
 from .staff import get_staff
@@ -32,9 +34,21 @@ _NON_NULL_FIELDS = ("title", "county", "locality", "lat", "lng", "area_m2", "off
 # Câmpurile verificate de personal: dacă un teren suspendat le schimbă, trebuie reverificat (revine în `draft`).
 _CONTENT_FIELDS = (
     "title", "county", "locality", "lat", "lng", "area_m2",
-    "access", "water_sources", "current_crops", "description", "offer",
+    "access", "water_sources", "current_crops", "description", "offer", "geometry",
 )
 _CHANGED = "Terenul s-a schimbat între timp. Reîncarcă pagina."
+NEAR_CAP = 1000  # terenuri publicate luate în calcul la căutarea după distanță
+
+
+def _parse_near(near: Optional[str]) -> tuple[float, float]:
+    try:
+        lat_s, lng_s = (near or "").split(",")
+        lat, lng = float(lat_s), float(lng_s)
+    except ValueError:
+        raise HTTPException(400, "Parametrul near trebuie să fie „lat,lng”.") from None
+    if not (math.isfinite(lat) and math.isfinite(lng)) or not in_romania_bbox(lat, lng):
+        raise HTTPException(400, "Punctul căutat este în afara zonei Rădăcini.")
+    return lat, lng
 
 
 class OfferIn(BaseModel):
@@ -100,6 +114,14 @@ class ParcelPatch(BaseModel):
     availability_from: Optional[date] = None
     availability_to: Optional[date] = None
     offer: Optional[OfferIn] = None
+    geometry: Optional[dict] = None
+
+    @field_validator("geometry")
+    @classmethod
+    def _geometry(cls, v: Optional[dict]) -> Optional[dict]:
+        if v is None:
+            return None
+        return validate_polygon(v)[0]
 
     @field_validator("title")
     @classmethod
@@ -201,8 +223,9 @@ def _first_name(name: Optional[str]) -> str:
 
 def _public_view(doc: dict, owner: dict) -> dict:
     out = serialize_doc(doc)
-    for key in ("owner_user_id", "verification", "archived_at", "active_agreement_id"):
+    for key in ("owner_user_id", "verification", "archived_at", "active_agreement_id", "geometry", "geometry_area_m2"):
         out.pop(key, None)
+    out["has_geometry"] = bool(doc.get("geometry"))
     out["lat"] = round(out["lat"], 2)
     out["lng"] = round(out["lng"], 2)
     out["owner_name"] = _first_name(owner.get("name"))
@@ -307,11 +330,19 @@ async def list_my_parcels(user: dict = Depends(get_current_user)):
 async def list_public_parcels(
     locality: Optional[str] = None,
     model: Optional[str] = None,
+    near: Optional[str] = None,
+    radius_km: Optional[float] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=50),
 ):
     if model is not None and model not in OFFER_MODEL_IDS:
         raise HTTPException(400, "Model de ofertă necunoscut.")
+    center = None
+    if near is not None or radius_km is not None:
+        center = _parse_near(near)
+        radius = 10.0 if radius_km is None else radius_km
+        if not (math.isfinite(radius) and 1 <= radius <= 100):
+            raise HTTPException(400, "Raza trebuie să fie între 1 și 100 km.")
     flt: dict = {"status": "published", "archived_at": {"$exists": False}}
     if os.environ.get("RADACINI_MARK_DEMO", "").lower() != "true":
         flt["is_demo"] = {"$ne": True}  # datele de test/demo nu apar în lista publică
@@ -319,6 +350,26 @@ async def list_public_parcels(
         flt["locality"] = locality
     if model:
         flt["offer.models"] = model
+    if center:
+        # Dreptunghi pe coordonatele EXACTE (top-level, tradus în SQL), cu o marjă cât rotunjirea publică (0,01°);
+        # distanța se calculează apoi pe coordonatele ROTUNJITE, ca să nu se poată deduce locația exactă.
+        lat_min, lat_max, lng_min, lng_max = bbox(center[0], center[1], radius, margin_deg=0.02)
+        flt["lat"] = {"$gte": lat_min, "$lte": lat_max}
+        flt["lng"] = {"$gte": lng_min, "$lte": lng_max}
+        docs = await db.radacini_parcels.find(flt).limit(NEAR_CAP).to_list(NEAR_CAP)
+        owners = await load_owners(d.get("owner_user_id") for d in docs)
+        scored = []
+        for d in docs:
+            dist = haversine_km(center[0], center[1], round(d["lat"], 2), round(d["lng"], 2))
+            if dist <= radius:
+                scored.append((dist, d))
+        scored.sort(key=lambda t: (t[0], t[1].get("updated_at") or ""))
+        items = []
+        for dist, d in scored[skip:skip + limit]:
+            view = _public_view(d, owners.get(str(d.get("owner_user_id")), {}))
+            view["distance_km"] = round(dist, 1)
+            items.append(view)
+        return {"items": items, "total": len(scored)}
     total = await db.radacini_parcels.count_documents(flt)
     docs = await db.radacini_parcels.find(flt).sort("updated_at", -1).skip(skip).limit(limit).to_list(limit)
     owners = await load_owners(d.get("owner_user_id") for d in docs)
@@ -342,6 +393,12 @@ async def create_parcel(body: ParcelCreate, user: dict = Depends(get_current_use
     data["description"] = data["description"] or ""
     data["water_sources"] = data["water_sources"] or []
     data["current_crops"] = data["current_crops"] or []
+    geometry_area = None
+    if data.get("geometry"):
+        geometry_area = validate_polygon(data["geometry"])[1]
+        data["geometry_area_m2"] = geometry_area
+    else:
+        data.pop("geometry", None)
     doc = mark_demo({
         "owner_user_id": uid,
         **data,
@@ -350,7 +407,11 @@ async def create_parcel(body: ParcelCreate, user: dict = Depends(get_current_use
         "updated_at": now,
     })
     await db.radacini_parcels.insert_one(doc)
-    return {"parcel": serialize_doc(doc)}
+    out = {"parcel": serialize_doc(doc)}
+    warning = area_warning(geometry_area, doc.get("area_m2"))
+    if warning:
+        out["geometry_warning"] = warning
+    return out
 
 
 @router.get("/parcels/{parcel_id}")
@@ -382,6 +443,9 @@ async def get_parcel(parcel_id: str, user: Optional[dict] = Depends(get_optional
         if agreement_id and await _log_location_access(doc, str(user["id"]), agreement_id, "cultivator"):
             out["lat"], out["lng"] = doc["lat"], doc["lng"]
             out["exact_location"] = True
+            if doc.get("geometry"):
+                out["geometry"] = doc["geometry"]
+                out["geometry_area_m2"] = doc.get("geometry_area_m2")
     return {"parcel": out}
 
 
@@ -402,13 +466,23 @@ async def patch_parcel(parcel_id: str, body: ParcelPatch, user: dict = Depends(g
         raise HTTPException(400, "Data de final a disponibilității este înaintea celei de început.")
     if not changes:
         return {"parcel": serialize_doc(doc)}
+    if "geometry" in changes:
+        if changes["geometry"]:
+            changes["geometry_area_m2"] = validate_polygon(changes["geometry"])[1]
+        else:
+            changes["geometry"] = None
+            changes["geometry_area_m2"] = None
     if status == "rejected":
         changes["status"] = "draft"
     elif status == "paused" and any(k in changes and changes[k] != doc.get(k) for k in _CONTENT_FIELDS):
         # Un teren suspendat a fost deja verificat; dacă i se schimbă conținutul sau locația, trebuie reverificat.
         changes["status"] = "draft"
     doc = await _transition(doc, changes, no_agreement=True)
-    return {"parcel": serialize_doc(doc)}
+    out = {"parcel": serialize_doc(doc)}
+    warning = area_warning(doc.get("geometry_area_m2"), doc.get("area_m2")) if doc.get("geometry") else None
+    if warning:
+        out["geometry_warning"] = warning
+    return out
 
 
 @router.post("/parcels/{parcel_id}/submit")

@@ -53,6 +53,18 @@ COLLECTIONS = (
     "radacini_seller_stats",  # (nu există colecții de lock-uri: rezervarea unică se obține prin upsert)
     "radacini_location_access_log",
     "radacini_deletion_requests",
+    # S6/S7
+    "radacini_communities",
+    "radacini_community_members",
+    "radacini_community_posts",
+    "radacini_households",
+    "radacini_consents",
+    "radacini_decisions",
+    "radacini_disputes",
+    "radacini_photos",
+    "radacini_project_needs",
+    "radacini_providers",
+    "radacini_service_requests",
 )
 DEMO_FILTER = {"is_demo": True}
 SCAN_LIMIT = 100000

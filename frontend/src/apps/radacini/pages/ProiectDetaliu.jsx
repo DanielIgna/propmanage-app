@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Briefcase, CalendarDays, Users, Wallet, Sprout, Wheat } from "lucide-react";
+import { ArrowLeft, Briefcase, CalendarDays, PackageOpen, Tractor, Users, Wallet, Sprout, Wheat } from "lucide-react";
 import { useAuth } from "../../../auth";
 import { EmptyState, TabBar } from "../../../design-system";
 import { radaciniApi, errMsg } from "../api";
@@ -11,6 +11,15 @@ import CalendarTab from "../components/project/CalendarTab";
 import ContributionsTab from "../components/project/ContributionsTab";
 import MembersTab from "../components/project/MembersTab";
 import HarvestTab from "../components/project/HarvestTab";
+import NeedsTab from "../components/project/NeedsTab";
+import ServiceTab from "../components/project/ServiceTab";
+
+// Filele S7 (PROJECT_TABS din shared.jsx rămâne neschimbat).
+const S7_TABS = [
+  ["necesar", "Necesar"],
+  ["lucrari", "Lucrări"],
+];
+const ALL_TABS = [...PROJECT_TABS.slice(0, -1), ...S7_TABS, PROJECT_TABS[PROJECT_TABS.length - 1]];
 
 const TAB_ICONS = {
   prezentare: Briefcase,
@@ -18,6 +27,8 @@ const TAB_ICONS = {
   calendar: CalendarDays,
   contributii: Wallet,
   recolta: Wheat,
+  necesar: PackageOpen,
+  lucrari: Tractor,
   membri: Users,
 };
 
@@ -73,9 +84,9 @@ export default function ProiectDetaliu() {
   const canCoord = canWrite && myRole === "coordinator";
 
   const tabParam = searchParams.get("tab");
-  const active = PROJECT_TABS.some(([t]) => t === tabParam) ? tabParam : "prezentare";
+  const active = ALL_TABS.some(([t]) => t === tabParam) ? tabParam : "prezentare";
   const setTab = (t) => setSearchParams(t === "prezentare" ? {} : { tab: t }, { replace: true });
-  const tabs = PROJECT_TABS.map(([tid, label]) => [tid, label, TAB_ICONS[tid]]);
+  const tabs = ALL_TABS.map(([tid, label]) => [tid, label, TAB_ICONS[tid]]);
 
   // isMember în tab-uri înseamnă „poate scrie” (membru și proiect nefinalizat).
   const common = { project, members, isMember: canWrite, isProjectMember: memberOf, myRole, canCoord, me: user?.id, reload };
@@ -120,6 +131,8 @@ export default function ProiectDetaliu() {
         {active === "calendar" && <CalendarTab {...common} />}
         {active === "contributii" && <ContributionsTab {...common} />}
         {active === "recolta" && <HarvestTab {...common} />}
+        {active === "necesar" && <NeedsTab {...common} />}
+        {active === "lucrari" && <ServiceTab {...common} />}
         {active === "membri" && <MembersTab {...common} />}
       </div>
     </div>

@@ -37,6 +37,7 @@ const EMPTY = {
   availability_from: "",
   availability_to: "",
   location: null,
+  geometry: null,
   models: [],
   harvest_share_percent: "",
   terms: "",
@@ -54,6 +55,7 @@ const fromParcel = (p) => ({
   availability_from: isoToDateInput(p.availability_from),
   availability_to: isoToDateInput(p.availability_to),
   location: p.lat != null && p.lng != null ? { lat: p.lat, lng: p.lng } : null,
+  geometry: p.geometry || null,
   models: p.offer?.models || [],
   harvest_share_percent: p.offer?.harvest_share_percent ?? "",
   terms: p.offer?.terms || "",
@@ -91,6 +93,8 @@ const toBody = (f, isEdit = false) => {
     description: f.description.trim(),
     offer: { models: f.models, terms: f.terms.trim() },
   };
+  if (f.geometry) body.geometry = f.geometry;
+  else if (isEdit) body.geometry = null;
   if (f.availability_from) body.availability_from = f.availability_from;
   else if (isEdit) body.availability_from = null;
   if (f.availability_to) body.availability_to = f.availability_to;
@@ -119,6 +123,7 @@ export default function TerenForm() {
   const [loading, setLoading] = useState(!!routeId);
   const [loadError, setLoadError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [geoWarning, setGeoWarning] = useState(null);
 
   const isEdit = !!editId;
   const canEdit = !isEdit || (EDITABLE_STATUS.includes(status) && !activeAgreementId);
@@ -135,6 +140,7 @@ export default function TerenForm() {
         setStatus(p.status);
         setActiveAgreementId(p.active_agreement_id || null);
         setForm(fromParcel(p));
+        setGeoWarning(p.geometry_warning || null);
       })
       .catch((e) => alive && setLoadError(e))
       .finally(() => alive && setLoading(false));
@@ -163,11 +169,14 @@ export default function TerenForm() {
     let saved = false; // true după ce ciorna a fost salvată (creare sau actualizare)
     try {
       const body = toBody(form, isEdit);
+      let warning = null;
       if (isEdit) {
-        await radaciniApi.updateParcel(editId, body);
+        const upd = await radaciniApi.updateParcel(editId, body);
+        warning = (upd?.parcel ?? upd)?.geometry_warning || null;
       } else {
         const created = await radaciniApi.createParcel(body);
         id = (created?.parcel ?? created)?.id;
+        warning = (created?.parcel ?? created)?.geometry_warning || null;
         setEditId(id);
         setStatus("draft");
       }
@@ -183,6 +192,7 @@ export default function TerenForm() {
           ? "Modificările au fost salvate. Trimite terenul din nou spre verificare."
           : "Ciorna a fost salvată"
       );
+      if (warning) toast.warning(warning, { duration: 8000 });
       navigate("/radacini/terenurile-mele");
     } catch (e) {
       const msg = errMsg(e, "Nu am putut salva terenul");
@@ -313,7 +323,31 @@ export default function TerenForm() {
         </Section>
 
         <Section title="Locație">
-          <LocationPicker value={form.location} onChange={(loc) => upd("location", loc)} />
+          <LocationPicker
+            value={form.location}
+            onChange={(loc) => upd("location", loc)}
+            polygon={form.geometry}
+            onPolygonChange={(g) =>
+              setForm((f) => {
+                let location = f.location;
+                // Fără punct încă: folosim centrul poligonului ca punct al terenului.
+                if (g && !location) {
+                  const ring = g.coordinates[0].slice(0, -1);
+                  location = {
+                    lat: Math.round((ring.reduce((a, c) => a + c[1], 0) / ring.length) * 1e6) / 1e6,
+                    lng: Math.round((ring.reduce((a, c) => a + c[0], 0) / ring.length) * 1e6) / 1e6,
+                  };
+                }
+                return { ...f, geometry: g, location };
+              })
+            }
+          />
+          {geoWarning && (
+            <div className="rounded-xl border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-100" data-testid="radacini-form-geometry-warning">
+              {geoWarning}
+            </div>
+          )}
+          <p className="text-xs text-slate-500 dark:text-slate-400">Poligonul e opțional și îl văd doar tu, părțile unui acord semnat și personalul. Publicul vede un cerc aproximativ.</p>
         </Section>
 
         <Section title="Ofertă">

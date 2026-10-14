@@ -27,6 +27,13 @@ const AnuntForm = lazy(() => import("./pages/AnuntForm"));
 const Rezervari = lazy(() => import("./pages/Rezervari"));
 const ConturiTest = lazy(() => import("./pages/ConturiTest"));
 const Login = lazy(() => import("./pages/Login"));
+const Descopera = lazy(() => import("./pages/Descopera"));
+const Comunitati = lazy(() => import("./pages/Comunitati"));
+const ComunitateDetaliu = lazy(() => import("./pages/ComunitateDetaliu"));
+const Gospodaria = lazy(() => import("./pages/Gospodaria"));
+const Dispute = lazy(() => import("./pages/Dispute"));
+const DisputaDetaliu = lazy(() => import("./pages/DisputaDetaliu"));
+const Prestator = lazy(() => import("./pages/Prestator"));
 
 export function radaciniRoutes() {
   if (!RADACINI_ENABLED) return null;
@@ -34,6 +41,8 @@ export function radaciniRoutes() {
     <>
     {/* Intrarea Rădăcini e în afara layout-ului (layout-ul cere cont). */}
     <Route path="/radacini/login" element={<Suspense fallback={null}><Login /></Suspense>} />
+    {/* Pagina publică, fără cont. */}
+    <Route path="/radacini/descopera" element={<Suspense fallback={null}><Descopera /></Suspense>} />
     <Route path="/radacini" element={<RadaciniLayout />}>
       <Route index element={<Panou />} />
       <Route path="profil" element={<Profil />} />
@@ -58,6 +67,12 @@ export function radaciniRoutes() {
       <Route path="piata/:id" element={<AnuntDetaliu />} />
       <Route path="piata/:id/editare" element={<AnuntForm />} />
       <Route path="rezervari" element={<Rezervari />} />
+      <Route path="comunitati" element={<Comunitati />} />
+      <Route path="comunitati/:id" element={<ComunitateDetaliu />} />
+      <Route path="gospodaria" element={<Gospodaria />} />
+      <Route path="dispute" element={<Dispute />} />
+      <Route path="dispute/:id" element={<DisputaDetaliu />} />
+      <Route path="prestator" element={<Prestator />} />
       {Progres && <Route path="progres" element={<Progres />} />}
     </Route>
     </>

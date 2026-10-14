@@ -6,6 +6,7 @@ import { CARD, DSButton, EmptyState, TabBar } from "../../../design-system";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
 import { Textarea } from "../../../components/ui/textarea";
 import { useConfirm } from "../components/ConfirmDialog";
+import DisputeButton from "../components/DisputeButton";
 import { radaciniApi, asList, errMsg } from "../api";
 import { useMeta } from "../hooks";
 import {
@@ -159,6 +160,11 @@ function ReservationCard({ r, role, units, modes, busy, onAction, onRate }) {
               {a.label}
             </DSButton>
           ))}
+        </div>
+      )}
+      {["confirmed", "picked_up", "no_show", "cancelled"].includes(status) && (
+        <div className="flex justify-end">
+          <DisputeButton scopeType="reservation" scopeId={r.id} testid={`radacini-rezervare-disputa-${r.id}`} />
         </div>
       )}
     </li>

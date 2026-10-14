@@ -37,6 +37,31 @@ LOCALITIES = [
 
 COUNTY = "Cluj"
 
+# Centre aproximative (lat, lng) ale localităților din județul Cluj: folosite doar la filtrul pe rază din piață
+# (`GET /listings?near_locality=&radius_km=`), nu pentru locații exacte.
+LOCALITY_CENTERS = {
+    "Cluj-Napoca": (46.7712, 23.6236),
+    "Florești": (46.7440, 23.4890),
+    "Apahida": (46.8100, 23.7490),
+    "Baciu": (46.7930, 23.5230),
+    "Feleacu": (46.7250, 23.5900),
+    "Gilău": (46.7547, 23.3719),
+    "Jucu": (46.8850, 23.6750),
+    "Bonțida": (46.9344, 23.8183),
+    "Gherla": (47.0261, 23.9078),
+    "Dej": (47.1450, 23.8800),
+    "Turda": (46.5667, 23.7833),
+    "Câmpia Turzii": (46.5469, 23.8800),
+    "Huedin": (46.8683, 23.0356),
+    "Aghireșu": (46.9167, 23.2500),
+    "Sânpaul": (46.8667, 23.6667),
+    "Chinteni": (46.8570, 23.5240),
+    "Vultureni": (46.8500, 23.4300),
+    "Ciurila": (46.6750, 23.5000),
+    "Tureni": (46.5800, 23.6600),
+    "Mociu": (46.7700, 24.0600),
+}
+
 INTEREST_IDS = {i["id"] for i in INTERESTS}
 OFFER_MODEL_IDS = {m["id"] for m in OFFER_MODELS}
 REQUESTABLE_MODEL_IDS = {m["id"] for m in OFFER_MODELS if m["requestable"]}

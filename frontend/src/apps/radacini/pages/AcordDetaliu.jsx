@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useConfirm } from "../components/ConfirmDialog";
+import DisputeButton from "../components/DisputeButton";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Ban, Check, ChevronDown, Copy, FileSignature, Pencil, Printer, Send, ShieldOff } from "lucide-react";
@@ -219,6 +220,7 @@ export default function AcordDetaliu() {
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">
           <StatusBadge status={a.status} testid="radacini-acord-status" />
+          {isParty && a.status === "signed" && <DisputeButton scopeType="agreement" scopeId={a.id} testid="radacini-acord-disputa" />}
         </div>
       </div>
 

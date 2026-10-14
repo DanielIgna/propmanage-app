@@ -3,12 +3,13 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { FileSignature } from "lucide-react";
 import { useConfirm } from "../ConfirmDialog";
+import DecisionsPanel from "../DecisionsPanel";
 import { CARD, DSButton } from "../../../../design-system";
 import { radaciniApi, asList, errMsg } from "../../api";
 import { useMeta } from "../../hooks";
 import { ACTIVITY_TYPES, CONTRIBUTION_KINDS, PageSkeleton, fmtDate, labelOf, optsOr, todayIso, linkBtnCls } from "../../shared";
 
-export default function Overview({ project, members, canCoord, reload }) {
+export default function Overview({ project, members, canCoord, isProjectMember, reload }) {
   const [confirm, confirmDialog] = useConfirm();
   const { meta } = useMeta();
   const types = optsOr(meta?.activity_types, ACTIVITY_TYPES);
@@ -115,6 +116,8 @@ export default function Overview({ project, members, canCoord, reload }) {
             </ul>
           )}
         </section>
+
+        <DecisionsPanel scope="project" scopeId={project.id} canVote={!!isProjectMember} canCreate={!!canCoord} />
       </div>
 
       <div className="space-y-4">

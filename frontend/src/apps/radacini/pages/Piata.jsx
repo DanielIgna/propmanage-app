@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { AlertTriangle, Plus, Store } from "lucide-react";
 import { CARD, DSButton, EmptyState } from "../../../design-system";
 import { Input } from "../../../components/ui/input";
+import NearFilter, { NEAR_OFF, nearParams } from "../components/NearFilter";
 import { radaciniApi, asList, errMsg } from "../api";
 import { useMeta } from "../hooks";
 import {
@@ -33,7 +34,8 @@ const MODE_CLS = {
 };
 
 // Parametrii pentru GET /listings (filtre + paginare skip/limit).
-const buildParams = (f, q, skip) => ({
+const buildParams = (f, q, skip, near) => ({
+  ...nearParams(near),
   limit: PAGE,
   skip,
   locality: f.locality !== ALL ? f.locality : undefined,
@@ -41,6 +43,8 @@ const buildParams = (f, q, skip) => ({
   mode: f.mode !== ALL ? f.mode : undefined,
   q: q || undefined,
 });
+
+const fmtDist = (d) => (Number.isFinite(d) ? `${d < 10 ? d.toFixed(1) : Math.round(d)} km` : null);
 
 function ListingCard({ l, categories, units }) {
   const unit = labelOf(units, l.unit);
@@ -83,7 +87,10 @@ function ListingCard({ l, categories, units }) {
       {showExchange && l.exchange_for && <p className="text-sm text-slate-600 dark:text-slate-300">Schimb pe: {l.exchange_for}</p>}
 
       <div className="flex flex-wrap items-center justify-between gap-2 mt-auto text-xs text-slate-600 dark:text-slate-300">
-        <span>Vânzător: {l.seller_name || "—"}</span>
+        <span>
+          Vânzător: {l.seller_name || "—"}
+          {fmtDist(l.distance_km) && <span className="ml-2 font-semibold text-emerald-700 dark:text-emerald-300" data-testid={`radacini-anunt-distanta-${l.id}`}>· {fmtDist(l.distance_km)}</span>}
+        </span>
         {l.seller_rating && <Stars value={l.seller_rating.avg} count={l.seller_rating.count} testid={`radacini-anunt-rating-${l.id}`} />}
       </div>
     </Link>
@@ -97,6 +104,7 @@ export default function Piata() {
   const units = optsOr(meta?.listing_units, LISTING_UNITS_FALLBACK);
   const localityParam = searchParams.get("locality");
   const [filters, setFilters] = useState({ locality: localityParam || ALL, category: ALL, mode: ALL });
+  const [near, setNear] = useState(NEAR_OFF);
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
   const [state, setState] = useState({ loading: true, items: [], total: 0, error: null });
@@ -111,7 +119,7 @@ export default function Piata() {
     let alive = true;
     setState((s) => ({ ...s, loading: true, error: null }));
     radaciniApi
-      .listings(buildParams(filters, qDebounced, 0))
+      .listings(buildParams(filters, qDebounced, 0, near))
       .then((d) => {
         if (!alive) return;
         const list = asList(d);
@@ -121,12 +129,12 @@ export default function Piata() {
     return () => {
       alive = false;
     };
-  }, [filters, qDebounced]);
+  }, [filters, qDebounced, near]);
 
   const loadMore = async () => {
     setMoreLoading(true);
     try {
-      const d = await radaciniApi.listings(buildParams(filters, qDebounced, state.items.length));
+      const d = await radaciniApi.listings(buildParams(filters, qDebounced, state.items.length, near));
       const list = asList(d);
       setState((s) => ({ ...s, items: [...s.items, ...list], total: Number(d?.total ?? s.total) }));
     } catch (e) {
@@ -191,6 +199,8 @@ export default function Piata() {
           </Field>
         </div>
       )}
+
+      {!metaLoading && <NearFilter value={near} onChange={setNear} localities={meta?.localities || []} allowMe={false} />}
 
       {loading && items.length === 0 ? (
         <PageSkeleton />

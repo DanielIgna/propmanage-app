@@ -24,10 +24,12 @@ from .constants import (
     LISTING_MODE_IDS,
     LISTING_UNIT_IDS,
     LOCALITIES,
+    LOCALITY_CENTERS,
     MAX_LISTING_PRICE_RON,
     MAX_LISTING_QTY,
     RESERVATION_MODE_IDS,
 )
+from .geo import haversine_km
 from .members import get_member_doc
 from .projects import member_role, today_str
 
@@ -469,10 +471,25 @@ async def list_listings(
     category: Optional[str] = None,
     q: Optional[str] = None,
     mode: Optional[str] = None,
+    near_locality: Optional[str] = None,
+    radius_km: Optional[float] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=50),
     user: dict = Depends(get_current_user),
 ):
+    distances: Optional[dict] = None
+    if near_locality is not None or radius_km is not None:
+        center = LOCALITY_CENTERS.get(near_locality or "")
+        if not center:
+            raise HTTPException(400, "Localitate necunoscută.")
+        radius = 10.0 if radius_km is None else radius_km
+        if not (math.isfinite(radius) and 1 <= radius <= 100):
+            raise HTTPException(400, "Raza trebuie să fie între 1 și 100 km.")
+        distances = {
+            name: round(haversine_km(center[0], center[1], c[0], c[1]), 1)
+            for name, c in LOCALITY_CENTERS.items()
+            if haversine_km(center[0], center[1], c[0], c[1]) <= radius
+        }
     flt: dict = {
         "status": "active",
         "quantity_available": {"$gte": EPS},  # sub EPS = epuizat (resturi de virgulă mobilă după `$inc`)
@@ -480,7 +497,12 @@ async def list_listings(
         "$or": [{"available_until": None}, {"available_until": {"$gte": today_str()}}],
         **_public_filter(),
     }
-    if locality:
+    if distances is not None:
+        names = [n for n in distances if not locality or n == locality]
+        if not names:
+            return {"items": [], "total": 0}
+        flt["locality"] = names[0] if len(names) == 1 else {"$in": names}
+    elif locality:
         flt["locality"] = locality
     if category:
         flt["category"] = category
@@ -495,6 +517,15 @@ async def list_listings(
         flt["product_tokens"] = tokens[0]
     elif tokens:
         flt["$and"] = [{"product_tokens": t} for t in tokens]
+    if distances is not None:
+        # Sortare după distanța față de centrul localității (în Python, pe cel mult LIST_CAP anunțuri recente).
+        docs = await db.radacini_listings.find(flt).sort("created_at", -1).limit(LIST_CAP).to_list(LIST_CAP)
+        docs.sort(key=lambda d: distances.get(d.get("locality"), 0.0))  # stabil: în aceeași localitate rămâne ordinea recentă
+        page = docs[skip:skip + limit]
+        items = await _present_listings(page, str(user["id"]))
+        for item in items:
+            item["distance_km"] = distances.get(item.get("locality"))
+        return {"items": items, "total": len(docs)}
     total = await db.radacini_listings.count_documents(flt)
     docs = await db.radacini_listings.find(flt).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
     return {"items": await _present_listings(docs, str(user["id"])), "total": total}

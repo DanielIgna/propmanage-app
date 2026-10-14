@@ -17,6 +17,7 @@ import {
   fmtKg,
 } from "../../shared";
 import RecordHarvestDialog from "./RecordHarvestDialog";
+import PhotoGallery from "../PhotoGallery";
 
 // Panoul de alocări al unei recolte confirmate: bară alocat/rămas, listă, adăugare (coordonator).
 function AllocationsPanel({ harvest, projectId, members, isMember, canCoord, me }) {
@@ -308,6 +309,8 @@ export default function HarvestTab({ project, members = [], isMember, isProjectM
                   <StatusBadge status={h.status} testid={`radacini-recolta-status-${h.id}`} />
                 </div>
                 {h.note && <p className="text-sm text-slate-600 dark:text-slate-300">{h.note}</p>}
+
+                <PhotoGallery targetType="harvest" targetId={h.id} canUpload={!!(isMember && canCoord)} title="Fotografii recoltă" />
 
                 <div className="flex flex-wrap gap-2">
                   {isMember && isOwner && h.status === "recorded" && (

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { CARD, DSButton, EmptyState } from "../../../design-system";
 import { MapPin, AlertTriangle } from "lucide-react";
 import ApproxMap from "../components/ApproxMap";
+import NearFilter, { NEAR_OFF, nearParams } from "../components/NearFilter";
 import { radaciniApi, asList, errMsg } from "../api";
 import { useMeta } from "../hooks";
 import { Chips, COUNTY, Field, fmtArea, labelOf, PageHeader, PageSkeleton, SelectField, toOpts } from "../shared";
@@ -12,12 +13,15 @@ const PAGE = 50;
 const ALL = "all";
 
 // Parametrii pentru GET /parcels (filtre locality/model, paginare skip/limit).
-const buildParams = (filters, skip) => ({
+const buildParams = (filters, skip, near) => ({
+  ...nearParams(near),
   limit: PAGE,
   skip,
   locality: filters.locality !== ALL ? filters.locality : undefined,
   model: filters.model !== ALL ? filters.model : undefined,
 });
+
+const fmtDist = (d) => (Number.isFinite(d) ? `${d < 10 ? d.toFixed(1) : Math.round(d)} km` : null);
 
 function ParcelCard({ p, modelOptions }) {
   return (
@@ -34,6 +38,11 @@ function ParcelCard({ p, modelOptions }) {
         {p.locality} · {COUNTY}
       </p>
       <Chips items={(p.offer?.models || []).map((m) => labelOf(modelOptions, m))} />
+      {fmtDist(p.distance_km) && (
+        <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300" data-testid={`radacini-parcel-distanta-${p.id}`}>
+          La {fmtDist(p.distance_km)} de tine
+        </p>
+      )}
       {p.owner_name && <p className="text-xs text-slate-500 dark:text-slate-400 mt-auto">Proprietar: {p.owner_name}</p>}
     </Link>
   );
@@ -42,6 +51,7 @@ function ParcelCard({ p, modelOptions }) {
 export default function Terenuri() {
   const { meta, loading: metaLoading } = useMeta();
   const [filters, setFilters] = useState({ locality: ALL, model: ALL });
+  const [near, setNear] = useState(NEAR_OFF);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -53,7 +63,7 @@ export default function Terenuri() {
     setLoading(true);
     setError(null);
     radaciniApi
-      .parcels(buildParams(filters, 0))
+      .parcels(buildParams(filters, 0, near))
       .then((d) => {
         if (!alive) return;
         const list = asList(d);
@@ -65,12 +75,12 @@ export default function Terenuri() {
     return () => {
       alive = false;
     };
-  }, [filters]);
+  }, [filters, near]);
 
   const loadMore = async () => {
     setMoreLoading(true);
     try {
-      const list = asList(await radaciniApi.parcels(buildParams(filters, items.length)));
+      const list = asList(await radaciniApi.parcels(buildParams(filters, items.length, near)));
       setItems((prev) => [...prev, ...list]);
       setHasMore(list.length === PAGE);
     } catch (e) {
@@ -123,6 +133,8 @@ export default function Terenuri() {
           </Field>
         </div>
       )}
+
+      {!metaLoading && <NearFilter value={near} onChange={setNear} allowLocality={false} />}
 
       <ApproxMap points={points} height="380px" emptyLabel={loading ? "Se încarcă terenurile…" : "Niciun teren cu aceste filtre."} />
 

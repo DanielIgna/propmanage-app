@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
+import DisputeButton from "../DisputeButton";
 import { Check, CornerDownRight, Flag, Plus, Wallet } from "lucide-react";
 import { useConfirm } from "../ConfirmDialog";
 import { CARD, DSButton, EmptyState } from "../../../../design-system";
@@ -346,6 +347,11 @@ export default function ContributionsTab({ project, members, isMember, me, reloa
                         Corectează
                       </DSButton>
                     )}
+                  </div>
+                )}
+                {isMember && c.status === "disputed" && (
+                  <div className="flex justify-end">
+                    <DisputeButton scopeType="contribution" scopeId={c.id} label="Deschide o dispută" testid={`radacini-contributie-disputa-${c.id}`} />
                   </div>
                 )}
               </li>

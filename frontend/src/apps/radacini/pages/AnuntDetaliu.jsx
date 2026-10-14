@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
 import { useConfirm } from "../components/ConfirmDialog";
+import PhotoGallery from "../components/PhotoGallery";
 import { radaciniApi, errMsg } from "../api";
 import { useMeta } from "../hooks";
 import {
@@ -268,6 +269,8 @@ export default function AnuntDetaliu() {
           {rating && <Stars value={rating.avg} count={rating.count} testid="radacini-anunt-vanzator-rating" />}
         </div>
       </section>
+
+      <PhotoGallery targetType="listing" targetId={l.id} canUpload={isSeller && active} canDelete={isSeller} />
 
       <p className="text-xs text-slate-500 dark:text-slate-400">{PICKUP_NOTICE}</p>
 

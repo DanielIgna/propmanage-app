@@ -25,6 +25,7 @@ NOTES = [
     "Exportul conține datele Rădăcini asociate contului tău. Datele de cont PropManage (parolă, plăți etc.) nu fac parte din el.",
     "Mesajele din cereri includ doar cele scrise de tine; mesajele celeilalte părți aparțin acelei persoane.",
     "La acorduri, semnăturile celeilalte părți sunt reduse la identificator, versiune și dată.",
+    "Gospodăria include copiii adăugați de tine (doar prenume și an de naștere) și consimțămintele înregistrate (inclusiv IP și user agent).",
     "Jurnalul de acces la locația exactă conține accesările făcute de tine și cele asupra terenurilor tale.",
 ]
 
@@ -44,6 +45,15 @@ def _only_mine(agreement: dict, uid: str) -> dict:
         for s in agreement.get("signatures") or []
     ]
     return agreement
+
+
+def _household_for(h: dict, uid: str) -> dict:
+    """Titularul își vede toată gospodăria; ceilalți doar propria intrare (fără copii/alți adulți)."""
+    for k in ("rev", "member_ids", "invited_user_ids"):
+        h.pop(k, None)
+    if h.get("owner_user_id") != uid:
+        h["members"] = [m for m in h.get("members") or [] if m.get("user_id") == uid]
+    return h
 
 
 async def _location_access(uid: str, parcel_ids: list, truncated: list) -> list:
@@ -71,6 +81,8 @@ async def export_my_data(user: dict = Depends(get_current_user)):
     projects = await fetch("radacini_projects", {"member_ids": uid}, "projects")
     agreements = [_only_mine(a, uid) for a in await fetch("radacini_agreements", {"party_ids": uid}, "agreements")]
     member = await db.radacini_members.find_one({"user_id": uid})
+    households = [_household_for(h, uid) for h in await fetch(
+        "radacini_households", {"$or": [{"owner_user_id": uid}, {"member_ids": uid}, {"invited_user_ids": uid}]}, "households")]
     staff = await db.radacini_staff.find_one({"user_id": uid})
     stats = await db.radacini_seller_stats.find_one({"seller_user_id": uid})
 
@@ -82,6 +94,8 @@ async def export_my_data(user: dict = Depends(get_current_user)):
         "member": serialize_doc(member),
         "staff": serialize_doc(staff),
         "parcels": parcels,
+        "households": households,
+        "consents": await fetch("radacini_consents", {"user_id": uid}, "consents"),
         "requests_sent": await fetch("radacini_land_requests", {"requester_user_id": uid}, "requests_sent"),
         "requests_received": await fetch("radacini_land_requests", {"owner_user_id": uid}, "requests_received"),
         "messages_authored": await fetch("radacini_request_messages", {"sender_user_id": uid}, "messages_authored"),

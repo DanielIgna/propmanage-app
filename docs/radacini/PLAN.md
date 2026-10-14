@@ -10,6 +10,9 @@ Decizii luate (2026-10-13): modul în aceeași aplicație; aceleași conturi; MV
 | S3 | Proiect agricol: membri, plan culturi, activități, contribuții | gata (264 teste S1–S3, verificat în browser) |
 | S4 | Recoltă + alocare + piață locală (listări, rezervări, schimb) | gata (377 teste S1–S4) |
 | S5 | Administrare Rădăcini (KPI, activitate, membri, moderare, GDPR, audit) + intrare în adminul PropManage + Knowledge Center | gata (52 teste; total 519) |
+| S6 | Comunități, gospodării, decizii, hartă cu zone, distanță, dispute, pagini publice, fotografii | gata (S6+S7: 65 teste; regresie 519) |
+| S7 | Necesar semințe/unelte, lucrări mecanizate și prestatori | gata |
+| S8 | Pregătirea pilotului: termeni Rădăcini, onboarding, mobil/PWA, demo extins, dosar jurist, costuri | în lucru |
 
 ---
 
@@ -342,3 +345,128 @@ Revizuire de cod (backend, frontend) și reverificarea auditurilor față de `ma
 - **Moderare:** terenuri pe stări (link spre coada operatorului) și anunțuri, cu închidere motivată.
 - **Cereri GDPR:** listă și rezolvare.
 - **Personal și Conturi de test:** linkuri spre paginile existente.
+
+---
+
+## S6 — contract: comunități, gospodării, decizii, hartă, distanță, dispute, pagini publice, fotografii
+
+### Reguli comune (în plus față de S1–S5)
+- Colecții noi: `radacini_communities`, `radacini_community_members`, `radacini_community_posts`, `radacini_households`, `radacini_consents`, `radacini_decisions`, `radacini_disputes`, `radacini_photos`. Aceleași reguli: `is_demo`, mesaje în română, validare → 400, 409 la conflict, notificări prin `safe_notify`, audit prin `audit_staff` pentru acțiunile personalului.
+- **Integrarea în fișierele comune ale modulului** (`api.py`, `frontend/src/apps/radacini/{api.js,routes.jsx,config.js}`) o face coordonatorul. Fiecare parte își are propriul fișier de rute backend și propriul `api_<parte>.js` în frontend.
+- După crearea colecțiilor se actualizează migrația (`app.create_collection`), care se aplică idempotent.
+
+### A. Comunități (`communities.py`)
+- **Comunitate:** `{id, name 3–80, locality (din listă), description ≤1000, visibility:"open"|"closed", created_by, members_count, created_at}`. Creatorul devine `coordinator`.
+- **Membru:** `radacini_community_members {community_id, user_id, name (prenume), role:"coordinator"|"member", status:"active"|"pending", joined_at}`, unic pe (community, user), prin upsert.
+- **Rute:**
+  - `GET /communities?locality=&q=` (autentificat) și `GET /communities/{id}`, cu rolul meu;
+  - `POST /communities`;
+  - `POST /communities/{id}/join` (open → `active`, closed → `pending`) și `/leave` (ultimul coordonator nu poate pleca);
+  - `POST /communities/{id}/members/{uid}/approve|reject|promote` (doar coordonator).
+- **Anunțuri:** `GET/POST /communities/{id}/posts` (membri activi; text 1–2000; coordonatorul poate fixa unul sus) și `DELETE /posts/{id}` (autorul sau coordonatorul).
+
+### B. Gospodării și consimțământ (`households.py`)
+- **Gospodărie:** `{id, name, owner_user_id, members:[{user_id?, name, relation, is_minor, birth_year?}], created_at}`. Un utilizator e titular al cel mult unei gospodării.
+- **Minorii** nu au cont: doar prenume și anul nașterii. Adăugarea lor cere `parental_consent: true`, înregistrat în `radacini_consents {user_id, kind:"minor_data", subject_name, version:"2026-10", at, ip, user_agent}`.
+- **Adulții** se adaugă după email (cont existent). Contul primește o invitație, pe care o acceptă (`POST /households/{id}/accept`).
+- **Rute:** `GET /households/mine` · `POST /households` · `POST /households/{id}/members` · `DELETE /households/{id}/members/{index_or_uid}` · `POST /households/{id}/accept`.
+- **GDPR:** exportul (`gdpr.py`) include gospodăria și consimțămintele.
+
+### C. Decizii și vot (`decisions.py`)
+- **Decizie:** `{id, scope:"community"|"project", scope_id, question 5–200, options[2–6], closes_at (în viitor), created_by, status:"open"|"closed", votes:[{user_id, option_index, at}]}`.
+- **Cine:** creează un coordonator al comunității sau proiectului; votează orice membru activ, o singură dată (atomic). Rezultatele sunt vizibile după ce ai votat sau după închidere; se închide automat la citire după `closes_at`.
+- **Rute:** `GET /decisions?scope=&scope_id=` · `POST /decisions` · `POST /decisions/{id}/vote` · `POST /decisions/{id}/close` (creatorul).
+
+### D. Hartă cu zone și distanță (`parcels.py`, `geo.py`)
+- **Poligon:** terenul primește opțional `geometry` (GeoJSON Polygon, 3–100 de vârfuri, în limitele României, fără auto-intersecție simplă). Se calculează `geometry_area_m2` (formula sferică), iar dacă diferă cu peste 30% de `area_m2` apare doar un avertisment.
+- **Cine vede poligonul:** proprietarul, părțile unui acord semnat și personalul pe aria lui. Publicul vede tot cercul aproximativ.
+- **Căutare după distanță:** `GET /parcels?near=lat,lng&radius_km=1–100`. Filtrul folosește un dreptunghi pe lat/lng (`$gte/$lte`, tradus în SQL), apoi distanța reală calculată în Python. Fiecare rezultat are `distance_km`, calculat pe coordonatele rotunjite; sortarea e după distanță. Același parametru e disponibil la `GET /listings`, pe localitate: centrele localităților din Cluj sunt în `constants.LOCALITY_CENTERS`.
+
+### E. Dispute și mediere (`disputes.py`)
+- **Dispută:** `{id, scope_type:"contribution"|"reservation"|"harvest"|"agreement", scope_id, opened_by, against_user_id, reason 10–1000, status:"open"|"in_mediation"|"resolved"|"rejected", mediator_user_id?, messages:[{user_id, text, at}], resolution?, locality, created_at}`.
+- **Cine deschide:** doar părțile obiectului disputat (contestatarul contribuției, cumpărătorul sau vânzătorul rezervării, proprietarul sau coordonatorul recoltei, părțile acordului). Pe un obiect poate exista o singură dispută deschisă.
+- **Mediere:** personalul o preia (operator pe arie sau manager) → `in_mediation`. Mesajele le scriu părțile și mediatorul. Mediatorul o închide cu rezoluția (`resolved`/`rejected`, notă obligatorie). Totul trece prin audit și notificări.
+- **Rute:** `POST /disputes` · `GET /disputes/mine` · `GET /disputes/{id}` · `POST /disputes/{id}/messages` · `GET /staff/disputes` · `POST /disputes/{id}/take` · `POST /disputes/{id}/resolve`.
+
+### F. Pagini publice fără cont
+- **Backend:** `GET /public/listings` (rate limit; doar anunțuri active nedemo; prenume vânzător; fără `pickup_details`) și `GET /public/communities` (doar `open`; fără membri).
+- **Frontend:** rute în afara layout-ului autentificat: `/radacini/descopera` (prezentare + hartă cu terenuri aproximative + piață + comunități, cu butoanele „Intră” / „Creează cont”). Pagina e `noindex` în pilot; indexarea se decide la lansare.
+
+### G. Fotografii (`photos.py`)
+- **Încărcare:** `POST /photos` (multipart: `target_type:"parcel"|"listing"|"harvest"`, `target_id`, fișier). Pot încărca doar proprietarul terenului, vânzătorul, respectiv coordonatorul proiectului.
+- **Fișiere acceptate:** jpeg, png sau webp, ≤5 MB, maximum 6 pe țintă. Serverul **elimină metadatele EXIF (inclusiv GPS)**, redimensionează la cel mult 1600 px și salvează JPEG în Supabase Storage (`storage_client.put_object`, cale `radacini/<target_type>/<id>/<uuid>.jpg`).
+- **Afișare:** `GET /photos/{id}` (stream; drepturi de citire ca la țintă; terenurile și anunțurile publicate sunt publice) și `DELETE /photos/{id}` (cel care a încărcat sau proprietarul țintei).
+
+---
+
+## S7 — contract: necesar de semințe și unelte, lucrări mecanizate
+
+### A. Necesar pe proiect (`needs.py`)
+- **Necesar:** `radacini_project_needs {id, project_id, kind:"seeds"|"tools"|"materials"|"service", item 2–80, quantity>0, unit, status:"needed"|"covered"|"cancelled", pledges:[{user_id, name, quantity, at, fulfilled:false}], created_by}`.
+- **Cine:** coordonatorul adaugă și anulează; membrii promit cantități (atomic, suma ≤ necesar), apoi marchează „adus”. La „adus” se creează automat o contribuție `materials`/`tools` în `logged`, cu legătură spre necesar. Necesarul devine `covered` când suma promisiunilor aduse ≥ cantitate.
+- **Rute:** `GET/POST /projects/{id}/needs` · `POST /needs/{id}/pledge` · `POST /needs/{id}/pledges/{i}/fulfilled` · `POST /needs/{id}/cancel`.
+
+### B. Lucrări mecanizate și prestatori (`service_requests.py`)
+- **Prestator:** `radacini_providers {user_id, name, services[] din constants.SERVICE_TYPES (arat, discuit, frezat, semănat mecanizat, irigații, transport, consultanță agronomică, tratamente), localities[], note, active}`. Orice utilizator PropManage poate deveni prestator; specialiștii PropManage sunt invitați să se înscrie.
+- **Cerere de lucrare:** `radacini_service_requests {id, project_id, service_type, description, area_m2?, window_from, window_to, locality, status:"open"|"assigned"|"done"|"cancelled", offers:[{provider_user_id, name, price_ron_indicative?, message, at}], assigned_provider_user_id?}`.
+- **Fluxul:**
+  - coordonatorul creează cererea;
+  - prestatorii activi cu serviciul și localitatea potrivite sunt notificați;
+  - prestatorii trimit ofertă (una per prestator);
+  - coordonatorul alege una (`assigned`), apoi marchează `done`, cu evaluare 1–5 a prestatorului.
+- **Fără plăți în platformă:** prețul e orientativ, iar plata se face direct.
+- **Rute:** `GET/PUT /providers/me` · `GET /providers?service=&locality=` · `GET/POST /projects/{id}/service-requests` · `GET /service-requests/open` (pentru prestatori) · `POST /service-requests/{id}/offers` · `POST /service-requests/{id}/assign` · `POST /service-requests/{id}/done` · `POST /service-requests/{id}/cancel`.
+- Legătura cu Capability Engine (`routes/capability_engine.py`) rămâne pentru după pilot: catalogul de capabilități agricole e date comune.
+
+### Frontend S6/S7
+- **Pagini noi:** Comunități (listă, detaliu cu anunțuri, membri, decizii), Gospodăria mea, Dispute (ale mele + coada de mediere pentru personal), Prestator (profilul meu + lucrări deschise).
+- **Fila Necesar** în proiect și **fila Lucrări** în proiect (cereri de lucrări + oferte).
+- **Hartă:** desenare de poligon în formularul terenului și afișarea poligonului; filtru „lângă mine / lângă localitate + rază” în Terenuri și Piață.
+- **Fotografii:** galerie și încărcare pe teren, anunț și recoltă.
+- **Buton „Deschide o dispută”** pe contribuții, rezervări, recolte și acorduri.
+- **Pagina publică** `/radacini/descopera`.
+
+---
+
+## S8 — contract: pregătirea pilotului (Cluj)
+
+### Decizii
+- **Termenii Rădăcini sunt separați de cei PropManage.** Poarta legală PropManage (`LegalGate`, `legal_documents` cu `mandatory`) se aplică tuturor utilizatorilor PropManage. Documentele Rădăcini stau deci în colecții proprii, după același model: versiune, acceptare cu IP, user-agent și dată, istoric.
+- **Acceptarea termenilor curenți e obligatorie** pentru acțiunile cu efect: publicare teren, cerere, semnare, anunț, rezervare, înscriere în proiect/comunitate. Navigarea și citirea rămân libere.
+- **Textele** sunt redactate de echipa tehnică ca **draft pentru jurist** (marcat vizibil „Versiune pilot — în revizuire juridică”). Includ: rolul platformei (intermediar de informații, fără plăți), „fără producție sau cantitate garantată”, acorduri care nu înlocuiesc contractul de arendă și înregistrarea la primărie, schimbul fără valoare monetară, reguli pentru minori, date de localizare, dispute și mediere, moderare.
+- **PWA:** un manifest separat pentru `/radacini` (nume „Rădăcini”, iconițe, `start_url: /radacini`, `scope: /radacini/`). **Fără service worker nou**, ca să nu interfereze cu `sw.js` existent din PropManage. Pozele pot fi făcute direct din cameră (`capture="environment"`).
+
+### Backend (`legal_terms.py`)
+- `radacini_legal_documents {type:"terms"|"privacy", version, title, body (markdown), summary, active, created_at}`; un seed idempotent cu versiunea `2026-10-pilot`, ambele documente.
+- `radacini_legal_acceptances {user_id, type, version, accepted_at, ip, user_agent, revoked_at?}`.
+- **Rute:**
+  - `GET /legal/documents` (public): documentele active;
+  - `GET /legal/me` → `{required:[{type,version}], accepted:[…], ok:bool}`;
+  - `POST /legal/accept {type, version}`, blocat în impersonare;
+  - admin (manager): `GET /admin/legal/acceptances?type=&version=`.
+- **Dependența `require_terms`**, aplicată pe rutele de acțiune enumerate mai sus: 428 „Acceptă termenii Rădăcini pentru a continua.”, cu `detail.code = "terms_required"`. Conturile de test (`is_demo_account`) acceptă automat la `ensure`. Testele existente își acceptă termenii în setup.
+- **GDPR:** exportul include acceptările.
+
+### Onboarding (`members.py` + frontend)
+- `radacini_members.onboarding {completed_at?, steps_done[]}`.
+- `POST /members/me/onboarding {step}` · `POST /members/me/onboarding/complete`.
+- **Frontend:** la prima intrare, un ghid în 3–4 pași:
+  1. acceptarea termenilor;
+  2. alegerea intereselor și a localității;
+  3. ce poți face, după interese, cu linkuri directe;
+  4. opțional, notificări.
+
+  Poate fi reluat din Setări.
+
+### Frontend
+- Pagina `/radacini/termeni` (public: termeni + confidențialitate, cu versiune și eticheta „în revizuire juridică”).
+- Dialogul global „Acceptă termenii” se deschide automat la răspunsul 428 (interceptor în modulul Rădăcini) și reia acțiunea după acceptare.
+- **Mobil:** bara de navigare jos pe ecrane mici (Panou, Terenuri, Piață, Proiecte, Meniu), butoane de minimum 44 px, galeria foto cu `capture`.
+- **Manifest PWA** pentru `/radacini` (din `frontend/public`, fără a atinge manifestul PropManage) și meta `theme-color` pe paginile Rădăcini.
+
+### Demo extins (`test_accounts.py`)
+Scenariul generat include și: o comunitate deschisă (Florești) cu anunțuri și o decizie în vot, gospodăria Mariei (un adult, un minor cu consimțământ), o dispută în mediere (rezervare), necesar pe proiect cu promisiuni, un prestator (Vasile) și o cerere de lucrare cu ofertă, plus termenii acceptați pentru toate conturile de test.
+
+### Documente
+- `docs/radacini/DOSAR_JURIST.md`: întrebările juridice concrete, cu trimitere la funcțiile din aplicație. Acoperă arenda și înregistrarea, vânzarea de alimente (DSV), barterul și fiscalitatea, rolul de intermediar, GDPR (localizare, minori, consimțăminte), investițiile colective (ASF), disputele și răspunderea, plus termenii pilot de revizuit.
+- `docs/radacini/COSTURI_PILOT.md`: estimări în euro pe lună pentru pilot (100–500 de membri), cu ipoteze explicite: Supabase (DB, egress, storage), Railway, Cloudflare, Google Maps/Geocoding (sau OSM gratuit), email, jurist (estimare de piață, de validat).

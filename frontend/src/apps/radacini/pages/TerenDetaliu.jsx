@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useAuth } from "../../../auth";
 import ApproxMap from "../components/ApproxMap";
 import ExactMap from "../components/ExactMap";
+import PolygonMap from "../components/PolygonMap";
+import PhotoGallery from "../components/PhotoGallery";
 import ProposalForm from "../components/ProposalForm";
 import { radaciniApi, errMsg } from "../api";
 import { useMeta } from "../hooks";
@@ -189,6 +191,19 @@ export default function TerenDetaliu() {
           <ApproxMap points={[{ id: p.id, lat: p.lat, lng: p.lng, title: p.title, subtitle: `${p.locality} · locație aproximativă` }]} height="280px" />
         )}
       </section>
+
+      {p.geometry && (
+        <section className={`${CARD} p-5 space-y-3`} data-testid="radacini-teren-poligon">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Conturul terenului</h3>
+            {p.geometry_area_m2 != null && <span className="text-xs text-slate-500 dark:text-slate-400">≈ {fmtArea(Math.round(p.geometry_area_m2))} pe hartă</span>}
+          </div>
+          <PolygonMap geometry={p.geometry} height="300px" />
+          {p.geometry_warning && <p className="text-xs text-amber-700 dark:text-amber-300">{p.geometry_warning}</p>}
+        </section>
+      )}
+
+      <PhotoGallery targetType="parcel" targetId={p.id} canUpload={isOwner} />
 
       <Dialog open={reqOpen} onOpenChange={(open) => !sending && setReqOpen(open)}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" data-testid="radacini-cerere-dialog">
