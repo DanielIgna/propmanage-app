@@ -96,6 +96,7 @@ async def export_my_data(user: dict = Depends(get_current_user)):
         "parcels": parcels,
         "households": households,
         "consents": await fetch("radacini_consents", {"user_id": uid}, "consents"),
+        "content_reports": await fetch("radacini_reports", {"reporter_id": uid}, "content_reports"),
         "requests_sent": await fetch("radacini_land_requests", {"requester_user_id": uid}, "requests_sent"),
         "requests_received": await fetch("radacini_land_requests", {"owner_user_id": uid}, "requests_received"),
         "messages_authored": await fetch("radacini_request_messages", {"sender_user_id": uid}, "messages_authored"),

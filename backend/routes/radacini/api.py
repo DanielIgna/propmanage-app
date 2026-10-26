@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from . import (
     assoc_accountability, assoc_core, assoc_demo, assoc_governance,
     activities, admin, agreements, communities, contributions, crops, decisions, disputes, gdpr, harvests,
-    households, legal_terms, market, members, needs, parcels, photos, projects, public, requests, service_requests, staff,
+    households, legal_terms, market, members, monitoring, needs, parcels, photos, projects, public, reports, requests, service_requests, staff,
     test_accounts,
 )
 from .bridge import get_current_user, is_super_admin
@@ -28,7 +28,7 @@ RADACINI_ENABLED = os.environ.get("RADACINI_ENABLED", "false").strip().lower() i
 RADACINI_ALLOWED_EMAILS = {
     e.strip().lower() for e in os.environ.get("RADACINI_ALLOWED_EMAILS", "").split(",") if e.strip()
 }
-_BETA_OPEN_PATHS = {"/api/radacini/health", "/api/radacini/meta", "/api/radacini/legal/documents"}
+_BETA_OPEN_PATHS = {"/api/radacini/health", "/api/radacini/meta", "/api/radacini/legal/documents", "/api/radacini/operator"}
 BETA_CLOSED_DETAIL = {"code": "beta_closed", "message": "Rădăcini e în beta închis. Accesul se face doar pe bază de invitație."}
 
 
@@ -66,11 +66,27 @@ async def meta():
     return META
 
 
+# Datele operatorului platformei (pagina „Despre și contact”), din variabile de mediu: nu sunt în cod,
+# le completează fondatorul pe Railway. Câmpurile goale nu se afișează.
+_OPERATOR_FIELDS = {
+    "name": "RADACINI_OPERATOR_NAME", "legal_form": "RADACINI_OPERATOR_LEGAL_FORM", "cui": "RADACINI_OPERATOR_CUI",
+    "reg_no": "RADACINI_OPERATOR_REG_NO", "address": "RADACINI_OPERATOR_ADDRESS", "email": "RADACINI_OPERATOR_EMAIL",
+    "phone": "RADACINI_OPERATOR_PHONE", "dpo_email": "RADACINI_OPERATOR_DPO_EMAIL",
+}
+
+
+@router.get("/operator")
+async def operator_info():
+    data = {k: os.environ.get(v, "").strip() for k, v in _OPERATOR_FIELDS.items()}
+    return {"operator": {k: v for k, v in data.items() if v}, "complete": all(data[k] for k in ("name", "address", "email"))}
+
+
 router.include_router(members.router)
 router.include_router(legal_terms.router)
 router.include_router(parcels.router)
 # disputes înaintea staff: /staff/disputes trebuie potrivit înaintea rutelor /staff/{…}
 router.include_router(disputes.router)
+router.include_router(reports.router)
 router.include_router(staff.router)
 router.include_router(requests.router)
 router.include_router(agreements.router)
@@ -88,6 +104,7 @@ router.include_router(assoc_demo.router)
 router.include_router(assoc_accountability.router)
 router.include_router(assoc_governance.router)
 router.include_router(assoc_core.router)
+router.include_router(monitoring.router)
 router.include_router(admin.router)
 router.include_router(communities.router)
 router.include_router(households.router)

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import ReportButton from "../components/ReportButton";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, MapPin, Send } from "lucide-react";
@@ -114,6 +115,7 @@ export default function TerenDetaliu() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {p.status && p.status !== "published" && <StatusBadge status={p.status} />}
+          {!isOwner && <ReportButton targetType="parcel" targetId={p.id} />}
           {canRequest && (
             <DSButton icon={Send} onClick={() => setReqOpen(true)} data-testid="radacini-btn-solicita">
               Solicită terenul

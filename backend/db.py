@@ -14,6 +14,8 @@ from pgmongo import PgDatabase
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-db = PgDatabase(os.environ['SUPABASE_DB_URL'], schema=os.environ.get('PG_SCHEMA', 'app'))
+# PG_POOL_MAX: conexiuni în pool (implicit 5). Pe pooler-ul Supabase în mod sesiune, fiecare conexiune ocupă un loc.
+db = PgDatabase(os.environ['SUPABASE_DB_URL'], schema=os.environ.get('PG_SCHEMA', 'app'),
+                max_size=max(1, int(os.environ.get('PG_POOL_MAX', '5') or 5)))
 db.before_write = externalize_doc  # base64 media -> Storage links (media_store.MEDIA_FIELDS)
 client = db.client

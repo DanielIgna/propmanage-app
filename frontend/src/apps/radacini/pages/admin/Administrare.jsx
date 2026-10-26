@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Activity, FlaskConical, Gavel, LayoutDashboard, ScrollText, ShieldAlert, ShieldOff, Users, UsersRound } from "lucide-react";
+import { Activity, Flag, FlaskConical, Gavel, HeartPulse, LayoutDashboard, ScrollText, ShieldAlert, ShieldOff, Users, UsersRound } from "lucide-react";
 import { useAuth } from "../../../../auth";
 import { EmptyState, TabBar } from "../../../../design-system";
 import { canSee } from "../../config";
@@ -13,14 +13,18 @@ const Membri = lazy(() => import("./Membri"));
 const Moderare = lazy(() => import("./Moderare"));
 const CereriGdpr = lazy(() => import("./CereriGdpr"));
 const Jurnal = lazy(() => import("./Jurnal"));
+const Sistem = lazy(() => import("./Sistem"));
+const StaffReportsQueue = lazy(() => import("../Raportari").then((m) => ({ default: m.StaffReportsQueue })));
 
 const TABS = [
   ["prezentare", "Prezentare", LayoutDashboard],
   ["activitate", "Activitate", Activity],
   ["membri", "Membri", UsersRound],
   ["moderare", "Moderare", Gavel],
+  ["raportari", "Raportări", Flag],
   ["gdpr", "Cereri GDPR", ShieldAlert],
   ["jurnal", "Jurnal", ScrollText],
+  ["sistem", "Stare sistem", HeartPulse],
 ];
 const TAB_IDS = TABS.map(([id]) => id);
 const DEFAULT_TAB = "prezentare";
@@ -51,7 +55,7 @@ export default function Administrare() {
     <div className="space-y-5" data-testid="radacini-admin">
       <PageHeader
         title="Administrare Rădăcini"
-        subtitle="Indicatori, activitate, membri, moderare și cereri GDPR."
+        subtitle="Indicatori, activitate, membri, moderare, raportări, cereri GDPR și starea sistemului."
         actions={
           <>
             <Link to="/radacini/personal" className={linkBtnCls("secondary")} data-testid="radacini-admin-link-personal">
@@ -75,6 +79,8 @@ export default function Administrare() {
         {tab === "moderare" && <Moderare />}
         {tab === "gdpr" && <CereriGdpr />}
         {tab === "jurnal" && <Jurnal />}
+        {tab === "raportari" && <StaffReportsQueue />}
+        {tab === "sistem" && <Sistem />}
       </Suspense>
     </div>
   );

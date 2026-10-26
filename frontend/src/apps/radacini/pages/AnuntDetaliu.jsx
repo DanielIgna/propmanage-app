@@ -9,6 +9,7 @@ import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
 import { useConfirm } from "../components/ConfirmDialog";
 import PhotoGallery from "../components/PhotoGallery";
+import ReportButton from "../components/ReportButton";
 import { radaciniApi, errMsg } from "../api";
 import { useMeta } from "../hooks";
 import {
@@ -223,7 +224,10 @@ export default function AnuntDetaliu() {
             {l.locality} · {category}
           </p>
         </div>
-        <StatusBadge status={l.status} testid="radacini-anunt-status" />
+        <div className="flex flex-col items-end gap-1">
+          <StatusBadge status={l.status} testid="radacini-anunt-status" />
+          {!isSeller && <ReportButton targetType="listing" targetId={l.id} />}
+        </div>
       </div>
 
       <section className={`${CARD} p-4 md:p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm`}>

@@ -55,6 +55,9 @@ export default function Termeni() {
         <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900" data-testid="radacini-termeni-draft">
           Versiune pilot — în revizuire juridică
         </p>
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          Cine operează platforma și cum ne contactezi: <Link to="/radacini/despre" className="text-emerald-700 underline">Despre și contact</Link>.
+        </p>
         {error && <p className="text-sm text-red-600">Nu am putut încărca documentele. Încearcă din nou mai târziu.</p>}
         {!docs && !error && <p className="text-sm text-slate-500">Se încarcă…</p>}
         {docs?.length === 0 && <p className="text-sm text-slate-500">Nu există documente publicate.</p>}

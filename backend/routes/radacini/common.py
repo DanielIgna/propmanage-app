@@ -13,6 +13,7 @@ from bson import ObjectId
 from fastapi import HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .bridge import admin_audit, db, get_current_user
 from .notifications import internal_path, radacini_notify
@@ -246,16 +247,45 @@ def _validation_message(exc: RequestValidationError) -> str:
     return f"Date invalide: {field}."
 
 
+ERROR_RETENTION_DAYS = 14
+_last_error_gc = 0.0
+
+
+async def record_error(method: str, route: str, exc: BaseException) -> None:
+    """Eroare neprevăzută (500) în jurnalul `radacini_errors`, pentru pagina „Stare sistem”. Se salvează doar
+    șablonul rutei (fără ID-uri sau date personale) și tipul erorii. Nu aruncă niciodată."""
+    global _last_error_gc
+    try:
+        await db.radacini_errors.insert_one({
+            "method": method, "route": route, "error_type": type(exc).__name__,
+            "message": str(exc)[:300], "at": now_iso(),
+        })
+        now = time.monotonic()
+        if now - _last_error_gc > 3600:
+            _last_error_gc = now
+            cutoff = datetime.fromtimestamp(time.time() - ERROR_RETENTION_DAYS * 86400, timezone.utc).isoformat()
+            await db.radacini_errors.delete_many({"at": {"$lt": cutoff}})
+    except Exception:  # noqa: BLE001
+        log.warning("radacini: eroarea nu a putut fi salvată", exc_info=True)
+
+
 class RadaciniRoute(APIRoute):
-    """Erorile de validare (body/query) întorc 400 cu mesaj în română, nu 422."""
+    """Erorile de validare (body/query) întorc 400 cu mesaj în română, nu 422. Erorile neprevăzute se salvează
+    în `radacini_errors` (apoi merg mai departe, la handler-ul obișnuit de 500)."""
 
     def get_route_handler(self):
         handler = super().get_route_handler()
+        route = self.path_format
 
         async def validated_handler(request: Request):
             try:
                 return await handler(request)
             except RequestValidationError as exc:
                 raise HTTPException(400, _validation_message(exc)) from None
+            except StarletteHTTPException:
+                raise
+            except Exception as exc:  # noqa: BLE001
+                await record_error(request.method, route, exc)
+                raise
 
         return validated_handler

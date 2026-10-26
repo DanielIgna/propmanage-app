@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import ReportButton from "../components/ReportButton";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Check, Megaphone, Pin, Trash2, Users, Vote, X } from "lucide-react";
@@ -181,6 +182,7 @@ export default function ComunitateDetaliu() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {myRole && isActive && <RoleBadge role={myRole} />}
+          {myRole !== "coordinator" && <ReportButton targetType="community" targetId={id} />}
           {myStatus === "pending" && <span className="text-xs font-bold rounded-full bg-amber-50 text-amber-700 px-2.5 py-0.5">Cerere în așteptare</span>}
           {!myRole && (
             <DSButton disabled={busy} onClick={() => act(() => s6aApi.joinCommunity(id), c.visibility === "closed" ? "Cererea a fost trimisă" : "Ai intrat în comunitate", "Nu am putut intra")} data-testid="radacini-comunitate-intra">

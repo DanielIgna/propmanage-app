@@ -34,6 +34,8 @@ const Gospodaria = lazy(() => import("./pages/Gospodaria"));
 const Dispute = lazy(() => import("./pages/Dispute"));
 const DisputaDetaliu = lazy(() => import("./pages/DisputaDetaliu"));
 const Termeni = lazy(() => import("./pages/Termeni"));
+const Despre = lazy(() => import("./pages/Despre"));
+const Raportari = lazy(() => import("./pages/Raportari"));
 const Prestator = lazy(() => import("./pages/Prestator"));
 const Composesorate = lazy(() => import("./pages/composesorate/Composesorate"));
 const AsociatieDetaliu = lazy(() => import("./pages/composesorate/AsociatieDetaliu"));
@@ -49,6 +51,7 @@ export function radaciniRoutes() {
     {/* Pagina publică, fără cont. */}
     <Route path="/radacini/descopera" element={<Suspense fallback={null}><Descopera /></Suspense>} />
     <Route path="/radacini/termeni" element={<Suspense fallback={null}><Termeni /></Suspense>} />
+    <Route path="/radacini/despre" element={<Suspense fallback={null}><Despre /></Suspense>} />
     <Route path="/radacini" element={<RadaciniLayout />}>
       <Route index element={<Panou />} />
       <Route path="profil" element={<Profil />} />
@@ -78,6 +81,7 @@ export function radaciniRoutes() {
       <Route path="gospodaria" element={<Gospodaria />} />
       <Route path="dispute" element={<Dispute />} />
       <Route path="dispute/:id" element={<DisputaDetaliu />} />
+      <Route path="raportari" element={<Raportari />} />
       <Route path="prestator" element={<Prestator />} />
       <Route path="composesorate" element={<Composesorate />} />
       <Route path="composesorate/revendica" element={<Revendica />} />

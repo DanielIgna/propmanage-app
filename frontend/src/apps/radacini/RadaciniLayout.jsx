@@ -14,6 +14,7 @@ import { TermsGateProvider } from "./components/TermsGate";
 import OnboardingGuide from "./components/OnboardingGuide";
 import MobileNav from "./components/MobileNav";
 import PwaHead from "./components/PwaHead";
+import RadaciniTheme from "./components/RadaciniTheme";
 
 const linkCls = ({ isActive }) =>
   `flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
@@ -203,6 +204,7 @@ export const RadaciniLayout = () => {
       </div>
       </div>
       <PwaHead />
+      <RadaciniTheme />
       <MobileNav onMenu={() => setOpen(true)} />
     </div>
   );

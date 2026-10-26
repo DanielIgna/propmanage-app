@@ -61,6 +61,7 @@ COLLECTIONS = (
     "radacini_consents",
     "radacini_decisions",
     "radacini_disputes",
+    "radacini_reports",
     "radacini_photos",
     "radacini_project_needs",
     "radacini_providers",
@@ -202,6 +203,15 @@ ASSOC_CHILDREN = (
 )
 
 
+async def purge_test_reports(apply: bool) -> None:
+    """Raportările trimise de testele HTTP (detaliile încep cu „TEST-RAD-”)."""
+    flt = {"details": {"$regex": "^TEST-RAD-"}}
+    n = await db.radacini_reports.count_documents(flt)
+    if apply and n:
+        await db.radacini_reports.delete_many(flt)
+    print(f"  radacini_reports: {'șterse' if apply else 'de test'} {n}")
+
+
 async def purge_test_associations(apply: bool) -> None:
     """Asociațiile create de testele HTTP (nume cu „TEST-RAD-”) și tot ce ține de ele (după association_id).
     Mandatele și accesările documentelor se leagă de ședințe/documente; se șterg după acestea."""
@@ -242,6 +252,7 @@ def main() -> None:
     async def _tests_only():
         await run_tests_only(apply=args.apply)
         await purge_test_associations(apply=args.apply)
+        await purge_test_reports(apply=args.apply)
     asyncio.run(_tests_only() if args.tests_only else run(apply=args.apply))
 
 

@@ -156,6 +156,11 @@ export default function Login() {
             <br />
             Contul este același cu cel din PropManage.
           </p>
+          <p className="text-xs text-center text-slate-500 dark:text-slate-400">
+            <Link to="/radacini/despre" className="hover:underline">Despre și contact</Link>
+            {" · "}
+            <Link to="/radacini/termeni" className="hover:underline">Termeni</Link>
+          </p>
         </form>
       </div>
     </div>
