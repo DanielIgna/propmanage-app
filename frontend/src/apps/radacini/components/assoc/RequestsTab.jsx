@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "../../../../components/ui/input";
 import { Textarea } from "../../../../components/ui/textarea";
 import { errMsg } from "../../api";
-import { canManage, requestAnswer, requestCreate, requestsList } from "../../api_s9";
+import { canManage, documentFileUrl, documentsList, requestAnswer, requestCreate, requestsList } from "../../api_s9";
 import { Field, fmtDate } from "../../shared";
 
 export default function RequestsTab({ assoc, access, reload }) {
@@ -16,6 +16,7 @@ export default function RequestsTab({ assoc, access, reload }) {
   const [error, setError] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [answer, setAnswer] = useState(null);
+  const [docs, setDocs] = useState([]);
   const days = assoc?.rules?.info_request_days ?? 30;
 
   const load = useCallback(async () => {
@@ -29,6 +30,10 @@ export default function RequestsTab({ assoc, access, reload }) {
     }
   }, [assocId]);
   useEffect(() => { if (assocId) load(); }, [assocId, load]);
+  useEffect(() => {
+    if (assocId) documentsList(assocId).then((d) => setDocs(Array.isArray(d) ? d : d?.items || [])).catch(() => setDocs([]));
+  }, [assocId]);
+  const docTitle = (id) => docs.find((d) => d.id === id)?.title || "document atașat";
 
   const isLate = (r) => r.overdue ?? (!r.answered_at && !r.answer && r.due_at && new Date(r.due_at) < new Date());
 
@@ -61,7 +66,14 @@ export default function RequestsTab({ assoc, access, reload }) {
               {answered && (
                 <p className="text-sm rounded bg-emerald-50 dark:bg-emerald-950/30 p-2 break-words">
                   <strong>Răspuns:</strong> {r.answer?.text || r.answer}
-                  {r.answer?.document_id ? ` (document ${r.answer.document_id})` : ""}
+                  {r.answer?.document_id && (
+                    <>
+                      {" "}
+                      <button type="button" className="font-semibold text-emerald-700 underline dark:text-emerald-300" onClick={() => window.open(documentFileUrl(r.answer.document_id), "_blank", "noopener")}>
+                        {docTitle(r.answer.document_id)}
+                      </button>
+                    </>
+                  )}
                 </p>
               )}
               {council && !answered && (
@@ -72,7 +84,7 @@ export default function RequestsTab({ assoc, access, reload }) {
         })}
       </ul>
       {createOpen && <CreateDialog assocId={assocId} onClose={() => setCreateOpen(false)} onDone={() => { setCreateOpen(false); load(); reload?.(); }} />}
-      {answer && <AnswerDialog r={answer} onClose={() => setAnswer(null)} onDone={() => { setAnswer(null); load(); reload?.(); }} />}
+      {answer && <AnswerDialog r={answer} docs={docs} onClose={() => setAnswer(null)} onDone={() => { setAnswer(null); load(); reload?.(); }} />}
     </div>
   );
 }
@@ -103,7 +115,7 @@ function CreateDialog({ assocId, onClose, onDone }) {
   );
 }
 
-function AnswerDialog({ r, onClose, onDone }) {
+function AnswerDialog({ r, docs, onClose, onDone }) {
   const [text, setText] = useState("");
   const [doc, setDoc] = useState("");
   const [busy, setBusy] = useState(false);
@@ -121,7 +133,12 @@ function AnswerDialog({ r, onClose, onDone }) {
       <DialogContent data-testid="radacini-request-answer-dialog">
         <DialogHeader><DialogTitle>Răspuns</DialogTitle><DialogDescription className="break-words">{r.subject}</DialogDescription></DialogHeader>
         <Textarea rows={5} value={text} onChange={(e) => setText(e.target.value)} data-testid="radacini-request-answer-text" />
-        <Field label="ID document atașat" htmlFor="a-doc" hint="Opțional."><Input id="a-doc" value={doc} onChange={(e) => setDoc(e.target.value)} /></Field>
+        <Field label="Document atașat" htmlFor="a-doc" hint="Opțional. Încarcă-l întâi în tab-ul Documente.">
+          <select id="a-doc" value={doc} onChange={(e) => setDoc(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm dark:border-white/15 dark:bg-white/5">
+            <option value="">— fără document —</option>
+            {(docs || []).map((d) => <option key={d.id} value={d.id}>{d.title}</option>)}
+          </select>
+        </Field>
         <DialogFooter>
           <DSButton variant="secondary" onClick={onClose}>Renunță</DSButton>
           <DSButton onClick={submit} disabled={busy} data-testid="radacini-request-answer-submit">{busy ? "Se trimite…" : "Trimite"}</DSButton>

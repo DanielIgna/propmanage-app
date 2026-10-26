@@ -192,15 +192,18 @@ async def compute_obligations(assoc: dict, year: int, rules: dict) -> list:
             "evidence_source": source if ev_date else None, "manual_evidence": man.get(key, []),
         })
 
-    aga = sorted(meeting_dates("aga_ordinary"))
-    for md in rules.get("aga_months_deadlines") or []:
-        dl = _deadline(year, md)
-        if not dl:
-            continue
-        # ultima ședință ținută până la termen, altfel prima de după (târziu)
-        before = [d for d in aga if d <= dl]
-        ev = before[0] if before else (aga[0] if aga else None)
-        add(f"aga_ordinary_{md}", f"AGA ordinară până la {md}", "aga", dl, ev, "meeting")
+    # doar ședințele deja ținute (o AGA convocată în viitor nu e dovadă)
+    aga = sorted(d for d in meeting_dates("aga_ordinary") if d and d <= today)
+    dls = sorted(d for d in (_deadline(year, md) for md in rules.get("aga_months_deadlines") or []) if d)
+    for i, dl in enumerate(dls):
+        # ședința din intervalul termenului (după termenul anterior); altfel una după termen,
+        # dar nu din intervalul termenului următor (aceea îl acoperă pe următorul) → întârziat
+        lo = dls[i - 1] if i else date(year, 1, 1) - timedelta(days=1)
+        nxt = dls[i + 1] if i + 1 < len(dls) else None
+        inside = [d for d in aga if lo < d <= dl]
+        late = [d for d in aga if d > dl and (nxt is None or d > nxt)]
+        ev = inside[0] if inside else (late[0] if late else None)
+        add(f"aga_ordinary_{dl.strftime('%m-%d')}", f"AGA ordinară (termen {dl.strftime('%d.%m')})", "aga", dl, ev, "meeting")
     if rules.get("balance_deadline"):
         add("balance", "Bilanț aprobat/publicat", "balance", _deadline(year, rules["balance_deadline"]),
             first(doc_dates("balance")), "document")
@@ -221,7 +224,7 @@ async def compute_obligations(assoc: dict, year: int, rules: dict) -> list:
         except (TypeError, ValueError):
             continue
         lo, hi = date(year, max(qm - 2, 1), 1), _month_end(year, qm)
-        add(f"censor_q{(qm - 1) // 3 + 1}", f"Raport cenzori (luna {qm})", "censor", hi,
+        add(f"censor_q{(qm - 1) // 3 + 1}", f"Raport cenzori (trimestrul {(qm - 1) // 3 + 1})", "censor", hi,
             first(doc_dates("censor_report", lo, hi)), "document")
     add("registry_update", "Actualizarea anuală a registrului", "registry", date(year, 12, 31), None, "manual")
     return items

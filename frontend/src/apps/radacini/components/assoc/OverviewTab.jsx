@@ -29,7 +29,7 @@ export default function OverviewTab({ assoc, access }) {
 
   const patrimony = assoc?.patrimony || [];
   const alerts = access?.alerts || assoc?.alerts || [];
-  const comps = tr?.components ? (Array.isArray(tr.components) ? tr.components : Object.entries(tr.components).map(([k, v]) => ({ key: k, ...(typeof v === "object" ? v : { score: v }) }))) : [];
+  const comps = tr?.components ? (Array.isArray(tr.components) ? tr.components : Object.entries(tr.components).map(([k, v]) => ({ key: k, ...(typeof v === "object" ? v : { score: v }) }))).map((c) => ({ ...c, score: c.score ?? (c.value != null ? c.value * 100 : null) })) : [];
 
   return (
     <div className="space-y-4" data-testid="assoc-overview">
@@ -44,7 +44,7 @@ export default function OverviewTab({ assoc, access }) {
           <div className="space-y-2">
             {comps.map((c) => (
               <div key={c.key}>
-                <div className="flex justify-between text-xs text-slate-600 dark:text-slate-300"><span>{c.label || c.key}</span><span>{Math.round(c.score ?? 0)}%</span></div>
+                <div className="flex justify-between text-xs text-slate-600 dark:text-slate-300"><span title={c.explanation || undefined}>{c.label || c.key}</span><span>{Math.round(c.score ?? 0)}%</span></div>
                 <div className="h-2 rounded-full bg-slate-200 dark:bg-white/10"><div className="h-2 rounded-full bg-emerald-500" style={{ width: `${Math.min(100, Math.max(0, c.score ?? 0))}%` }} /></div>
               </div>
             ))}

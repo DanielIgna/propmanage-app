@@ -1,6 +1,6 @@
 # Rădăcini — dosar pentru jurist (pilot Cluj)
 
-Versiune 1.0 · 2026-10-14 · Branch `radacini` · Ciornă pentru discuție cu un jurist.
+Versiune 1.1 · 2026-10-16 (adăugat J: composesorate) · Branch `radacini` · Ciornă pentru discuție cu un jurist.
 
 > **Atenție: acest document NU este consultanță juridică.** E o listă de întrebări și o descriere exactă a comportamentului actual al produsului, redactată de echipa tehnică. Referințele la legi sunt marcate **„de verificat”** acolo unde nu suntem siguri; juristul le confirmă sau le corectează. Nimic de aici nu trebuie publicat ca text legal.
 
@@ -185,8 +185,70 @@ Conform PLAN.md S8: termenii și politica Rădăcini sunt documente **separate d
 
 ---
 
+## J. Composesorate, obști și asociații pastorale (modulul S9)
+
+> Context: `docs/radacini/composesorate/MODUL_DESIGN.md`, `ANALIZA_STATUT_CIUNCA.md`, `CONTEXT_COMPOSESORATE.md`. În S9 există **doar un composesorat demonstrativ cu date fictive**. Niciun registru real nu e importat. Referințele la legi sunt **de verificat**.
+
+### Comportament actual
+- **Asociația** are reguli statutare configurabile (`DEFAULT_RULES` în `assoc_core.py`):
+  - cvorum: peste jumătate din cote; a doua convocare fără cvorum (art. 9(2) Ciunca);
+  - majoritate calificată 2/3;
+  - prag de petiție pentru AGA extraordinară: 1/4 din membri sau 1/4 din cote; punct pe ordinea de zi: 1/10 din membri, cu cel puțin 5 zile înainte;
+  - limite la mandate: cel mult 5 membri reprezentați și cel mult 5% din voturi;
+  - termen de contestare: 15 zile; prescripția sumelor cuvenite: 5 ani (art. 34(2)).
+- **Registrul de membri** (`radacini_assoc_members`) conține: cod, nume afișat, cote, **sursele cotelor**, stare (necunoscut → activ, decedat, moștenitor în curs), funcție în conducere. Îl văd doar conducerea, cenzorii și operatorul; membrul își vede doar rândul propriu.
+- **Revendicări** („sunt eu” / „sunt moștenitor”): utilizatorul încarcă dovezi, iar conducerea decide motivat. Platforma **nu verifică** autenticitatea certificatelor de moștenitor.
+- **Documente**: fișiere private cu amprentă SHA-256. O versiune nouă se adaugă peste cea veche, fără ștergere, și fiecare consultare intră în jurnal.
+- **Ședințe**:
+  - convocare cu jurnal de livrare și confirmare de primire;
+  - pentru membrii fără cont: dovadă de convocare prin poștă;
+  - prezența și cvorumul se calculează automat; hotărârile au termen de contestare.
+- **Voturile digitale sunt doar consultative.** Hotărârile valabile se iau în AGA, conform statutului. Aplicația doar consemnează rezultatul.
+- **Finanțe**:
+  - sinteză anuală;
+  - repartizarea profitului după procentele din statut;
+  - sumă cuvenită fiecărui membru, cu data prescrierii.
+  
+  **Platforma nu plătește și nu ține bani.** „Plătit” e doar o consemnare făcută de conducere.
+- **Jurnalul de răspundere** (`radacini_assoc_audit`) nu poate fi șters. Fiecare scriere a conducerii sau a operatorului intră în el, cu valoarea anterioară.
+- **Scorul de transparență** e public: obligații la timp, documente obligatorii publicate, cereri de informații răspunse în termen, participare.
+
+### Întrebări pentru jurist
+1. **Calificarea juridică:** composesoratele sunt persoane juridice reorganizate după Legea 1/2000 și Legea 247/2005 (de verificat), cu statut autorizat de judecătorie. Poate o platformă terță ține **o copie digitală a registrului**? Cine e operatorul de date: asociația, cu noi ca persoană împuternicită (DPA), sau suntem operatori asociați?
+2. **Registrul și GDPR:**
+   - Pe ce temei prelucrează asociația numele, cotele și moștenitorii membrilor (obligație legală sau statutară, interes legitim)?
+   - Pot vedea membrii **lista celorlalți membri și cotele lor**? Statutul Ciunca prevede că registrul consiliului poate fi consultat (art. 22(2)), iar aplicația îl arată acum doar conducerii.
+   - Ce facem cu datele persoanelor decedate și ale moștenitorilor încă neidentificați?
+3. **Moștenirea:**
+   - Regula legală privind transmiterea către descendenți și colaterali până la gradul IV (de verificat) se aplică peste art. 4(3) din statutul Ciunca, care nu o limitează explicit?
+   - Ce dovezi minime poate cere asociația unui moștenitor (certificat de moștenitor, certificat de calitate de moștenitor, hotărâre judecătorească)?
+4. **Vânzarea cotei** se face doar către alți membri (art. 5(1)b, art. 6; Legea 1/2000, de verificat). Poate platforma consemna o astfel de transmitere sau doar o anunță, fără mediere?
+5. **Convocarea digitală:** e valabilă convocarea prin aplicație sau e-mail dacă statutul prevede convocarea tradițională (art. 11(2))? Propunerea noastră: aplicația **completează** convocarea tradițională, nu o înlocuiește, până la modificarea statutului. Ce dovadă de convocare e acceptată în instanță?
+6. **Votul electronic:** în ce condiții poate deveni oficial (modificarea statutului în AGA, semnătură electronică calificată, eIDAS)? Până atunci, formularea „sondaj consultativ” e suficientă ca să evităm confuzia?
+7. **Mandatele:** e necesară procură scrisă sau notarială? E valabil un mandat înregistrat în aplicație și confirmat de mandant (semnătură electronică simplă)?
+8. **Contestarea hotărârilor:** termenul și instanța competentă (de verificat: Codul civil privind hotărârile organelor persoanei juridice; termenul din statut). Poate aplicația afișa „termen de contestare până la…” fără să fie considerată consultanță juridică?
+9. **Prescripția sumelor cuvenite** (art. 34(2), 5 ani): e corect calculul de la data AGA care a aprobat repartizarea? Ce se întâmplă cu sumele moștenitorilor încă neidentificați?
+10. **Scorul public de transparență:** există risc de **defăimare** sau de prejudiciu de imagine pentru conducere? Ce condiții trebuie să îndeplinească formula: criterii publice, date verificabile, drept la replică?
+11. **Jurnalul care nu poate fi șters:** se poate păstra nelimitat? Cum îl împăcăm cu dreptul la ștergere?
+12. **Documentele vechi, dispărute sau furate**, inclusiv din arhive: poate platforma ține copii scanate aduse de membri? Cum marcăm o copie neconfirmată față de un document oficial?
+13. **Operatorul Rădăcini:** poate digitaliza registrul și documentele în numele asociației? Ce mandat scris îi trebuie (hotărâre AGA sau a consiliului)?
+14. **Legătura cu economia Rădăcini** (proiecte cu participare voluntară pe terenul asociației, pășunat, arendă): ce hotărâri sunt necesare (AGA sau consiliu), având în vedere că patrimoniul e inalienabil și nu poate fi împărțit? Se poate arenda doar folosința?
+
+### Recomandare / acțiune (până la aviz)
+- **Fără registre reale** fără hotărârea organelor asociației și un acord de prelucrare a datelor (DPA) semnat.
+- Text fix în aplicație: „Funcțiile digitale completează procedurile din statut și nu le înlocuiesc; voturile din aplicație sunt consultative.”
+- Scorul de transparență rămâne vizibil doar membrilor până la aviz. **Decizie de produs.**
+
+---
+
 ## I. Livrabile cerute juristului
-- Răspunsuri scurte la întrebările de mai sus, cu prioritate: A (arendă/înregistrare), B (DSV/atestat), E (minori, DPIA), D (statut platformă), F (rămân blocate?).
+- Răspunsuri scurte la întrebările de mai sus, cu prioritate:
+  - A: arendă și înregistrare;
+  - B: autorizație DSV și atestat de producător;
+  - E: minori și DPIA;
+  - D: statutul platformei;
+  - F: rămân blocate?
+  - **J: composesorate.** Prioritar aici: 1, 2, 5, 6 și 10, înainte de primul composesorat real.
 - Termeni și politică revizuite (versiune finală).
 - Lista de modificări de produs obligatorii înainte de pilot (câmpuri, bife, texte).
 - Estimare de onorariu și timp (vezi `COSTURI_PILOT.md`).

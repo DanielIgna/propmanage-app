@@ -78,8 +78,8 @@ export default function PetitionsTab({ assoc, access, reload }) {
         {(list || []).map((p) => {
           const s = p.signatures || {};
           const th = p.threshold || (p.kind === "agenda_item" ? assoc?.rules?.agenda_petition : rules) || {};
-          const mFrac = s.members_fraction ?? pctOf(s.members ?? s.members_count ?? 0, s.total_members ?? assoc?.members_count ?? 0) / 100;
-          const shFrac = s.shares_fraction ?? pctOf(s.shares ?? 0, s.total_shares ?? assoc?.total_shares ?? 0) / 100;
+          const mFrac = s.members_fraction ?? pctOf(p.signatures_count ?? s.members ?? s.members_count ?? 0, p.members_count ?? s.total_members ?? assoc?.members_count ?? 0) / 100;
+          const shFrac = s.shares_fraction ?? pctOf(p.signed_shares ?? s.shares ?? 0, p.total_shares ?? s.total_shares ?? assoc?.total_shares ?? 0) / 100;
           return (
             <li key={p.id} className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-2" data-testid={`radacini-petition-${p.id}`}>
               <div className="flex flex-wrap items-start justify-between gap-2">

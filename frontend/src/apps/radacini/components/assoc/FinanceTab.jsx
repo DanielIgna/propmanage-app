@@ -152,8 +152,8 @@ export default function FinanceTab({ assoc, access, reload }) {
 
       {seesAll && (
         <div className="grid grid-cols-2 gap-3" data-testid="finance-totals">
-          <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-600">Total neridicat</p><p className="text-lg font-bold">{ron(totals.unpaid)}</p></div>
-          <div className="rounded-xl bg-red-50 p-3"><p className="text-xs text-slate-600">Aproape de prescriere (&lt; 12 luni)</p><p className="text-lg font-bold text-red-700">{ron(totals.near_prescription)}</p></div>
+          <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-600">Total neridicat</p><p className="text-lg font-bold">{ron(totals.unpaid_amount ?? totals.unpaid)}</p></div>
+          <div className="rounded-xl bg-red-50 p-3"><p className="text-xs text-slate-600">Aproape de prescriere (&lt; 12 luni)</p><p className="text-lg font-bold text-red-700">{ron(totals.near_prescription_amount ?? totals.near_prescription)}</p></div>
         </div>
       )}
 

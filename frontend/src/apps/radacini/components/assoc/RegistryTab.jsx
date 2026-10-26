@@ -32,7 +32,7 @@ function Participation({ p }) {
         <div className="absolute inset-y-0 w-0.5 bg-red-600" style={{ left: `${quorum}%` }} title="Cvorum" />
       </div>
       <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
-        <span><i className="inline-block w-3 h-3 rounded-sm bg-emerald-500 mr-1" />Cote active: {nf(p.active_shares)}</span>
+        <span><i className="inline-block w-3 h-3 rounded-sm bg-emerald-500 mr-1" />Cote active (cu cont în aplicație): {nf(p.active_shares)}</span>
         <span><i className="inline-block w-3 h-3 rounded-sm bg-slate-500/60 mr-1" />Cote necunoscute: {nf(p.unknown_shares)}</span>
         <span><i className="inline-block w-0.5 h-3 bg-red-600 mr-2" />Cvorum necesar: {nf(p.quorum_needed_shares)}</span>
       </div>
@@ -41,7 +41,7 @@ function Participation({ p }) {
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
         <div><div className="text-xs text-slate-500">Membri în registru</div><b>{p.members_count}</b></div>
-        <div><div className="text-xs text-slate-500">Membri activi</div><b>{p.active_members}</b></div>
+        <div><div className="text-xs text-slate-500" title="Membri confirmați sau activi, legați de un cont Rădăcini">Membri activi cu cont</div><b>{p.active_members}</b></div>
         <div><div className="text-xs text-slate-500">Total cote</div><b>{nf(p.total_shares)}</b></div>
         <div><div className="text-xs text-slate-500">Decedați nerezolvați</div><b>{p.deceased_unresolved}</b></div>
       </div>

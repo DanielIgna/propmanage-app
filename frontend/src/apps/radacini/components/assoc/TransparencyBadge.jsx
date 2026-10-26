@@ -24,7 +24,7 @@ const compEntries = (components) => {
   return arr.map((c) => {
     const key = c.key || c.id || c.name;
     const [label, expl] = COMP_LABEL[key] || [c.label || key, c.explanation || ""];
-    return { key, label: c.label || label, expl: c.explanation || c.detail || expl, score: c.score ?? c.value ?? null };
+    return { key, label: c.label || label, expl: c.explanation || c.detail || expl, score: c.score ?? (c.value != null ? c.value * 100 : null) };
   });
 };
 
@@ -75,7 +75,7 @@ export default function TransparencyBadge({ assocId, score: scoreProp, component
               <li key={c.key} data-testid={`transparency-comp-${c.key}`}>
                 <div className="flex justify-between gap-2 font-medium">
                   <span>{c.label}</span>
-                  {c.score != null && <span>{Math.round(c.score)}</span>}
+                  {c.score != null && <span>{Math.round(c.score)}%</span>}
                 </div>
                 {c.expl && <p className="text-xs text-slate-600">{c.expl}</p>}
               </li>

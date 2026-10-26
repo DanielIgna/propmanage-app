@@ -7,7 +7,7 @@ Data lives in the shared PropManage database, using collections prefixed `radaci
 """
 import os
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from . import (
     assoc_accountability, assoc_core, assoc_demo, assoc_governance,
@@ -15,7 +15,7 @@ from . import (
     households, legal_terms, market, members, needs, parcels, photos, projects, public, requests, service_requests, staff,
     test_accounts,
 )
-from .bridge import get_current_user
+from .bridge import get_current_user, is_super_admin
 from .common import public_rate_limit
 from .constants import META
 
@@ -23,9 +23,23 @@ from .constants import META
 RADACINI_ENABLED = os.environ.get("RADACINI_ENABLED", "false").strip().lower() in ("1", "true", "yes")
 
 
-async def _enabled():
+# Beta închis: dacă lista e setată (emailuri separate prin virgulă), doar acele conturi (plus super-adminul
+# și sesiunile de test pornite de el) folosesc modulul. Goală = acces pentru oricine are cont.
+RADACINI_ALLOWED_EMAILS = {
+    e.strip().lower() for e in os.environ.get("RADACINI_ALLOWED_EMAILS", "").split(",") if e.strip()
+}
+_BETA_OPEN_PATHS = {"/api/radacini/health", "/api/radacini/meta", "/api/radacini/legal/documents"}
+BETA_CLOSED_DETAIL = {"code": "beta_closed", "message": "Rădăcini e în beta închis. Accesul se face doar pe bază de invitație."}
+
+
+async def _enabled(request: Request):
     if not RADACINI_ENABLED:
         raise HTTPException(404, "Not Found")
+    if RADACINI_ALLOWED_EMAILS and request.url.path not in _BETA_OPEN_PATHS:
+        user = await get_current_user(request)
+        email = str(user.get("email") or "").strip().lower()
+        if not (email in RADACINI_ALLOWED_EMAILS or is_super_admin(user) or user.get("impersonation")):
+            raise HTTPException(403, BETA_CLOSED_DETAIL)
 
 
 # `public_rate_limit` acoperă doar GET /meta și GET /parcels* (vezi common.py); restul rutelor trec nemodificate.

@@ -86,6 +86,16 @@ export const RadaciniLayout = () => {
     }
   };
 
+  // Beta închis: backend-ul răspunde 403 {code: "beta_closed"} conturilor care nu sunt pe lista de invitați.
+  const [betaClosed, setBetaClosed] = useState(false);
+  useEffect(() => {
+    if (!user) return;
+    api.get("/radacini/me").then(
+      () => setBetaClosed(false),
+      (e) => setBetaClosed(e?.response?.status === 403 && e?.response?.data?.detail?.code === "beta_closed")
+    );
+  }, [user]);
+
   if (user === null) {
     return (
       <div className="p-6">
@@ -94,6 +104,22 @@ export const RadaciniLayout = () => {
     );
   }
   if (!user) return <Navigate to={`/radacini/login?next=${encodeURIComponent(pathname + search)}`} replace />;
+
+  if (betaClosed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0b0c0d] p-4" data-testid="radacini-beta-closed">
+        <div className="max-w-md w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-6 text-center space-y-3">
+          <Sprout className="mx-auto h-10 w-10 text-emerald-600" aria-hidden />
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">Rădăcini e în beta închis</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            Momentan testăm platforma cu un grup mic de invitați. Contul <b>{user.email}</b> nu e încă pe listă.
+            Te anunțăm când deschidem accesul.
+          </p>
+          <Link to="/" className="inline-block text-sm font-semibold text-emerald-700 underline dark:text-emerald-300">Înapoi la PropManage</Link>
+        </div>
+      </div>
+    );
+  }
 
   const items = NAV.filter((item) => canSee(item, staff, user));
   const displayName = user.full_name || user.name || user.email;

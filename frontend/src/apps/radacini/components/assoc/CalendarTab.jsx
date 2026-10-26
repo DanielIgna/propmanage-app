@@ -6,6 +6,7 @@ import { errMsg } from "../../api";
 import { s9Api } from "../../api_s9";
 
 const STATUS = {
+  done: ["Îndeplinit la timp", "bg-emerald-100 text-emerald-800"],
   on_time: ["Îndeplinit la timp", "bg-emerald-100 text-emerald-800"],
   late: ["Întârziat", "bg-amber-100 text-amber-800"],
   missed: ["Ratat", "bg-red-100 text-red-800"],

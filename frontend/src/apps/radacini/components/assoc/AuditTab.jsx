@@ -4,6 +4,17 @@ import { errMsg } from "../../api";
 import { s9Api } from "../../api_s9";
 
 const ROLE = { manager: "Manager", operator: "Operator", president: "Președinte", vice_president: "Vicepreședinte", secretary: "Secretar", cashier: "Casier", forest_pasture: "Responsabil pădure/pășune", censor: "Cenzor", council: "Consiliu", admin: "Administrator" };
+const ACTION = {
+  "assoc.create": "Asociație creată", "assoc.update": "Datele asociației modificate",
+  "member.add": "Membru adăugat în registru", "member.import": "Registru importat", "member.update": "Rând din registru modificat",
+  "claim.approve_self": "Revendicare aprobată (titular)", "claim.approve_heir": "Revendicare aprobată (moștenitor)", "claim.reject": "Revendicare respinsă",
+  "document.upload": "Document publicat", "meeting.create": "Ședință programată", "meeting.convene": "Convocare trimisă",
+  "meeting.registered_mail": "Convocare prin poștă (dovadă)", "meeting.attendance": "Prezență consemnată", "meeting.decisions": "Hotărâri consemnate",
+  "petition.respond": "Răspuns la petiție", "request.answer": "Răspuns la cerere de informații",
+  obligation_evidence: "Dovadă pentru o obligație statutară", finance_year_create: "An financiar adăugat",
+  finance_distribute: "Profit repartizat pe membri", distribution_paid: "Sumă plătită unui membru",
+};
+const TARGET = { association: "asociație", member: "membru", claim: "revendicare", document: "document", meeting: "ședință", petition: "petiție", request: "cerere", obligation: "obligație", finance_year: "an financiar", distribution: "distribuire" };
 const fmtDT = (d) => (d ? new Date(d).toLocaleString("ro-RO") : "—");
 const asArr = (d) => (Array.isArray(d) ? d : d?.items || d?.entries || []);
 const pretty = (v) => {
@@ -16,13 +27,13 @@ function Entry({ e, full }) {
   return (
     <li className="rounded-xl border border-slate-200 bg-white p-3" data-testid={`audit-entry-${e.id || e._id || e.at}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-1">
-        <span className="font-semibold break-words">{e.action_label || e.action}</span>
+        <span className="font-semibold break-words">{e.action_label || ACTION[e.action] || e.action}</span>
         <span className="text-xs text-slate-500">{fmtDT(e.at)}</span>
       </div>
       <p className="text-xs text-slate-600">
         {ROLE[e.actor_role] || e.actor_role || "—"}
         {full && e.actor_name ? ` · ${e.actor_name}` : ""}
-        {full && e.target_type ? ` · ${e.target_type}${e.target_id ? ` ${e.target_id}` : ""}` : ""}
+        {full && e.target_type ? ` · ${TARGET[e.target_type] || e.target_type}` : ""}
       </p>
       {hasDiff && (
         <>
