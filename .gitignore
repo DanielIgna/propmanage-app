@@ -283,3 +283,4 @@ frontend/.dev.vars
 
 # Rădăcini — documente-sursă pentru analiza composesoratelor (pot conține date personale; nu se versionează)
 docs/radacini/composesorate/surse/
+.claude/autonom.lock
