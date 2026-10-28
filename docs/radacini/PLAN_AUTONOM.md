@@ -20,14 +20,14 @@ Rulat de task-ul programat `radacini-autonom`, din 2 în 2 ore. Fiecare rulare c
 - [x] (fără verificare în browser: serverul dev a fost refuzat; verificat prin build) **A6. Accesibilitate:** etichete pe câmpuri, `aria-label` pe butoanele doar cu icon, focus vizibil, contrast. Doar în `frontend/src/apps/radacini`.
 - [x] **A7. Build de producție frontend:** `cd frontend && NEXT_DIST_DIR=.next-build npx next build`. Repară erorile sau avertismentele Rădăcini și șterge apoi `.next-build`.
 - [x] **A8. Review al codului** din commit-urile `54fd357..HEAD` (corectitudine și securitate: lista albă, raportări, monitorizare, pagina operator). Repară problemele confirmate.
-- [ ] **A9. Composesorate, vizibilitatea scorului:** regulă per asociație, scor „public” sau „doar membri” (implicit public), cu test (vezi DPIA R6).
+- [ ] (blocat: cere backend pornit pentru test) **A9. Composesorate, vizibilitatea scorului:** regulă per asociație, scor „public” sau „doar membri” (implicit public), cu test (vezi DPIA R6).
 - [x] **A10. Ghid pentru beta:** `docs/radacini/GHID_BETA.md` cu:
   - ce testează invitații și cum raportează probleme;
   - textul emailului de invitație;
   - pașii fondatorului pe Railway: `RADACINI_ENABLED`, `RADACINI_ALLOWED_EMAILS`, `RADACINI_OPERATOR_*`, `RESEND_API_KEY`, opțional `PG_POOL_MAX` și portul 6543.
   
   Apoi actualizezi `ROADMAP.md` și `PLAN.md`.
-- [ ] **A11. Regresie completă** (o singură dată): repari ce pică, apoi faci curățarea.
+- [ ] (blocat: cere backend pornit) **A11. Regresie completă** (o singură dată): repari ce pică, apoi faci curățarea.
 - [ ] **A12. Final:** rezumat în secțiunea „Jurnal” de mai jos și actualizarea memoriei `radacini-state.md`.
 
 ## Întrebări pentru fondator
@@ -39,4 +39,4 @@ Rulat de task-ul programat `radacini-autonom`, din 2 în 2 ore. Fiecare rulare c
 ## Jurnal
 - 2026-10-26: plan creat; punctele 1–5 de beta au fost făcute în `54fd357` și `f4ff6a1`.
 - 2026-10-28: A2 (job de retenție, doar raport implicit; raport pe datele reale: 0 de expirat), A4 (plăci configurabile), A7 (build de producție fără erori), A10 (`GHID_BETA.md`). A1, A3 blocate: backend-ul nu a putut fi pornit. Commit `d684eec`.
-- 2026-10-28: A6 (`Field` leagă automat eticheta de câmp sau marchează grupul cu `role="group"`: 28 de câmpuri reparate; contrast pe Login; butoanele-icon și focusul erau deja în regulă). A8 (review `54fd357..HEAD`): jurnalul de erori salva mesajul brut al excepției (putea conține emailuri, ID-uri, valori) → acum se curăță (`scrub_error_message`, test nou). Restul (lista albă, raportări, monitorizare, operator) fără probleme confirmate. Build de producție curat.
+- 2026-10-28: A6 (`Field` leagă automat eticheta de câmp sau marchează grupul cu `role="group"`: 28 de câmpuri reparate; contrast pe Login; butoanele-icon și focusul erau deja în regulă). A8 (review `54fd357..HEAD`): jurnalul de erori salva mesajul brut al excepției (putea conține emailuri, ID-uri, valori) → acum se curăță (`scrub_error_message`, test nou). Restul (lista albă, raportări, monitorizare, operator) fără probleme confirmate. Build de producție curat. Commit `13c1665`. A9, A11 blocate (backend); A12 rămâne pentru ultima rulare.
