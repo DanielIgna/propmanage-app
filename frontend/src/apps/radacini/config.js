@@ -23,6 +23,13 @@ import {
 
 export const RADACINI_ENABLED = process.env.NEXT_PUBLIC_RADACINI_ENABLED === "true";
 
+// Plăcile hărții: implicit OpenStreetMap; un furnizor propriu (ex. cu acord de prelucrare) se setează din env.
+export const TILE_URL =
+  process.env.NEXT_PUBLIC_RADACINI_TILE_URL || "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+export const TILE_ATTRIBUTION =
+  process.env.NEXT_PUBLIC_RADACINI_TILE_ATTRIBUTION ||
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+
 // requires: "staff" = is_staff · "manager" = role manager · absent = vizibil pentru toți
 const NAV_ITEMS = [
   { to: "/radacini", label: "Panou", icon: LayoutDashboard, testid: "radacini-nav-panou" },

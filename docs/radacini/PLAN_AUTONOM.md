@@ -12,16 +12,16 @@ Rulat de task-ul programat `radacini-autonom`, din 2 în 2 ore. Fiecare rulare c
 - Lacăt: dacă `.claude/autonom.lock` e mai nou de 3 ore, oprește-te (rulează altă sesiune). Altfel scrie în el ora curentă și șterge-l la final.
 
 ## Puncte
-- [ ] **A1. Performanță `/radacini/projects`:** mai puține interogări pe cerere (fără N+1, `$in` pe loturi). Apoi `/listings` și `/admin/system`. Măsoară înainte și după cu `scripts.radacini_load_test --levels 5 --per-user 3` și notează rezultatele în `TEST_INCARCARE.md`.
-- [ ] **A2. Job de retenție:** `scripts/radacini_retention.py`, implicit **doar raport** (`--apply` pentru ștergere), după `POLITICA_RETENTIE.md`. Include regula de 18 ani pentru minori (doar raport) și conturile inactive. Teste pe date `TEST-RAD-`. Nu se înregistrează în scheduler.
-- [ ] **A3. Notificare la accesul locației exacte** (DPIA R1): proprietarul e anunțat când altcineva vede locația exactă, cel mult o dată pe zi pentru aceeași persoană și același teren. Plus test.
-- [ ] **A4. Plăci de hartă configurabile:** `NEXT_PUBLIC_RADACINI_TILE_URL` și `NEXT_PUBLIC_RADACINI_TILE_ATTRIBUTION`, implicit OSM. Notă în `DPIA_CIORNA.md`.
-- [ ] **A5. Verificare pe mobil (375 px)** a tuturor paginilor Rădăcini în browser: fără scroll orizontal, butoane de cel puțin 44 px, dialoguri care încap pe ecran. Repară ce găsești.
+- [ ] (blocat: backend-ul nu a putut fi pornit în rularea din 27–28.10, pornirea a fost refuzată) **A1. Performanță `/radacini/projects`:** mai puține interogări pe cerere (fără N+1, `$in` pe loturi). Apoi `/listings` și `/admin/system`. Măsoară înainte și după cu `scripts.radacini_load_test --levels 5 --per-user 3` și notează rezultatele în `TEST_INCARCARE.md`.
+- [x] **A2. Job de retenție:** `scripts/radacini_retention.py`, implicit **doar raport** (`--apply` pentru ștergere), după `POLITICA_RETENTIE.md`. Include regula de 18 ani pentru minori (doar raport) și conturile inactive. Teste pe date `TEST-RAD-`. Nu se înregistrează în scheduler.
+- [ ] (blocat: cere backend pornit pentru test) **A3. Notificare la accesul locației exacte** (DPIA R1): proprietarul e anunțat când altcineva vede locația exactă, cel mult o dată pe zi pentru aceeași persoană și același teren. Plus test.
+- [x] (verificat prin build; verificarea în browser a rămas nefăcută, serverul dev a fost refuzat) **A4. Plăci de hartă configurabile:** `NEXT_PUBLIC_RADACINI_TILE_URL` și `NEXT_PUBLIC_RADACINI_TILE_ATTRIBUTION`, implicit OSM. Notă în `DPIA_CIORNA.md`.
+- [ ] (blocat: serverul dev nu a putut fi pornit) **A5. Verificare pe mobil (375 px)** a tuturor paginilor Rădăcini în browser: fără scroll orizontal, butoane de cel puțin 44 px, dialoguri care încap pe ecran. Repară ce găsești.
 - [ ] **A6. Accesibilitate:** etichete pe câmpuri, `aria-label` pe butoanele doar cu icon, focus vizibil, contrast. Doar în `frontend/src/apps/radacini`.
-- [ ] **A7. Build de producție frontend:** `cd frontend && NEXT_DIST_DIR=.next-build npx next build`. Repară erorile sau avertismentele Rădăcini și șterge apoi `.next-build`.
+- [x] **A7. Build de producție frontend:** `cd frontend && NEXT_DIST_DIR=.next-build npx next build`. Repară erorile sau avertismentele Rădăcini și șterge apoi `.next-build`.
 - [ ] **A8. Review al codului** din commit-urile `54fd357..HEAD` (corectitudine și securitate: lista albă, raportări, monitorizare, pagina operator). Repară problemele confirmate.
 - [ ] **A9. Composesorate, vizibilitatea scorului:** regulă per asociație, scor „public” sau „doar membri” (implicit public), cu test (vezi DPIA R6).
-- [ ] **A10. Ghid pentru beta:** `docs/radacini/GHID_BETA.md` cu:
+- [x] **A10. Ghid pentru beta:** `docs/radacini/GHID_BETA.md` cu:
   - ce testează invitații și cum raportează probleme;
   - textul emailului de invitație;
   - pașii fondatorului pe Railway: `RADACINI_ENABLED`, `RADACINI_ALLOWED_EMAILS`, `RADACINI_OPERATOR_*`, `RESEND_API_KEY`, opțional `PG_POOL_MAX` și portul 6543.
@@ -32,6 +32,9 @@ Rulat de task-ul programat `radacini-autonom`, din 2 în 2 ore. Fiecare rulare c
 
 ## Întrebări pentru fondator
 - (completat de rulări)
+- Rularea programată nu a putut porni serverele (`backend`, `dev`): pornirea a fost refuzată. Pentru A1, A3, A5, A9, A11 trebuie permisă pornirea lor din `.claude/launch.json` (sau un backend lăsat pornit pe 8001).
+- Retenția: activăm jobul (`--apply` + scheduler) doar după avizul juristului pe durate?
 
 ## Jurnal
 - 2026-10-26: plan creat; punctele 1–5 de beta au fost făcute în `54fd357` și `f4ff6a1`.
+- 2026-10-28: A2 (job de retenție, doar raport implicit; raport pe datele reale: 0 de expirat), A4 (plăci configurabile), A7 (build de producție fără erori), A10 (`GHID_BETA.md`). A1, A3 blocate: backend-ul nu a putut fi pornit. Commit: vezi mai jos.

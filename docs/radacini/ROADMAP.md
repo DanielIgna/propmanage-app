@@ -14,7 +14,7 @@ Stare la 2026-10-14: S1–S8 implementate pe branch-ul `radacini` (testele compl
 ## Etapa 2 — Lansare tehnică controlată (decizia ta)
 1. Merge `radacini` → `main` cu modulul **oprit** (`RADACINI_ENABLED=false`). Pentru utilizatorii PropManage nu se schimbă nimic.
 2. Deploy pe Railway și Cloudflare. Smoke test: PropManage funcționează, iar `/api/radacini/*` răspunde 404 cât e oprit.
-3. Pornire în producție doar pentru o listă albă (fondator, testeri). Variabilele se setează doar după aprobare.
+3. Pornire în producție doar pentru o listă albă (fondator, testeri). Variabilele se setează doar după aprobare. Pașii, emailul de invitație și ce testează invitații: `GHID_BETA.md`.
 4. Monitorizare egress și erori o săptămână.
 
 ## Etapa 3 — Pilot Cluj (4–8 săptămâni)

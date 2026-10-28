@@ -46,6 +46,17 @@ Versiune 0.1 · 2026-10-26 · **Ciornă tehnică, nu consultanță juridică.** 
 3. Notificarea conturilor inactive.
 4. Un text scurt în politica de confidențialitate, cu tabelul de mai sus simplificat.
 
+## Jobul de retenție (2026-10-28, neactivat)
+`backend/scripts/radacini_retention.py`. Implicit **doar raport**; `--apply` șterge sau anonimizează. Nu e în scheduler: se activează doar după avizul juristului. Reguli implementate:
+- jurnalul de acces la locația exactă: ștergere după 12 luni;
+- cereri de teren încheiate fără acord (cu mesajele lor): ștergere după 24 de luni;
+- anunțuri închise sau expirate fără rezervări: ștergere după 24 de luni (cele cu rezervări rămân, ca probă);
+- raportări DSA rezolvate: după 2 ani se șterg ID-ul și numele raportorului;
+- notificările Rădăcini din aplicație (link `/radacini…`) ale membrilor: ștergere după 12 luni;
+- minori care au împlinit 18 ani și conturi inactive de 24 de luni: **doar raport**, mereu (notificarea prealabilă nu e implementată).
+
+Cu `--apply`, fiecare rulare scrie un rezumat în jurnalul de audit (`radacini.retention_run`). Test: `tests/test_radacini_retention.py` (direct pe bază, fără backend).
+
 ## Întrebări pentru jurist
 1. Sunt corecte cele 3 ani pentru acorduri, dispute și rezervări (prescripția generală din Codul civil)? Unde se aplică 5 sau 10 ani (fiscal, contabil)?
 2. Putem păstra acordurile semnate după cererea de ștergere, invocând interesul legitim (probă)? În ce formă: integral sau pseudonimizat?

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, Marker, Polygon, Polyline, CircleMarker, useMapEvents } from "react-leaflet";
+import { TILE_ATTRIBUTION, TILE_URL } from "../config";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -103,7 +104,7 @@ export default function LocationPicker({ value, onChange, height = "320px", poly
         </div>
       )}
       <MapContainer center={center} zoom={value || vertices.length ? 15 : 11} scrollWheelZoom={false} style={{ height, width: "100%", borderRadius: "1rem" }}>
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+        <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
         <ClickCapture onPick={polyMode ? addVertex : onChange} />
         {value && <Marker position={[value.lat, value.lng]} icon={icon} />}
         {polyEnabled && closed && pts.length >= 3 && (

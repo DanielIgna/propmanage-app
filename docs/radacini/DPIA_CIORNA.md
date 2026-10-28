@@ -31,7 +31,7 @@ Volumul în pilot e mic (sute de persoane). O DPIA e totuși recomandată înain
 - Cloudflare: frontend și CDN.
 - Resend: email, când e configurat; regiune de verificat.
 - Google: autentificare OAuth.
-- **OpenStreetMap:** plăcile de hartă se încarcă direct de pe `tile.openstreetmap.org`, deci serverele OSM primesc IP-ul vizitatorului. Politica OSM de utilizare a plăcilor nu permite trafic mare. Pentru beta-ul public: un furnizor cu contract (de exemplu MapTiler sau Stadia) sau plăci servite prin propriul proxy.
+- **OpenStreetMap:** plăcile de hartă se încarcă direct de pe `tile.openstreetmap.org`, deci serverele OSM primesc IP-ul vizitatorului. Politica OSM de utilizare a plăcilor nu permite trafic mare. Pentru beta-ul public: un furnizor cu contract (de exemplu MapTiler sau Stadia) sau plăci servite prin propriul proxy. Furnizorul se schimbă fără cod, din `NEXT_PUBLIC_RADACINI_TILE_URL` și `NEXT_PUBLIC_RADACINI_TILE_ATTRIBUTION` (implicit OSM; variabilele intră la build-ul frontend-ului).
 
 ## 3. Necesitate și proporționalitate
 - **Minimizare:**

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import { MapContainer, TileLayer, Circle, Popup, useMap } from "react-leaflet";
+import { TILE_ATTRIBUTION, TILE_URL } from "../config";
 import L from "leaflet";
 import { Link } from "react-router-dom";
 import "leaflet/dist/leaflet.css";
@@ -30,7 +31,7 @@ export default function ApproxMap({ points = [], height = "380px", emptyLabel = 
   return (
     <div className="relative isolate rounded-3xl overflow-hidden border border-white/10" style={{ height }} data-testid="radacini-approx-map">
       <MapContainer center={DEFAULT_CENTER} zoom={10} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
+        <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
         <FitToPoints points={withCoords} fitKey={fitKey} />
         {withCoords.map((p) => (
           <Circle key={p.id} center={[p.lat, p.lng]} radius={RADIUS_M}

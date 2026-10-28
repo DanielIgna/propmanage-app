@@ -568,3 +568,6 @@ Implicit, valorile din statutul Ciunca:
 - **Pagini dedicate:** „Revendică / Sunt moștenitor” și un ghid scurt pentru membri vârstnici, cu texte mari și pași simpli.
 - **Panou:** cardul „Composesoratele mele” (alerte: convocări neconfirmate, sume aproape de prescriere, petiții).
 - **Administrare:** fila „Composesorate” (listă, creare, asignare operatori).
+
+## Beta închis (2026-10-28)
+Ghidul pentru invitați și pașii fondatorului pe Railway: `GHID_BETA.md`. Retenția datelor: `scripts/radacini_retention.py` (doar raport implicit, neactivat în scheduler), descris în `POLITICA_RETENTIE.md`.

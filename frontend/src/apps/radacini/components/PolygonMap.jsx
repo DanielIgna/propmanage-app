@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { MapContainer, TileLayer, Polygon } from "react-leaflet";
+import { TILE_ATTRIBUTION, TILE_URL } from "../config";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -17,7 +18,7 @@ export default function PolygonMap({ geometry, height = "280px" }) {
   return (
     <div className="relative isolate rounded-3xl overflow-hidden border border-white/10" style={{ height }} data-testid="radacini-polygon-map">
       <MapContainer key={ring.map((c) => c.join(",")).join("|")} bounds={bounds.pad(0.2)} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
+        <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
         <Polygon positions={ring} pathOptions={{ color: "#d4ff3a", weight: 3, fillColor: "#d4ff3a", fillOpacity: 0.25 }} />
       </MapContainer>
     </div>
