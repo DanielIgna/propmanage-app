@@ -55,7 +55,7 @@ Volumul în pilot e mic (sute de persoane). O DPIA e totuși recomandată înain
 | R3 | Acces neautorizat la cont (parolă slabă, sesiune furată) | medie | medie | autentificare PropManage, Google OAuth; acțiunile juridice blocate în impersonare | 2FA opțional; notificare la autentificare nouă |
 | R4 | Personalul vede mai mult decât trebuie | mică | medie | roluri (operator pe arie, manager); jurnal de audit | revizuirea trimestrială a listei de personal |
 | R5 | Registrul unui composesorat (moștenitori, decedați) e expus sau contestat | medie | mare | doar demo acum; acces doar conducere și cenzori; jurnal care nu se poate șterge | DPA cu asociația înaintea oricărui registru real; aviz juridic J.1–J.2 |
-| R6 | Scorul public de transparență sau ratingul afectează reputația unei persoane | medie | medie | criterii publice și explicate | drept la replică; scor vizibil doar membrilor până la aviz |
+| R6 | Scorul public de transparență sau ratingul afectează reputația unei persoane | medie | medie | criterii publice și explicate; regula `score_visibility` per asociație („public” implicit sau „members”: scorul se vede doar de membri, conducere și personal) | drept la replică; trecerea pe „members” până la aviz |
 | R7 | Transfer în afara SEE prin furnizori | medie | medie | Supabase în UE | verificarea DPA-urilor și a clauzelor contractuale standard (SCC) pentru Railway, Resend, Cloudflare, Google |
 | R8 | Incident de securitate nedetectat | mică | mare | jurnal de erori, pagina „Stare sistem”, limită de cereri | procedură de notificare în 72 h (cine, cum, șablon); monitorizare externă a disponibilității |
 | R9 | Păstrarea datelor mai mult decât e necesar | mare (acum) | medie | ștergere automată doar pentru erori | job de retenție (vezi politica) |

@@ -24,8 +24,8 @@ export default function OverviewTab({ assoc, access }) {
         setMeeting(next || null);
       })
       .catch(() => setMeeting(null));
-    transparency(id).then(setTr).catch(() => {});
-  }, [id, access?.role]);
+    if (assoc?.score_visible !== false) transparency(id).then(setTr).catch(() => {});
+  }, [id, access?.role, assoc?.score_visible]);
 
   const patrimony = assoc?.patrimony || [];
   const alerts = access?.alerts || assoc?.alerts || [];
@@ -38,7 +38,11 @@ export default function OverviewTab({ assoc, access }) {
       <div className={`${CARD} p-5 space-y-3`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-bold text-slate-900 dark:text-white">Scor de transparență</h3>
-          <TransparencyBadge assocId={id} />
+          {assoc?.score_visible === false ? (
+            <span className="text-xs text-slate-500 dark:text-slate-400">Vizibil doar membrilor asociației</span>
+          ) : (
+            <TransparencyBadge assocId={id} />
+          )}
         </div>
         {comps.length > 0 && (
           <div className="space-y-2">

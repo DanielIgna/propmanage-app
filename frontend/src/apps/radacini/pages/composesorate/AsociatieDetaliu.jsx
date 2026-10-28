@@ -66,7 +66,11 @@ export default function AsociatieDetaliu() {
           <h2 className="text-xl font-bold text-slate-900 dark:text-white break-words" data-testid="assoc-name">{assoc.name}</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">{ASSOC_TYPE[assoc.type] || assoc.type} · {(assoc.localities || []).join(", ")}</p>
         </div>
-        <TransparencyBadge assocId={assoc.id} score={assoc.transparency_score ?? undefined} />
+        {assoc.score_visible === false ? (
+          <span className="text-xs text-slate-500 dark:text-slate-400" data-testid="transparency-members-only">Scor vizibil doar membrilor</span>
+        ) : (
+          <TransparencyBadge assocId={assoc.id} score={assoc.transparency_score ?? undefined} />
+        )}
       </div>
       <TabBar tabs={tabs} active={active} onChange={setTab} testidPrefix="assoc-tab" />
       <div data-testid={`assoc-panel-${active}`}>

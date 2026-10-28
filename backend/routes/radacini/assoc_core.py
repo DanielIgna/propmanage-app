@@ -32,7 +32,11 @@ DEFAULT_RULES: dict = {
     "max_member_shares_fraction": 0.05, "contest_days": 15, "prescription_years": 5,
     "profit_split": {"council_max": 0.10, "reserve_max": 0.20, "charity_max": 0.20, "investment_max": 0.20},
     "info_request_days": 30, "censor_check_months": [3, 6, 9, 12],
+    # DPIA R6: scorul de transparență e public sau vizibil doar membrilor (și conducerii/personalului).
+    "score_visibility": "public",
 }
+SCORE_VISIBILITY = ("public", "members")
+SCORE_ROLES = ("manager", "operator", "council", "censor", "member")
 
 COUNCIL_ROLES = ("president", "vice_president", "secretary", "cashier", "forest_pasture")
 MEMBER_STATUSES = ("unknown", "contacted", "confirmed", "active", "deceased", "heir_pending")
@@ -192,9 +196,16 @@ def _total_area(a: dict) -> float:
     return round(total, 4)
 
 
-def _public_view(a: dict, members_count: int) -> dict:
+def score_visible(assoc: dict, role: Optional[str]) -> bool:
+    """Scorul se vede de oricine dacă regula e „public”; altfel doar de membri, conducere și personal."""
+    return merged_rules(assoc)["score_visibility"] != "members" or role in SCORE_ROLES
+
+
+def _public_view(a: dict, members_count: int, show_score: bool = True) -> dict:
     cache = a.get("transparency_cache")
     score = cache.get("score") if isinstance(cache, dict) else (cache if isinstance(cache, (int, float)) else None)
+    if not show_score:
+        score = None
     return {
         "id": str(a["_id"]),
         "name": a.get("name"),
@@ -204,6 +215,7 @@ def _public_view(a: dict, members_count: int) -> dict:
         "total_area_ha": _total_area(a),
         "members_count": members_count,
         "transparency_score": score,
+        "score_visible": show_score,
     }
 
 
@@ -285,6 +297,8 @@ def _check_rules(v: Optional[dict]) -> Optional[dict]:
                 isinstance(val, (int, float)) and isinstance(DEFAULT_RULES[k], (int, float))
                 and not isinstance(val, bool)):
             raise ValueError(f"Valoare invalidă pentru regula {k}.")
+    if "score_visibility" in v and v["score_visibility"] not in SCORE_VISIBILITY:
+        raise ValueError("Vizibilitatea scorului este „public” sau „members”.")
     return v
 
 
@@ -597,7 +611,8 @@ async def list_assoc(locality: Optional[str] = Query(None, max_length=80), q: Op
     items = []
     for d in docs:
         n = await db.radacini_assoc_members.count_documents({"association_id": str(d["_id"])})
-        items.append(_public_view(d, n))
+        # Lista e publică: scorul „doar membri” nu apare aici (membrii îl văd în pagina asociației).
+        items.append(_public_view(d, n, score_visible(d, None)))
     return {"items": items}
 
 
@@ -613,10 +628,10 @@ async def my_claims(user: dict = Depends(get_current_user)):
     return {"items": [{**serialize_doc(d), "association_name": names.get(d["association_id"])} for d in docs]}
 
 
-async def _my_section(user: Optional[dict], assoc: dict) -> Optional[dict]:
+async def _my_section(user: Optional[dict], assoc: dict, acc: Optional[dict] = None) -> Optional[dict]:
     if not user:
         return None
-    acc = await assoc_access(user, assoc)
+    acc = acc or await assoc_access(user, assoc)
     if acc["role"] is None:
         return None
     return {"role": acc["role"], "council_role": acc["council_role"],
@@ -627,12 +642,13 @@ async def _my_section(user: Optional[dict], assoc: dict) -> Optional[dict]:
 async def get_assoc(assoc_id: str, user: Optional[dict] = Depends(get_optional_user)):
     assoc = await load_assoc_or_404(assoc_id)
     n = await db.radacini_assoc_members.count_documents({"association_id": str(assoc["_id"])})
-    view = _public_view(assoc, n)
+    acc = await assoc_access(user, assoc)
+    view = _public_view(assoc, n, score_visible(assoc, acc["role"]))
     view["legal"] = {k: v for k, v in (assoc.get("legal") or {}).items() if k in ("court", "registered_at")}
     view["patrimony"] = [{k: p.get(k) for k in ("cf", "topo", "area_ha", "category", "toponym")}
                          for p in assoc.get("patrimony") or []]
     view["rules"] = merged_rules(assoc)
-    return {"association": view, "my": await _my_section(user, assoc)}
+    return {"association": view, "my": await _my_section(user, assoc, acc)}
 
 
 @router.patch("/assoc/{assoc_id}")
@@ -658,7 +674,7 @@ async def patch_assoc(assoc_id: str, body: AssocPatch, user: dict = Depends(get_
     await write_audit(assoc_id, user, acc["role"], "assoc.update", "association", assoc_id, before=before, after=after)
     saved = await db.radacini_associations.find_one({"_id": assoc["_id"]})
     n = await db.radacini_assoc_members.count_documents({"association_id": assoc_id})
-    return {"association": _public_view(saved, n)}
+    return {"association": _public_view(saved, n, score_visible(saved, acc["role"]))}
 
 
 @router.get("/assoc/{assoc_id}/me")

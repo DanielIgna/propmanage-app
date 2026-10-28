@@ -12,10 +12,10 @@ from pydantic import BaseModel, field_validator
 
 from .assoc_core import (  # noqa: F401
     DEFAULT_RULES, merged_rules, load_assoc_or_404, assoc_access, require_assoc_roles, write_audit, active_members,
-    share_totals,
+    score_visible, share_totals,
 )
 from .bridge import block_in_impersonation, db, get_current_user
-from .common import RadaciniRoute, now_iso, oid_or_404, today_bucharest
+from .common import RadaciniRoute, get_optional_user, now_iso, oid_or_404, today_bucharest
 from .legal_terms import require_terms
 
 log = logging.getLogger(__name__)
@@ -527,8 +527,10 @@ async def compute_transparency(assoc: dict, rules: dict) -> dict:
 
 
 @router.get("/assoc/{assoc_id}/transparency")
-async def transparency(assoc_id: str):
+async def transparency(assoc_id: str, user: Optional[dict] = Depends(get_optional_user)):
     assoc = await _load(assoc_id)
+    if not score_visible(assoc, (await _access(user, assoc)).get("role")):
+        raise HTTPException(403, "Scorul de transparență al acestei asociații este vizibil doar membrilor.")
     res = await compute_transparency(assoc, await _rules(assoc))
     at = now_iso()
     await db.radacini_associations.update_one(
