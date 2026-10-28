@@ -206,15 +206,30 @@ export const Chips = ({ items }) =>
     </div>
   ) : null;
 
-export const Field = ({ label, hint, htmlFor, children }) => (
-  <div className="space-y-1.5 min-w-0">
-    <Label htmlFor={htmlFor} className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-      {label}
-    </Label>
-    {children}
-    {hint && <p className="text-xs text-slate-500 dark:text-slate-400">{hint}</p>}
-  </div>
-);
+// Fără `htmlFor`, eticheta se leagă singură de câmpul-copil (id generat); un grup (CheckGroup, rând de controale)
+// primește role="group" cu eticheta ca nume accesibil.
+export const Field = ({ label, hint, htmlFor, children }) => {
+  const autoId = React.useId();
+  const only = React.isValidElement(children) ? children : null;
+  const linkable =
+    !htmlFor && only && !only.props.id && only.type !== CheckGroup &&
+    (typeof only.type !== "string" || ["input", "textarea", "select"].includes(only.type));
+  const group = !htmlFor && !linkable;
+  const labelId = `${autoId}-label`;
+  return (
+    <div className="space-y-1.5 min-w-0" {...(group ? { role: "group", "aria-labelledby": labelId } : {})}>
+      <Label
+        id={labelId}
+        htmlFor={htmlFor || (linkable ? autoId : undefined)}
+        className="text-sm font-semibold text-slate-700 dark:text-slate-200"
+      >
+        {label}
+      </Label>
+      {linkable ? React.cloneElement(only, { id: autoId }) : children}
+      {hint && <p className="text-xs text-slate-500 dark:text-slate-400">{hint}</p>}
+    </div>
+  );
+};
 
 export const SelectField = ({ id, value, onValueChange, options, placeholder, testid, disabled }) => (
   <Select value={value} onValueChange={onValueChange} disabled={disabled}>

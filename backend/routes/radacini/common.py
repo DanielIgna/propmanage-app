@@ -3,6 +3,7 @@ import asyncio
 import logging
 import math
 import os
+import re
 import time
 from collections import deque
 from datetime import date, datetime, timezone
@@ -248,6 +249,21 @@ def _validation_message(exc: RequestValidationError) -> str:
 
 
 ERROR_RETENTION_DAYS = 14
+# Mesajul excepției poate conține date (emailuri, ID-uri, numere, valori din cerere): le înlocuim înainte de salvare.
+_SCRUB = (
+    (re.compile(r"[\w.+-]+@[\w-]+(\.[\w-]+)+"), "<email>"),
+    (re.compile(r"\b[0-9a-fA-F]{24}\b|\b[0-9a-fA-F-]{32,36}\b"), "<id>"),
+    (re.compile(r"\+?\d[\d .-]{5,}\d"), "<nr>"),
+    (re.compile(r"(['\"]).{0,200}?\1"), "<valoare>"),
+)
+
+
+def scrub_error_message(message: str) -> str:
+    for rx, repl in _SCRUB:
+        message = rx.sub(repl, message)
+    return message[:300]
+
+
 _last_error_gc = 0.0
 
 
@@ -258,7 +274,7 @@ async def record_error(method: str, route: str, exc: BaseException) -> None:
     try:
         await db.radacini_errors.insert_one({
             "method": method, "route": route, "error_type": type(exc).__name__,
-            "message": str(exc)[:300], "at": now_iso(),
+            "message": scrub_error_message(str(exc)[:1000]), "at": now_iso(),
         })
         now = time.monotonic()
         if now - _last_error_gc > 3600:

@@ -129,7 +129,7 @@ export default function Login() {
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             Intră în Rădăcini
           </button>
-          <div className="flex items-center gap-3 text-[10px] uppercase tracking-wider text-slate-400">
+          <div className="flex items-center gap-3 text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
             <div className="flex-1 h-px bg-slate-200 dark:bg-white/10" />
             sau
             <div className="flex-1 h-px bg-slate-200 dark:bg-white/10" />

@@ -17,9 +17,9 @@ Rulat de task-ul programat `radacini-autonom`, din 2 în 2 ore. Fiecare rulare c
 - [ ] (blocat: cere backend pornit pentru test) **A3. Notificare la accesul locației exacte** (DPIA R1): proprietarul e anunțat când altcineva vede locația exactă, cel mult o dată pe zi pentru aceeași persoană și același teren. Plus test.
 - [x] (verificat prin build; verificarea în browser a rămas nefăcută, serverul dev a fost refuzat) **A4. Plăci de hartă configurabile:** `NEXT_PUBLIC_RADACINI_TILE_URL` și `NEXT_PUBLIC_RADACINI_TILE_ATTRIBUTION`, implicit OSM. Notă în `DPIA_CIORNA.md`.
 - [ ] (blocat: serverul dev nu a putut fi pornit) **A5. Verificare pe mobil (375 px)** a tuturor paginilor Rădăcini în browser: fără scroll orizontal, butoane de cel puțin 44 px, dialoguri care încap pe ecran. Repară ce găsești.
-- [ ] **A6. Accesibilitate:** etichete pe câmpuri, `aria-label` pe butoanele doar cu icon, focus vizibil, contrast. Doar în `frontend/src/apps/radacini`.
+- [x] (fără verificare în browser: serverul dev a fost refuzat; verificat prin build) **A6. Accesibilitate:** etichete pe câmpuri, `aria-label` pe butoanele doar cu icon, focus vizibil, contrast. Doar în `frontend/src/apps/radacini`.
 - [x] **A7. Build de producție frontend:** `cd frontend && NEXT_DIST_DIR=.next-build npx next build`. Repară erorile sau avertismentele Rădăcini și șterge apoi `.next-build`.
-- [ ] **A8. Review al codului** din commit-urile `54fd357..HEAD` (corectitudine și securitate: lista albă, raportări, monitorizare, pagina operator). Repară problemele confirmate.
+- [x] **A8. Review al codului** din commit-urile `54fd357..HEAD` (corectitudine și securitate: lista albă, raportări, monitorizare, pagina operator). Repară problemele confirmate.
 - [ ] **A9. Composesorate, vizibilitatea scorului:** regulă per asociație, scor „public” sau „doar membri” (implicit public), cu test (vezi DPIA R6).
 - [x] **A10. Ghid pentru beta:** `docs/radacini/GHID_BETA.md` cu:
   - ce testează invitații și cum raportează probleme;
@@ -33,8 +33,10 @@ Rulat de task-ul programat `radacini-autonom`, din 2 în 2 ore. Fiecare rulare c
 ## Întrebări pentru fondator
 - (completat de rulări)
 - Rularea programată nu a putut porni serverele (`backend`, `dev`): pornirea a fost refuzată. Pentru A1, A3, A5, A9, A11 trebuie permisă pornirea lor din `.claude/launch.json` (sau un backend lăsat pornit pe 8001).
+- Beta închis: cu `RADACINI_ALLOWED_EMAILS` setat, și paginile publice (`/public/listings`, `/public/communities`) cer cont din listă. E dorit așa sau le lăsăm deschise vizitatorilor?
 - Retenția: activăm jobul (`--apply` + scheduler) doar după avizul juristului pe durate?
 
 ## Jurnal
 - 2026-10-26: plan creat; punctele 1–5 de beta au fost făcute în `54fd357` și `f4ff6a1`.
-- 2026-10-28: A2 (job de retenție, doar raport implicit; raport pe datele reale: 0 de expirat), A4 (plăci configurabile), A7 (build de producție fără erori), A10 (`GHID_BETA.md`). A1, A3 blocate: backend-ul nu a putut fi pornit. Commit: vezi mai jos.
+- 2026-10-28: A2 (job de retenție, doar raport implicit; raport pe datele reale: 0 de expirat), A4 (plăci configurabile), A7 (build de producție fără erori), A10 (`GHID_BETA.md`). A1, A3 blocate: backend-ul nu a putut fi pornit. Commit `d684eec`.
+- 2026-10-28: A6 (`Field` leagă automat eticheta de câmp sau marchează grupul cu `role="group"`: 28 de câmpuri reparate; contrast pe Login; butoanele-icon și focusul erau deja în regulă). A8 (review `54fd357..HEAD`): jurnalul de erori salva mesajul brut al excepției (putea conține emailuri, ID-uri, valori) → acum se curăță (`scrub_error_message`, test nou). Restul (lista albă, raportări, monitorizare, operator) fără probleme confirmate. Build de producție curat.
