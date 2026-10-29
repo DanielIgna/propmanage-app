@@ -82,6 +82,7 @@ export default function OverviewTab({ assoc, access }) {
       <div className={`${CARD} p-5 overflow-x-auto`}>
         <h3 className="font-bold text-slate-900 dark:text-white mb-2">Patrimoniu</h3>
         {patrimony.length === 0 ? <p className="text-sm text-slate-500">Nu este înregistrat patrimoniu.</p> : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="text-left text-xs text-slate-500"><th className="py-1">CF</th><th>Topo</th><th>Toponim</th><th>Categorie</th><th className="text-right">Ha</th></tr></thead>
             <tbody>
@@ -92,6 +93,7 @@ export default function OverviewTab({ assoc, access }) {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>
