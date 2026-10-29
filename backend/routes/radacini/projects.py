@@ -227,12 +227,12 @@ async def list_projects(user: dict = Depends(get_current_user)):
         today = today_str()
         for c in await db.radacini_crop_plans.find({"project_id": {"$in": ids}}, {"project_id": 1}).to_list(5000):
             crops[c["project_id"]] = crops.get(c["project_id"], 0) + 1
+        # Filtrul pe dată în SQL (comparație de text „C”, ca în Python): nu se mai încarcă activitățile trecute.
         acts = await db.radacini_activities.find(
-            {"project_id": {"$in": ids}, "status": "scheduled"}, {"project_id": 1, "date": 1}
+            {"project_id": {"$in": ids}, "status": "scheduled", "date": {"$gte": today}}, {"project_id": 1}
         ).to_list(5000)
         for a in acts:
-            if (a.get("date") or "") >= today:
-                upcoming[a["project_id"]] = upcoming.get(a["project_id"], 0) + 1
+            upcoming[a["project_id"]] = upcoming.get(a["project_id"], 0) + 1
         by_id = {str(d["_id"]): d for d in docs}
         contribs = await db.radacini_contributions.find(
             {"project_id": {"$in": ids}, "status": "logged"}, {"project_id": 1, "member_user_id": 1}

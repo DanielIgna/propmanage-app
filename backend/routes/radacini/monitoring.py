@@ -13,6 +13,7 @@ from .staff import require_staff
 
 router = APIRouter(route_class=RadaciniRoute)
 _manager = require_staff("manager")
+_ERROR_FIELDS = ("at", "method", "route", "error_type", "message")  # proiecție explicită: doar câmpurile afișate
 
 
 def _flag(name: str) -> bool:
@@ -29,7 +30,9 @@ async def system_status(ctx: dict = Depends(_manager)):
         db_ok, db_ms = False, None
 
     since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
-    errors = await db.radacini_errors.find({"at": {"$gte": since}}).sort("at", -1).limit(500).to_list(500)
+    errors = await db.radacini_errors.find(
+        {"at": {"$gte": since}}, {k: 1 for k in _ERROR_FIELDS}
+    ).sort("at", -1).limit(500).to_list(500)
     by_route = Counter(f"{e.get('method')} {e.get('route')}" for e in errors)
 
     allowed = [e for e in os.environ.get("RADACINI_ALLOWED_EMAILS", "").split(",") if e.strip()]
@@ -67,7 +70,7 @@ async def system_status(ctx: dict = Depends(_manager)):
         "queues": queues,
         "errors_24h": len(errors),
         "errors_by_route": [{"route": r, "count": n} for r, n in by_route.most_common(10)],
-        "recent_errors": [{k: e.get(k) for k in ("at", "method", "route", "error_type", "message")} for e in errors[:20]],
+        "recent_errors": [{k: e.get(k) for k in _ERROR_FIELDS} for e in errors[:20]],
         "error_retention_days": ERROR_RETENTION_DAYS,
         "warnings": warnings,
     }

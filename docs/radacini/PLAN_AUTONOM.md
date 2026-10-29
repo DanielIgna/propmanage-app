@@ -12,7 +12,7 @@ Rulat de task-ul programat `radacini-autonom`, din 2 în 2 ore. Fiecare rulare c
 - Lacăt: dacă `.claude/autonom.lock` e mai nou de 3 ore, oprește-te (rulează altă sesiune). Altfel scrie în el ora curentă și șterge-l la final.
 
 ## Puncte
-- [ ] (blocat: backend-ul nu a putut fi pornit în rularea din 27–28.10, pornirea a fost refuzată) **A1. Performanță `/radacini/projects`:** mai puține interogări pe cerere (fără N+1, `$in` pe loturi). Apoi `/listings` și `/admin/system`. Măsoară înainte și după cu `scripts.radacini_load_test --levels 5 --per-user 3` și notează rezultatele în `TEST_INCARCARE.md`.
+- [ ] (parțial 29.10: interogările verificate, două optimizări făcute; blocat: măsurarea cu `radacini_load_test` cere backend, pornirea refuzată) **A1. Performanță `/radacini/projects`:** mai puține interogări pe cerere (fără N+1, `$in` pe loturi). Apoi `/listings` și `/admin/system`. Măsoară înainte și după cu `scripts.radacini_load_test --levels 5 --per-user 3` și notează rezultatele în `TEST_INCARCARE.md`.
 - [x] **A2. Job de retenție:** `scripts/radacini_retention.py`, implicit **doar raport** (`--apply` pentru ștergere), după `POLITICA_RETENTIE.md`. Include regula de 18 ani pentru minori (doar raport) și conturile inactive. Teste pe date `TEST-RAD-`. Nu se înregistrează în scheduler.
 - [x] (testat fără backend, cu jurnal și notificări simulate) **A3. Notificare la accesul locației exacte** (DPIA R1): proprietarul e anunțat când altcineva vede locația exactă, cel mult o dată pe zi pentru aceeași persoană și același teren. Plus test.
 - [x] (verificat prin build; verificarea în browser a rămas nefăcută, serverul dev a fost refuzat) **A4. Plăci de hartă configurabile:** `NEXT_PUBLIC_RADACINI_TILE_URL` și `NEXT_PUBLIC_RADACINI_TILE_ATTRIBUTION`, implicit OSM. Notă în `DPIA_CIORNA.md`.
@@ -28,7 +28,7 @@ Rulat de task-ul programat `radacini-autonom`, din 2 în 2 ore. Fiecare rulare c
   
   Apoi actualizezi `ROADMAP.md` și `PLAN.md`.
 - [ ] (blocat: cere backend pornit) **A11. Regresie completă** (o singură dată): repari ce pică, apoi faci curățarea.
-- [ ] **A12. Final:** rezumat în secțiunea „Jurnal” de mai jos și actualizarea memoriei `radacini-state.md`.
+- [x] (29.10; se actualizează dacă rulările următoare deblochează A1, A5, A11) **A12. Final:** rezumat în secțiunea „Jurnal” de mai jos și actualizarea memoriei `radacini-state.md`.
 
 ## Întrebări pentru fondator
 - (completat de rulări)
@@ -43,3 +43,5 @@ Rulat de task-ul programat `radacini-autonom`, din 2 în 2 ore. Fiecare rulare c
 - 2026-10-28 13:10: rulare fără progres pe cod. Pornirea `backend` a fost refuzată din nou și nu rula nimic pe 8001. A1, A3, A5, A9, A11 rămân blocate (cer servere pornite). A12 rămâne pentru ultima rulare.
 - 2026-10-29: A9 (regula `score_visibility` în regulile asociației, implicit „public”; cu „members” scorul dispare din lista publică, din detaliu pentru străini, iar `/transparency` dă 403; UI afișează „Scor vizibil doar membrilor”). Test nou `test_radacini_score_visibility.py`: 3 teste pe funcții verzi, testul HTTP sărit (backend-ul refuzat din nou). Build de producție curat. A1 neatins: `/projects` folosește deja `$in` pe loturi, iar măsurarea cere backend.
 - 2026-10-29: A3 (la prima citire din zi a locației exacte de către cultivator sau personal, proprietarul primește notificare cu rolul, fără identitate; nicio notificare dacă jurnalul nu se scrie). Test nou `test_radacini_location_notify.py` (6 teste, fără backend). DPIA R1 actualizat.
+- 2026-10-29 13:50: A1 parțial, fără backend (pornirea `backend` și `dev` refuzată din nou). Revizuire: `/projects`, `/listings` și `/admin/system` nu au N+1 (`$in` pe loturi, agregate pe 100 de vânzători). Optimizări: `/projects` filtrează activitățile viitoare în SQL (nu mai încarcă activitățile trecute; verificat pe baza reală: același rezultat ca filtrul Python), `/admin/system` citește jurnalul de erori cu proiecție explicită. Măsurătorile din `TEST_INCARCARE.md` rămân de făcut. A5, A11 blocate (servere). A12: rezumat de mai jos și memoria actualizată.
+- **Rezumat final (A12):** făcute A2, A3, A4, A6, A7, A8, A9, A10, A12; A1 parțial. Rămân A1 (măsurare), A5 (mobil 375 px în browser), A11 (regresie completă): toate cer serverele `backend`/`dev`, a căror pornire e refuzată în rulările programate. Commit-uri: `d684eec`, `13c1665`, `7d988bc`, `7f195c1`, `5449195`, `8894fca` și cel al acestei rulări.
