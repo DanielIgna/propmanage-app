@@ -50,7 +50,7 @@ Volumul în pilot e mic (sute de persoane). O DPIA e totuși recomandată înain
 
 | # | Risc | Probabilitate | Gravitate | Măsuri existente | Măsuri propuse |
 |---|---|---|---|---|---|
-| R1 | Locația exactă a unui teren ajunge la persoane neautorizate (furt, presiune asupra proprietarului) | mică | mare | aproximare publică; acces exact doar după acord; jurnal de acces | alertă proprietarului la fiecare acces exact; retenție 12 luni pentru jurnal |
+| R1 | Locația exactă a unui teren ajunge la persoane neautorizate (furt, presiune asupra proprietarului) | mică | mare | aproximare publică; acces exact doar după acord; jurnal de acces; alertă proprietarului la accesul exact (cel mult una pe zi pentru aceeași persoană și același teren, cu rolul celui care a văzut, fără identitate) | retenție 12 luni pentru jurnal |
 | R2 | Date ale minorilor folosite abuziv | mică | mare | fără cont, date minime, consimțământ parental consemnat | verificarea calității de părinte (declarativ acum); regula de 18 ani; fără fotografii cu minori (de decis) |
 | R3 | Acces neautorizat la cont (parolă slabă, sesiune furată) | medie | medie | autentificare PropManage, Google OAuth; acțiunile juridice blocate în impersonare | 2FA opțional; notificare la autentificare nouă |
 | R4 | Personalul vede mai mult decât trebuie | mică | medie | roluri (operator pe arie, manager); jurnal de audit | revizuirea trimestrială a listei de personal |

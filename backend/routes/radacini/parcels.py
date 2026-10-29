@@ -2,7 +2,7 @@
 import logging
 import math
 import os
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from bson import ObjectId
@@ -13,6 +13,7 @@ from pydantic import BaseModel, field_validator, model_validator
 from .bridge import block_in_impersonation, db, emit, get_current_user, serialize_doc
 from .legal_terms import require_terms
 from .common import (
+    BUCHAREST,
     RadaciniRoute,
     check_finite,
     check_price,
@@ -21,6 +22,7 @@ from .common import (
     mark_demo,
     now_iso,
     oid_or_404,
+    safe_notify,
 )
 from .constants import COUNTY, LOCALITIES, OFFER_MODEL_IDS, WATER_SOURCE_IDS
 from .geo import area_warning, bbox, haversine_km, in_romania_bbox, validate_polygon
@@ -284,8 +286,40 @@ async def _exact_location_agreement(doc: dict, user_id: str) -> Optional[str]:
     return str(ag["_id"]) if ag else None
 
 
+_ACCESS_WHO = {"cultivator": "Cultivatorul din acordul semnat", "staff": "Personalul Rădăcini (moderare)"}
+
+
+def _bucharest_day_start_iso() -> str:
+    """Începutul zilei de azi (Europe/Bucharest), în UTC ISO, comparabil cu `at` din jurnal."""
+    start = datetime.now(BUCHAREST).replace(hour=0, minute=0, second=0, microsecond=0)
+    return start.astimezone(timezone.utc).isoformat()
+
+
+async def _notify_location_access(doc: dict, user_id: str, role: str, seen_today: bool) -> None:
+    """DPIA R1: proprietarul află când altcineva vede locația exactă, cel mult o dată pe zi pentru aceeași
+    persoană și același teren. Nu dezvăluie identitatea celui care a văzut, doar rolul."""
+    owner_id = str(doc.get("owner_user_id") or "")
+    if seen_today or not owner_id or owner_id == user_id:
+        return
+    await safe_notify(
+        owner_id,
+        "Locația exactă a terenului tău a fost văzută",
+        f"{_ACCESS_WHO.get(role, 'Cineva')} a văzut locația exactă a terenului „{doc.get('title') or 'teren'}”. "
+        "Istoricul accesărilor e în exportul datelor tale.",
+        link=f"/radacini/terenuri/{doc['_id']}",
+        type_="parcel",
+    )
+
+
 async def _log_location_access(doc: dict, user_id: str, agreement_id: Optional[str], role: str) -> bool:
-    """Jurnal append-only al citirilor de locație exactă de către alții decât proprietarul. True dacă s-a scris."""
+    """Jurnal append-only al citirilor de locație exactă de către alții decât proprietarul. True dacă s-a scris.
+    Prima citire din zi (aceeași persoană, același teren) îl anunță pe proprietar."""
+    try:
+        seen_today = await db.radacini_location_access_log.find_one(
+            {"parcel_id": str(doc["_id"]), "user_id": user_id, "at": {"$gte": _bucharest_day_start_iso()}}, {"_id": 1}
+        ) is not None
+    except Exception:  # noqa: BLE001
+        seen_today = True  # la eroare nu trimitem notificări repetate
     entry = mark_demo({
         "parcel_id": str(doc["_id"]),
         "user_id": user_id,
@@ -295,10 +329,11 @@ async def _log_location_access(doc: dict, user_id: str, agreement_id: Optional[s
     })
     try:
         await db.radacini_location_access_log.insert_one(entry)
-        return True
     except Exception:  # noqa: BLE001
         log.warning("radacini: jurnalul de acces la locație nu a putut fi scris", exc_info=True)
         return False
+    await _notify_location_access(doc, user_id, role, seen_today)
+    return True
 
 
 async def _is_agreement_party(parcel_id: str, user_id: str) -> bool:
